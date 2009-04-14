@@ -804,7 +804,7 @@ public class emit {
 
   protected static void emit_load_table(PrintWriter out, String filename, String property) {
     out.println("    try {");
-    out.println("      FileInputStream fin = new FileInputStream(\""+filename+"\");");
+    out.println("      FileInputStream fin = new FileInputStream(\""+store_tables_path +"/"+filename+"\");");
     out.println("      ObjectInputStream ois = new ObjectInputStream(fin);");
     out.println("      this."+property+" = (short[][]) ois.readObject();");
     out.println("      ois.close();");

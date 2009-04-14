@@ -4,13 +4,18 @@ import phpanalysis.parser._;
 import java.io._;
 
 object Main {
-    def main(args: Array[String]) {
-         var l: Lexer = null;
+    def main(args: Array[String]): Unit = {
 
-         try {
-            l = new Lexer(new java.io.FileReader(args(0)));
-         } catch {
-            case e: Exception => println("Error: " + e.getMessage)
-         }
+        if (args.length > 0) {
+            for (file <- args) {
+                new Compiler(file) compile
+            }
+        } else {
+            usage
+        }
+    }
+
+    def usage = {
+        println("Usage: phpanalysis <files ...>");
     }
 }

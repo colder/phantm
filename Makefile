@@ -1,4 +1,4 @@
-all: cup jflex javafiles
+all: cup jflex javafiles scalafiles
 
 build_cup:
 	cd lib/cup && ant
