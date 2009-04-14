@@ -1,0 +1,82 @@
+<project name="emugen" default ="dist" basedir=".">
+  <property name="etc"       location="etc"       />
+  <property name="bin"       location="bin"       />
+  <property name="lib"       location="lib"       />
+  <property name="src"       location="src"       />
+  <property name="java"      location="java"      />
+  <property name="classes"   location="classes"   />
+  <property name="dist"      location="dist"      />
+  <!--property name="test"      location="test"      /-->
+  <property name="flex"      location="flex"      />
+  <property name="cup"       location="cup"       />
+
+  <!-- initialize the workspace -->
+  <target name="init">
+    <tstamp />
+    <mkdir dir="${src}" />
+    <mkdir dir="${java}" />
+    <mkdir dir="${classes}" />
+    <mkdir dir="${dist}" />    
+  </target>
+
+  <property environment="env" />
+
+  <path id="libraries">
+     <pathelement location="${src}" />
+     <fileset dir="${lib}">
+	<include name="**/*.jar" />
+     </fileset>
+  </path>
+
+  <path id="binaries">
+     <fileset dir="${bin}">
+	<include name="**/*.jar" />
+     </fileset>
+  </path>
+
+  <target name="clean">
+    <delete dir="${java}" />
+    <delete dir="${classes}" />
+    <delete dir="${dist}" />
+  </target>
+
+  <taskdef name="jflex" classname="JFlex.anttask.JFlexTask" classpath="${bin}/JFlex.jar" />
+
+  <target name="cup" depends="init">
+    <java jar="${bin}/java-cup-11a.jar" fork="true">
+        <arg value="-interface" />
+        <arg value="-destdir" />
+        <arg value="${java}" />
+        <arg value="${cup}/parser.cup" />
+    </java>
+  </target>
+
+  <target name="jflex" depends="cup">
+    <jflex file="${flex}/Lexer.jflex" destdir="${java}" />
+  </target>
+
+  <target name="compile" depends="jflex">
+    <copy todir="${java}"><fileset dir="${src}"></fileset></copy>
+    <javac srcdir="${java}" destdir="${classes}" verbose="off" listfiles="off" debug="on" source="1.2" target="1.2">
+      <classpath refid="libraries"/>
+    </javac>
+  </target>
+
+  <target name="dist" depends="compile">
+   <jar jarfile="${dist}/java-cup-11a.jar" basedir="${classes}">
+      <manifest>
+        <attribute name="Main-Class" value="java_cup/Main" />
+	<attribute name="Class-Path" value="java-cup-11a-runtime.jar" />
+      </manifest>
+    </jar>
+    <jar jarfile="${dist}/java-cup-11a-runtime.jar" basedir="${classes}" includes="java_cup/runtime/*">
+    </jar>
+  </target>
+
+  <target name="test" depends="dist">
+    <java jar="${dist}/java-cup-11a.jar" fork="true">
+        <arg value="-interface" />
+        <arg value="${cup}/parser.cup" />
+    </java>  
+  </target>
+</project>
