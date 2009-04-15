@@ -8,7 +8,10 @@ object Main {
 
         if (args.length > 0) {
             for (file <- args) {
-                new Compiler(file) compile
+                new Compiler(file) compile match {
+                    case Some(node) => node print
+                    case None => println("Compilation failed.")
+                }
             }
         } else {
             usage

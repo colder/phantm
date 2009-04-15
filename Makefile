@@ -20,5 +20,5 @@ javafiles:
 scalafiles:
 	scalac -d classes `find src -name "*.scala"`
 
-test: scalafiles
+test:
 	scala -verbose -classpath classes phpanalysis.Main tests/*.php

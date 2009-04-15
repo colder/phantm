@@ -27,16 +27,19 @@ public final class ParseNode {
         this.isToken      = true;
     }
 
+    public int symbol() { return symbol; }
+    public String name() { return name; }
+    public int tokenLine() { return tokenLine; }
+    public String tokenContent() { return tokenContent; }
+    public boolean isToken() { return isToken; }
+    public List<ParseNode> children() { return children; }
+
     public void parentIs(ParseNode node) {
         parent = node;
     }
 
     public void newChildrenIs(ParseNode node) {
         children.add(node);
-    }
-
-    public List<ParseNode> children() {
-        return children;
     }
 
     public void print() {
