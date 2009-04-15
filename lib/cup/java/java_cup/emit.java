@@ -427,7 +427,7 @@ public class emit {
           /**
            * TUM 20060608 intermediate result patch
            */
-          String result = "null";
+          String result = "createParseNode(\"" + prod.lhs().the_symbol().name() + "\"," + pre("act_num") + ", " + pre("stack") + ", "+prod.rhs_length()+", " + pre("top") + ")";
           if (prod instanceof action_production) {
               int lastResult = ((action_production)prod).getIndexOfIntermediateResult();
               if (lastResult!=-1) {
@@ -444,7 +444,7 @@ public class emit {
 	    and be changed by action code
 	    6/13/96 frankf */
 	  out.println("              " +  prod.lhs().the_symbol().stack_type() +
-		      " RESULT ="+result+";");
+		      " RESULT = "+result+";");
 
 	  /* Add code to propagate RESULT assignments that occur in
 	   * action code embedded in a production (ie, non-rightmost
