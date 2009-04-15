@@ -2,10 +2,11 @@ all: cup jflex javafiles scalafiles
 
 build_cup:
 	cd lib/cup && ant
+
 clean:
 	find java/phpanalysis/parser/ -type f -iname "*.java" -exec rm '{}' \;
 
-cup: build_cup
+cup:
 	java -jar lib/cup/dist/java-cup-11a.jar -parser Parser -package phpanalysis.parser -destdir java/phpanalysis/parser/ -files -symbols Symbols spec/php.cup
 
 jflex:
@@ -16,3 +17,6 @@ javafiles:
 
 scalafiles:
 	scalac -d classes `find src -name "*.scala"`
+
+test: scalafiles
+	scala -verbose -classpath classes phpanalysis.Main tests/*.php
