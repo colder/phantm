@@ -1,5 +1,7 @@
 all: cup jflex javafiles scalafiles
 
+complete: build_cup all
+
 build_cup:
 	cd lib/cup && ant
 
