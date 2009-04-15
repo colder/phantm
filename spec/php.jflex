@@ -122,7 +122,7 @@ FROM FLEX -> JFLEX
             type, 
             line, 
             -1, 
-            new ParseNode(type, name, this.fileName, text(), line));
+            new ParseNode(type, name, text(), line));
     }
 
     // always call this method after constructing the lexer object
