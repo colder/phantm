@@ -1,3 +1,5 @@
+package phpanalysis.parser;
+
 // todo, halt_compiler, namespaces
 object Trees {
     abstract class Tree;
@@ -81,7 +83,7 @@ object Trees {
     case class Unset(vars: List[Variable]) extends Statement
     case class Foreach(what: Expression, as: Variable, key: Option[Variable], body: Statement) extends Statement
 
-    abstract class Expression;
+    abstract class Expression extends Statement;
     case class Variable(name: Identifier) extends Expression
     case class ExpandArray(vars: List[Variable], expr: Expression) extends Expression
     case class Assign(vari: Variable, value: Expression, byref: Boolean) extends Expression

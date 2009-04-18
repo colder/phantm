@@ -1,6 +1,7 @@
 package phpanalysis;
 
 import phpanalysis.parser._;
+import phpanalysis.parser.Trees.Tree;
 import java.io._;
 
 object Main {
@@ -9,7 +10,11 @@ object Main {
         if (args.length > 0) {
             for (file <- args) {
                 new Compiler(file) compile match {
-                    case Some(node) => node print
+                    case Some(node) => {
+                        val t: Tree = new STToAST(node) getAST
+
+                        t
+                    }
                     case None => println("Compilation failed.")
                 }
             }

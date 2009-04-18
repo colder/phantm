@@ -310,7 +310,6 @@ non terminal ParseNode encaps_var;
 non terminal ParseNode encaps_var_offset;
 non terminal ParseNode exit_expr;
 non terminal ParseNode expr;
-non terminal ParseNode expr_without_variable;
 non terminal ParseNode extends_from;
 non terminal ParseNode for_expr;
 non terminal ParseNode for_statement;
@@ -318,7 +317,6 @@ non terminal ParseNode foreach_optional_arg;
 non terminal ParseNode foreach_statement;
 non terminal ParseNode foreach_variable;
 non terminal ParseNode fully_qualified_class_name;
-non terminal ParseNode function;
 non terminal ParseNode function_call;
 non terminal ParseNode function_call_parameter_list;
 non terminal ParseNode function_declaration_statement;
@@ -354,9 +352,8 @@ non terminal ParseNode object_property;
 non terminal ParseNode optional_class_type;
 non terminal ParseNode parameter_list;
 non terminal ParseNode possible_comma;
-non terminal ParseNode r_variable;
+non terminal ParseNode variable;
 non terminal ParseNode reference_variable;
-non terminal ParseNode rw_variable;
 non terminal ParseNode scalar;
 non terminal ParseNode simple_indirect_reference;
 non terminal ParseNode statement;
@@ -372,17 +369,14 @@ non terminal ParseNode unset_variable;
 non terminal ParseNode unset_variables;
 non terminal ParseNode unticked_class_declaration_statement;
 non terminal ParseNode unticked_function_declaration_statement;
-non terminal ParseNode unticked_statement;
 non terminal ParseNode use_declaration;
 non terminal ParseNode use_declarations;
-non terminal ParseNode variable;
 non terminal ParseNode variable_class_name;
 non terminal ParseNode variable_modifiers;
 non terminal ParseNode variable_name;
 non terminal ParseNode variable_properties;
 non terminal ParseNode variable_property;
 non terminal ParseNode variable_without_objects;
-non terminal ParseNode w_variable;
 non terminal ParseNode while_statement;
 
 precedence left T_INCLUDE, T_INCLUDE_ONCE, T_EVAL, T_REQUIRE, T_REQUIRE_ONCE;
@@ -472,11 +466,6 @@ inner_statement ::=
 ;
 
 statement ::= 
-      unticked_statement
-    | T_STRING T_COLON
-;
-
-unticked_statement ::= 
       T_OPEN_CURLY_BRACES inner_statement_list T_CLOSE_CURLY_BRACES
     | T_IF T_OPEN_BRACES expr T_CLOSE_BRACES  statement  elseif_list else_single
     | T_IF T_OPEN_BRACES expr T_CLOSE_BRACES T_COLON  inner_statement_list  new_elseif_list new_else_single T_ENDIF T_SEMICOLON
@@ -497,21 +486,15 @@ unticked_statement ::=
     | T_CONTINUE T_SEMICOLON
     | T_CONTINUE expr T_SEMICOLON
     | T_RETURN T_SEMICOLON
-    | T_RETURN expr_without_variable T_SEMICOLON
-    | T_RETURN variable T_SEMICOLON
+    | T_RETURN expr T_SEMICOLON
     | T_GLOBAL global_var_list T_SEMICOLON
     | T_STATIC static_var_list T_SEMICOLON
     | T_ECHO echo_expr_list T_SEMICOLON
     | T_INLINE_HTML
     | expr T_SEMICOLON
     | T_UNSET T_OPEN_BRACES unset_variables T_CLOSE_BRACES T_SEMICOLON
-    | T_FOREACH T_OPEN_BRACES variable T_AS
-		
+    | T_FOREACH T_OPEN_BRACES expr T_AS
 		foreach_variable foreach_optional_arg T_CLOSE_BRACES 
-		foreach_statement
-    | T_FOREACH T_OPEN_BRACES expr_without_variable T_AS
-		
-		variable foreach_optional_arg T_CLOSE_BRACES 
 		foreach_statement
     | T_DECLARE  T_OPEN_BRACES declare_list T_CLOSE_BRACES declare_statement
     | T_SEMICOLON		/* empty statement */
@@ -523,6 +506,7 @@ unticked_statement ::=
 		additional_catches
     | T_THROW expr T_SEMICOLON
     | T_GOTO T_STRING T_SEMICOLON
+    | T_STRING T_COLON
 ;
 
 additional_catches ::= 
@@ -562,7 +546,7 @@ is_reference ::=
 ;
 
 unticked_function_declaration_statement ::= 
-      function is_reference T_STRING 
+      T_FUNCTION is_reference T_STRING 
 			T_OPEN_BRACES parameter_list T_CLOSE_BRACES T_OPEN_CURLY_BRACES inner_statement_list T_CLOSE_CURLY_BRACES
 ;
 
@@ -712,12 +696,10 @@ function_call_parameter_list ::=
 ;
 
 non_empty_function_call_parameter_list ::= 
-      expr_without_variable
-    | variable
-    | T_BITWISE_AND w_variable
-    | non_empty_function_call_parameter_list T_COMMA expr_without_variable
-    | non_empty_function_call_parameter_list T_COMMA variable
-    | non_empty_function_call_parameter_list T_COMMA T_BITWISE_AND w_variable
+      expr
+    | T_BITWISE_AND variable
+    | non_empty_function_call_parameter_list T_COMMA expr
+    | non_empty_function_call_parameter_list T_COMMA T_BITWISE_AND variable
 ;
 
 global_var_list ::= 
@@ -727,7 +709,7 @@ global_var_list ::=
 
 global_var ::= 
       T_VARIABLE
-    | T_DOLLAR r_variable
+    | T_DOLLAR variable
     | T_DOLLAR T_OPEN_CURLY_BRACES expr T_CLOSE_CURLY_BRACES
 ;
 
@@ -746,7 +728,7 @@ class_statement_list ::=
 class_statement ::= 
       variable_modifiers  class_variable_declaration T_SEMICOLON
     | class_constant_declaration T_SEMICOLON
-    | method_modifiers function is_reference T_STRING  T_OPEN_BRACES
+    | method_modifiers T_FUNCTION is_reference T_STRING  T_OPEN_BRACES
 			parameter_list T_CLOSE_BRACES method_body
 ;
 
@@ -804,83 +786,6 @@ for_expr ::=
 non_empty_for_expr ::= 
       non_empty_for_expr T_COMMA	 expr
     | expr
-;
-
-expr_without_variable ::= 
-      T_LIST T_OPEN_BRACES  assignment_list T_CLOSE_BRACES T_ASSIGN expr
-    | variable T_ASSIGN expr
-    | variable T_ASSIGN T_BITWISE_AND variable
-    | variable T_ASSIGN T_BITWISE_AND T_NEW class_name_reference  ctor_arguments
-    | T_NEW class_name_reference  ctor_arguments
-    | T_CLONE expr
-    | variable T_PLUS_EQUAL expr
-    | variable T_MINUS_EQUAL expr
-    | variable T_MUL_EQUAL expr
-    | variable T_DIV_EQUAL expr
-    | variable T_CONCAT_EQUAL expr
-    | variable T_MOD_EQUAL expr
-    | variable T_AND_EQUAL expr
-    | variable T_OR_EQUAL expr
-    | variable T_XOR_EQUAL expr
-    | variable T_SL_EQUAL expr
-    | variable T_SR_EQUAL expr
-    | rw_variable T_INC
-    | T_INC rw_variable
-    | rw_variable T_DEC
-    | T_DEC rw_variable
-    | expr T_BOOLEAN_OR  expr
-    | expr T_BOOLEAN_AND  expr
-    | expr T_LOGICAL_OR  expr
-    | expr T_LOGICAL_AND  expr
-    | expr T_LOGICAL_XOR expr
-    | expr T_BITWISE_OR expr
-    | expr T_BITWISE_AND expr
-    | expr T_BITWISE_XOR expr
-    | expr T_POINT expr
-    | expr T_PLUS expr
-    | expr T_MINUS expr
-    | expr T_MULT expr
-    | expr T_DIV expr
-    | expr T_MODULO expr
-    | expr T_SL expr
-    | expr T_SR expr
-    | T_NOT expr
-    | T_BITWISE_NOT expr
-    | expr T_IS_IDENTICAL expr
-    | expr T_IS_NOT_IDENTICAL expr
-    | expr T_IS_EQUAL expr
-    | expr T_IS_NOT_EQUAL expr
-    | expr T_IS_SMALLER expr
-    | expr T_IS_SMALLER_OR_EQUAL expr
-    | expr T_IS_GREATER expr
-    | expr T_IS_GREATER_OR_EQUAL expr
-    | expr T_INSTANCEOF class_name_reference
-    | T_OPEN_BRACES expr T_CLOSE_BRACES
-    | expr T_QUESTION 
-		expr T_COLON 
-		expr
-    | expr T_QUESTION T_COLON 
-		expr
-    | internal_functions_in_yacc
-    | T_INT_CAST expr
-    | T_DOUBLE_CAST expr
-    | T_STRING_CAST expr
-    | T_ARRAY_CAST expr
-    | T_OBJECT_CAST expr
-    | T_BOOL_CAST expr
-    | T_UNSET_CAST expr
-    | T_EXIT exit_expr
-    | T_AT  expr
-    | scalar
-    | T_ARRAY T_OPEN_BRACES array_pair_list T_CLOSE_BRACES
-    | T_BACKTICK backticks_expr T_BACKTICK
-    | T_PRINT expr
-    | function is_reference T_OPEN_BRACES 
-			parameter_list T_CLOSE_BRACES lexical_vars T_OPEN_CURLY_BRACES inner_statement_list T_CLOSE_CURLY_BRACES
-;
-
-function ::= 
-      T_FUNCTION
 ;
 
 lexical_vars ::= 
@@ -1030,20 +935,77 @@ non_empty_static_array_pair_list ::=
 ;
 
 expr ::= 
-      r_variable
-    | expr_without_variable
-;
-
-r_variable ::= 
       variable
-;
-
-w_variable ::= 
-      variable
-;
-
-rw_variable ::= 
-      variable
+    | T_LIST T_OPEN_BRACES  assignment_list T_CLOSE_BRACES T_ASSIGN expr
+    | variable T_ASSIGN expr
+    | variable T_ASSIGN T_BITWISE_AND variable
+    | variable T_ASSIGN T_BITWISE_AND T_NEW class_name_reference  ctor_arguments
+    | T_NEW class_name_reference  ctor_arguments
+    | T_CLONE expr
+    | variable T_PLUS_EQUAL expr
+    | variable T_MINUS_EQUAL expr
+    | variable T_MUL_EQUAL expr
+    | variable T_DIV_EQUAL expr
+    | variable T_CONCAT_EQUAL expr
+    | variable T_MOD_EQUAL expr
+    | variable T_AND_EQUAL expr
+    | variable T_OR_EQUAL expr
+    | variable T_XOR_EQUAL expr
+    | variable T_SL_EQUAL expr
+    | variable T_SR_EQUAL expr
+    | variable T_INC
+    | T_INC variable
+    | variable T_DEC
+    | T_DEC variable
+    | expr T_BOOLEAN_OR  expr
+    | expr T_BOOLEAN_AND  expr
+    | expr T_LOGICAL_OR  expr
+    | expr T_LOGICAL_AND  expr
+    | expr T_LOGICAL_XOR expr
+    | expr T_BITWISE_OR expr
+    | expr T_BITWISE_AND expr
+    | expr T_BITWISE_XOR expr
+    | expr T_POINT expr
+    | expr T_PLUS expr
+    | expr T_MINUS expr
+    | expr T_MULT expr
+    | expr T_DIV expr
+    | expr T_MODULO expr
+    | expr T_SL expr
+    | expr T_SR expr
+    | T_NOT expr
+    | T_BITWISE_NOT expr
+    | expr T_IS_IDENTICAL expr
+    | expr T_IS_NOT_IDENTICAL expr
+    | expr T_IS_EQUAL expr
+    | expr T_IS_NOT_EQUAL expr
+    | expr T_IS_SMALLER expr
+    | expr T_IS_SMALLER_OR_EQUAL expr
+    | expr T_IS_GREATER expr
+    | expr T_IS_GREATER_OR_EQUAL expr
+    | expr T_INSTANCEOF class_name_reference
+    | T_OPEN_BRACES expr T_CLOSE_BRACES
+    | expr T_QUESTION 
+		expr T_COLON 
+		expr
+    | expr T_QUESTION T_COLON 
+		expr
+    | internal_functions_in_yacc
+    | T_INT_CAST expr
+    | T_DOUBLE_CAST expr
+    | T_STRING_CAST expr
+    | T_ARRAY_CAST expr
+    | T_OBJECT_CAST expr
+    | T_BOOL_CAST expr
+    | T_UNSET_CAST expr
+    | T_EXIT exit_expr
+    | T_AT  expr
+    | scalar
+    | T_ARRAY T_OPEN_BRACES array_pair_list T_CLOSE_BRACES
+    | T_BACKTICK backticks_expr T_BACKTICK
+    | T_PRINT expr
+    | T_FUNCTION is_reference T_OPEN_BRACES 
+			parameter_list T_CLOSE_BRACES lexical_vars T_OPEN_CURLY_BRACES inner_statement_list T_CLOSE_CURLY_BRACES
 ;
 
 variable ::= 
@@ -1150,10 +1112,10 @@ non_empty_array_pair_list ::=
     | non_empty_array_pair_list T_COMMA expr
     | expr T_DOUBLE_ARROW expr
     | expr
-    | non_empty_array_pair_list T_COMMA expr T_DOUBLE_ARROW T_BITWISE_AND w_variable
-    | non_empty_array_pair_list T_COMMA T_BITWISE_AND w_variable
-    | expr T_DOUBLE_ARROW T_BITWISE_AND w_variable
-    | T_BITWISE_AND w_variable
+    | non_empty_array_pair_list T_COMMA expr T_DOUBLE_ARROW T_BITWISE_AND variable
+    | non_empty_array_pair_list T_COMMA T_BITWISE_AND variable
+    | expr T_DOUBLE_ARROW T_BITWISE_AND variable
+    | T_BITWISE_AND variable
 ;
 
 encaps_list ::= 
