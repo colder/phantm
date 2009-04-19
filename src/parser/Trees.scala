@@ -36,6 +36,12 @@ object Trees {
     object PFStatic extends PropertyFlag
 
     abstract class ClassRef extends Tree
+    class VarClassRef(v: Variable)
+    class StaticClassRef(name: Identifier)
+
+    abstract class FunctionRef extends Tree
+    class VarFunctionRef(v: Variable)
+    class StaticFunctionRef(name: Identifier)
 
     abstract class CastType extends Tree
     object CastInt extends CastType
@@ -43,9 +49,12 @@ object Trees {
     object CastDouble extends CastType
     object CastArray extends CastType
     object CastBool extends CastType
+    object CastObject extends CastType
     object CastUnset extends CastType
 
-    case class Identifier(value: String) extends Tree;
+    case class Identifier(value: String) extends Tree
+
+    case class CallArg(value: Expression, forceref: Boolean) extends Tree
 
     abstract class Statement extends Tree;
 
@@ -65,7 +74,7 @@ object Trees {
     case class Throw(ex: Expression) extends Statement
     case class Goto(to: Label) extends Statement
 
-    case class Label(name: String) extends Statement
+    case class Label(name: Identifier) extends Statement
 
     case class Block(stmts: List[Statement]) extends Statement
     case class If(cond: Expression, then: Statement, elze: Statement) extends Statement
@@ -87,7 +96,6 @@ object Trees {
     case class Variable(name: Identifier) extends Expression
     case class ExpandArray(vars: List[Variable], expr: Expression) extends Expression
     case class Assign(vari: Variable, value: Expression, byref: Boolean) extends Expression
-    case class New(cl: ClassRef, args: List[Expression]) extends Expression
     case class Clone(obj: Expression) extends Expression
     case class Plus(lhs: Expression, rhs: Expression) extends Expression
     case class Minus(lhs: Expression, rhs: Expression) extends Expression
@@ -95,6 +103,10 @@ object Trees {
     case class Mult(lhs: Expression, rhs: Expression) extends Expression
     case class Concat(lhs: Expression, rhs: Expression) extends Expression
     case class Mod(lhs: Expression, rhs: Expression) extends Expression
+    case class PreInc(rhs: Expression) extends Expression
+    case class PostInc(rhs: Expression) extends Expression
+    case class PreDec(rhs: Expression) extends Expression
+    case class PostDec(rhs: Expression) extends Expression
     case class BooleanAnd(lhs: Expression, rhs: Expression) extends Expression
     case class BooleanOr(lhs: Expression, rhs: Expression) extends Expression
     case class BooleanXor(lhs: Expression, rhs: Expression) extends Expression
@@ -110,10 +122,39 @@ object Trees {
     case class Smaller(lhs: Expression, rhs: Expression) extends Expression
     case class SmallerEqual(lhs: Expression, rhs: Expression) extends Expression
     case class InstanceOf(lhs: Expression, rhs: ClassRef) extends Expression
-    case class Ternary(cond: Expression, then: Expression, elze: Expression) extends Expression
+    case class Ternary(cond: Expression, then: Option[Expression], elze: Expression) extends Expression
     case class Cast(typ: CastType, value: Expression) extends Expression
     case class Silence(value: Expression) extends Expression
     case class Exit(value: Option[Expression]) extends Expression
     case class Array(values: List[(Option[Expression],Expression)]) extends Expression
     case class Execute(value: String) extends Expression
+    case class Print(value: Expression) extends Expression
+    case class Eval(value: Expression) extends Expression
+    case class Closure(args: List[ArgumentDecl], retref: Boolean, body: Statement) extends Expression
+    case class Isset(vs: List[Variable]) extends Expression
+    case class Empty(v: Variable) extends Expression
+    case class Include(path: Expression, once: Boolean) extends Expression
+    case class Require(path: Expression, once: Boolean) extends Expression
+
+    abstract class Scalar extends Expression
+    case class Integer(value: Int) extends Scalar
+    case class Float(value: Float) extends Scalar
+    case class SimpleString(value: String) extends Scalar
+
+    // Magic constants
+    object MCFile extends Scalar
+    object MCLine extends Scalar
+    object MCClass extends Scalar
+    object MCFunction extends Scalar
+    object MCMethod extends Scalar
+    object MCNameSpace extends Scalar
+
+    case class ClassConstant(cl: ClassRef, const: Identifier) extends Expression
+    case class New(cl: ClassRef, args: List[CallArg]) extends Expression
+    case class FunctionCall(name: FunctionRef, args: List[CallArg]) extends Expression
+    case class MethodCall(obj: Expression, name: FunctionRef, args: List[CallArg]) extends Expression
+    case class StaticMethodCall(cl: ClassRef, name: FunctionRef, args: List[CallArg]) extends Expression
+
+
+
 }

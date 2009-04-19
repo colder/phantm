@@ -66,10 +66,10 @@ class STToAST(st: ParseNode) {
                 Assign(variable(child(n, 0)), ShiftLeft(variable(child(n, 0)), expr(child(n, 2))), false)
             case List("variable", "T_SR_EQUAL", "expr") =>
                 Assign(variable(child(n, 0)), ShiftRight(variable(child(n, 0)), expr(child(n, 2))), false)
-            case List("variable", "T_INC") => notyet(n)
-            case List("T_INC", "variable") => notyet(n)
-            case List("variable", "T_DEC") => notyet(n)
-            case List("T_DEC", "variable") => notyet(n)
+            case List("variable", "T_INC") => PostInc(expr(child(n, 0)))
+            case List("T_INC", "variable") => PreInc(expr(child(n, 1)))
+            case List("variable", "T_DEC") => PostDec(expr(child(n, 0)))
+            case List("T_DEC", "variable") => PreDec(expr(child(n, 1)))
             case List("expr", "T_BOOLEAN_OR", "expr") =>
                 BooleanOr(expr(child(n, 0)), expr(child(n, 2)))
             case List("expr", "T_BOOLEAN_AND", "expr") =>
@@ -126,10 +126,81 @@ class STToAST(st: ParseNode) {
                 notyet(n)
             case List("T_OPEN_BRACES", "expr", "T_CLOSE_BRACES") =>
                 expr(child(n, 1))
-            case _ => notyet(n)
+            case List("expr", "T_QUESTION", "expr", "T_COLON", "expr") =>
+                Ternary(expr(child(n, 0)), Some(expr(child(n, 2))), expr(child(n, 4)))
+            case List("expr", "T_QUESTION", "T_COLON", "expr") =>
+                Ternary(expr(child(n, 0)), None, expr(child(n, 2)))
+            case List("internal_functions_in_yacc") =>
+                internal_functions_in_yacc(child(n, 0))
+            case List("T_INT_CAST", "expr") =>
+                Cast(CastInt, expr(child(n, 1)))
+            case List("T_DOUBLE_CAST", "expr") =>
+                Cast(CastDouble, expr(child(n, 1)))
+            case List("T_STRING_CAST", "expr") =>
+                Cast(CastString, expr(child(n, 1)))
+            case List("T_ARRAY_CAST", "expr") =>
+                Cast(CastArray, expr(child(n, 1)))
+            case List("T_OBJECT_CAST", "expr") =>
+                Cast(CastObject, expr(child(n, 1)))
+            case List("T_BOOL_CAST", "expr") =>
+                Cast(CastBool, expr(child(n, 1)))
+            case List("T_UNSET_CAST", "expr") =>
+                Cast(CastUnset, expr(child(n, 1)))
+            case List("T_EXIT", "exit_expr") =>
+                Exit(exit_expr(child(n, 1)))
+            case List("T_AT", " expr") =>
+                Silence(expr(child(n, 1)))
+            case List("scalar") =>
+                scalar(child(n,0))
+            case List("T_ARRAY", "T_OPEN_BRACES", "array_pair_list", "T_CLOSE_BRACES") =>
+                Array(array_pair_list(child(n, 2)))
+            case List("T_BACKTICK", "backticks_expr", "T_BACKTICK") =>
+                Execute("") // Todo
+            case List("T_PRINT", "expr") =>
+                Print(expr(child(n, 1)))
+            case List("T_FUNCTION", "is_reference", "T_OPEN_BRACES", "parameter_list", "T_CLOSE_BRACES", "lexical_vars", "T_OPEN_CURLY_BRACES", "inner_statement_list", "T_CLOSE_CURLY_BRACES") =>
+                notyet(n)
+            case _ => unspecified(n)
         }
     }
 
+    def internal_functions_in_yacc(n: ParseNode): Expression = {
+        childrenNames(n) match {
+            case List("T_ISSET", "T_OPEN_BRACES", "isset_variables", "T_CLOSE_BRACES") =>
+                Isset(isset_variables(child(n, 2)))
+            case List("T_EMPTY", "T_OPEN_BRACES", "variable", "T_CLOSE_BRACES") =>
+                Empty(variable(child(n, 2)))
+            case List("T_INCLUDE", "expr") =>
+                Include(expr(child(n, 1)), false)
+            case List("T_INCLUDE_ONCE", "expr") =>
+                Include(expr(child(n, 1)), true)
+            case List("T_EVAL", "T_OPEN_BRACES", "expr", "T_CLOSE_BRACES") =>
+                Eval(expr(child(n, 2)))
+            case List("T_REQUIRE", "expr") =>
+                Require(expr(child(n, 1)), false)
+            case List("T_REQUIRE_ONCE", "expr") =>
+                Require(expr(child(n, 1)), true)
+        }
+    }
+
+    def isset_variables(n: ParseNode): List[Variable] = {
+        childrenNames(n) match {
+            case List("variable") => List(variable(child(n, 0)))
+            case List("isset_variables", "T_COMMA", "variable") => isset_variables(child(n, 0)) ::: List(variable(child(n, 2)))
+        }
+    }
+
+    def array_pair_list(n: ParseNode): List[(Option[Expression], Expression)] = {
+        notyet(n);
+    }
+
+    def exit_expr(n: ParseNode): Option[Expression] = {
+        childrenNames(n) match {
+            case List() => None
+            case List("T_OPEN_BRACES", "T_CLOSE_BRACES") => None
+            case List("T_OPEN_BRACES", "expr", "T_CLOSE_BRACES") => Some(expr(child(n, 1)))
+        }
+    }
     def variable(n: ParseNode): Variable = {
         notyet(n)
     }
@@ -163,7 +234,7 @@ class STToAST(st: ParseNode) {
         result
     }
 
+    def unspecified(n: ParseNode) = { throw new RuntimeException("Unspecified: "+childrenNames(n).mkString("[", ",", "]")) }
     def notyet(n: ParseNode) = { throw new RuntimeException("Not yet implemented: "+childrenNames(n).mkString("[", ",", "]")) }
-    def notyet = throw new RuntimeException("Not yet implemented");
 
 }
