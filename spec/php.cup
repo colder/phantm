@@ -360,13 +360,11 @@ non terminal ParseNode statement;
 non terminal ParseNode static_array_pair_list;
 non terminal ParseNode static_class_constant;
 non terminal ParseNode static_member;
-non terminal ParseNode static_scalar;
+non terminal ParseNode static_expr;
 non terminal ParseNode static_var_list;
 non terminal ParseNode switch_case_list;
 non terminal ParseNode top_statement;
 non terminal ParseNode top_statement_list;
-non terminal ParseNode unset_variable;
-non terminal ParseNode unset_variables;
 non terminal ParseNode unticked_class_declaration_statement;
 non terminal ParseNode unticked_function_declaration_statement;
 non terminal ParseNode use_declaration;
@@ -418,7 +416,7 @@ top_statement_list ::=
 ;
 
 namespace_name ::= 
-      T_STRING {: :}
+      T_STRING
     | namespace_name T_NS_SEPARATOR T_STRING
 ;
 
@@ -449,8 +447,8 @@ use_declaration ::=
 ;
 
 constant_declaration ::= 
-      constant_declaration T_COMMA T_STRING T_ASSIGN static_scalar
-    | T_CONST T_STRING T_ASSIGN static_scalar
+      constant_declaration T_COMMA T_STRING T_ASSIGN static_expr
+    | T_CONST T_STRING T_ASSIGN static_expr
 ;
 
 inner_statement_list ::= 
@@ -492,7 +490,7 @@ statement ::=
     | T_ECHO echo_expr_list T_SEMICOLON
     | T_INLINE_HTML
     | expr T_SEMICOLON
-    | T_UNSET T_OPEN_BRACES unset_variables T_CLOSE_BRACES T_SEMICOLON
+    | T_UNSET T_OPEN_BRACES variable_list T_CLOSE_BRACES T_SEMICOLON
     | T_FOREACH T_OPEN_BRACES expr T_AS
 		foreach_variable foreach_optional_arg T_CLOSE_BRACES 
 		foreach_statement
@@ -523,13 +521,9 @@ additional_catch ::=
       T_CATCH T_OPEN_BRACES fully_qualified_class_name  T_VARIABLE T_CLOSE_BRACES  T_OPEN_CURLY_BRACES inner_statement_list T_CLOSE_CURLY_BRACES
 ;
 
-unset_variables ::= 
-      unset_variable
-    | unset_variables T_COMMA unset_variable
-;
-
-unset_variable ::= 
+variable_list ::= 
       variable
+    | variable_list T_COMMA variable
 ;
 
 function_declaration_statement ::= 
@@ -621,8 +615,8 @@ declare_statement ::=
 ;
 
 declare_list ::= 
-      T_STRING T_ASSIGN static_scalar
-    | declare_list T_COMMA T_STRING T_ASSIGN static_scalar
+      T_STRING T_ASSIGN static_expr
+    | declare_list T_COMMA T_STRING T_ASSIGN static_expr
 ;
 
 switch_case_list ::= 
@@ -676,12 +670,12 @@ parameter_list ::=
 non_empty_parameter_list ::= 
       optional_class_type T_VARIABLE
     | optional_class_type T_BITWISE_AND T_VARIABLE
-    | optional_class_type T_BITWISE_AND T_VARIABLE T_ASSIGN static_scalar
-    | optional_class_type T_VARIABLE T_ASSIGN static_scalar
+    | optional_class_type T_BITWISE_AND T_VARIABLE T_ASSIGN static_expr
+    | optional_class_type T_VARIABLE T_ASSIGN static_expr
     | non_empty_parameter_list T_COMMA optional_class_type T_VARIABLE
     | non_empty_parameter_list T_COMMA optional_class_type T_BITWISE_AND T_VARIABLE
-    | non_empty_parameter_list T_COMMA optional_class_type T_BITWISE_AND T_VARIABLE	 T_ASSIGN static_scalar
-    | non_empty_parameter_list T_COMMA optional_class_type T_VARIABLE T_ASSIGN static_scalar
+    | non_empty_parameter_list T_COMMA optional_class_type T_BITWISE_AND T_VARIABLE	 T_ASSIGN static_expr
+    | non_empty_parameter_list T_COMMA optional_class_type T_VARIABLE T_ASSIGN static_expr
 ;
 
 optional_class_type ::= 
@@ -715,9 +709,9 @@ global_var ::=
 
 static_var_list ::= 
       static_var_list T_COMMA T_VARIABLE
-    | static_var_list T_COMMA T_VARIABLE T_ASSIGN static_scalar
+    | static_var_list T_COMMA T_VARIABLE T_ASSIGN static_expr
     | T_VARIABLE
-    | T_VARIABLE T_ASSIGN static_scalar
+    | T_VARIABLE T_ASSIGN static_expr
 ;
 
 class_statement_list ::= 
@@ -763,14 +757,14 @@ member_modifier ::=
 
 class_variable_declaration ::= 
       class_variable_declaration T_COMMA T_VARIABLE
-    | class_variable_declaration T_COMMA T_VARIABLE T_ASSIGN static_scalar
+    | class_variable_declaration T_COMMA T_VARIABLE T_ASSIGN static_expr
     | T_VARIABLE
-    | T_VARIABLE T_ASSIGN static_scalar
+    | T_VARIABLE T_ASSIGN static_expr
 ;
 
 class_constant_declaration ::= 
-      class_constant_declaration T_COMMA T_STRING T_ASSIGN static_scalar
-    | T_CONST T_STRING T_ASSIGN static_scalar
+      class_constant_declaration T_COMMA T_STRING T_ASSIGN static_expr
+    | T_CONST T_STRING T_ASSIGN static_expr
 ;
 
 echo_expr_list ::= 
@@ -891,13 +885,13 @@ common_scalar ::=
     | T_START_HEREDOC T_END_HEREDOC
 ;
 
-static_scalar ::= 
+static_expr ::= 
       common_scalar
     | namespace_name
     | T_NAMESPACE T_NS_SEPARATOR namespace_name
     | T_NS_SEPARATOR namespace_name
-    | T_PLUS static_scalar
-    | T_MINUS static_scalar
+    | T_PLUS static_expr
+    | T_MINUS static_expr
     | T_ARRAY T_OPEN_BRACES static_array_pair_list T_CLOSE_BRACES
     | static_class_constant
 ;
@@ -928,10 +922,10 @@ possible_comma ::=
 ;
 
 non_empty_static_array_pair_list ::= 
-      non_empty_static_array_pair_list T_COMMA static_scalar T_DOUBLE_ARROW static_scalar
-    | non_empty_static_array_pair_list T_COMMA static_scalar
-    | static_scalar T_DOUBLE_ARROW static_scalar
-    | static_scalar
+      non_empty_static_array_pair_list T_COMMA static_expr T_DOUBLE_ARROW static_expr
+    | non_empty_static_array_pair_list T_COMMA static_expr
+    | static_expr T_DOUBLE_ARROW static_expr
+    | static_expr
 ;
 
 expr ::= 

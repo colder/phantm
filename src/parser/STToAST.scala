@@ -24,16 +24,368 @@ class STToAST(st: ParseNode) {
     def top_statement(n: ParseNode): Statement = {
         childrenNames(n) match {
             case List("statement") => statement(child(n))
-            case _ => notyet(n)
+            case List("function_declaration_statement") => function_declaration_statement(child(n))
+            case List("class_declaration_statement") => class_declaration_statement(child(n))
+            case List("T_HALT_COMPILER", "T_OPEN_BRACES", "T_CLOSE_BRACES", "T_SEMICOLON") => notyet(n)
+            case List("T_NAMESPACE", "namespace_name", "T_SEMICOLON") => notyet(n)
+            case List("T_NAMESPACE", "namespace_name", "T_OPEN_CURLY_BRACES", "top_statement_list", "T_CLOSE_CURLY_BRACES") => notyet(n)
+            case List("T_NAMESPACE", "T_OPEN_CURLY_BRACES", "top_statement_list", "T_CLOSE_CURLY_BRACES") => notyet(n)
+            case List("T_USE", "use_declarations", "T_SEMICOLON") => notyet(n)
+            case List("constant_declaration", "T_SEMICOLON") => notyet(n)
+            case _ => unspecified(n)
         }
     }
 
     def statement(n: ParseNode): Statement = {
         childrenNames(n) match {
-            case List("T_ECHO", "echo_expr_list", "T_SEMICOLON") => Echo(echo_expr_list(child(n, 1)))
-            case List("expr", "T_SEMICOLON") => expr(child(n, 0))
-            case _ => notyet(n)
+            case List("T_OPEN_CURLY_BRACES", "inner_statement_list", "T_CLOSE_CURLY_BRACES") => inner_statement_list(child(n,1))
+            case List("T_IF", "T_OPEN_BRACES", "expr", "T_CLOSE_BRACES", "statement", "elseif_list", "else_single") =>
+                If(expr(child(n, 2)), statement(child(n, 4)), elseif_else(elseif_list(child(n, 5)), else_single(child(n, 6))))
+            case List("T_IF", "T_OPEN_BRACES", "expr", "T_CLOSE_BRACES", "T_COLON", "inner_statement_list", "new_elseif_list", "new_else_single", "T_ENDIF", "T_SEMICOLON") =>
+                If(expr(child(n, 2)), inner_statement_list(child(n, 5)), elseif_else(elseif_list(child(n, 6)), else_single(child(n, 7))))
+            case List("T_WHILE", "T_OPEN_BRACES", "expr", "T_CLOSE_BRACES", "while_statement") =>
+                While(expr(child(n, 2)), while_statement(child(n, 4)))
+            case List("T_DO", "statement", "T_WHILE", "T_OPEN_BRACES", "expr", "T_CLOSE_BRACES", "T_SEMICOLON") =>
+                DoWhile(statement(child(n, 1)), expr(child(n, 4)))
+            case List("T_FOR", "T_OPEN_BRACES", "for_expr", "T_SEMICOLON", "for_expr", "T_SEMICOLON", "for_expr", "T_CLOSE_BRACES", "for_statement") =>
+                For(for_expr(child(n, 2)), for_expr(child(n, 4)), for_expr(child(n, 6)), for_statement(child(n, 8)))
+            case List("T_SWITCH", "T_OPEN_BRACES", "expr", "T_CLOSE_BRACES", "switch_case_list") => 
+                Switch(expr(child(n, 2)), switch_case_list(child(n, 4)))
+            case List("T_BREAK", "T_SEMICOLON") =>
+                Break(Integer(1))
+            case List("T_BREAK", "expr", "T_SEMICOLON") =>
+                Break(expr(child(n, 1)))
+            case List("T_CONTINUE", "T_SEMICOLON") =>
+                Continue(Integer(1))
+            case List("T_CONTINUE", "expr", "T_SEMICOLON") =>
+                Continue(expr(child(n, 1)))
+            case List("T_RETURN", "T_SEMICOLON") =>
+                Return(Null)
+            case List("T_RETURN", "expr", "T_SEMICOLON") =>
+                Return(expr(child(n, 1)))
+            case List("T_GLOBAL", "global_var_list", "T_SEMICOLON") => 
+                Global(global_var_list(child(n, 1)))
+            case List("T_STATIC", "static_var_list", "T_SEMICOLON") => 
+                Static(static_var_list(child(n, 1)))
+            case List("T_ECHO", "echo_expr_list", "T_SEMICOLON") => 
+                Echo(echo_expr_list(child(n, 1)))
+            case List("T_INLINE_HTML") =>
+                Html(child(n, 0).tokenContent)
+            case List("expr", "T_SEMICOLON") =>
+                expr(child(n, 0))
+            case List("T_UNSET", "T_OPEN_BRACES", "variable_list", "T_CLOSE_BRACES", "T_SEMICOLON") =>
+                Unset(variable_list(child(n, 2)))
+            case List("T_FOREACH", "T_OPEN_BRACES", "expr", "T_AS", "foreach_variable", "foreach_optional_arg", "T_CLOSE_BRACES", "foreach_statement") =>
+                foreach_variable(child(n, 4)) match {
+                    case (v, byref) => foreach_optional_arg(child(n, 5)) match {
+                            case Some((v2, byref2)) =>
+                                Foreach(expr(child(n, 2)), v2, byref2, Some(v), byref, foreach_statement(child(n, 7)))
+                            case None => 
+                                Foreach(expr(child(n, 2)), v, byref, None, false, foreach_statement(child(n, 7)))
+                        }
+                }
+            case List("T_DECLARE", "T_OPEN_BRACES", "declare_list", "T_CLOSE_BRACES", "declare_statement") =>
+                Void /* ignored */
+            case List("T_SEMICOLON") => 
+                Void
+            case List("T_TRY", "T_OPEN_CURLY_BRACES", "inner_statement_list", "T_CLOSE_CURLY_BRACES", "T_CATCH", "T_OPEN_BRACES", "fully_qualified_class_name", "T_VARIABLE", "T_CLOSE_BRACES", "T_OPEN_CURLY_BRACES", "inner_statement_list", "T_CLOSE_CURLY_BRACES", "additional_catches") =>
+                Try(inner_statement_list(child(n, 2)),
+                    List(Catch(fully_qualified_class_name(child(n, 6)),
+                              SimpleVariable(Identifier(child(n, 7).tokenContent)),
+                              inner_statement_list(child(n, 10)))) 
+                    ::: additional_catches(child(n, 12))
+                )
+            case List("T_THROW", "expr", "T_SEMICOLON") =>
+                Throw(expr(child(n, 1)))
+            case List("T_GOTO", "T_STRING", "T_SEMICOLON") =>
+                Goto(Label(Identifier(child(n, 1).tokenContent)))
+            case List("T_STRING", "T_COLON") =>
+                LabelDecl(Identifier(child(n,0).tokenContent))
         }
+    }
+
+    def static_var_list(n: ParseNode): List[InitVariable] = {
+        childrenNames(n) match {
+            case List("static_var_list", "T_COMMA", "T_VARIABLE") =>
+                static_var_list(child(n, 0)) ::: List(InitVariable(SimpleVariable(Identifier(child(n, 2).tokenContent)), None))
+            case List("static_var_list", "T_COMMA", "T_VARIABLE", "T_ASSIGN", "static_expr") =>
+                static_var_list(child(n, 0)) ::: List(InitVariable(SimpleVariable(Identifier(child(n, 2).tokenContent)), Some(static_expr(child(n, 4)))))
+            case List("T_VARIABLE") =>
+                List(InitVariable(SimpleVariable(Identifier(child(n, 0).tokenContent)), None))
+            case List("T_VARIABLE", "T_ASSIGN", "static_expr") =>
+                List(InitVariable(SimpleVariable(Identifier(child(n, 0).tokenContent)), Some(static_expr(child(n, 2)))))
+        }
+    }
+
+    def static_expr(n: ParseNode): Expression = {
+        childrenNames(n) match {
+            case List("common_scalar") =>
+                common_scalar(child(n))
+            case List("namespace_name") =>
+                unspecified(n)
+            case List("T_NAMESPACE", "T_NS_SEPARATOR", "namespace_name") =>
+                unspecified(n)
+            case List("T_NS_SEPARATOR", "namespace_name") =>
+                unspecified(n)
+            case List("T_PLUS", "static_expr") =>
+                static_expr(child(n, 1))
+            case List("T_MINUS", "static_expr") =>
+                Minus(Integer(0), static_expr(child(n, 1)))
+            case List("T_ARRAY", "T_OPEN_BRACES", "static_array_pair_list", "T_CLOSE_BRACES") =>
+                Array(static_array_pair_list(child(n, 2)))
+            case List("static_class_constant") =>
+                static_class_constant(child(n))
+        }
+    }
+
+    def common_scalar(n: ParseNode): Expression = {
+        childrenNames(n) match {
+            case List("T_LNUMBER") =>
+            case List("T_DNUMBER") =>
+            case List("T_CONSTANT_ENCAPSED_STRING") =>
+            case List("T_LINE") =>
+            case List("T_FILE") =>
+            case List("T_DIR") =>
+            case List("T_CLASS_C") =>
+            case List("T_METHOD_C") =>
+            case List("T_FUNC_C") =>
+            case List("T_NS_C") =>
+            case List("T_START_HEREDOC", "T_ENCAPSED_AND_WHITESPACE", "T_END_HEREDOC") =>
+            case List("T_START_HEREDOC", "T_END_HEREDOC") =>
+        }
+    }
+
+    def static_class_constant(n: ParseNode): Expression = {
+        childrenNames(n) match {
+            case List("class_name", "T_PAAMAYIM_NEKUDOTAYIM", "T_STRING") =>
+                ClassConstant(class_name(child(n, 0)), Identifier(child(n, 2).tokenContent))
+        }
+    }
+
+    def class_name(n: ParseNode): ClassRef = {
+        childrenNames(n) match {
+            case List("T_STATIC") => CalledClass
+            case List("namespace_name") => fully_qualified_class_name(n)
+            case List("T_NAMESPACE", "T_NS_SEPARATOR", "namespace_name") => fully_qualified_class_name(n)
+            case List("T_NS_SEPARATOR", "namespace_name") => fully_qualified_class_name(n)
+        }
+    }
+
+    def static_array_pair_list(n: ParseNode): List[(Option[Expression], Expression)] = {
+        childrenNames(n) match {
+            case List() => List()
+            case List("non_empty_static_array_pair_list", "possible_comma") => non_empty_static_array_pair_list(child(n, 0))
+        }
+    }
+
+    def non_empty_static_array_pair_list(n: ParseNode): List[(Option[Expression], Expression)] = {
+        childrenNames(n) match {
+            case List("non_empty_static_array_pair_list", "T_COMMA", "static_expr", "T_DOUBLE_ARROW", "static_expr") =>
+                non_empty_static_array_pair_list(child(n, 0)) ::: List((Some(static_expr(child(n, 2))), static_expr(child(n, 4))))
+            case List("non_empty_static_array_pair_list", "T_COMMA", "static_expr") =>
+                non_empty_static_array_pair_list(child(n, 0)) ::: List((None, static_expr(child(n, 2))))
+            case List("static_expr", "T_DOUBLE_ARROW", "static_expr") =>
+                List((Some(static_expr(child(n, 0))), static_expr(child(n, 2))))
+            case List("static_expr") =>
+                List((None, static_expr(child(n, 0))))
+        }
+    }
+
+    def global_var_list(n: ParseNode): List[Variable] = {
+        childrenNames(n) match {
+            case List("global_var") => 
+                List(global_var(child(n)))
+            case List("global_var_list", "T_COMMA", "global_var") =>
+                global_var_list(child(n, 0)) ::: List(global_var(child(n , 2)))
+        }
+    }
+
+    def global_var(n: ParseNode): Variable = {
+        childrenNames(n) match {
+            case List("T_VARIABLE") => 
+                SimpleVariable(Identifier(child(n).tokenContent))
+            case List("T_DOLLAR", "variable") => 
+                VariableVariable(variable(child(n, 1)))
+            case List("T_DOLLAR", "T_OPEN_CURLY_BRACES", "expr", "T_CLOSE_CURLY_BRACES") =>
+                VariableVariable(expr(child(n, 1)))
+        }
+    }
+
+    def additional_catches(n: ParseNode): List[Catch] = {
+        childrenNames(n) match {
+            case List() => List()
+            case List("non_empty_additional_catches") => non_empty_additional_catches(child(n))
+        }
+    }
+
+    def non_empty_additional_catches(n: ParseNode): List[Catch] = {
+        childrenNames(n) match {
+            case List("additional_catch") =>
+                List(additional_catch(child(n)))
+            case List("non_empty_additional_catches", "additional_catch") =>
+                non_empty_additional_catches(child(n, 0)) ::: List(additional_catch(child(n,1)))
+        }
+    }
+
+    def additional_catch(n: ParseNode): Catch = {
+        childrenNames(n) match {
+            case List("T_CATCH", "T_OPEN_BRACES", "fully_qualified_class_name", " T_VARIABLE", "T_CLOSE_BRACES",
+                      "T_OPEN_CURLY_BRACES", "inner_statement_list", "T_CLOSE_CURLY_BRACES") =>
+                Catch(fully_qualified_class_name(child(n, 2)),
+                      SimpleVariable(Identifier(child(n, 3).tokenContent)),
+                      inner_statement_list(child(n, 6)))
+        }
+    }
+
+    def inner_statement_list(n: ParseNode): Block = {
+        def inner_statement_list2(n: ParseNode): List[Statement] = {
+            childrenNames(n) match {
+                case List("inner_statement_list", "inner_statement") => 
+                    inner_statement_list2(child(n, 0)) ::: List(inner_statement(child(n,1)))
+                case List() =>
+                    List()
+            }
+        }
+        Block(inner_statement_list2(n))
+    }
+
+    def inner_statement(n: ParseNode): Statement = {
+        childrenNames(n) match {
+            case List("statement") => statement(child(n))
+            case List("function_declaration_statement") => function_declaration_statement(child(n))
+            case List("class_declaration_statement") => class_declaration_statement(child(n))
+            case List("T_HALT_COMPILER", "T_OPEN_BRACES", "T_CLOSE_BRACES", "T_SEMICOLON") => notyet(n)
+        }
+    }
+
+    def foreach_variable(n: ParseNode): (Variable, Boolean) = {
+        childrenNames(n) match {
+            case List("variable") => (variable(child(n)), false)
+            case List("T_BITWISE_AND", "variable") => (variable(child(n, 1)), true)
+        }
+    }
+
+    def foreach_statement(n: ParseNode): Statement = {
+        childrenNames(n) match {
+            case List("statement") => statement(child(n))
+            case List("T_COLON", "inner_statement_list", "T_ENDFOREACH", "T_SEMICOLON") => statement(child(n, 1))
+        }
+    }
+
+    def foreach_optional_arg(n: ParseNode): Option[(Variable, Boolean)] = {
+        childrenNames(n) match {
+            case List() => None
+            case List("T_DOUBLE_ARROW", "foreach_variable") => Some(foreach_variable(child(n, 1)))
+        }
+    }
+
+    def namespace_name(n: ParseNode): List[Identifier] = {
+        childrenNames(n) match {
+            case List("T_STRING") => 
+                List(Identifier(child(n).tokenContent))
+            case List("namespace_name", "T_NS_SEPARATOR", "T_STRING") =>
+                namespace_name(child(n, 0)) ::: List(Identifier(child(n, 2).tokenContent))
+        }
+    }
+
+    def fully_qualified_class_name(n: ParseNode): ClassRef = {
+        var root: NSRoot = NSNone
+        var c: ParseNode = childrenNames(n) match {
+            case List("namespace_name") => root = NSNone; child(n)
+            case List("T_NAMESPACE", "T_NS_SEPARATOR", "namespace_name") => root = NSCurrent; child(n, 2)
+            case List("T_NS_SEPARATOR", "namespace_name") => root = NSGlobal; child(n, 1)
+        }
+        val parts = namespace_name(c);
+        StaticClassRef(root, parts.init, parts.last)
+    }
+
+    def variable_list(n: ParseNode): List[Variable] = {
+        childrenNames(n) match {
+            case List("variable") => 
+                List(variable(child(n)))
+            case List("variable_list", "T_COMMA", "variable") =>
+                variable_list(child(n, 0)) ::: List(variable(child(n, 2)))
+        }
+    }
+
+    def switch_case_list(n: ParseNode): List[(Option[Expression], Statement)] = {
+        childrenNames(n) match {
+            case List("T_OPEN_CURLY_BRACES", "case_list", "T_CLOSE_CURLY_BRACES") => case_list(child(n, 1))
+            case List("T_OPEN_CURLY_BRACES", "T_SEMICOLON", "case_list", "T_CLOSE_CURLY_BRACES") => case_list(child(n, 2))
+            case List("T_COLON", "case_list", "T_ENDSWITCH", "T_SEMICOLON") => case_list(child(n, 1))
+            case List("T_COLON", "T_SEMICOLON", "case_list", "T_ENDSWITCH", "T_SEMICOLON") => case_list(child(n, 2))
+        }
+    }
+
+    def case_list(n: ParseNode): List[(Option[Expression], Statement)] = {
+        childrenNames(n) match {
+            case List() => List()
+            case List("case_list", "T_CASE", "expr", "case_separator", "inner_statement_list") => 
+                case_list(child(n, 0)) ::: (Some(expr(child(n, 2))), inner_statement_list(child(n, 4))) :: Nil
+            case List("case_list", "T_DEFAULT", "case_separator", "inner_statement_list") =>
+                case_list(child(n, 0)) ::: (None, inner_statement_list(child(n, 3))) :: Nil
+        }
+    }
+
+    def for_expr(n: ParseNode): List[Expression] = {
+        childrenNames(n) match {
+            case List() => List()
+            case List("non_empty_for_expr") => non_empty_for_expr(child(n))
+        }
+    }
+
+    def non_empty_for_expr(n: ParseNode): List[Expression] = {
+        childrenNames(n) match {
+            case List("non_empty_for_expr", "T_COMMA", "expr") => non_empty_for_expr(child(n, 0)) ::: List(expr(child(n, 2)))
+            case List("expr") => List(expr(child(n)))
+        }
+    }
+
+    def for_statement(n: ParseNode): Statement = {
+        childrenNames(n) match {
+            case List("statement") => statement(child(n))
+            case List("T_COLON", "inner_statement_list", "T_ENDFOR", "T_SEMICOLON") => inner_statement_list(child(n, 1))
+        }
+    }
+
+    def while_statement(n: ParseNode): Statement = {
+        childrenNames(n) match {
+            case List("statement") => statement(child(n))
+            case List("T_COLON", "inner_statement_list", "T_ENDWHILE", "T_SEMICOLON") => inner_statement_list(child(n, 1))
+        }
+    }
+
+    def elseif_list(n: ParseNode): List[(Expression, Statement)] = {
+        childrenNames(n) match {
+            case List() => List()
+            case List("elseif_list", "T_ELSEIF", "T_OPEN_BRACES", "expr", "T_CLOSE_BRACES", "statement") =>
+                elseif_list(child(n, 0)) ::: List((expr(child(n, 3)), statement(child(n, 5))))
+            case List("new_elseif_list", "T_ELSEIF", "T_OPEN_BRACES", "expr", "T_CLOSE_BRACES", "T_COLON", "inner_statement_list") =>
+                elseif_list(child(n, 0)) ::: List((expr(child(n, 3)), inner_statement_list(child(n, 6))))
+        }
+    }
+
+    def else_single(n: ParseNode): Option[Statement] = {
+        childrenNames(n) match {
+            case List() => None
+            case List("T_ELSE", "statement") => Some(statement(child(n, 1)))
+            case List("T_ELSE", "T_COLON", "inner_statement_list") => Some(inner_statement_list(child(n, 2)))
+        }
+    }
+
+    def elseif_else(elseifs: List[(Expression, Statement)], elze: Option[Statement]): Option[Statement] = {
+        elseifs match {
+            case (expr, stat) :: rest => Some(If(expr, stat, elseif_else(rest, elze)))
+            case Nil => elze
+        }
+    }
+
+    def function_declaration_statement(n: ParseNode): FunctionDecl = {
+        notyet(n);
+    }
+
+    def class_declaration_statement(n: ParseNode): ClassDecl = {
+        notyet(n);
     }
 
     def expr(n: ParseNode): Expression = {
@@ -164,6 +516,14 @@ class STToAST(st: ParseNode) {
         }
     }
 
+    def variable(n: ParseNode): Variable = {
+        notyet(n);
+    }
+
+    def scalar(n: ParseNode): Scalar = {
+        notyet(n);
+    }
+
     def internal_functions_in_yacc(n: ParseNode): Expression = {
         childrenNames(n) match {
             case List("T_ISSET", "T_OPEN_BRACES", "isset_variables", "T_CLOSE_BRACES") =>
@@ -200,9 +560,6 @@ class STToAST(st: ParseNode) {
             case List("T_OPEN_BRACES", "T_CLOSE_BRACES") => None
             case List("T_OPEN_BRACES", "expr", "T_CLOSE_BRACES") => Some(expr(child(n, 1)))
         }
-    }
-    def variable(n: ParseNode): Variable = {
-        notyet(n)
     }
 
     def echo_expr_list(n: ParseNode): List[Expression] = {
