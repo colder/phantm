@@ -52,15 +52,15 @@ class STToAST(st: ParseNode) {
             case List("T_SWITCH", "T_OPEN_BRACES", "expr", "T_CLOSE_BRACES", "switch_case_list") => 
                 Switch(expr(child(n, 2)), switch_case_list(child(n, 4)))
             case List("T_BREAK", "T_SEMICOLON") =>
-                Break(Integer(1))
+                Break(PHPInteger(1))
             case List("T_BREAK", "expr", "T_SEMICOLON") =>
                 Break(expr(child(n, 1)))
             case List("T_CONTINUE", "T_SEMICOLON") =>
-                Continue(Integer(1))
+                Continue(PHPInteger(1))
             case List("T_CONTINUE", "expr", "T_SEMICOLON") =>
                 Continue(expr(child(n, 1)))
             case List("T_RETURN", "T_SEMICOLON") =>
-                Return(Null)
+                Return(Null())
             case List("T_RETURN", "expr", "T_SEMICOLON") =>
                 Return(expr(child(n, 1)))
             case List("T_GLOBAL", "global_var_list", "T_SEMICOLON") => 
@@ -85,9 +85,9 @@ class STToAST(st: ParseNode) {
                         }
                 }
             case List("T_DECLARE", "T_OPEN_BRACES", "declare_list", "T_CLOSE_BRACES", "declare_statement") =>
-                Void /* ignored */
+                Void() /* ignored */
             case List("T_SEMICOLON") => 
-                Void
+                Void()
             case List("T_TRY", "T_OPEN_CURLY_BRACES", "inner_statement_list", "T_CLOSE_CURLY_BRACES", "T_CATCH", "T_OPEN_BRACES", "fully_qualified_class_name", "T_VARIABLE", "T_CLOSE_BRACES", "T_OPEN_CURLY_BRACES", "inner_statement_list", "T_CLOSE_CURLY_BRACES", "additional_catches") =>
                 Try(inner_statement_list(child(n, 2)),
                     List(Catch(fully_qualified_class_name(child(n, 6)),
@@ -107,13 +107,13 @@ class STToAST(st: ParseNode) {
     def static_var_list(n: ParseNode): List[InitVariable] = {
         childrenNames(n) match {
             case List("static_var_list", "T_COMMA", "T_VARIABLE") =>
-                static_var_list(child(n, 0)) ::: List(InitVariable(SimpleVariable(Identifier(child(n, 2).tokenContent)), None))
+                static_var_list(child(n, 0)) ::: List(InitVariable(t_variable(child(n, 2)), None))
             case List("static_var_list", "T_COMMA", "T_VARIABLE", "T_ASSIGN", "static_expr") =>
-                static_var_list(child(n, 0)) ::: List(InitVariable(SimpleVariable(Identifier(child(n, 2).tokenContent)), Some(static_expr(child(n, 4)))))
+                static_var_list(child(n, 0)) ::: List(InitVariable(t_variable(child(n, 2)), Some(static_expr(child(n, 4)))))
             case List("T_VARIABLE") =>
-                List(InitVariable(SimpleVariable(Identifier(child(n, 0).tokenContent)), None))
+                List(InitVariable(t_variable(child(n, 0)), None))
             case List("T_VARIABLE", "T_ASSIGN", "static_expr") =>
-                List(InitVariable(SimpleVariable(Identifier(child(n, 0).tokenContent)), Some(static_expr(child(n, 2)))))
+                List(InitVariable(t_variable(child(n, 0)), Some(static_expr(child(n, 2)))))
         }
     }
 
@@ -130,7 +130,7 @@ class STToAST(st: ParseNode) {
             case List("T_PLUS", "static_expr") =>
                 static_expr(child(n, 1))
             case List("T_MINUS", "static_expr") =>
-                Minus(Integer(0), static_expr(child(n, 1)))
+                Minus(PHPInteger(0), static_expr(child(n, 1)))
             case List("T_ARRAY", "T_OPEN_BRACES", "static_array_pair_list", "T_CLOSE_BRACES") =>
                 Array(static_array_pair_list(child(n, 2)))
             case List("static_class_constant") =>
@@ -141,17 +141,29 @@ class STToAST(st: ParseNode) {
     def common_scalar(n: ParseNode): Expression = {
         childrenNames(n) match {
             case List("T_LNUMBER") =>
+                PHPInteger(child(n).tokenContent.toInt)
             case List("T_DNUMBER") =>
+                PHPFloat(child(n).tokenContent.toFloat)
             case List("T_CONSTANT_ENCAPSED_STRING") =>
+                PHPString(child(n).tokenContent)
             case List("T_LINE") =>
+                MCLine()
             case List("T_FILE") =>
+                MCFile()
             case List("T_DIR") =>
+                MCDir()
             case List("T_CLASS_C") =>
+                MCClass()
             case List("T_METHOD_C") =>
+                MCMethod()
             case List("T_FUNC_C") =>
+                MCFunction()
             case List("T_NS_C") =>
+                MCNamespace()
             case List("T_START_HEREDOC", "T_ENCAPSED_AND_WHITESPACE", "T_END_HEREDOC") =>
+                PHPString(child(n).tokenContent)
             case List("T_START_HEREDOC", "T_END_HEREDOC") =>
+                PHPString("")
         }
     }
 
@@ -164,7 +176,7 @@ class STToAST(st: ParseNode) {
 
     def class_name(n: ParseNode): ClassRef = {
         childrenNames(n) match {
-            case List("T_STATIC") => CalledClass
+            case List("T_STATIC") => CalledClass()
             case List("namespace_name") => fully_qualified_class_name(n)
             case List("T_NAMESPACE", "T_NS_SEPARATOR", "namespace_name") => fully_qualified_class_name(n)
             case List("T_NS_SEPARATOR", "namespace_name") => fully_qualified_class_name(n)
@@ -203,7 +215,7 @@ class STToAST(st: ParseNode) {
     def global_var(n: ParseNode): Variable = {
         childrenNames(n) match {
             case List("T_VARIABLE") => 
-                SimpleVariable(Identifier(child(n).tokenContent))
+                t_variable(child(n))
             case List("T_DOLLAR", "variable") => 
                 VariableVariable(variable(child(n, 1)))
             case List("T_DOLLAR", "T_OPEN_CURLY_BRACES", "expr", "T_CLOSE_CURLY_BRACES") =>
@@ -229,10 +241,10 @@ class STToAST(st: ParseNode) {
 
     def additional_catch(n: ParseNode): Catch = {
         childrenNames(n) match {
-            case List("T_CATCH", "T_OPEN_BRACES", "fully_qualified_class_name", " T_VARIABLE", "T_CLOSE_BRACES",
+            case List("T_CATCH", "T_OPEN_BRACES", "fully_qualified_class_name", "T_VARIABLE", "T_CLOSE_BRACES",
                       "T_OPEN_CURLY_BRACES", "inner_statement_list", "T_CLOSE_CURLY_BRACES") =>
                 Catch(fully_qualified_class_name(child(n, 2)),
-                      SimpleVariable(Identifier(child(n, 3).tokenContent)),
+                      t_variable(child(n, 3)),
                       inner_statement_list(child(n, 6)))
         }
     }
@@ -507,7 +519,7 @@ class STToAST(st: ParseNode) {
             case List("T_ARRAY", "T_OPEN_BRACES", "array_pair_list", "T_CLOSE_BRACES") =>
                 Array(array_pair_list(child(n, 2)))
             case List("T_BACKTICK", "backticks_expr", "T_BACKTICK") =>
-                Execute("") // Todo
+                notyet(n)
             case List("T_PRINT", "expr") =>
                 Print(expr(child(n, 1)))
             case List("T_FUNCTION", "is_reference", "T_OPEN_BRACES", "parameter_list", "T_CLOSE_BRACES", "lexical_vars", "T_OPEN_CURLY_BRACES", "inner_statement_list", "T_CLOSE_CURLY_BRACES") =>
@@ -517,11 +529,85 @@ class STToAST(st: ParseNode) {
     }
 
     def variable(n: ParseNode): Variable = {
-        notyet(n);
+        childrenNames(n) match {
+            case List("base_variable_with_function_calls", "T_OBJECT_OPERATOR", "object_property", "method_or_not", "variable_properties") =>
+            case List("base_variable_with_function_calls") =>
+        }
     }
 
-    def scalar(n: ParseNode): Scalar = {
-        notyet(n);
+    def reference_variable(n: ParseNode): Variable = {
+        notyet(n)
+    }
+
+
+    def scalar(n: ParseNode): Expression = {
+        childrenNames(n) match {
+            case List("T_STRING_VARNAME") =>
+                unspecified(n)
+            case List("class_constant") =>
+                class_constant(child(n))
+            case List("namespace_name") =>
+                notyet(n)
+            case List("T_NAMESPACE", "T_NS_SEPARATOR", "namespace_name") =>
+                notyet(n)
+            case List("T_NS_SEPARATOR", "namespace_name") =>
+                notyet(n)
+            case List("common_scalar") =>
+                common_scalar(child(n))
+            case List("T_DOUBLE_QUOTE", "encaps_list", "T_DOUBLE_QUOTE") => 
+                encaps_list(child(n, 1))
+            case List("T_START_HEREDOC", "encaps_list", "T_END_HEREDOC") =>
+                encaps_list(child(n, 1))
+        }
+    }
+
+    def class_constant(n: ParseNode): Expression = {
+        childrenNames(n) match {
+            case List("class_name", "T_PAAMAYIM_NEKUDOTAYIM T_STRING") =>
+                ClassConstant(class_name(child(n, 0)), Identifier(child(n, 2).tokenContent))
+            case List("reference_variable", "T_PAAMAYIM_NEKUDOTAYIM T_STRING") =>
+                ClassConstant(VarClassRef(reference_variable(child(n, 0))), Identifier(child(n, 2).tokenContent))
+        }
+    }
+
+    def encaps_list(n: ParseNode): Expression = {
+        childrenNames(n) match {
+            case List("encaps_list", "encaps_var") =>
+                Concat(encaps_list(child(n, 0)), encaps_var(child(n, 1)))
+            case List("encaps_list", "T_ENCAPSED_AND_WHITESPACE") =>
+                Concat(encaps_list(child(n, 0)), PHPString(child(n, 1).tokenContent))
+            case List("encaps_var") =>
+                encaps_var(child(n, 1))
+            case List("T_ENCAPSED_AND_WHITESPACE", "encaps_var") =>
+                PHPString(child(n, 1).tokenContent)
+        }
+    }
+
+    def encaps_var(n: ParseNode): Expression = {
+        childrenNames(n) match {
+            case List("T_VARIABLE") =>
+                t_variable(child(n))
+            case List("T_VARIABLE", "T_OPEN_RECT_BRACES", "encaps_var_offset", "T_CLOSE_RECT_BRACES") =>
+                ArrayEntry(t_variable(child(n, 0)), encaps_var_offset(child(n, 2)))
+            case List("T_VARIABLE", "T_OBJECT_OPERATOR", "T_STRING") =>
+                ObjectProperty(t_variable(child(n, 0)), Identifier(child(n, 2).tokenContent))
+            case List("T_DOLLAR_OPEN_CURLY_BRACES", "expr", "T_CLOSE_CURLY_BRACES") =>
+                VariableVariable(expr(child(n, 1)))
+            case List("T_DOLLAR_OPEN_CURLY_BRACES", "T_STRING_VARNAME", "T_OPEN_RECT_BRACES", "expr", "T_CLOSE_RECT_BRACES", "T_CLOSE_CURLY_BRACES") =>
+                ArrayEntry(SimpleVariable(Identifier(child(n, 1).tokenContent)), expr(child(n, 3)))
+            case List("T_CURLY_OPEN", "variable", "T_CLOSE_CURLY_BRACES") =>
+                variable(child(n, 1))
+        }
+    }
+
+    def t_variable(n: ParseNode): SimpleVariable = SimpleVariable(Identifier(n.tokenContent))
+
+    def encaps_var_offset(n: ParseNode): Expression = {
+        childrenNames(n) match {
+            case List("T_STRING") => PHPString(child(n).tokenContent)
+            case List("T_NUM_STRING") => PHPString(child(n).tokenContent)
+            case List("T_VARIABLE") => t_variable(child(n))
+        }
     }
 
     def internal_functions_in_yacc(n: ParseNode): Expression = {

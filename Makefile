@@ -18,7 +18,7 @@ javafiles:
 	javac -cp lib/cup/dist/java-cup-11a-runtime.jar -d classes/ `find java -name "*.java"`
 
 scalafiles:
-	scalac -d classes `find src -name "*.scala"`
+	scalac -deprecation -d classes `find src -name "*.scala"`
 
 test:
 	scala -verbose -classpath classes phpanalysis.Main tests/*.php

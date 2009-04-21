@@ -369,7 +369,7 @@ non terminal ParseNode unticked_class_declaration_statement;
 non terminal ParseNode unticked_function_declaration_statement;
 non terminal ParseNode use_declaration;
 non terminal ParseNode use_declarations;
-non terminal ParseNode variable_class_name;
+non terminal ParseNode variable_list;
 non terminal ParseNode variable_modifiers;
 non terminal ParseNode variable_name;
 non terminal ParseNode variable_properties;
@@ -810,10 +810,10 @@ function_call ::=
     | class_name T_PAAMAYIM_NEKUDOTAYIM variable_without_objects T_OPEN_BRACES 
 			function_call_parameter_list
 			T_CLOSE_BRACES
-    | variable_class_name T_PAAMAYIM_NEKUDOTAYIM T_STRING T_OPEN_BRACES 
+    | reference_variable T_PAAMAYIM_NEKUDOTAYIM T_STRING T_OPEN_BRACES 
 			function_call_parameter_list
 			T_CLOSE_BRACES
-    | variable_class_name T_PAAMAYIM_NEKUDOTAYIM variable_without_objects T_OPEN_BRACES 
+    | reference_variable T_PAAMAYIM_NEKUDOTAYIM variable_without_objects T_OPEN_BRACES 
 			function_call_parameter_list
 			T_CLOSE_BRACES
     | variable_without_objects  T_OPEN_BRACES 
@@ -1030,11 +1030,7 @@ variable_without_objects ::=
 
 static_member ::= 
       class_name T_PAAMAYIM_NEKUDOTAYIM variable_without_objects
-    | variable_class_name T_PAAMAYIM_NEKUDOTAYIM variable_without_objects
-;
-
-variable_class_name ::= 
-      reference_variable
+    | reference_variable T_PAAMAYIM_NEKUDOTAYIM variable_without_objects
 ;
 
 base_variable_with_function_calls ::= 
@@ -1151,5 +1147,5 @@ isset_variables ::=
 
 class_constant ::= 
       class_name T_PAAMAYIM_NEKUDOTAYIM T_STRING
-    | variable_class_name T_PAAMAYIM_NEKUDOTAYIM T_STRING
+    | reference_variable T_PAAMAYIM_NEKUDOTAYIM T_STRING
 ;

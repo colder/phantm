@@ -43,7 +43,7 @@ object Trees {
     abstract class ClassRef extends Tree
     case class VarClassRef(v: Variable) extends ClassRef
     case class StaticClassRef(nsroot: NSRoot, nss: List[Identifier], name: Identifier) extends ClassRef
-    case object CalledClass extends ClassRef
+    case class CalledClass() extends ClassRef
 
     abstract class FunctionRef extends Tree
     case class VarFunctionRef(v: Variable) extends FunctionRef
@@ -100,7 +100,7 @@ object Trees {
     case class Html(content: String) extends Statement
     case class Unset(vars: List[Variable]) extends Statement
     case class Foreach(what: Expression, as: Variable, asbyref: Boolean, key: Option[Variable], keybyref: Boolean, body: Statement) extends Statement
-    case object Void extends Statement;
+    case class Void() extends Statement;
 
     abstract class Expression extends Statement;
     abstract class Variable extends Expression;
@@ -161,18 +161,19 @@ object Trees {
 
 
     abstract class Scalar extends Expression
-    case class Integer(value: Int) extends Scalar
-    case class Float(value: Float) extends Scalar
-    case class SimpleString(value: String) extends Scalar
-    case object Null extends Scalar
+    case class PHPInteger(value: Int) extends Scalar
+    case class PHPFloat(value: Float) extends Scalar
+    case class PHPString(value: String) extends Scalar
+    case class Null() extends Scalar
 
     // Magic constants
-    object MCFile extends Scalar
-    object MCLine extends Scalar
-    object MCClass extends Scalar
-    object MCFunction extends Scalar
-    object MCMethod extends Scalar
-    object MCNameSpace extends Scalar
+    case class MCFile() extends Scalar
+    case class MCLine() extends Scalar
+    case class MCDir() extends Scalar
+    case class MCClass() extends Scalar
+    case class MCFunction() extends Scalar
+    case class MCMethod() extends Scalar
+    case class MCNamespace() extends Scalar
 
 
 }
