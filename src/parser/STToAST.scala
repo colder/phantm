@@ -5,7 +5,7 @@ import phpanalysis.parser.Trees._;
 
 import phpanalysis._;
 
-class STToAST(st: ParseNode) {
+case class STToAST(st: ParseNode) {
 
     def getAST = S(st);
 
@@ -183,23 +183,23 @@ class STToAST(st: ParseNode) {
         }
     }
 
-    def static_array_pair_list(n: ParseNode): List[(Option[Expression], Expression)] = {
+    def static_array_pair_list(n: ParseNode): List[(Option[Expression], Expression, Boolean)] = {
         childrenNames(n) match {
             case List() => List()
             case List("non_empty_static_array_pair_list", "possible_comma") => non_empty_static_array_pair_list(child(n, 0))
         }
     }
 
-    def non_empty_static_array_pair_list(n: ParseNode): List[(Option[Expression], Expression)] = {
+    def non_empty_static_array_pair_list(n: ParseNode): List[(Option[Expression], Expression, Boolean)] = {
         childrenNames(n) match {
             case List("non_empty_static_array_pair_list", "T_COMMA", "static_expr", "T_DOUBLE_ARROW", "static_expr") =>
-                non_empty_static_array_pair_list(child(n, 0)) ::: List((Some(static_expr(child(n, 2))), static_expr(child(n, 4))))
+                non_empty_static_array_pair_list(child(n, 0)) ::: List((Some(static_expr(child(n, 2))), static_expr(child(n, 4)), false))
             case List("non_empty_static_array_pair_list", "T_COMMA", "static_expr") =>
-                non_empty_static_array_pair_list(child(n, 0)) ::: List((None, static_expr(child(n, 2))))
+                non_empty_static_array_pair_list(child(n, 0)) ::: List((None, static_expr(child(n, 2)), false))
             case List("static_expr", "T_DOUBLE_ARROW", "static_expr") =>
-                List((Some(static_expr(child(n, 0))), static_expr(child(n, 2))))
+                List((Some(static_expr(child(n, 0))), static_expr(child(n, 2)), false))
             case List("static_expr") =>
-                List((None, static_expr(child(n, 0))))
+                List((None, static_expr(child(n, 0)), false))
         }
     }
 
@@ -402,10 +402,12 @@ class STToAST(st: ParseNode) {
 
     def expr(n: ParseNode): Expression = {
         childrenNames(n) match {
-            case List("variable", "T_ASSIGN", "expr") => 
+            case List("variable") =>
+                variable(child(n))
+            case List("variable", "T_ASSIGN", "expr") =>
                 Assign(variable(child(n, 0)), expr(child(n, 2)), false)
-            case List("variable", "T_ASSIGN", "T_BITWISE_AND", "variable") => 
-                Assign(variable(child(n, 0)), expr(child(n, 2)), false)
+            case List("variable", "T_ASSIGN", "T_BITWISE_AND", "variable") =>
+                Assign(variable(child(n, 0)), variable(child(n, 3)), true)
             case List("variable", "T_ASSIGN", "T_BITWISE_AND", "T_NEW", "class_name_reference", "ctor_arguments") =>
                 notyet(n)
             case List("variable", "T_PLUS_EQUAL", "expr") =>
@@ -487,7 +489,7 @@ class STToAST(st: ParseNode) {
             case List("expr", "T_IS_GREATER_OR_EQUAL", "expr") =>
                 BooleanNot(Smaller(expr(child(n, 0)), expr(child(n, 2))))
             case List("expr", "T_INSTANCEOF", "class_name_reference") =>
-                notyet(n)
+                InstanceOf(expr(child(n, 0)), class_name_reference(child(n, 2)))
             case List("T_OPEN_BRACES", "expr", "T_CLOSE_BRACES") =>
                 expr(child(n, 1))
             case List("expr", "T_QUESTION", "expr", "T_COLON", "expr") =>
@@ -528,17 +530,171 @@ class STToAST(st: ParseNode) {
         }
     }
 
+    def class_name_reference(n: ParseNode): ClassRef = {
+        notyet(n);
+    }
+
+    def method_or_not(n: ParseNode): Option[List[CallArg]] = {
+        childrenNames(n) match {
+            case List("T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") => Some(function_call_parameter_list(child(n, 1)))
+            case List() => None
+        }
+    }
+
+    def function_call_parameter_list(n: ParseNode): List[CallArg] = {
+        childrenNames(n) match {
+            case List("non_empty_function_call_parameter_list") => non_empty_function_call_parameter_list(child(n))
+            case List() => List()
+        }
+    }
+
+    def non_empty_function_call_parameter_list(n: ParseNode): List[CallArg] = {
+        childrenNames(n) match {
+            case List("expr") => 
+                List(CallArg(expr(child(n)), false))
+            case List("T_BITWISE_AND", "variable") =>
+                List(CallArg(variable(child(n, 1)), true))
+            case List("non_empty_function_call_parameter_list", "T_COMMA", "expr") =>
+                non_empty_function_call_parameter_list(child(n, 0)) ::: List(CallArg(expr(child(n, 2)), false))
+            case List("non_empty_function_call_parameter_list", "T_COMMA", "T_BITWISE_AND", "variable") =>
+                non_empty_function_call_parameter_list(child(n, 0)) ::: List(CallArg(variable(child(n, 3)), true))
+        }
+    }
+
+
     def variable(n: ParseNode): Variable = {
         childrenNames(n) match {
-            case List("base_variable_with_function_calls", "T_OBJECT_OPERATOR", "object_property", "method_or_not", "variable_properties") =>
-            case List("base_variable_with_function_calls") =>
+            case List("base_variable_with_function_calls", "T_OBJECT_OPERATOR", "object_property", "method_or_not", "variable_properties") => 
+                notyet(n)
+            case List("base_variable_with_function_calls") => 
+                base_variable_with_function_calls(child(n))
+        }
+    }
+
+    def variable_properties(n: ParseNode): List[ObjectAccess] = {
+        childrenNames(n) match {
+            case List("variable_properties", "variable_property") =>
+                variable_properties(child(n, 0)) ::: List(variable_property(child(n, 1)))
+            case List() =>
+                List()
+        }
+    }
+
+    def variable_property(n: ParseNode): ObjectAccess = {
+        childrenNames(n) match {
+            case List("T_OBJECT_OPERATOR", "object_property", "method_or_not") =>
+                method_or_not(child(n, 2)) match {
+                    case Some(args) => OAMethod(object_property(child(n, 1)), args);
+                    case None => object_property(child(n, 1))
+                }
+        }
+    }
+
+    def base_variable_with_function_calls(n: ParseNode): Variable = {
+        childrenNames(n) match {
+            case List("base_variable") => base_variable(child(n))
+            case List("function_call") => notyet(n)
+        }
+    }
+
+    def base_variable(n: ParseNode): Variable = {
+        childrenNames(n) match {
+            case List("reference_variable") => 
+                reference_variable(child(n))
+            case List("simple_indirect_reference", "reference_variable") =>
+                var r = reference_variable(child(n, 1))
+                val i = simple_indirect_reference(child(n, 0))
+                for (n <- 0 until i) r = VariableVariable(r)
+                r
+            case List("static_member") =>
+                static_member(child(n))
+        }
+    }
+
+    def static_member(n: ParseNode) = {
+        childrenNames(n) match {
+            case List("class_name", "T_PAAMAYIM_NEKUDOTAYIM", "variable_without_objects") =>
+                ClassProperty(class_name(child(n, 0)), variable_without_objects(child(n, 2)))
+            case List("reference_variable", "T_PAAMAYIM_NEKUDOTAYIM", "variable_without_objects") =>
+                ClassProperty(VarClassRef(reference_variable(child(n, 0))), variable_without_objects(child(n, 2)))
+        }
+    }
+
+    def object_property(n: ParseNode): ObjectAccess = {
+        childrenNames(n) match {
+            case List("object_dim_list") => object_dim_list(child(n))
+            case List("variable_without_objects") => OAExpression(variable_without_objects(child(n)))
+        }
+    }
+
+    def object_dim_list(n: ParseNode): ObjectAccess = {
+        childrenNames(n) match {
+            case List("object_dim_list", "T_OPEN_RECT_BRACES", "dim_offset", "T_CLOSE_RECT_BRACES") =>
+                OAArray(object_dim_list(child(n, 0)), dim_offset(child(n, 2)))
+            case List("object_dim_list", "T_OPEN_CURLY_BRACES", "expr", "T_CLOSE_CURLY_BRACES") =>
+                OAArray(object_dim_list(child(n, 0)), dim_offset(child(n, 2)))
+            case List("variable_name") =>
+                variable_name(child(n))
+        }
+    }
+
+    def variable_name(n: ParseNode): ObjectAccess = {
+        childrenNames(n) match {
+            case List("T_STRING") =>
+                OAIdentifier(Identifier(child(n).tokenContent))
+            case List("T_OPEN_CURLY_BRACES", "expr", "T_CLOSE_CURLY_BRACES") =>
+                OAExpression(expr(child(n, 1)))
+        }
+    }
+
+    def dim_offset(n: ParseNode): Option[Expression] = {
+        childrenNames(n) match {
+            case List() => None
+            case List("expr") => Some(expr(child(n)))
         }
     }
 
     def reference_variable(n: ParseNode): Variable = {
-        notyet(n)
+        childrenNames(n) match {
+            case List("reference_variable", "T_OPEN_RECT_BRACES", "dim_offset", "T_CLOSE_RECT_BRACES") => dim_offset(child(n, 2)) match {
+                case Some(ex) => ArrayEntry(reference_variable(child(n, 0)), ex)
+                case None => NextArrayEntry(reference_variable(child(n, 0)))
+            }
+            case List("reference_variable", "T_OPEN_CURLY_BRACES", "expr", "T_CLOSE_CURLY_BRACES") =>
+                    ArrayEntry(reference_variable(child(n, 0)), expr(child(n, 2)))
+            case List("compound_variable") =>
+                compound_variable(child(n))
+        }
     }
 
+    def compound_variable(n: ParseNode): Variable = {
+        childrenNames(n) match {
+            case List("T_VARIABLE") =>
+                t_variable(child(n))
+            case List("T_DOLLAR", "T_OPEN_CURLY_BRACES", "expr", "T_CLOSE_CURLY_BRACES") =>
+                VariableVariable(expr(child(n, 2)))
+        }
+    }
+
+    def variable_without_objects(n: ParseNode): Variable = {
+        childrenNames(n) match {
+            case List("reference_variable") => reference_variable(child(n))
+            case List("simple_indirect_reference", "reference_variable") =>
+                var r = reference_variable(child(n, 1))
+                val i = simple_indirect_reference(child(n, 0))
+                for (n <- 0 until i) r = VariableVariable(r)
+                r
+        }
+    }
+
+    def simple_indirect_reference(n: ParseNode): Int = {
+        childrenNames(n) match {
+            case List("T_DOLLAR") => 
+                1
+            case List("simple_indirect_reference", "T_DOLLAR") =>
+                simple_indirect_reference(child(n, 0)) + 1
+        }
+    }
 
     def scalar(n: ParseNode): Expression = {
         childrenNames(n) match {
@@ -636,8 +792,34 @@ class STToAST(st: ParseNode) {
         }
     }
 
-    def array_pair_list(n: ParseNode): List[(Option[Expression], Expression)] = {
-        notyet(n);
+    def array_pair_list(n: ParseNode): List[(Option[Expression], Expression, Boolean)] = {
+        childrenNames(n) match {
+            case List() => 
+                List()
+            case List("non_empty_array_pair_list", "possible_comma") =>
+                non_empty_array_pair_list(child(n, 0))
+        }
+    }
+
+    def non_empty_array_pair_list(n: ParseNode): List[(Option[Expression], Expression, Boolean)] = {
+        childrenNames(n) match {
+            case List("non_empty_array_pair_list", "T_COMMA", "expr", "T_DOUBLE_ARROW", "expr") =>
+                non_empty_array_pair_list(child(n, 0)) ::: List((Some(expr(child(n, 2))), expr(child(n, 4)), false))
+            case List("non_empty_array_pair_list", "T_COMMA expr") =>
+                non_empty_array_pair_list(child(n, 0)) ::: List((None, expr(child(n, 2)), false))
+            case List("non_empty_array_pair_list", "T_COMMA", "expr", "T_DOUBLE_ARROW", "T_BITWISE_AND", "variable") =>
+                non_empty_array_pair_list(child(n, 0)) ::: List((Some(expr(child(n, 2))), variable(child(n, 5)), true))
+            case List("non_empty_array_pair_list", "T_COMMA", "T_BITWISE_AND", "variable") =>
+                non_empty_array_pair_list(child(n, 0)) ::: List((None, variable(child(n, 3)), true))
+            case List("expr", "T_DOUBLE_ARROW", "expr") =>
+                List((Some(expr(child(n, 2))), expr(child(n, 4)), false))
+            case List("expr") =>
+                List((None, expr(child(n, 0)), false))
+            case List("expr", "T_DOUBLE_ARROW", "T_BITWISE_AND", "variable") =>
+                List((Some(expr(child(n, 0))), variable(child(n, 3)), true))
+            case List("T_BITWISE_AND", "variable") =>
+                List((None, variable(child(n, 1)), true))
+        }
     }
 
     def exit_expr(n: ParseNode): Option[Expression] = {

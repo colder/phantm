@@ -2,7 +2,7 @@ package phpanalysis.parser;
 
 // todo, namespaces
 object Trees {
-    abstract class Tree;
+    abstract case class Tree();
 
     case class Program(stmts: List[Statement]) extends Tree;
     case class ArgumentDecl(v: Identifier, hint: Option[TypeHint], default: Option[Expression], byref: Boolean) extends Tree;
@@ -65,6 +65,12 @@ object Trees {
 
     case class CallArg(value: Expression, forceref: Boolean) extends Tree
 
+    abstract class ObjectAccess extends Tree
+    case class OAIdentifier(id: Identifier) extends ObjectAccess
+    case class OAArray(array: ObjectAccess, index: Option[Expression]) extends ObjectAccess
+    case class OAExpression(exp: Expression) extends ObjectAccess
+    case class OAMethod(name: ObjectAccess, args: List[CallArg]) extends ObjectAccess
+
     abstract class Statement extends Tree;
 
     case class FunctionDecl(name: Identifier, args: List[ArgumentDecl], retref: Boolean, body: Statement) extends Statement
@@ -107,6 +113,7 @@ object Trees {
     case class SimpleVariable(name: Identifier) extends Variable
     case class VariableVariable(name: Expression) extends Variable
     case class ArrayEntry(array: Expression, index: Expression) extends Variable
+    case class NextArrayEntry(array: Expression) extends Variable
     case class ObjectProperty(obj: Expression, property: Identifier) extends Variable
     case class DynamicObjectProperty(obj: Expression, property: Expression) extends Variable
     case class ClassProperty(cl: ClassRef, property: Variable) extends Variable
@@ -144,7 +151,7 @@ object Trees {
     case class Cast(typ: CastType, value: Expression) extends Expression
     case class Silence(value: Expression) extends Expression
     case class Exit(value: Option[Expression]) extends Expression
-    case class Array(values: List[(Option[Expression],Expression)]) extends Expression
+    case class Array(values: List[(Option[Expression],Expression,Boolean)]) extends Expression
     case class Execute(value: String) extends Expression
     case class Print(value: Expression) extends Expression
     case class Eval(value: Expression) extends Expression
