@@ -5,7 +5,7 @@ import java.io._;
 
 object ASTGraph {
 
-    def main(args: Array[String]): Unit = {
+    def main(args: Array[String]): Int = {
 
         if (args.length == 1) {
             new Compiler(args(0)) compile match {
@@ -16,11 +16,13 @@ object ASTGraph {
                     generateDotGraph(STToAST(node) getAST, printStream);
                     println("Dot graph written to "+fileName+".");
                     printStream.close
+                    1
                 }
-                case None => println("Compilation failed.");
+                case None => 0
             }
         } else {
             usage
+            0
         }
     }
 

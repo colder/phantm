@@ -6,34 +6,30 @@ object Trees {
 
     case class Program(stmts: List[Statement]) extends Tree;
     case class ArgumentDecl(v: Identifier, hint: Option[TypeHint], default: Option[Expression], byref: Boolean) extends Tree;
-    case class MethodDecl(name: Identifier, flags: List[MethodFlag], args: List[ArgumentDecl], retref: Boolean, body: Option[Statement]) extends Tree
-    case class PropertyDecl(v: Identifier, flags: List[PropertyFlag], default: Option[Expression]) extends Tree;
+    case class MethodDecl(name: Identifier, flags: List[MemberFlag], args: List[ArgumentDecl], retref: Boolean, body: Option[Statement]) extends Tree
+    case class PropertyDecl(v: Identifier, flags: List[MemberFlag], default: Option[Expression]) extends Tree;
     case class ConstantDecl(v: Identifier, value: Expression) extends Tree;
 
     abstract class ClassFlag extends Tree
+    object CFNormal extends ClassFlag
     object CFAbstract extends ClassFlag
     object CFFinal extends ClassFlag
 
     abstract class TypeHint extends Tree
-    object TString extends TypeHint
-    object TInt extends TypeHint
-    object TBoolean extends TypeHint
-    object TFloat extends TypeHint
-    object TArray extends TypeHint
+    object THString extends TypeHint
+    object THInt extends TypeHint
+    object THBoolean extends TypeHint
+    object THFloat extends TypeHint
+    object THArray extends TypeHint
+    case class THObject(cl: ClassRef) extends TypeHint
 
-    abstract class MethodFlag extends Tree
-    object MFAbstract extends MethodFlag
-    object MFPublic extends MethodFlag
-    object MFProtected extends MethodFlag
-    object MFPrivate extends MethodFlag
-    object MFFinal extends MethodFlag
-    object MFStatic extends MethodFlag
-
-    abstract class PropertyFlag extends Tree
-    object PFPublic extends PropertyFlag
-    object PFProtected extends PropertyFlag
-    object PFPrivate extends PropertyFlag
-    object PFStatic extends PropertyFlag
+    abstract class MemberFlag extends Tree
+    object MFAbstract extends MemberFlag
+    object MFPublic extends MemberFlag
+    object MFProtected extends MemberFlag
+    object MFPrivate extends MemberFlag
+    object MFFinal extends MemberFlag
+    object MFStatic extends MemberFlag
 
     abstract class NSRoot extends Tree
     object NSNone extends NSRoot /* foo\Bar */
@@ -76,12 +72,17 @@ object Trees {
     case class FunctionDecl(name: Identifier, args: List[ArgumentDecl], retref: Boolean, body: Statement) extends Statement
 
     case class ClassDecl(name: Identifier,
-                         flags: List[ClassFlag],
-                         parent: Option[Identifier],
-                         interfaces: List[Identifier],
+                         flags: ClassFlag,
+                         parent: Option[ClassRef],
+                         interfaces: List[ClassRef],
                          methods: List[MethodDecl],
                          static_props: List[PropertyDecl],
                          props: List[PropertyDecl],
+                         consts: List[ConstantDecl]) extends Statement
+
+    case class InterfaceDecl(name: Identifier,
+                         interfaces: List[ClassRef],
+                         methods: List[MethodDecl],
                          consts: List[ConstantDecl]) extends Statement
 
     case class Try(body: Statement, catches: List[Catch]) extends Statement

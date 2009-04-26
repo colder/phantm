@@ -19,6 +19,7 @@ class Compiler(filename: String) {
          } catch {
             case e: FileNotFoundException => error("File not found: "+filename); None
             case e: IOException => error("IOException: " + e.getMessage); None
+            case e: Exception => error("Parsing failed"); None
          }
     }
 

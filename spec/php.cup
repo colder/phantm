@@ -48,16 +48,15 @@ parser code {:
 
     // override report_error from base class lr_parser
     public void report_error(String message, Object info) {
-        System.err.println(message);
+        System.err.print(message+": ");
         if (info instanceof Symbol) {
             Symbol infoSym = (Symbol) info;
+            ParseNode node = (ParseNode) infoSym.value;
+            System.err.print("unexpected "+node.name());
             if (infoSym.left != -1) {
-                System.err.println("line: " + infoSym.left);
+                System.err.println(" at line " + infoSym.left);
             } else {
-                System.err.println("can't determine line number, symbol number is " + infoSym.sym);
-		if (infoSym.sym == Symbols.EOF) {
-                    System.err.println("= EOF symbol; check for things like unclosed string literals");
-                }
+                System.err.println(" at unknown line");
             }
         }
     }
@@ -365,7 +364,6 @@ non terminal ParseNode static_var_list;
 non terminal ParseNode switch_case_list;
 non terminal ParseNode top_statement;
 non terminal ParseNode top_statement_list;
-non terminal ParseNode unticked_class_declaration_statement;
 non terminal ParseNode unticked_function_declaration_statement;
 non terminal ParseNode use_declaration;
 non terminal ParseNode use_declarations;
@@ -530,10 +528,6 @@ function_declaration_statement ::=
       unticked_function_declaration_statement
 ;
 
-class_declaration_statement ::= 
-      unticked_class_declaration_statement
-;
-
 is_reference ::= 
       /* empty */
     | T_BITWISE_AND
@@ -544,7 +538,7 @@ unticked_function_declaration_statement ::=
 			T_OPEN_BRACES parameter_list T_CLOSE_BRACES T_OPEN_CURLY_BRACES inner_statement_list T_CLOSE_CURLY_BRACES
 ;
 
-unticked_class_declaration_statement ::= 
+class_declaration_statement ::= 
       class_entry_type T_STRING extends_from
 			
 			implements_list

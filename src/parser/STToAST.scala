@@ -35,6 +35,227 @@ case class STToAST(st: ParseNode) {
             case _ => unspecified(n)
         }
     }
+    def class_declaration_statement(n: ParseNode): Statement = {
+        childrenNames(n) match {
+            case List("class_entry_type", "T_STRING", "extends_from", "implements_list", "T_OPEN_CURLY_BRACES", "class_statement_list", "T_CLOSE_CURLY_BRACES") =>
+                class_statement_list(child(n, 5)) match {
+                    case (methods, static_props, props, consts) =>
+                        ClassDecl(Identifier(child(n, 1).tokenContent),
+                                  class_entry_type(child(n, 0)),
+                                  extends_from(child(n, 2)),
+                                  implements_list(child(n, 3)),
+                                  methods,
+                                  static_props,
+                                  props,
+                                  consts)
+                }
+
+            case List("interface_entry", "T_STRING", "interface_extends_list", "T_OPEN_CURLY_BRACES", "class_statement_list", "T_CLOSE_CURLY_BRACES") =>
+                class_statement_list(child(n, 4)) match {
+                    case (methods, static_props, props, consts) =>
+                        InterfaceDecl(Identifier(child(n, 1).tokenContent),
+                                  interface_extends_list(child(n, 2)),
+                                  methods,
+                                  consts)
+                }
+        }
+    }
+
+    def class_statement_list(n: ParseNode): (List[MethodDecl], List[PropertyDecl], List[PropertyDecl], List[ConstantDecl]) = {
+        childrenNames(n) match {
+            case List("class_statement_list", "class_statement") =>
+                class_statement(child(n, 1), class_statement_list(child(n, 0)));
+            case List() =>
+                (List(), List(), List(), List())
+        }
+    }
+
+    def class_statement(n: ParseNode, st: (List[MethodDecl], List[PropertyDecl], List[PropertyDecl], List[ConstantDecl])): (List[MethodDecl], List[PropertyDecl], List[PropertyDecl], List[ConstantDecl]) = { 
+        childrenNames(n) match {
+            case List("variable_modifiers", "class_variable_declaration", "T_SEMICOLON") =>
+                val vm = variable_modifiers(child(n, 0))
+                val pd = class_variable_declaration(child(n, 1), vm)
+                if (vm exists { _ == MFStatic }) {
+                    (st._1, st._2:::pd, st._3, st._4)
+                } else {
+                    (st._1, st._2, st._3:::pd, st._4)
+                }
+            case List("class_constant_declaration", "T_SEMICOLON") =>
+                val cd = class_constant_declaration(child(n, 0));
+                (st._1, st._2, st._3, st._4:::cd)
+            case List("method_modifiers", "T_FUNCTION", "is_reference", "T_STRING", "T_OPEN_BRACES", "parameter_list", "T_CLOSE_BRACES", "method_body") =>
+                val md = MethodDecl(Identifier(child(n, 3).tokenContent),
+                                    method_modifiers(child(n, 0)),
+                                    parameter_list(child(n, 5)),
+                                    is_reference(child(n, 2)),
+                                    method_body(child(n, 7)));
+                (st._1:::List(md), st._2, st._3, st._4)
+        }
+    }
+
+    def parameter_list(n: ParseNode): List[ArgumentDecl] = {
+        childrenNames(n) match {
+            case List("non_empty_parameter_list") =>
+                non_empty_parameter_list(child(n))
+            case List() =>
+                List()
+        }
+    }
+
+    def non_empty_parameter_list(n: ParseNode): List[ArgumentDecl] = {
+        childrenNames(n) match {
+            case List("optional_class_type", "T_VARIABLE") =>
+                List(ArgumentDecl(Identifier(child(n, 1).tokenContent), optional_class_type(child(n, 0)), None, false))
+            case List("optional_class_type", "T_BITWISE_AND", "T_VARIABLE") =>
+                List(ArgumentDecl(Identifier(child(n, 2).tokenContent), optional_class_type(child(n, 0)), None, true))
+            case List("optional_class_type", "T_VARIABLE", "T_ASSIGN", "static_expr") =>
+                List(ArgumentDecl(Identifier(child(n, 1).tokenContent), optional_class_type(child(n, 0)), Some(static_expr(child(n, 3))), false))
+            case List("optional_class_type", "T_BITWISE_AND", "T_VARIABLE", "T_ASSIGN", "static_expr") =>
+                List(ArgumentDecl(Identifier(child(n, 2).tokenContent), optional_class_type(child(n, 0)), Some(static_expr(child(n, 4))), true))
+            case List("non_empty_parameter_list", "T_COMMA", "optional_class_type", "T_VARIABLE") =>
+                non_empty_parameter_list(child(n, 0)) :::
+                List(ArgumentDecl(Identifier(child(n, 3).tokenContent), optional_class_type(child(n, 2)), None, false))
+            case List("non_empty_parameter_list", "T_COMMA", "optional_class_type", "T_BITWISE_AND", "T_VARIABLE") =>
+                non_empty_parameter_list(child(n, 0)) :::
+                List(ArgumentDecl(Identifier(child(n, 4).tokenContent), optional_class_type(child(n, 2)), None, true))
+            case List("non_empty_parameter_list", "T_COMMA", "optional_class_type", "T_VARIABLE", "T_ASSIGN", "static_expr") =>
+                non_empty_parameter_list(child(n, 0)) :::
+                List(ArgumentDecl(Identifier(child(n, 3).tokenContent), optional_class_type(child(n, 2)), Some(static_expr(child(n, 5))), false))
+            case List("non_empty_parameter_list", "T_COMMA", "optional_class_type", "T_BITWISE_AND", "T_VARIABLE", "T_ASSIGN", "static_expr") =>
+                non_empty_parameter_list(child(n, 0)) :::
+                List(ArgumentDecl(Identifier(child(n, 4).tokenContent), optional_class_type(child(n, 2)), Some(static_expr(child(n, 6))), true))
+        }
+    }
+
+    def is_reference(n: ParseNode): Boolean = {
+        childrenNames(n) match {
+            case List() => false
+            case List("T_BITWISE_AND") => true
+        }
+    }
+
+    def method_body(n: ParseNode): Option[Statement] = {
+        childrenNames(n) match {
+            case List("T_SEMICOLON") => 
+                None
+            case List("T_OPEN_CURLY_BRACES", "inner_statement_list", "T_CLOSE_CURLY_BRACES") =>
+                Some(inner_statement_list(child(n, 1)))
+        }
+    }
+
+    def optional_class_type(n: ParseNode): Option[TypeHint] = {
+        childrenNames(n) match {
+            case List() => None 
+            case List("fully_qualified_class_name") =>
+                Some(THObject(fully_qualified_class_name(child(n))))
+            case List("T_ARRAY") => 
+                Some(THArray)
+        }
+    }
+
+    def class_variable_declaration(n: ParseNode, vm: List[MemberFlag]): List[PropertyDecl] = {
+        childrenNames(n) match {
+            case List("class_variable_declaration", "T_COMMA", "T_VARIABLE") =>
+                class_variable_declaration(child(n, 0), vm) ::: List(PropertyDecl(Identifier(child(n, 2).tokenContent), vm, None))
+            case List("class_variable_declaration", "T_COMMA", "T_VARIABLE", "T_ASSIGN", "static_expr") =>
+                class_variable_declaration(child(n, 0), vm) ::: List(PropertyDecl(Identifier(child(n, 2).tokenContent), vm, Some(static_expr(child(n, 4)))))
+            case List("T_VARIABLE") =>
+                List(PropertyDecl(Identifier(child(n, 0).tokenContent), vm, None))
+            case List("T_VARIABLE", "T_ASSIGN", "static_expr") =>
+                List(PropertyDecl(Identifier(child(n, 0).tokenContent), vm, Some(static_expr(child(n, 2)))))
+        }
+    }
+
+    def class_constant_declaration(n: ParseNode): List[ConstantDecl] = {
+        childrenNames(n) match {
+            case List("class_constant_declaration", "T_COMMA", "T_STRING", "T_ASSIGN", "static_expr") =>
+            class_constant_declaration(child(n, 0)) ::: List(ConstantDecl(Identifier(child(n, 2).tokenContent), static_expr(child(n, 4))))
+            case List("T_CONST", "T_STRING", "T_ASSIGN", "static_expr") =>
+            List(ConstantDecl(Identifier(child(n, 1).tokenContent), static_expr(child(n, 3))))
+        }
+    }
+
+    def variable_modifiers(n: ParseNode): List[MemberFlag] = {
+        childrenNames(n) match {
+            case List("non_empty_member_modifiers") =>
+                non_empty_member_modifiers(child(n))
+            case List("T_VAR") =>
+                List(MFPublic)
+        }
+    }
+
+    def method_modifiers(n: ParseNode): List[MemberFlag] = {
+        childrenNames(n) match {
+            case List("non_empty_member_modifiers") =>
+                non_empty_member_modifiers(child(n))
+            case List() =>
+                List()
+        }
+    }
+
+    def non_empty_member_modifiers(n: ParseNode): List[MemberFlag] = {
+        childrenNames(n) match {
+            case List("member_modifier") =>
+                List(member_modifier(child(n, 0)))
+            case List("non_empty_member_modifiers", "member_modifier") =>
+                non_empty_member_modifiers(child(n, 0)):::List(member_modifier(child(n, 1)))
+        }
+    }
+
+    def member_modifier(n: ParseNode): MemberFlag = {
+        childrenNames(n) match {
+            case List("T_PUBLIC") => MFPublic
+            case List("T_PROTECTED") => MFProtected
+            case List("T_PRIVATE") => MFPrivate
+            case List("T_STATIC") => MFStatic
+            case List("T_ABSTRACT") => MFAbstract
+            case List("T_FINAL") => MFFinal
+        }
+    }
+
+    def class_entry_type(n: ParseNode): ClassFlag = {
+        childrenNames(n) match {
+            case List("T_CLASS") => CFNormal
+            case List("T_ABSTRACT", "T_CLASS") => CFAbstract
+            case List("T_FINAL", "T_CLASS") => CFFinal
+        }
+    }
+
+    def extends_from(n: ParseNode): Option[ClassRef] = {
+        childrenNames(n) match {
+            case List() =>
+                None
+            case List("T_EXTENDS", "fully_qualified_class_name") =>
+                Some(fully_qualified_class_name(child(n, 1)))
+        }
+    }
+
+    def interface_extends_list(n: ParseNode): List[ClassRef] = {
+        childrenNames(n) match {
+            case List() =>
+                List()
+            case List("T_EXTENDS", "interface_list") =>
+                interface_list(child(n, 1))
+        }
+    }
+
+    def implements_list(n: ParseNode): List[ClassRef] = {
+        childrenNames(n) match {
+            case List() =>
+                List()
+            case List("T_IMPLEMENTS", "interface_list") =>
+                interface_list(child(n, 1))
+        }
+    }
+
+    def interface_list(n: ParseNode): List[ClassRef] = {
+        childrenNames(n) match {
+            case List("fully_qualified_class_name") =>
+                List(fully_qualified_class_name(child(n)))
+            case List("interface_list", "T_COMMA", "fully_qualified_class_name") =>
+                interface_list(child(n, 0)) ::: List(fully_qualified_class_name(child(n, 2)))
+        }
+    }
 
     def statement(n: ParseNode): Statement = {
         childrenNames(n) match {
@@ -396,10 +617,6 @@ case class STToAST(st: ParseNode) {
         notyet(n);
     }
 
-    def class_declaration_statement(n: ParseNode): ClassDecl = {
-        notyet(n);
-    }
-
     def expr(n: ParseNode): Expression = {
         childrenNames(n) match {
             case List("variable") =>
@@ -408,8 +625,12 @@ case class STToAST(st: ParseNode) {
                 Assign(variable(child(n, 0)), expr(child(n, 2)), false)
             case List("variable", "T_ASSIGN", "T_BITWISE_AND", "variable") =>
                 Assign(variable(child(n, 0)), variable(child(n, 3)), true)
+            case List("T_NEW", "class_name_reference", "ctor_arguments") =>
+                New(class_name_reference(child(n, 1)), ctor_arguments(child(n, 2)))
+            case List("T_CLONE", "expr") =>
+                Clone(expr(child(n, 1)))
             case List("variable", "T_ASSIGN", "T_BITWISE_AND", "T_NEW", "class_name_reference", "ctor_arguments") =>
-                notyet(n)
+                Assign(variable(child(n, 0)), New(class_name_reference(child(n, 4)), ctor_arguments(child(n, 5))), true)
             case List("variable", "T_PLUS_EQUAL", "expr") =>
                 Assign(variable(child(n, 0)), Plus(variable(child(n, 0)), expr(child(n, 2))), false)
             case List("variable", "T_MINUS_EQUAL", "expr") =>
@@ -530,8 +751,31 @@ case class STToAST(st: ParseNode) {
         }
     }
 
+    def ctor_arguments(n: ParseNode): List[CallArg] = {
+        childrenNames(n) match {
+            case List() => 
+                List()
+            case List("T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") =>
+                function_call_parameter_list(child(n, 1))
+        }
+    }
+
     def class_name_reference(n: ParseNode): ClassRef = {
-        notyet(n);
+        childrenNames(n) match {
+            case List("class_name") =>
+                class_name(child(n))
+            case List("dynamic_class_name_reference") =>
+                dynamic_class_name_reference(child(n))
+        }
+    }
+
+    def dynamic_class_name_reference(n: ParseNode): ClassRef = {
+        childrenNames(n) match {
+            case List("base_variable", "T_OBJECT_OPERATOR", "object_property", "dynamic_class_name_variable_properties") =>
+                notyet(n);
+            case List("base_variable") =>
+                VarClassRef(base_variable(child(n)))
+        }
     }
 
     def method_or_not(n: ParseNode): Option[List[CallArg]] = {
@@ -719,9 +963,9 @@ case class STToAST(st: ParseNode) {
 
     def class_constant(n: ParseNode): Expression = {
         childrenNames(n) match {
-            case List("class_name", "T_PAAMAYIM_NEKUDOTAYIM T_STRING") =>
+            case List("class_name", "T_PAAMAYIM_NEKUDOTAYIM", "T_STRING") =>
                 ClassConstant(class_name(child(n, 0)), Identifier(child(n, 2).tokenContent))
-            case List("reference_variable", "T_PAAMAYIM_NEKUDOTAYIM T_STRING") =>
+            case List("reference_variable", "T_PAAMAYIM_NEKUDOTAYIM", "T_STRING") =>
                 ClassConstant(VarClassRef(reference_variable(child(n, 0))), Identifier(child(n, 2).tokenContent))
         }
     }
@@ -756,7 +1000,7 @@ case class STToAST(st: ParseNode) {
         }
     }
 
-    def t_variable(n: ParseNode): SimpleVariable = SimpleVariable(Identifier(n.tokenContent))
+    def t_variable(n: ParseNode): SimpleVariable = SimpleVariable(Identifier(n.tokenContent.substring(1)))
 
     def encaps_var_offset(n: ParseNode): Expression = {
         childrenNames(n) match {
