@@ -1,36 +1,22 @@
-package phpanalysis;
+package phpanalysis.helpers;
 
 import phpanalysis.parser._;
 import java.io._;
 
-object ASTGraph {
+class ASTGraph extends Helper {
 
-    def main(args: Array[String]): Int = {
-
-        if (args.length == 1) {
-            new Compiler(args(0)) compile match {
-                case Some(node) => {
-                    val fileName     = "result-AST.dot";
-                    val outputStream = new java.io.FileOutputStream(fileName);
-                    val printStream  = new java.io.PrintStream(outputStream);
-                    generateDotGraph(STToAST(node) getAST, printStream);
-                    println("Dot graph written to "+fileName+".");
+    def generate(input: String, printStream: java.io.PrintStream): Unit = {
+            new Compiler(input) compile match {
+                case Some(node) =>
+                    generateDotGraph(STToAST(node).getAST, printStream)
                     printStream.close
-                    1
-                }
-                case None => 0
+                case None =>
+                    throw new Exception("Compilation failed");
+
             }
-        } else {
-            usage
-            0
-        }
     }
 
-    def usage = {
-        println("Usage: phpanalysis <file>");
-    }
-
-    def generateDotGraph(root: Trees.Program, printStream: java.io.PrintStream) {
+    private def generateDotGraph(root: Trees.Program, printStream: java.io.PrintStream) {
         import phpanalysis.parser.Trees._;
         var nextId = 1;
 
