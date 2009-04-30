@@ -33,7 +33,7 @@ class ASTGraph extends Helper {
             }
         }
 
-        def escape(s: String) = s.replaceAll("\"", "")
+        def escape(s: String) = s.replaceAll("\"", "").replaceAll("\n", "\\\\n")
 
         def elements(p:Product) = (0 until p.productArity).map(p.productElement(_))
 
@@ -53,8 +53,20 @@ class ASTGraph extends Helper {
                             for(c <- elements(node)) dotPrint(c, id)
                         }
 
+                        case (t1, t2) => {
+                            emit("  node"+id+"[label=\"<Tupple (2)>\"]\n");
+                            dotPrint(t1, id)
+                            dotPrint(t2, id)
+                        }
+
+                        case (t1, t2, t3) => {
+                            emit("  node"+id+"[label=\"<Tupple (3)>\"]\n");
+                            dotPrint(t1, id)
+                            dotPrint(t2, id)
+                            dotPrint(t3, id)
+                        }
                         case ns: List[_] => {
-                            emit("  node"+id+"[label=\"<List>\"]\n");
+                            emit("  node"+id+"[label=\"<List ("+ns.size+")>\"]\n");
                             ns map {n => dotPrint(n, id)}
                         }
 

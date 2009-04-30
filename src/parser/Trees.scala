@@ -43,7 +43,7 @@ object Trees {
 
     abstract class FunctionRef extends Tree
     case class VarFunctionRef(v: Variable) extends FunctionRef
-    case class StaticFunctionRef(name: Identifier) extends FunctionRef
+    case class StaticFunctionRef(nsroot: NSRoot, nss: List[Identifier], name: Identifier) extends FunctionRef
 
     abstract class CastType extends Tree
     object CastInt extends CastType

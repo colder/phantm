@@ -12,12 +12,16 @@ object Main {
 
             input match {
                 case Some(path) =>
-                    output match {
-                        case Some(opath) =>
-                            println("Generating "+opath+"...");
-                            helper.generate(path, opath)
-                        case None =>
-                            helper.generate(path, System.out)
+                    try {
+                        output match {
+                            case Some(opath) =>
+                                println("Generating "+opath+"...");
+                                helper.generate(path, opath)
+                            case None =>
+                                helper.generate(path, System.out)
+                        }
+                    } catch { 
+                        case e: Exception => println(e.getMessage); e.printStackTrace
                     }
                 case None => throw new Exception()
             }

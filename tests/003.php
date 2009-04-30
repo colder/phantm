@@ -7,26 +7,11 @@ class A {
     protected $v3 = self::PLOP;
     private $v4;
     private static $v5;
-
-    public function f1() {
-
-    }
-
-    protected function f2() {
-
-    }
-
-    private function f3() {
-
-    }
-
-    final function f4() {
-
-    }
-
-    static function f5() {
-
-    }
+    public function f1() { }
+    protected function f2() { }
+    private function f3() { }
+    final function f4() { }
+    static function f5() { }
 }
 
 $a = new A;

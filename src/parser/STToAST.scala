@@ -381,8 +381,8 @@ case class STToAST(st: ParseNode) {
                 MCFunction()
             case List("T_NS_C") =>
                 MCNamespace()
-            case List("T_START_HEREDOC", "T_ENCAPSED_AND_WHITESPACE", "T_END_HEREDOC") =>
-                PHPString(child(n).tokenContent)
+            case List("T_START_HEREDOC", "string_literal", "T_END_HEREDOC") =>
+                PHPString(string_literal(child(n, 1)))
             case List("T_START_HEREDOC", "T_END_HEREDOC") =>
                 PHPString("")
         }
@@ -493,8 +493,8 @@ case class STToAST(st: ParseNode) {
 
     def foreach_variable(n: ParseNode): (Variable, Boolean) = {
         childrenNames(n) match {
-            case List("variable") => (variable(child(n)), false)
-            case List("T_BITWISE_AND", "variable") => (variable(child(n, 1)), true)
+            case List("variable") => (variable_w(child(n)), false)
+            case List("T_BITWISE_AND", "variable") => (variable_w(child(n, 1)), true)
         }
     }
 
@@ -535,9 +535,9 @@ case class STToAST(st: ParseNode) {
     def variable_list(n: ParseNode): List[Variable] = {
         childrenNames(n) match {
             case List("variable") => 
-                List(variable(child(n)))
+                List(variable_u(child(n)))
             case List("variable_list", "T_COMMA", "variable") =>
-                variable_list(child(n, 0)) ::: List(variable(child(n, 2)))
+                variable_list(child(n, 0)) ::: List(variable_u(child(n, 2)))
         }
     }
 
@@ -614,7 +614,10 @@ case class STToAST(st: ParseNode) {
     }
 
     def function_declaration_statement(n: ParseNode): FunctionDecl = {
-        notyet(n);
+        childrenNames(n) match {
+            case List("T_FUNCTION", "is_reference", "T_STRING", "T_OPEN_BRACES", "parameter_list", "T_CLOSE_BRACES", "T_OPEN_CURLY_BRACES", "inner_statement_list", "T_CLOSE_CURLY_BRACES") =>
+                FunctionDecl(Identifier(child(n, 2).tokenContent), parameter_list(child(n, 4)), is_reference(child(n, 1)), inner_statement_list(child(n, 7)))
+        }
     }
 
     def expr(n: ParseNode): Expression = {
@@ -622,37 +625,37 @@ case class STToAST(st: ParseNode) {
             case List("variable") =>
                 variable(child(n))
             case List("variable", "T_ASSIGN", "expr") =>
-                Assign(variable(child(n, 0)), expr(child(n, 2)), false)
+                Assign(variable_w(child(n, 0)), expr(child(n, 2)), false)
             case List("variable", "T_ASSIGN", "T_BITWISE_AND", "variable") =>
-                Assign(variable(child(n, 0)), variable(child(n, 3)), true)
+                Assign(variable_w(child(n, 0)), variable(child(n, 3)), true)
             case List("T_NEW", "class_name_reference", "ctor_arguments") =>
                 New(class_name_reference(child(n, 1)), ctor_arguments(child(n, 2)))
             case List("T_CLONE", "expr") =>
                 Clone(expr(child(n, 1)))
             case List("variable", "T_ASSIGN", "T_BITWISE_AND", "T_NEW", "class_name_reference", "ctor_arguments") =>
-                Assign(variable(child(n, 0)), New(class_name_reference(child(n, 4)), ctor_arguments(child(n, 5))), true)
+                Assign(variable_w(child(n, 0)), New(class_name_reference(child(n, 4)), ctor_arguments(child(n, 5))), true)
             case List("variable", "T_PLUS_EQUAL", "expr") =>
-                Assign(variable(child(n, 0)), Plus(variable(child(n, 0)), expr(child(n, 2))), false)
+                Assign(variable_w(child(n, 0)), Plus(variable(child(n, 0)), expr(child(n, 2))), false)
             case List("variable", "T_MINUS_EQUAL", "expr") =>
-                Assign(variable(child(n, 0)), Minus(variable(child(n, 0)), expr(child(n, 2))), false)
+                Assign(variable_w(child(n, 0)), Minus(variable(child(n, 0)), expr(child(n, 2))), false)
             case List("variable", "T_MUL_EQUAL", "expr") =>
-                Assign(variable(child(n, 0)), Mult(variable(child(n, 0)), expr(child(n, 2))), false)
+                Assign(variable_w(child(n, 0)), Mult(variable(child(n, 0)), expr(child(n, 2))), false)
             case List("variable", "T_DIV_EQUAL", "expr") =>
-                Assign(variable(child(n, 0)), Div(variable(child(n, 0)), expr(child(n, 2))), false)
+                Assign(variable_w(child(n, 0)), Div(variable(child(n, 0)), expr(child(n, 2))), false)
             case List("variable", "T_CONCAT_EQUAL", "expr") =>
-                Assign(variable(child(n, 0)), Concat(variable(child(n, 0)), expr(child(n, 2))), false)
+                Assign(variable_w(child(n, 0)), Concat(variable(child(n, 0)), expr(child(n, 2))), false)
             case List("variable", "T_MOD_EQUAL", "expr") =>
-                Assign(variable(child(n, 0)), Mod(variable(child(n, 0)), expr(child(n, 2))), false)
+                Assign(variable_w(child(n, 0)), Mod(variable(child(n, 0)), expr(child(n, 2))), false)
             case List("variable", "T_AND_EQUAL", "expr") =>
-                Assign(variable(child(n, 0)), BitwiseAnd(variable(child(n, 0)), expr(child(n, 2))), false)
+                Assign(variable_w(child(n, 0)), BitwiseAnd(variable(child(n, 0)), expr(child(n, 2))), false)
             case List("variable", "T_OR_EQUAL", "expr") =>
-                Assign(variable(child(n, 0)), BitwiseOr(variable(child(n, 0)), expr(child(n, 2))), false)
+                Assign(variable_w(child(n, 0)), BitwiseOr(variable(child(n, 0)), expr(child(n, 2))), false)
             case List("variable", "T_XOR_EQUAL", "expr") =>
-                Assign(variable(child(n, 0)), BitwiseXor(variable(child(n, 0)), expr(child(n, 2))), false)
+                Assign(variable_w(child(n, 0)), BitwiseXor(variable(child(n, 0)), expr(child(n, 2))), false)
             case List("variable", "T_SL_EQUAL", "expr") =>
-                Assign(variable(child(n, 0)), ShiftLeft(variable(child(n, 0)), expr(child(n, 2))), false)
+                Assign(variable_w(child(n, 0)), ShiftLeft(variable(child(n, 0)), expr(child(n, 2))), false)
             case List("variable", "T_SR_EQUAL", "expr") =>
-                Assign(variable(child(n, 0)), ShiftRight(variable(child(n, 0)), expr(child(n, 2))), false)
+                Assign(variable_w(child(n, 0)), ShiftRight(variable(child(n, 0)), expr(child(n, 2))), false)
             case List("variable", "T_INC") => PostInc(expr(child(n, 0)))
             case List("T_INC", "variable") => PreInc(expr(child(n, 1)))
             case List("variable", "T_DEC") => PostDec(expr(child(n, 0)))
@@ -806,12 +809,42 @@ case class STToAST(st: ParseNode) {
     }
 
 
-    def variable(n: ParseNode): Variable = {
+    def variable_w(n: ParseNode): Variable = {
+        variable(n) match {
+            case v: Variable => v
+            case _ => error("Cannot write to non-variable");
+        }
+    }
+
+    def variable_u(n: ParseNode): Variable = {
+        variable(n) match {
+            case v: Variable => v
+            case _ => error("Unnexpected non-variable, expecting variable");
+        }
+    }
+    def variable(n: ParseNode): Expression = {
         childrenNames(n) match {
             case List("base_variable_with_function_calls", "T_OBJECT_OPERATOR", "object_property", "method_or_not", "variable_properties") => 
-                notyet(n)
+                val oaList: List[ObjectAccess] = List(object_property_method(child(n, 2), child(n, 3))) ::: variable_properties(child(n, 4))
+                var ex: Expression = base_variable_with_function_calls(child(n, 0))
+                for(val oa <- oaList) {
+                    oa match {
+                        case OAIdentifier(id) => ex = ObjectProperty(ex, id)
+                        case OAArray(array, index) => notyet(n)
+                        case OAExpression(exp) => ex = DynamicObjectProperty(ex, exp)
+                        case OAMethod(name, args) => ex = notyet(n) //MethodCall(ex, name, args)
+                    }
+                }
+                ex
             case List("base_variable_with_function_calls") => 
                 base_variable_with_function_calls(child(n))
+        }
+    }
+
+    def object_property_method(op: ParseNode, mon: ParseNode): ObjectAccess = {
+        method_or_not(mon) match {
+            case Some(args) => OAMethod(object_property(op), args);
+            case None => object_property(op)
         }
     }
 
@@ -827,17 +860,38 @@ case class STToAST(st: ParseNode) {
     def variable_property(n: ParseNode): ObjectAccess = {
         childrenNames(n) match {
             case List("T_OBJECT_OPERATOR", "object_property", "method_or_not") =>
-                method_or_not(child(n, 2)) match {
-                    case Some(args) => OAMethod(object_property(child(n, 1)), args);
-                    case None => object_property(child(n, 1))
-                }
+                object_property_method(child(n, 1), child(n, 2))
         }
     }
 
-    def base_variable_with_function_calls(n: ParseNode): Variable = {
+    def base_variable_with_function_calls(n: ParseNode): Expression = {
         childrenNames(n) match {
             case List("base_variable") => base_variable(child(n))
-            case List("function_call") => notyet(n)
+            case List("function_call") => function_call(child(n))
+        }
+    }
+
+    def function_call(n: ParseNode): Expression = {
+        childrenNames(n) match {
+            case List("namespace_name", "T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") =>
+                val parts = namespace_name(child(n, 0))
+                FunctionCall(StaticFunctionRef(NSNone, parts.init, parts.last), function_call_parameter_list(child(n, 2)))
+            case List("T_NAMESPACE", "T_NS_SEPARATOR", "namespace_name", "T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") =>
+                val parts = namespace_name(child(n, 2))
+                FunctionCall(StaticFunctionRef(NSCurrent, parts.init, parts.last), function_call_parameter_list(child(n, 4)))
+            case List("T_NS_SEPARATOR", "namespace_name", "T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") =>
+                val parts = namespace_name(child(n, 1))
+                FunctionCall(StaticFunctionRef(NSGlobal, parts.init, parts.last), function_call_parameter_list(child(n, 4)))
+            case List("class_name", "T_PAAMAYIM_NEKUDOTAYIM", "T_STRING", "T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") =>
+                notyet(n)
+            case List("class_name", "T_PAAMAYIM_NEKUDOTAYIM", "variable_without_objects", "T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") =>
+                notyet(n)
+            case List("reference_variable", "T_PAAMAYIM_NEKUDOTAYIM", "T_STRING", "T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") =>
+                notyet(n)
+            case List("reference_variable", "T_PAAMAYIM_NEKUDOTAYIM", "variable_without_objects", "T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") =>
+                notyet(n)
+            case List("variable_without_objects", "T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") =>
+                FunctionCall(VarFunctionRef(variable_without_objects(child(n, 0))), function_call_parameter_list(child(n, 2)))
         }
     }
 
@@ -943,7 +997,7 @@ case class STToAST(st: ParseNode) {
     def scalar(n: ParseNode): Expression = {
         childrenNames(n) match {
             case List("T_STRING_VARNAME") =>
-                unspecified(n)
+                PHPString(child(n).tokenContent)
             case List("class_constant") =>
                 class_constant(child(n))
             case List("namespace_name") =>
@@ -970,16 +1024,31 @@ case class STToAST(st: ParseNode) {
         }
     }
 
+    def string_literal(n: ParseNode): String = {
+        childrenNames(n) match {
+            case List("string_literal", "T_ENCAPSED_AND_WHITESPACE") => 
+                string_literal(child(n, 0))+child(n, 1).tokenContent
+            case List("string_literal", "T_STRING") =>
+                string_literal(child(n, 0))+child(n, 1).tokenContent
+            case List("T_STRING") =>
+                child(n, 0).tokenContent
+            case List("T_ENCAPSED_AND_WHITESPACE") =>
+                child(n, 0).tokenContent
+        }
+    }
+
     def encaps_list(n: ParseNode): Expression = {
         childrenNames(n) match {
             case List("encaps_list", "encaps_var") =>
                 Concat(encaps_list(child(n, 0)), encaps_var(child(n, 1)))
             case List("encaps_list", "T_ENCAPSED_AND_WHITESPACE") =>
                 Concat(encaps_list(child(n, 0)), PHPString(child(n, 1).tokenContent))
+            case List("encaps_list", "T_STRING") =>
+                Concat(encaps_list(child(n, 0)), PHPString(child(n, 1).tokenContent))
             case List("encaps_var") =>
                 encaps_var(child(n, 1))
-            case List("T_ENCAPSED_AND_WHITESPACE", "encaps_var") =>
-                PHPString(child(n, 1).tokenContent)
+            case List("string_literal", "encaps_var") =>
+                Concat(PHPString(string_literal(child(n, 0))), encaps_var(child(n, 1)))
         }
     }
 
@@ -1014,8 +1083,8 @@ case class STToAST(st: ParseNode) {
         childrenNames(n) match {
             case List("T_ISSET", "T_OPEN_BRACES", "isset_variables", "T_CLOSE_BRACES") =>
                 Isset(isset_variables(child(n, 2)))
-            case List("T_EMPTY", "T_OPEN_BRACES", "variable", "T_CLOSE_BRACES") =>
-                Empty(variable(child(n, 2)))
+            case List("T_EMPTY", "T_OPEN_BRACES", "variable_r", "T_CLOSE_BRACES") =>
+                Empty(variable_u(child(n, 2)))
             case List("T_INCLUDE", "expr") =>
                 Include(expr(child(n, 1)), false)
             case List("T_INCLUDE_ONCE", "expr") =>
@@ -1031,8 +1100,8 @@ case class STToAST(st: ParseNode) {
 
     def isset_variables(n: ParseNode): List[Variable] = {
         childrenNames(n) match {
-            case List("variable") => List(variable(child(n, 0)))
-            case List("isset_variables", "T_COMMA", "variable") => isset_variables(child(n, 0)) ::: List(variable(child(n, 2)))
+            case List("variable") => List(variable_u(child(n, 0)))
+            case List("isset_variables", "T_COMMA", "variable") => isset_variables(child(n, 0)) ::: List(variable_u(child(n, 2)))
         }
     }
 
@@ -1056,7 +1125,7 @@ case class STToAST(st: ParseNode) {
             case List("non_empty_array_pair_list", "T_COMMA", "T_BITWISE_AND", "variable") =>
                 non_empty_array_pair_list(child(n, 0)) ::: List((None, variable(child(n, 3)), true))
             case List("expr", "T_DOUBLE_ARROW", "expr") =>
-                List((Some(expr(child(n, 2))), expr(child(n, 4)), false))
+                List((Some(expr(child(n, 0))), expr(child(n, 2)), false))
             case List("expr") =>
                 List((None, expr(child(n, 0)), false))
             case List("expr", "T_DOUBLE_ARROW", "T_BITWISE_AND", "variable") =>

@@ -14,6 +14,7 @@ class Tokenizer extends Helper{
                     val pn: ParseNode = sym.value.asInstanceOf[ParseNode];
                     if (pn != null) {
                         printStream.println(pn.name + "("+pn.tokenContent+")");
+                        //printStream.println(pn.name);
                         sym = l.next_token();
                     } else {
                         printStream.println("Unknown("+sym.sym+")");
