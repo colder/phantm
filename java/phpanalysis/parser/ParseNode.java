@@ -9,8 +9,10 @@ public final class ParseNode {
 
     private List<ParseNode> children = new ArrayList<ParseNode>();
 
-    private int     tokenLine = -1;
+    private int     tokenLine    = -1;
+    private int     tokenColumn  = -1;
     private String  tokenContent = "";
+    private String  tokenFile    = "";
     private boolean isToken = false;
 
     private ParseNode parent = null;
@@ -20,16 +22,20 @@ public final class ParseNode {
         this.name = name;
     }
 
-    public ParseNode(int symbol, String name, String content, int line) {
+    public ParseNode(int symbol, String name, String content, int line, int column, String file) {
         this(symbol, name);
         this.tokenContent = content;
         this.tokenLine    = line;
+        this.tokenColumn  = column;
         this.isToken      = true;
+        this.tokenFile    = file;
     }
 
     public int symbol() { return symbol; }
     public String name() { return name; }
-    public int tokenLine() { return tokenLine; }
+    public int line() { return tokenLine; }
+    public int column() { return tokenColumn; }
+    public String file() { return tokenFile; }
     public String tokenContent() { return tokenContent; }
     public boolean isToken() { return isToken; }
     public List<ParseNode> children() { return children; }

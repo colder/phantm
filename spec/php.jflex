@@ -122,7 +122,7 @@ FROM FLEX -> JFLEX
             type, 
             line, 
             -1, 
-            new ParseNode(type, name, text(), line));
+            new ParseNode(type, name, text(), line, yycolumn, getFileName()));
     }
 
     // always call this method after constructing the lexer object
@@ -179,6 +179,7 @@ NEWLINE = ("\r"|"\n"|"\r\n")
 // using 8bit (mimicking flex) doesn't work properly, so use unicode
 %unicode
 %line
+%column
 %ignorecase
 %cupsym Symbols
 %cup
@@ -567,12 +568,6 @@ NEWLINE = ("\r"|"\n"|"\r\n")
     "}" { return symbol(Symbols.T_CLOSE_CURLY_BRACES, "T_CLOSE_CURLY_BRACES"); }
     "$" { return symbol(Symbols.T_DOLLAR, "T_DOLLAR"); }
 
-}
-
-<ST_DOUBLE_QUOTES,ST_BACKQUOTE,ST_HEREDOC>"{$" {
-	pushState(ST_IN_SCRIPTING);
-	yypushback(1);
-    return symbol(Symbols.T_CURLY_OPEN, "T_CURLY_OPEN");
 }
 
 <ST_SINGLE_QUOTE>"\\'" {

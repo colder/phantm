@@ -54,7 +54,7 @@ parser code {:
             ParseNode node = (ParseNode) infoSym.value;
             System.err.print("unexpected "+node.name());
             if (infoSym.left != -1) {
-                System.err.println(" at line " + infoSym.left);
+                System.err.println(" at line " + node.line()+":"+node.column());
             } else {
                 System.err.println(" at unknown line");
             }

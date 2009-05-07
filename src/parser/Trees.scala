@@ -1,5 +1,7 @@
 package phpanalysis.parser;
 
+import phpanalysis.Positional;
+
 // todo, namespaces
 object Trees {
     abstract case class Tree();
@@ -38,12 +40,18 @@ object Trees {
 
     abstract class ClassRef extends Tree
     case class VarClassRef(v: Variable) extends ClassRef
+    case class DynamicClassRef(ex: Expression) extends ClassRef
     case class StaticClassRef(nsroot: NSRoot, nss: List[Identifier], name: Identifier) extends ClassRef
     case class CalledClass() extends ClassRef
 
     abstract class FunctionRef extends Tree
     case class VarFunctionRef(v: Variable) extends FunctionRef
+    case class DynamicFunctionRef(ex: Expression) extends FunctionRef
     case class StaticFunctionRef(nsroot: NSRoot, nss: List[Identifier], name: Identifier) extends FunctionRef
+
+    abstract class MethodRef extends Tree 
+    case class DynamicMethodRef(ex: Expression) extends MethodRef
+    case class StaticMethodRef(id: Identifier) extends MethodRef
 
     abstract class CastType extends Tree
     object CastInt extends CastType
@@ -57,14 +65,15 @@ object Trees {
     case class InitVariable(v: Variable, init: Option[Expression]) extends Tree
 
     case class Label(name: Identifier) extends Tree
-    case class Identifier(value: String) extends Tree
+    case class Identifier(value: String) extends Tree with Positional
 
     case class CallArg(value: Expression, forceref: Boolean) extends Tree
 
     abstract class ObjectAccess extends Tree
-    case class OAIdentifier(id: Identifier) extends ObjectAccess
-    case class OAArray(array: ObjectAccess, index: Option[Expression]) extends ObjectAccess
-    case class OAExpression(exp: Expression) extends ObjectAccess
+    abstract class OAScalar extends ObjectAccess
+    case class OAIdentifier(id: Identifier) extends OAScalar
+    case class OAExpression(exp: Expression) extends OAScalar
+    case class OAArray(array: OAScalar, indexed: List[Option[Expression]]) extends ObjectAccess
     case class OAMethod(name: ObjectAccess, args: List[CallArg]) extends ObjectAccess
 
     abstract class Statement extends Tree;
@@ -164,8 +173,8 @@ object Trees {
     case class ClassConstant(cl: ClassRef, const: Identifier) extends Expression
     case class New(cl: ClassRef, args: List[CallArg]) extends Expression
     case class FunctionCall(name: FunctionRef, args: List[CallArg]) extends Expression
-    case class MethodCall(obj: Expression, name: FunctionRef, args: List[CallArg]) extends Expression
-    case class StaticMethodCall(cl: ClassRef, name: FunctionRef, args: List[CallArg]) extends Expression
+    case class MethodCall(obj: Expression, name: MethodRef, args: List[CallArg]) extends Expression
+    case class StaticMethodCall(cl: ClassRef, name: MethodRef, args: List[CallArg]) extends Expression
 
 
     abstract class Scalar extends Expression
