@@ -14,6 +14,9 @@ function test() {
 
 if (1) {
     class E {}
+} else {
+    function notest() {
+    }
 }
 
 while(1) {

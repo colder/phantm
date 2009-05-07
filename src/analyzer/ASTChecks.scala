@@ -13,12 +13,12 @@ case class ASTChecks(node: Tree) extends ASTTraversal[CheckContext](node, CheckC
             case f : FunctionDecl => 
                 newCtx = CheckContext(false); 
                 if (!ctx.topLevel) {
-                    error("Function "+f.name.value+" should be declared at top-level", f.name)
+                    notice("Function "+f.name.value+" should be declared at top-level", f.name)
                 }
             case c: ClassDecl =>
                 newCtx = CheckContext(false);
                 if (!ctx.topLevel) {
-                    error("Class "+c.name.value+" should be declared at top-level", c.name)
+                    notice("Class "+c.name.value+" should be declared at top-level", c.name)
                 }
             case x: If =>
                 newCtx = CheckContext(false)
