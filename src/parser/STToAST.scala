@@ -830,9 +830,23 @@ case class STToAST(st: ParseNode) {
                 for(val oa <- oaList) {
                     oa match {
                         case OAIdentifier(id) => ex = ObjectProperty(ex, id)
-                        case OAArray(array, index) => notyet(n)
+                        case OAArray(array, indexes) => for (val id <- indexes) id match {
+                                case Some(i) => ex = ArrayEntry(ex, i)
+                                case None => ex = NextArrayEntry(ex)
+                            }
                         case OAExpression(exp) => ex = DynamicObjectProperty(ex, exp)
-                        case OAMethod(name, args) => ex = notyet(n) //MethodCall(ex, name, args)
+                        case OAMethod(name, args) => name match {
+                            case OAIdentifier(id) => ex = MethodCall(ex, StaticMethodRef(id), args)
+                            case OAExpression(e)  => ex = MethodCall(ex, DynamicMethodRef(e), args)
+                            case OAArray(array, indexes) =>  {
+                                for (val id <- indexes) id match {
+                                    case Some(i) => ex = ArrayEntry(ex, i)
+                                    case None => ex = NextArrayEntry(ex)
+                                }
+
+                                ex = FunctionCall(DynamicFunctionRef(ex), args)
+                            }
+                        }
                     }
                 }
                 ex
@@ -926,19 +940,23 @@ case class STToAST(st: ParseNode) {
     }
 
     def object_dim_list(n: ParseNode): ObjectAccess = {
-        notyet(n)
-        /*
-        childrenNames(n) match {
+        def accumulate(n: ParseNode, acc: List[Option[Expression]]): (OAScalar, List[Option[Expression]]) = childrenNames(n) match {
             case List("object_dim_list", "T_OPEN_RECT_BRACES", "dim_offset", "T_CLOSE_RECT_BRACES") =>
-                OAArray(object_dim_list(child(n, 0)), dim_offset(child(n, 2)))
+                accumulate(child(n, 0), dim_offset(child(n, 2)) :: acc)
             case List("object_dim_list", "T_OPEN_CURLY_BRACES", "expr", "T_CLOSE_CURLY_BRACES") =>
-                OAArray(object_dim_list(child(n, 0)), dim_offset(child(n, 2)))
+                accumulate(child(n, 0), Some(expr(child(n, 2))) :: acc)
             case List("variable_name") =>
-                variable_name(child(n))
-        }*/
+                (variable_name(child(n)), acc)
+        }
+
+        accumulate(n, Nil) match {
+            case (x, Nil) => x
+            case (x, xs) => OAArray(x, xs)
+        }
+
     }
 
-    def variable_name(n: ParseNode): ObjectAccess = {
+    def variable_name(n: ParseNode): OAScalar = {
         childrenNames(n) match {
             case List("T_STRING") =>
                 OAIdentifier(identifier(child(n)))
@@ -1076,6 +1094,7 @@ case class STToAST(st: ParseNode) {
         id.setPos(n.line, n.column, n.file)
         id
     }
+
     def t_variable(n: ParseNode): SimpleVariable = {
         val id = Identifier(n.tokenContent.substring(1))
         id.setPos(n.line, n.column, n.file)

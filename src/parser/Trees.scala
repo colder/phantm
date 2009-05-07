@@ -73,7 +73,7 @@ object Trees {
     abstract class OAScalar extends ObjectAccess
     case class OAIdentifier(id: Identifier) extends OAScalar
     case class OAExpression(exp: Expression) extends OAScalar
-    case class OAArray(array: OAScalar, indexed: List[Option[Expression]]) extends ObjectAccess
+    case class OAArray(array: OAScalar, indexes: List[Option[Expression]]) extends ObjectAccess
     case class OAMethod(name: ObjectAccess, args: List[CallArg]) extends ObjectAccess
 
     abstract class Statement extends Tree;
