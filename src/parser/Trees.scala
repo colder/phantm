@@ -168,8 +168,9 @@ object Trees {
     case class Closure(args: List[ArgumentDecl], retref: Boolean, body: Statement) extends Expression
     case class Isset(vs: List[Variable]) extends Expression
     case class Empty(v: Variable) extends Expression
-    case class Include(path: Expression, once: Boolean) extends Expression
-    case class Require(path: Expression, once: Boolean) extends Expression
+    case class Include(path: Expression, once: Boolean) extends Expression with Positional
+    case class Require(path: Expression, once: Boolean) extends Expression with Positional
+    case class Constant(name: Identifier) extends Expression
     case class ClassConstant(cl: ClassRef, const: Identifier) extends Expression
     case class New(cl: ClassRef, args: List[CallArg]) extends Expression
     case class FunctionCall(name: FunctionRef, args: List[CallArg]) extends Expression

@@ -338,16 +338,31 @@ case class STToAST(st: ParseNode) {
         }
     }
 
+    def static_constant(n: ParseNode): Expression = {
+        var root: NSRoot = NSNone
+        var c: ParseNode = childrenNames(n) match {
+            case List("namespace_name") => root = NSNone; child(n)
+            case List("T_NAMESPACE", "T_NS_SEPARATOR", "namespace_name") => root = NSCurrent; child(n, 2)
+            case List("T_NS_SEPARATOR", "namespace_name") => root = NSGlobal; child(n, 1)
+        }
+        val parts = namespace_name(c);
+
+        if (parts.length == 1) {
+            Constant(parts.head)
+        } else {
+            unspecified(n)
+        }
+    }
     def static_expr(n: ParseNode): Expression = {
         childrenNames(n) match {
             case List("common_scalar") =>
                 common_scalar(child(n))
             case List("namespace_name") =>
-                unspecified(n)
+                static_constant(n)
             case List("T_NAMESPACE", "T_NS_SEPARATOR", "namespace_name") =>
-                unspecified(n)
+                static_constant(n)
             case List("T_NS_SEPARATOR", "namespace_name") =>
-                unspecified(n)
+                static_constant(n)
             case List("T_PLUS", "static_expr") =>
                 static_expr(child(n, 1))
             case List("T_MINUS", "static_expr") =>
@@ -1029,11 +1044,11 @@ case class STToAST(st: ParseNode) {
             case List("class_constant") =>
                 class_constant(child(n))
             case List("namespace_name") =>
-                notyet(n)
+                static_constant(n)
             case List("T_NAMESPACE", "T_NS_SEPARATOR", "namespace_name") =>
-                notyet(n)
+                static_constant(n)
             case List("T_NS_SEPARATOR", "namespace_name") =>
-                notyet(n)
+                static_constant(n)
             case List("common_scalar") =>
                 common_scalar(child(n))
             case List("T_DOUBLE_QUOTE", "encaps_list", "T_DOUBLE_QUOTE") => 
@@ -1124,15 +1139,23 @@ case class STToAST(st: ParseNode) {
             case List("T_EMPTY", "T_OPEN_BRACES", "variable_r", "T_CLOSE_BRACES") =>
                 Empty(variable_u(child(n, 2)))
             case List("T_INCLUDE", "expr") =>
-                Include(expr(child(n, 1)), false)
+                val i = Include(expr(child(n, 1)), false)
+                i.setPos(child(n, 0))
+                i
             case List("T_INCLUDE_ONCE", "expr") =>
-                Include(expr(child(n, 1)), true)
+                val i = Include(expr(child(n, 1)), true)
+                i.setPos(child(n, 0))
+                i
             case List("T_EVAL", "T_OPEN_BRACES", "expr", "T_CLOSE_BRACES") =>
                 Eval(expr(child(n, 2)))
             case List("T_REQUIRE", "expr") =>
-                Require(expr(child(n, 1)), false)
+                val r = Require(expr(child(n, 1)), false)
+                r.setPos(child(n, 0))
+                r
             case List("T_REQUIRE_ONCE", "expr") =>
-                Require(expr(child(n, 1)), true)
+                val r = Require(expr(child(n, 1)), true)
+                r.setPos(child(n, 0))
+                r
         }
     }
 

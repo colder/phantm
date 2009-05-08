@@ -54,10 +54,26 @@ case class ASTChecks(node: Tree) extends ASTTraversal[CheckContext](node, CheckC
                 }
             }
 
+            case i @ Include(expr, once) => {
+                if (!static_expr(expr)) {
+                    notice("Include with non trivial argument will be ignored", i)
+                }
+            }
+
+            case r @ Require(expr, once) => {
+                if (!static_expr(expr)) {
+                    notice("Require with non trivial argument will be ignored", r)
+                }
+            }
+
             case _ =>
         }
 
         newCtx
+    }
+
+    def static_expr(expr: Expression):Boolean = {
+        false
     }
 
 }
