@@ -15,7 +15,7 @@ trait Reporter {
     }
 
     private def emit(prefix: String, msg: String, pos: Positional) = {
-        println(pos.file+":"+pos.line+" "+prefix+msg)
+        println(pos.file+":"+pos.line+"  "+prefix+msg)
         print(getFileLine(pos.file, pos.line))
 
         var indent: String = ""

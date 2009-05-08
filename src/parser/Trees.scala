@@ -67,7 +67,7 @@ object Trees {
     case class Label(name: Identifier) extends Tree
     case class Identifier(value: String) extends Tree with Positional
 
-    case class CallArg(value: Expression, forceref: Boolean) extends Tree
+    case class CallArg(value: Expression, forceref: Boolean) extends Tree with Positional
 
     abstract class ObjectAccess extends Tree
     abstract class OAScalar extends ObjectAccess

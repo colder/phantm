@@ -798,13 +798,21 @@ case class STToAST(st: ParseNode) {
     def non_empty_function_call_parameter_list(n: ParseNode): List[CallArg] = {
         childrenNames(n) match {
             case List("expr") => 
-                List(CallArg(expr(child(n)), false))
+                val ca = CallArg(expr(child(n)), false);
+                ca.setPos(child(n))
+                List(ca)
             case List("T_BITWISE_AND", "variable") =>
-                List(CallArg(variable(child(n, 1)), true))
+                val ca = CallArg(variable(child(n, 1)), true);
+                ca.setPos(child(n, 0))
+                List(ca)
             case List("non_empty_function_call_parameter_list", "T_COMMA", "expr") =>
-                non_empty_function_call_parameter_list(child(n, 0)) ::: List(CallArg(expr(child(n, 2)), false))
+                val ca = CallArg(expr(child(n, 2)), false);
+                ca.setPos(child(n, 2))
+                non_empty_function_call_parameter_list(child(n, 0)) ::: List(ca)
             case List("non_empty_function_call_parameter_list", "T_COMMA", "T_BITWISE_AND", "variable") =>
-                non_empty_function_call_parameter_list(child(n, 0)) ::: List(CallArg(variable(child(n, 3)), true))
+                val ca = CallArg(variable(child(n, 3)), true);
+                ca.setPos(child(n, 2))
+                non_empty_function_call_parameter_list(child(n, 0)) ::: List(ca)
         }
     }
 
@@ -897,13 +905,13 @@ case class STToAST(st: ParseNode) {
                 val parts = namespace_name(child(n, 1))
                 FunctionCall(StaticFunctionRef(NSGlobal, parts.init, parts.last), function_call_parameter_list(child(n, 4)))
             case List("class_name", "T_PAAMAYIM_NEKUDOTAYIM", "T_STRING", "T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") =>
-                notyet(n)
+                StaticMethodCall(class_name(child(n, 0)), StaticMethodRef(identifier(child(n, 2))), function_call_parameter_list(child(n, 4)))
             case List("class_name", "T_PAAMAYIM_NEKUDOTAYIM", "variable_without_objects", "T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") =>
-                notyet(n)
+                StaticMethodCall(class_name(child(n, 0)), DynamicMethodRef(variable_without_objects(child(n, 2))), function_call_parameter_list(child(n, 4)))
             case List("reference_variable", "T_PAAMAYIM_NEKUDOTAYIM", "T_STRING", "T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") =>
-                notyet(n)
+                StaticMethodCall(DynamicClassRef(reference_variable(child(n, 0))), StaticMethodRef(identifier(child(n, 2))), function_call_parameter_list(child(n, 4)))
             case List("reference_variable", "T_PAAMAYIM_NEKUDOTAYIM", "variable_without_objects", "T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") =>
-                notyet(n)
+                StaticMethodCall(DynamicClassRef(reference_variable(child(n, 0))), DynamicMethodRef(variable_without_objects(child(n, 2))), function_call_parameter_list(child(n, 4)))
             case List("variable_without_objects", "T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") =>
                 FunctionCall(VarFunctionRef(variable_without_objects(child(n, 0))), function_call_parameter_list(child(n, 2)))
         }

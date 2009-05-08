@@ -6,6 +6,10 @@ case class CheckContext(topLevel: Boolean);
 
 case class ASTChecks(node: Tree) extends ASTTraversal[CheckContext](node, CheckContext(true)) with Reporter {
 
+    /**
+     * Visit the nodes and aggregate information inside the context to provide
+     * hints about obvious errors directly from the AST
+     */
     def visit(node: Tree, ctx: CheckContext): CheckContext = {
         var newCtx = ctx;
 
@@ -30,6 +34,26 @@ case class ASTChecks(node: Tree) extends ASTTraversal[CheckContext](node, CheckC
                 newCtx = CheckContext(false)
             case x: Switch =>
                 newCtx = CheckContext(false)
+
+            // check for call-time pass-by-ref
+            case FunctionCall(ref, args) => {
+                for (val arg <- args) if (arg.forceref) {
+                    notice("Usage of call-time pass-by-ref is deprecated and should be avoided", arg)
+                }
+            }
+
+            case MethodCall(obj, ref, args) => {
+                for (val arg <- args) if (arg.forceref) {
+                    notice("Usage of call-time pass-by-ref is deprecated and should be avoided", arg)
+                }
+            }
+
+            case StaticMethodCall(classref, ref, args) => {
+                for (val arg <- args) if (arg.forceref) {
+                    notice("Usage of call-time pass-by-ref is deprecated and should be avoided", arg)
+                }
+            }
+
             case _ =>
         }
 
