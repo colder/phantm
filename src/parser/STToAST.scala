@@ -22,7 +22,7 @@ case class STToAST(st: ParseNode) {
     }
 
     def top_statement(n: ParseNode): Statement = {
-        childrenNames(n) match {
+        (childrenNames(n) match {
             case List("statement") => statement(child(n))
             case List("function_declaration_statement") => function_declaration_statement(child(n))
             case List("class_declaration_statement") => class_declaration_statement(child(n))
@@ -33,10 +33,10 @@ case class STToAST(st: ParseNode) {
             case List("T_USE", "use_declarations", "T_SEMICOLON") => notyet(n)
             case List("constant_declaration", "T_SEMICOLON") => notyet(n)
             case _ => unspecified(n)
-        }
+        }).setPos(child(n))
     }
     def class_declaration_statement(n: ParseNode): Statement = {
-        childrenNames(n) match {
+        (childrenNames(n) match {
             case List("class_entry_type", "T_STRING", "extends_from", "implements_list", "T_OPEN_CURLY_BRACES", "class_statement_list", "T_CLOSE_CURLY_BRACES") =>
                 class_statement_list(child(n, 5)) match {
                     case (methods, static_props, props, consts) =>
@@ -58,7 +58,7 @@ case class STToAST(st: ParseNode) {
                                   methods,
                                   consts)
                 }
-        }
+        }).setPos(child(n))
     }
 
     def class_statement_list(n: ParseNode): (List[MethodDecl], List[PropertyDecl], List[PropertyDecl], List[ConstantDecl]) = {
@@ -88,7 +88,7 @@ case class STToAST(st: ParseNode) {
                                     method_modifiers(child(n, 0)),
                                     parameter_list(child(n, 5)),
                                     is_reference(child(n, 2)),
-                                    method_body(child(n, 7)));
+                                    method_body(child(n, 7))).setPos(child(n,3));
                 (st._1:::List(md), st._2, st._3, st._4)
         }
     }
@@ -105,25 +105,25 @@ case class STToAST(st: ParseNode) {
     def non_empty_parameter_list(n: ParseNode): List[ArgumentDecl] = {
         childrenNames(n) match {
             case List("optional_class_type", "T_VARIABLE") =>
-                List(ArgumentDecl(identifier(child(n, 1)), optional_class_type(child(n, 0)), None, false))
+                List(ArgumentDecl(identifier(child(n, 1)), optional_class_type(child(n, 0)), None, false).setPos(child(n, 1)))
             case List("optional_class_type", "T_BITWISE_AND", "T_VARIABLE") =>
-                List(ArgumentDecl(identifier(child(n, 2)), optional_class_type(child(n, 0)), None, true))
+                List(ArgumentDecl(identifier(child(n, 2)), optional_class_type(child(n, 0)), None, true).setPos(child(n, 2)))
             case List("optional_class_type", "T_VARIABLE", "T_ASSIGN", "static_expr") =>
-                List(ArgumentDecl(identifier(child(n, 1)), optional_class_type(child(n, 0)), Some(static_expr(child(n, 3))), false))
+                List(ArgumentDecl(identifier(child(n, 1)), optional_class_type(child(n, 0)), Some(static_expr(child(n, 3))), false).setPos(child(n, 1)))
             case List("optional_class_type", "T_BITWISE_AND", "T_VARIABLE", "T_ASSIGN", "static_expr") =>
-                List(ArgumentDecl(identifier(child(n, 2)), optional_class_type(child(n, 0)), Some(static_expr(child(n, 4))), true))
+                List(ArgumentDecl(identifier(child(n, 2)), optional_class_type(child(n, 0)), Some(static_expr(child(n, 4))), true).setPos(child(n, 2)))
             case List("non_empty_parameter_list", "T_COMMA", "optional_class_type", "T_VARIABLE") =>
                 non_empty_parameter_list(child(n, 0)) :::
-                List(ArgumentDecl(identifier(child(n, 3)), optional_class_type(child(n, 2)), None, false))
+                List(ArgumentDecl(identifier(child(n, 3)), optional_class_type(child(n, 2)), None, false).setPos(child(n, 3)))
             case List("non_empty_parameter_list", "T_COMMA", "optional_class_type", "T_BITWISE_AND", "T_VARIABLE") =>
                 non_empty_parameter_list(child(n, 0)) :::
-                List(ArgumentDecl(identifier(child(n, 4)), optional_class_type(child(n, 2)), None, true))
+                List(ArgumentDecl(identifier(child(n, 4)), optional_class_type(child(n, 2)), None, true).setPos(child(n, 4)))
             case List("non_empty_parameter_list", "T_COMMA", "optional_class_type", "T_VARIABLE", "T_ASSIGN", "static_expr") =>
                 non_empty_parameter_list(child(n, 0)) :::
-                List(ArgumentDecl(identifier(child(n, 3)), optional_class_type(child(n, 2)), Some(static_expr(child(n, 5))), false))
+                List(ArgumentDecl(identifier(child(n, 3)), optional_class_type(child(n, 2)), Some(static_expr(child(n, 5))), false).setPos(child(n, 3)))
             case List("non_empty_parameter_list", "T_COMMA", "optional_class_type", "T_BITWISE_AND", "T_VARIABLE", "T_ASSIGN", "static_expr") =>
                 non_empty_parameter_list(child(n, 0)) :::
-                List(ArgumentDecl(identifier(child(n, 4)), optional_class_type(child(n, 2)), Some(static_expr(child(n, 6))), true))
+                List(ArgumentDecl(identifier(child(n, 4)), optional_class_type(child(n, 2)), Some(static_expr(child(n, 6))), true).setPos(child(n, 4)))
         }
     }
 
@@ -147,31 +147,32 @@ case class STToAST(st: ParseNode) {
         childrenNames(n) match {
             case List() => None 
             case List("fully_qualified_class_name") =>
-                Some(THObject(fully_qualified_class_name(child(n))))
+                val cn = fully_qualified_class_name(child(n))
+                Some(THObject(cn).setPos(cn))
             case List("T_ARRAY") => 
-                Some(THArray)
+                Some(THArray.setPos(child(n)))
         }
     }
 
     def class_variable_declaration(n: ParseNode, vm: List[MemberFlag]): List[PropertyDecl] = {
         childrenNames(n) match {
             case List("class_variable_declaration", "T_COMMA", "T_VARIABLE") =>
-                class_variable_declaration(child(n, 0), vm) ::: List(PropertyDecl(identifier(child(n, 2)), vm, None))
+                class_variable_declaration(child(n, 0), vm) ::: List(PropertyDecl(identifier(child(n, 2)), vm, None).setPos(child(n, 2)))
             case List("class_variable_declaration", "T_COMMA", "T_VARIABLE", "T_ASSIGN", "static_expr") =>
-                class_variable_declaration(child(n, 0), vm) ::: List(PropertyDecl(identifier(child(n, 2)), vm, Some(static_expr(child(n, 4)))))
+                class_variable_declaration(child(n, 0), vm) ::: List(PropertyDecl(identifier(child(n, 2)), vm, Some(static_expr(child(n, 4)))).setPos(child(n, 2)))
             case List("T_VARIABLE") =>
-                List(PropertyDecl(identifier(child(n, 0)), vm, None))
+                List(PropertyDecl(identifier(child(n, 0)), vm, None).setPos(child(n, 0)))
             case List("T_VARIABLE", "T_ASSIGN", "static_expr") =>
-                List(PropertyDecl(identifier(child(n, 0)), vm, Some(static_expr(child(n, 2)))))
+                List(PropertyDecl(identifier(child(n, 0)), vm, Some(static_expr(child(n, 2)))).setPos(child(n, 0)))
         }
     }
 
     def class_constant_declaration(n: ParseNode): List[ConstantDecl] = {
         childrenNames(n) match {
             case List("class_constant_declaration", "T_COMMA", "T_STRING", "T_ASSIGN", "static_expr") =>
-            class_constant_declaration(child(n, 0)) ::: List(ConstantDecl(identifier(child(n, 2)), static_expr(child(n, 4))))
+            class_constant_declaration(child(n, 0)) ::: List(ConstantDecl(identifier(child(n, 2)), static_expr(child(n, 4))).setPos(child(n, 2)))
             case List("T_CONST", "T_STRING", "T_ASSIGN", "static_expr") =>
-            List(ConstantDecl(identifier(child(n, 1)), static_expr(child(n, 3))))
+            List(ConstantDecl(identifier(child(n, 1)), static_expr(child(n, 3))).setPos(child(n, 1)))
         }
     }
 
@@ -180,7 +181,7 @@ case class STToAST(st: ParseNode) {
             case List("non_empty_member_modifiers") =>
                 non_empty_member_modifiers(child(n))
             case List("T_VAR") =>
-                List(MFPublic)
+                List(MFPublic.setPos(child(n, 0)))
         }
     }
 
@@ -203,22 +204,22 @@ case class STToAST(st: ParseNode) {
     }
 
     def member_modifier(n: ParseNode): MemberFlag = {
-        childrenNames(n) match {
+        (childrenNames(n) match {
             case List("T_PUBLIC") => MFPublic
             case List("T_PROTECTED") => MFProtected
             case List("T_PRIVATE") => MFPrivate
             case List("T_STATIC") => MFStatic
             case List("T_ABSTRACT") => MFAbstract
             case List("T_FINAL") => MFFinal
-        }
+        }).setPos(child(n, 0))
     }
 
     def class_entry_type(n: ParseNode): ClassFlag = {
-        childrenNames(n) match {
+        (childrenNames(n) match {
             case List("T_CLASS") => CFNormal
             case List("T_ABSTRACT", "T_CLASS") => CFAbstract
             case List("T_FINAL", "T_CLASS") => CFFinal
-        }
+        }).setPos(child(n, 0))
     }
 
     def extends_from(n: ParseNode): Option[ClassRef] = {
@@ -258,7 +259,7 @@ case class STToAST(st: ParseNode) {
     }
 
     def statement(n: ParseNode): Statement = {
-        childrenNames(n) match {
+        (childrenNames(n) match {
             case List("T_OPEN_CURLY_BRACES", "inner_statement_list", "T_CLOSE_CURLY_BRACES") => inner_statement_list(child(n,1))
             case List("T_IF", "T_OPEN_BRACES", "expr", "T_CLOSE_BRACES", "statement", "elseif_list", "else_single") =>
                 If(expr(child(n, 2)), statement(child(n, 4)), elseif_else(elseif_list(child(n, 5)), else_single(child(n, 6))))
@@ -273,15 +274,15 @@ case class STToAST(st: ParseNode) {
             case List("T_SWITCH", "T_OPEN_BRACES", "expr", "T_CLOSE_BRACES", "switch_case_list") => 
                 Switch(expr(child(n, 2)), switch_case_list(child(n, 4)))
             case List("T_BREAK", "T_SEMICOLON") =>
-                Break(PHPInteger(1))
+                Break(PHPInteger(1).setPos(child(n, 0)))
             case List("T_BREAK", "expr", "T_SEMICOLON") =>
                 Break(expr(child(n, 1)))
             case List("T_CONTINUE", "T_SEMICOLON") =>
-                Continue(PHPInteger(1))
+                Continue(PHPInteger(1).setPos(child(n, 0)))
             case List("T_CONTINUE", "expr", "T_SEMICOLON") =>
                 Continue(expr(child(n, 1)))
             case List("T_RETURN", "T_SEMICOLON") =>
-                Return(Null())
+                Return(Null().setPos(child(n, 0)))
             case List("T_RETURN", "expr", "T_SEMICOLON") =>
                 Return(expr(child(n, 1)))
             case List("T_GLOBAL", "global_var_list", "T_SEMICOLON") => 
@@ -312,29 +313,29 @@ case class STToAST(st: ParseNode) {
             case List("T_TRY", "T_OPEN_CURLY_BRACES", "inner_statement_list", "T_CLOSE_CURLY_BRACES", "T_CATCH", "T_OPEN_BRACES", "fully_qualified_class_name", "T_VARIABLE", "T_CLOSE_BRACES", "T_OPEN_CURLY_BRACES", "inner_statement_list", "T_CLOSE_CURLY_BRACES", "additional_catches") =>
                 Try(inner_statement_list(child(n, 2)),
                     List(Catch(fully_qualified_class_name(child(n, 6)),
-                              SimpleVariable(identifier(child(n, 7))),
-                              inner_statement_list(child(n, 10)))) 
+                              t_variable(child(n, 7)),
+                              inner_statement_list(child(n, 10))).setPos(child(n, 4))) 
                     ::: additional_catches(child(n, 12))
                 )
             case List("T_THROW", "expr", "T_SEMICOLON") =>
                 Throw(expr(child(n, 1)))
             case List("T_GOTO", "T_STRING", "T_SEMICOLON") =>
-                Goto(Label(identifier(child(n, 1))))
+                Goto(Label(identifier(child(n, 1))).setPos(child(n, 1)))
             case List("T_STRING", "T_COLON") =>
-                LabelDecl(Identifier(child(n,0).tokenContent))
-        }
+                LabelDecl(Identifier(child(n,0).tokenContent).setPos(child(n, 0)))
+        }).setPos(child(n));
     }
 
     def static_var_list(n: ParseNode): List[InitVariable] = {
         childrenNames(n) match {
             case List("static_var_list", "T_COMMA", "T_VARIABLE") =>
-                static_var_list(child(n, 0)) ::: List(InitVariable(t_variable(child(n, 2)), None))
+                static_var_list(child(n, 0)) ::: List(InitVariable(t_variable(child(n, 2)), None).setPos(child(n, 2)))
             case List("static_var_list", "T_COMMA", "T_VARIABLE", "T_ASSIGN", "static_expr") =>
-                static_var_list(child(n, 0)) ::: List(InitVariable(t_variable(child(n, 2)), Some(static_expr(child(n, 4)))))
+                static_var_list(child(n, 0)) ::: List(InitVariable(t_variable(child(n, 2)), Some(static_expr(child(n, 4)))).setPos(child(n, 2)))
             case List("T_VARIABLE") =>
-                List(InitVariable(t_variable(child(n, 0)), None))
+                List(InitVariable(t_variable(child(n, 0)), None).setPos(child(n, 0)))
             case List("T_VARIABLE", "T_ASSIGN", "static_expr") =>
-                List(InitVariable(t_variable(child(n, 0)), Some(static_expr(child(n, 2)))))
+                List(InitVariable(t_variable(child(n, 0)), Some(static_expr(child(n, 2)))).setPos(child(n, 2)))
         }
     }
 
@@ -346,15 +347,16 @@ case class STToAST(st: ParseNode) {
             case List("T_NS_SEPARATOR", "namespace_name") => root = NSGlobal; child(n, 1)
         }
         val parts = namespace_name(c);
+        root.setPos(child(n, 0))
 
         if (parts.length == 1) {
-            Constant(parts.head)
+            Constant(parts.head).setPos(parts.head)
         } else {
             unspecified(n)
         }
     }
     def static_expr(n: ParseNode): Expression = {
-        childrenNames(n) match {
+        (childrenNames(n) match {
             case List("common_scalar") =>
                 common_scalar(child(n))
             case List("namespace_name") =>
@@ -366,16 +368,16 @@ case class STToAST(st: ParseNode) {
             case List("T_PLUS", "static_expr") =>
                 static_expr(child(n, 1))
             case List("T_MINUS", "static_expr") =>
-                Minus(PHPInteger(0), static_expr(child(n, 1)))
+                Minus(PHPInteger(0).setPos(child(n, 0)), static_expr(child(n, 1)))
             case List("T_ARRAY", "T_OPEN_BRACES", "static_array_pair_list", "T_CLOSE_BRACES") =>
                 Array(static_array_pair_list(child(n, 2)))
             case List("static_class_constant") =>
                 static_class_constant(child(n))
-        }
+        }).setPos(child(n, 0))
     }
 
     def common_scalar(n: ParseNode): Expression = {
-        childrenNames(n) match {
+        (childrenNames(n) match {
             case List("T_LNUMBER") =>
                 PHPInteger(child(n).tokenContent.toInt)
             case List("T_DNUMBER") =>
@@ -400,23 +402,24 @@ case class STToAST(st: ParseNode) {
                 PHPString(string_literal(child(n, 1)))
             case List("T_START_HEREDOC", "T_END_HEREDOC") =>
                 PHPString("")
-        }
+        }).setPos(child(n, 2))
     }
 
     def static_class_constant(n: ParseNode): Expression = {
         childrenNames(n) match {
             case List("class_name", "T_PAAMAYIM_NEKUDOTAYIM", "T_STRING") =>
-                ClassConstant(class_name(child(n, 0)), identifier(child(n, 2)))
+                val cn = class_name(child(n, 0))
+                ClassConstant(cn, identifier(child(n, 2))).setPos(cn)
         }
     }
 
     def class_name(n: ParseNode): ClassRef = {
-        childrenNames(n) match {
+        (childrenNames(n) match {
             case List("T_STATIC") => CalledClass()
             case List("namespace_name") => fully_qualified_class_name(n)
             case List("T_NAMESPACE", "T_NS_SEPARATOR", "namespace_name") => fully_qualified_class_name(n)
             case List("T_NS_SEPARATOR", "namespace_name") => fully_qualified_class_name(n)
-        }
+        }).setPos(child(n))
     }
 
     def static_array_pair_list(n: ParseNode): List[(Option[Expression], Expression, Boolean)] = {
@@ -453,9 +456,9 @@ case class STToAST(st: ParseNode) {
             case List("T_VARIABLE") => 
                 t_variable(child(n))
             case List("T_DOLLAR", "variable") => 
-                VariableVariable(variable(child(n, 1)))
+                VariableVariable(variable(child(n, 1))).setPos(child(n, 0))
             case List("T_DOLLAR", "T_OPEN_CURLY_BRACES", "expr", "T_CLOSE_CURLY_BRACES") =>
-                VariableVariable(expr(child(n, 1)))
+                VariableVariable(expr(child(n, 1))).setPos(child(n, 0))
         }
     }
 
@@ -481,7 +484,7 @@ case class STToAST(st: ParseNode) {
                       "T_OPEN_CURLY_BRACES", "inner_statement_list", "T_CLOSE_CURLY_BRACES") =>
                 Catch(fully_qualified_class_name(child(n, 2)),
                       t_variable(child(n, 3)),
-                      inner_statement_list(child(n, 6)))
+                      inner_statement_list(child(n, 6))).setPos(child(n, 0))
         }
     }
 
@@ -543,8 +546,10 @@ case class STToAST(st: ParseNode) {
             case List("T_NAMESPACE", "T_NS_SEPARATOR", "namespace_name") => root = NSCurrent; child(n, 2)
             case List("T_NS_SEPARATOR", "namespace_name") => root = NSGlobal; child(n, 1)
         }
+
+        root.setPos(child(n, 0))
         val parts = namespace_name(c);
-        StaticClassRef(root, parts.init, parts.last)
+        StaticClassRef(root, parts.init, parts.last).setPos(root)
     }
 
     def variable_list(n: ParseNode): List[Variable] = {
@@ -623,7 +628,7 @@ case class STToAST(st: ParseNode) {
 
     def elseif_else(elseifs: List[(Expression, Statement)], elze: Option[Statement]): Option[Statement] = {
         elseifs match {
-            case (expr, stat) :: rest => Some(If(expr, stat, elseif_else(rest, elze)))
+            case (expr, stat) :: rest => Some(If(expr, stat, elseif_else(rest, elze)).setPos(expr))
             case Nil => elze
         }
     }
@@ -631,12 +636,12 @@ case class STToAST(st: ParseNode) {
     def function_declaration_statement(n: ParseNode): FunctionDecl = {
         childrenNames(n) match {
             case List("T_FUNCTION", "is_reference", "T_STRING", "T_OPEN_BRACES", "parameter_list", "T_CLOSE_BRACES", "T_OPEN_CURLY_BRACES", "inner_statement_list", "T_CLOSE_CURLY_BRACES") =>
-                FunctionDecl(identifier(child(n, 2)), parameter_list(child(n, 4)), is_reference(child(n, 1)), inner_statement_list(child(n, 7)))
+                FunctionDecl(identifier(child(n, 2)), parameter_list(child(n, 4)), is_reference(child(n, 1)), inner_statement_list(child(n, 7))).setPos(child(n, 2))
         }
     }
 
     def expr(n: ParseNode): Expression = {
-        childrenNames(n) match {
+        (childrenNames(n) match {
             case List("variable") =>
                 variable(child(n))
             case List("variable", "T_ASSIGN", "expr") =>
@@ -648,29 +653,29 @@ case class STToAST(st: ParseNode) {
             case List("T_CLONE", "expr") =>
                 Clone(expr(child(n, 1)))
             case List("variable", "T_ASSIGN", "T_BITWISE_AND", "T_NEW", "class_name_reference", "ctor_arguments") =>
-                Assign(variable_w(child(n, 0)), New(class_name_reference(child(n, 4)), ctor_arguments(child(n, 5))), true)
+                Assign(variable_w(child(n, 0)), New(class_name_reference(child(n, 4)), ctor_arguments(child(n, 5))).setPos(child(n, 3)), true)
             case List("variable", "T_PLUS_EQUAL", "expr") =>
-                Assign(variable_w(child(n, 0)), Plus(variable(child(n, 0)), expr(child(n, 2))), false)
+                Assign(variable_w(child(n, 0)), Plus(variable(child(n, 0)), expr(child(n, 2))).setPos(child(n, 1)), false)
             case List("variable", "T_MINUS_EQUAL", "expr") =>
-                Assign(variable_w(child(n, 0)), Minus(variable(child(n, 0)), expr(child(n, 2))), false)
+                Assign(variable_w(child(n, 0)), Minus(variable(child(n, 0)), expr(child(n, 2))).setPos(child(n, 1)), false)
             case List("variable", "T_MUL_EQUAL", "expr") =>
-                Assign(variable_w(child(n, 0)), Mult(variable(child(n, 0)), expr(child(n, 2))), false)
+                Assign(variable_w(child(n, 0)), Mult(variable(child(n, 0)), expr(child(n, 2))).setPos(child(n, 1)), false)
             case List("variable", "T_DIV_EQUAL", "expr") =>
-                Assign(variable_w(child(n, 0)), Div(variable(child(n, 0)), expr(child(n, 2))), false)
+                Assign(variable_w(child(n, 0)), Div(variable(child(n, 0)), expr(child(n, 2))).setPos(child(n, 1)), false)
             case List("variable", "T_CONCAT_EQUAL", "expr") =>
-                Assign(variable_w(child(n, 0)), Concat(variable(child(n, 0)), expr(child(n, 2))), false)
+                Assign(variable_w(child(n, 0)), Concat(variable(child(n, 0)), expr(child(n, 2))).setPos(child(n, 1)), false)
             case List("variable", "T_MOD_EQUAL", "expr") =>
-                Assign(variable_w(child(n, 0)), Mod(variable(child(n, 0)), expr(child(n, 2))), false)
+                Assign(variable_w(child(n, 0)), Mod(variable(child(n, 0)), expr(child(n, 2))).setPos(child(n, 1)), false)
             case List("variable", "T_AND_EQUAL", "expr") =>
-                Assign(variable_w(child(n, 0)), BitwiseAnd(variable(child(n, 0)), expr(child(n, 2))), false)
+                Assign(variable_w(child(n, 0)), BitwiseAnd(variable(child(n, 0)), expr(child(n, 2))).setPos(child(n, 1)), false)
             case List("variable", "T_OR_EQUAL", "expr") =>
-                Assign(variable_w(child(n, 0)), BitwiseOr(variable(child(n, 0)), expr(child(n, 2))), false)
+                Assign(variable_w(child(n, 0)), BitwiseOr(variable(child(n, 0)), expr(child(n, 2))).setPos(child(n, 1)), false)
             case List("variable", "T_XOR_EQUAL", "expr") =>
-                Assign(variable_w(child(n, 0)), BitwiseXor(variable(child(n, 0)), expr(child(n, 2))), false)
+                Assign(variable_w(child(n, 0)), BitwiseXor(variable(child(n, 0)), expr(child(n, 2))).setPos(child(n, 1)), false)
             case List("variable", "T_SL_EQUAL", "expr") =>
-                Assign(variable_w(child(n, 0)), ShiftLeft(variable(child(n, 0)), expr(child(n, 2))), false)
+                Assign(variable_w(child(n, 0)), ShiftLeft(variable(child(n, 0)), expr(child(n, 2))).setPos(child(n, 1)), false)
             case List("variable", "T_SR_EQUAL", "expr") =>
-                Assign(variable_w(child(n, 0)), ShiftRight(variable(child(n, 0)), expr(child(n, 2))), false)
+                Assign(variable_w(child(n, 0)), ShiftRight(variable(child(n, 0)), expr(child(n, 2))).setPos(child(n, 1)), false)
             case List("variable", "T_INC") => PostInc(expr(child(n, 0)))
             case List("T_INC", "variable") => PreInc(expr(child(n, 1)))
             case List("variable", "T_DEC") => PostDec(expr(child(n, 0)))
@@ -714,19 +719,19 @@ case class STToAST(st: ParseNode) {
             case List("expr", "T_IS_IDENTICAL", "expr") =>
                 Identical(expr(child(n, 0)), expr(child(n, 2)))
             case List("expr", "T_IS_NOT_IDENTICAL", "expr") =>
-                BooleanNot(Identical(expr(child(n, 0)), expr(child(n, 2))))
+                BooleanNot(Identical(expr(child(n, 0)), expr(child(n, 2))).setPos(child(n, 1)))
             case List("expr", "T_IS_EQUAL", "expr") =>
                 Equal(expr(child(n, 0)), expr(child(n, 2)))
             case List("expr", "T_IS_NOT_EQUAL", " expr") =>
-                BooleanNot(Equal(expr(child(n, 0)), expr(child(n, 2))))
+                BooleanNot(Equal(expr(child(n, 0)), expr(child(n, 2))).setPos(child(n, 1)))
             case List("expr", "T_IS_SMALLER", "expr") =>
                 Smaller(expr(child(n, 0)), expr(child(n, 2)))
             case List("expr", "T_IS_SMALLER_OR_EQUAL", "expr") =>
                 SmallerEqual(expr(child(n, 0)), expr(child(n, 2)))
             case List("expr", "T_IS_GREATER", "expr") =>
-                BooleanNot(SmallerEqual(expr(child(n, 0)), expr(child(n, 2))))
+                BooleanNot(SmallerEqual(expr(child(n, 0)), expr(child(n, 2))).setPos(child(n, 1)))
             case List("expr", "T_IS_GREATER_OR_EQUAL", "expr") =>
-                BooleanNot(Smaller(expr(child(n, 0)), expr(child(n, 2))))
+                BooleanNot(Smaller(expr(child(n, 0)), expr(child(n, 2))).setPos(child(n, 1)))
             case List("expr", "T_INSTANCEOF", "class_name_reference") =>
                 InstanceOf(expr(child(n, 0)), class_name_reference(child(n, 2)))
             case List("T_OPEN_BRACES", "expr", "T_CLOSE_BRACES") =>
@@ -738,19 +743,19 @@ case class STToAST(st: ParseNode) {
             case List("internal_functions_in_yacc") =>
                 internal_functions_in_yacc(child(n, 0))
             case List("T_INT_CAST", "expr") =>
-                Cast(CastInt, expr(child(n, 1)))
+                Cast(CastInt.setPos(child(n, 0)), expr(child(n, 1)))
             case List("T_DOUBLE_CAST", "expr") =>
-                Cast(CastDouble, expr(child(n, 1)))
+                Cast(CastDouble.setPos(child(n, 0)), expr(child(n, 1)))
             case List("T_STRING_CAST", "expr") =>
-                Cast(CastString, expr(child(n, 1)))
+                Cast(CastString.setPos(child(n, 0)), expr(child(n, 1)))
             case List("T_ARRAY_CAST", "expr") =>
-                Cast(CastArray, expr(child(n, 1)))
+                Cast(CastArray.setPos(child(n, 0)), expr(child(n, 1)))
             case List("T_OBJECT_CAST", "expr") =>
-                Cast(CastObject, expr(child(n, 1)))
+                Cast(CastObject.setPos(child(n, 0)), expr(child(n, 1)))
             case List("T_BOOL_CAST", "expr") =>
-                Cast(CastBool, expr(child(n, 1)))
+                Cast(CastBool.setPos(child(n, 0)), expr(child(n, 1)))
             case List("T_UNSET_CAST", "expr") =>
-                Cast(CastUnset, expr(child(n, 1)))
+                Cast(CastUnset.setPos(child(n, 0)), expr(child(n, 1)))
             case List("T_EXIT", "exit_expr") =>
                 Exit(exit_expr(child(n, 1)))
             case List("T_AT", " expr") =>
@@ -766,7 +771,7 @@ case class STToAST(st: ParseNode) {
             case List("T_FUNCTION", "is_reference", "T_OPEN_BRACES", "parameter_list", "T_CLOSE_BRACES", "lexical_vars", "T_OPEN_CURLY_BRACES", "inner_statement_list", "T_CLOSE_CURLY_BRACES") =>
                 notyet(n)
             case _ => unspecified(n)
-        }
+        }).setPos(child(n, 0))
     }
 
     def ctor_arguments(n: ParseNode): List[CallArg] = {
@@ -792,7 +797,8 @@ case class STToAST(st: ParseNode) {
             case List("base_variable", "T_OBJECT_OPERATOR", "object_property", "dynamic_class_name_variable_properties") =>
                 notyet(n);
             case List("base_variable") =>
-                VarClassRef(base_variable(child(n)))
+                val bv = base_variable(child(n))
+                VarClassRef(bv).setPos(bv)
         }
     }
 
@@ -813,21 +819,17 @@ case class STToAST(st: ParseNode) {
     def non_empty_function_call_parameter_list(n: ParseNode): List[CallArg] = {
         childrenNames(n) match {
             case List("expr") => 
-                val ca = CallArg(expr(child(n)), false);
-                ca.setPos(child(n))
-                List(ca)
+                val ex = expr(child(n))
+                List(CallArg(ex, false).setPos(ex))
             case List("T_BITWISE_AND", "variable") =>
-                val ca = CallArg(variable(child(n, 1)), true);
-                ca.setPos(child(n, 0))
-                List(ca)
+                val v = variable(child(n, 1))
+                List(CallArg(v, true).setPos(child(n, 0)))
             case List("non_empty_function_call_parameter_list", "T_COMMA", "expr") =>
-                val ca = CallArg(expr(child(n, 2)), false);
-                ca.setPos(child(n, 2))
-                non_empty_function_call_parameter_list(child(n, 0)) ::: List(ca)
+                val ex = expr(child(n, 2))
+                non_empty_function_call_parameter_list(child(n, 0)) ::: List(CallArg(ex, false).setPos(ex))
             case List("non_empty_function_call_parameter_list", "T_COMMA", "T_BITWISE_AND", "variable") =>
-                val ca = CallArg(variable(child(n, 3)), true);
-                ca.setPos(child(n, 2))
-                non_empty_function_call_parameter_list(child(n, 0)) ::: List(ca)
+                val v = variable(child(n, 3))
+                non_empty_function_call_parameter_list(child(n, 0)) ::: List(CallArg(v, true).setPos(child(n, 2)))
         }
     }
 
@@ -852,22 +854,22 @@ case class STToAST(st: ParseNode) {
                 var ex: Expression = base_variable_with_function_calls(child(n, 0))
                 for(val oa <- oaList) {
                     oa match {
-                        case OAIdentifier(id) => ex = ObjectProperty(ex, id)
+                        case OAIdentifier(id) => ex = ObjectProperty(ex, id).setPos(ex)
                         case OAArray(array, indexes) => for (val id <- indexes) id match {
-                                case Some(i) => ex = ArrayEntry(ex, i)
-                                case None => ex = NextArrayEntry(ex)
+                                case Some(i) => ex = ArrayEntry(ex, i).setPos(ex)
+                                case None => ex = NextArrayEntry(ex).setPos(ex)
                             }
-                        case OAExpression(exp) => ex = DynamicObjectProperty(ex, exp)
+                        case OAExpression(exp) => ex = DynamicObjectProperty(ex, exp).setPos(ex)
                         case OAMethod(name, args) => name match {
-                            case OAIdentifier(id) => ex = MethodCall(ex, StaticMethodRef(id), args)
-                            case OAExpression(e)  => ex = MethodCall(ex, DynamicMethodRef(e), args)
+                            case OAIdentifier(id) => ex = MethodCall(ex, StaticMethodRef(id).setPos(id), args).setPos(ex)
+                            case OAExpression(e)  => ex = MethodCall(ex, DynamicMethodRef(e).setPos(e), args).setPos(ex)
                             case OAArray(array, indexes) =>  {
                                 for (val id <- indexes) id match {
-                                    case Some(i) => ex = ArrayEntry(ex, i)
-                                    case None => ex = NextArrayEntry(ex)
+                                    case Some(i) => ex = ArrayEntry(ex, i).setPos(ex)
+                                    case None => ex = NextArrayEntry(ex).setPos(ex)
                                 }
 
-                                ex = FunctionCall(DynamicFunctionRef(ex), args)
+                                ex = FunctionCall(DynamicFunctionRef(ex).setPos(ex), args).setPos(ex)
                             }
                         }
                     }
@@ -880,7 +882,7 @@ case class STToAST(st: ParseNode) {
 
     def object_property_method(op: ParseNode, mon: ParseNode): ObjectAccess = {
         method_or_not(mon) match {
-            case Some(args) => OAMethod(object_property(op), args);
+            case Some(args) => OAMethod(object_property(op), args).setPos(op);
             case None => object_property(op)
         }
     }
@@ -909,27 +911,27 @@ case class STToAST(st: ParseNode) {
     }
 
     def function_call(n: ParseNode): Expression = {
-        childrenNames(n) match {
+        (childrenNames(n) match {
             case List("namespace_name", "T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") =>
                 val parts = namespace_name(child(n, 0))
-                FunctionCall(StaticFunctionRef(NSNone, parts.init, parts.last), function_call_parameter_list(child(n, 2)))
+                FunctionCall(StaticFunctionRef(NSNone.setPos(child(n, 0)).setPos(child(n, 0)), parts.init, parts.last), function_call_parameter_list(child(n, 2)))
             case List("T_NAMESPACE", "T_NS_SEPARATOR", "namespace_name", "T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") =>
                 val parts = namespace_name(child(n, 2))
-                FunctionCall(StaticFunctionRef(NSCurrent, parts.init, parts.last), function_call_parameter_list(child(n, 4)))
+                FunctionCall(StaticFunctionRef(NSCurrent.setPos(child(n, 0)).setPos(child(n, 0)), parts.init, parts.last), function_call_parameter_list(child(n, 4)))
             case List("T_NS_SEPARATOR", "namespace_name", "T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") =>
                 val parts = namespace_name(child(n, 1))
-                FunctionCall(StaticFunctionRef(NSGlobal, parts.init, parts.last), function_call_parameter_list(child(n, 4)))
+                FunctionCall(StaticFunctionRef(NSGlobal.setPos(child(n, 0)).setPos(child(n, 0)), parts.init, parts.last), function_call_parameter_list(child(n, 4)))
             case List("class_name", "T_PAAMAYIM_NEKUDOTAYIM", "T_STRING", "T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") =>
-                StaticMethodCall(class_name(child(n, 0)), StaticMethodRef(identifier(child(n, 2))), function_call_parameter_list(child(n, 4)))
+                StaticMethodCall(class_name(child(n, 0)), StaticMethodRef(identifier(child(n, 2))).setPos(child(n, 2)), function_call_parameter_list(child(n, 4)))
             case List("class_name", "T_PAAMAYIM_NEKUDOTAYIM", "variable_without_objects", "T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") =>
-                StaticMethodCall(class_name(child(n, 0)), DynamicMethodRef(variable_without_objects(child(n, 2))), function_call_parameter_list(child(n, 4)))
+                StaticMethodCall(class_name(child(n, 0)), DynamicMethodRef(variable_without_objects(child(n, 2))).setPos(child(n, 2)), function_call_parameter_list(child(n, 4)))
             case List("reference_variable", "T_PAAMAYIM_NEKUDOTAYIM", "T_STRING", "T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") =>
-                StaticMethodCall(DynamicClassRef(reference_variable(child(n, 0))), StaticMethodRef(identifier(child(n, 2))), function_call_parameter_list(child(n, 4)))
+                StaticMethodCall(DynamicClassRef(reference_variable(child(n, 0))).setPos(child(n, 0)), StaticMethodRef(identifier(child(n, 2))).setPos(child(n, 2)), function_call_parameter_list(child(n, 4)))
             case List("reference_variable", "T_PAAMAYIM_NEKUDOTAYIM", "variable_without_objects", "T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") =>
-                StaticMethodCall(DynamicClassRef(reference_variable(child(n, 0))), DynamicMethodRef(variable_without_objects(child(n, 2))), function_call_parameter_list(child(n, 4)))
+                StaticMethodCall(DynamicClassRef(reference_variable(child(n, 0))).setPos(child(n, 0)), DynamicMethodRef(variable_without_objects(child(n, 2))).setPos(child(n, 2)), function_call_parameter_list(child(n, 4)))
             case List("variable_without_objects", "T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") =>
-                FunctionCall(VarFunctionRef(variable_without_objects(child(n, 0))), function_call_parameter_list(child(n, 2)))
-        }
+                FunctionCall(VarFunctionRef(variable_without_objects(child(n, 0))).setPos(child(n, 0)), function_call_parameter_list(child(n, 2)))
+        }).setPos(child(n, 0))
     }
 
     def base_variable(n: ParseNode): Variable = {
@@ -939,7 +941,7 @@ case class STToAST(st: ParseNode) {
             case List("simple_indirect_reference", "reference_variable") =>
                 var r = reference_variable(child(n, 1))
                 val i = simple_indirect_reference(child(n, 0))
-                for (n <- 0 until i) r = VariableVariable(r)
+                for (n <- 0 until i) r = VariableVariable(r).setPos(r)
                 r
             case List("static_member") =>
                 static_member(child(n))
@@ -947,18 +949,18 @@ case class STToAST(st: ParseNode) {
     }
 
     def static_member(n: ParseNode) = {
-        childrenNames(n) match {
+        (childrenNames(n) match {
             case List("class_name", "T_PAAMAYIM_NEKUDOTAYIM", "variable_without_objects") =>
-                ClassProperty(class_name(child(n, 0)), variable_without_objects(child(n, 2)))
+                ClassProperty(class_name(child(n, 0)), variable_without_objects(child(n, 2))).setPos(child(n, 0))
             case List("reference_variable", "T_PAAMAYIM_NEKUDOTAYIM", "variable_without_objects") =>
-                ClassProperty(VarClassRef(reference_variable(child(n, 0))), variable_without_objects(child(n, 2)))
-        }
+                ClassProperty(VarClassRef(reference_variable(child(n, 0))).setPos(child(n, 0)), variable_without_objects(child(n, 2)))
+        }).setPos(child(n, 0))
     }
 
     def object_property(n: ParseNode): ObjectAccess = {
         childrenNames(n) match {
             case List("object_dim_list") => object_dim_list(child(n))
-            case List("variable_without_objects") => OAExpression(variable_without_objects(child(n)))
+            case List("variable_without_objects") => val vwo = variable_without_objects(child(n)); OAExpression(vwo).setPos(vwo)
         }
     }
 
@@ -974,7 +976,7 @@ case class STToAST(st: ParseNode) {
 
         accumulate(n, Nil) match {
             case (x, Nil) => x
-            case (x, xs) => OAArray(x, xs)
+            case (x, xs) => OAArray(x, xs).setPos(x)
         }
 
     }
@@ -982,9 +984,11 @@ case class STToAST(st: ParseNode) {
     def variable_name(n: ParseNode): OAScalar = {
         childrenNames(n) match {
             case List("T_STRING") =>
-                OAIdentifier(identifier(child(n)))
+                val i = identifier(child(n))
+                OAIdentifier(i).setPos(i)
             case List("T_OPEN_CURLY_BRACES", "expr", "T_CLOSE_CURLY_BRACES") =>
-                OAExpression(expr(child(n, 1)))
+                val ex = expr(child(n, 1))
+                OAExpression(ex).setPos(ex)
         }
     }
 
@@ -997,12 +1001,13 @@ case class STToAST(st: ParseNode) {
 
     def reference_variable(n: ParseNode): Variable = {
         childrenNames(n) match {
-            case List("reference_variable", "T_OPEN_RECT_BRACES", "dim_offset", "T_CLOSE_RECT_BRACES") => dim_offset(child(n, 2)) match {
-                case Some(ex) => ArrayEntry(reference_variable(child(n, 0)), ex)
-                case None => NextArrayEntry(reference_variable(child(n, 0)))
+            case List("reference_variable", "T_OPEN_RECT_BRACES", "dim_offset", "T_CLOSE_RECT_BRACES") => val rv = reference_variable(child(n, 0)); dim_offset(child(n, 2)) match {
+                case Some(ex) => ArrayEntry(rv, ex).setPos(rv)
+                case None => NextArrayEntry(rv).setPos(rv)
             }
             case List("reference_variable", "T_OPEN_CURLY_BRACES", "expr", "T_CLOSE_CURLY_BRACES") =>
-                    ArrayEntry(reference_variable(child(n, 0)), expr(child(n, 2)))
+                    val rv = reference_variable(child(n, 0));
+                    ArrayEntry(rv, expr(child(n, 2))).setPos(rv)
             case List("compound_variable") =>
                 compound_variable(child(n))
         }
@@ -1013,7 +1018,8 @@ case class STToAST(st: ParseNode) {
             case List("T_VARIABLE") =>
                 t_variable(child(n))
             case List("T_DOLLAR", "T_OPEN_CURLY_BRACES", "expr", "T_CLOSE_CURLY_BRACES") =>
-                VariableVariable(expr(child(n, 2)))
+                val e = expr(child(n, 2));
+                VariableVariable(e).setPos(e)
         }
     }
 
@@ -1023,7 +1029,7 @@ case class STToAST(st: ParseNode) {
             case List("simple_indirect_reference", "reference_variable") =>
                 var r = reference_variable(child(n, 1))
                 val i = simple_indirect_reference(child(n, 0))
-                for (n <- 0 until i) r = VariableVariable(r)
+                for (n <- 0 until i) r = VariableVariable(r).setPos(r)
                 r
         }
     }
@@ -1040,7 +1046,7 @@ case class STToAST(st: ParseNode) {
     def scalar(n: ParseNode): Expression = {
         childrenNames(n) match {
             case List("T_STRING_VARNAME") =>
-                PHPString(child(n).tokenContent)
+                PHPString(child(n).tokenContent).setPos(child(n))
             case List("class_constant") =>
                 class_constant(child(n))
             case List("namespace_name") =>
@@ -1061,9 +1067,11 @@ case class STToAST(st: ParseNode) {
     def class_constant(n: ParseNode): Expression = {
         childrenNames(n) match {
             case List("class_name", "T_PAAMAYIM_NEKUDOTAYIM", "T_STRING") =>
-                ClassConstant(class_name(child(n, 0)), identifier(child(n, 2)))
+                val cn = class_name(child(n, 0));
+                ClassConstant(cn, identifier(child(n, 2))).setPos(cn)
             case List("reference_variable", "T_PAAMAYIM_NEKUDOTAYIM", "T_STRING") =>
-                ClassConstant(VarClassRef(reference_variable(child(n, 0))), identifier(child(n, 2)))
+                val rv = reference_variable(child(n, 0));
+                ClassConstant(VarClassRef(rv).setPos(rv), identifier(child(n, 2))).setPos(rv)
         }
     }
 
@@ -1083,80 +1091,73 @@ case class STToAST(st: ParseNode) {
     def encaps_list(n: ParseNode): Expression = {
         childrenNames(n) match {
             case List("encaps_list", "encaps_var") =>
-                Concat(encaps_list(child(n, 0)), encaps_var(child(n, 1)))
+                val el = encaps_list(child(n, 0))
+                Concat(el, encaps_var(child(n, 1))).setPos(el)
             case List("encaps_list", "T_ENCAPSED_AND_WHITESPACE") =>
-                Concat(encaps_list(child(n, 0)), PHPString(child(n, 1).tokenContent))
+                val el = encaps_list(child(n, 0))
+                Concat(el, PHPString(child(n, 1).tokenContent).setPos(child(n, 1))).setPos(el)
             case List("encaps_list", "T_STRING") =>
-                Concat(encaps_list(child(n, 0)), PHPString(child(n, 1).tokenContent))
+                val el = encaps_list(child(n, 0))
+                Concat(el, PHPString(child(n, 1).tokenContent).setPos(child(n, 1))).setPos(el)
             case List("encaps_var") =>
                 encaps_var(child(n, 1))
             case List("string_literal", "encaps_var") =>
-                Concat(PHPString(string_literal(child(n, 0))), encaps_var(child(n, 1)))
+                val l = child(n, 0)
+                val sl = string_literal(l)
+                Concat(PHPString(sl).setPos(l), encaps_var(child(n, 1))).setPos(l)
         }
     }
 
     def encaps_var(n: ParseNode): Expression = {
-        childrenNames(n) match {
+        (childrenNames(n) match {
             case List("T_VARIABLE") =>
                 t_variable(child(n))
             case List("T_VARIABLE", "T_OPEN_RECT_BRACES", "encaps_var_offset", "T_CLOSE_RECT_BRACES") =>
-                ArrayEntry(t_variable(child(n, 0)), encaps_var_offset(child(n, 2)))
+                ArrayEntry(t_variable(child(n, 0)), encaps_var_offset(child(n, 2))).setPos(child(n, 0))
             case List("T_VARIABLE", "T_OBJECT_OPERATOR", "T_STRING") =>
-                ObjectProperty(t_variable(child(n, 0)), identifier(child(n, 2)))
+                ObjectProperty(t_variable(child(n, 0)), identifier(child(n, 2))).setPos(child(n, 0))
             case List("T_DOLLAR_OPEN_CURLY_BRACES", "expr", "T_CLOSE_CURLY_BRACES") =>
-                VariableVariable(expr(child(n, 1)))
+                VariableVariable(expr(child(n, 1))).setPos(child(n, 1))
             case List("T_DOLLAR_OPEN_CURLY_BRACES", "T_STRING_VARNAME", "T_OPEN_RECT_BRACES", "expr", "T_CLOSE_RECT_BRACES", "T_CLOSE_CURLY_BRACES") =>
-                ArrayEntry(SimpleVariable(identifier(child(n, 1))), expr(child(n, 3)))
+                ArrayEntry(SimpleVariable(identifier(child(n, 1))).setPos(child(n, 1)), expr(child(n, 3)))
             case List("T_CURLY_OPEN", "variable", "T_CLOSE_CURLY_BRACES") =>
                 variable(child(n, 1))
-        }
+        }).setPos(child(n, 0))
     }
 
     def identifier(n: ParseNode): Identifier = {
-        val id = Identifier(n.tokenContent)
-        id.setPos(n.line, n.column, n.file)
-        id
+        Identifier(n.tokenContent).setPos(n.line, n.column, n.file)
     }
 
     def t_variable(n: ParseNode): SimpleVariable = {
-        val id = Identifier(n.tokenContent.substring(1))
-        id.setPos(n.line, n.column, n.file)
-        SimpleVariable(id)
+        SimpleVariable(Identifier(n.tokenContent.substring(1)).setPos(n.line, n.column, n.file))
     }
 
     def encaps_var_offset(n: ParseNode): Expression = {
         childrenNames(n) match {
-            case List("T_STRING") => PHPString(child(n).tokenContent)
-            case List("T_NUM_STRING") => PHPString(child(n).tokenContent)
+            case List("T_STRING") => PHPString(child(n).tokenContent).setPos(child(n, 0))
+            case List("T_NUM_STRING") => PHPString(child(n).tokenContent).setPos(child(n, 0))
             case List("T_VARIABLE") => t_variable(child(n))
         }
     }
 
     def internal_functions_in_yacc(n: ParseNode): Expression = {
-        childrenNames(n) match {
+        (childrenNames(n) match {
             case List("T_ISSET", "T_OPEN_BRACES", "isset_variables", "T_CLOSE_BRACES") =>
                 Isset(isset_variables(child(n, 2)))
             case List("T_EMPTY", "T_OPEN_BRACES", "variable_r", "T_CLOSE_BRACES") =>
                 Empty(variable_u(child(n, 2)))
             case List("T_INCLUDE", "expr") =>
-                val i = Include(expr(child(n, 1)), false)
-                i.setPos(child(n, 0))
-                i
+                Include(expr(child(n, 1)), false)
             case List("T_INCLUDE_ONCE", "expr") =>
-                val i = Include(expr(child(n, 1)), true)
-                i.setPos(child(n, 0))
-                i
+                Include(expr(child(n, 1)), true)
             case List("T_EVAL", "T_OPEN_BRACES", "expr", "T_CLOSE_BRACES") =>
                 Eval(expr(child(n, 2)))
             case List("T_REQUIRE", "expr") =>
-                val r = Require(expr(child(n, 1)), false)
-                r.setPos(child(n, 0))
-                r
+                Require(expr(child(n, 1)), false)
             case List("T_REQUIRE_ONCE", "expr") =>
-                val r = Require(expr(child(n, 1)), true)
-                r.setPos(child(n, 0))
-                r
-        }
+                Require(expr(child(n, 1)), true)
+        }).setPos(child(n, 0))
     }
 
     def isset_variables(n: ParseNode): List[Variable] = {

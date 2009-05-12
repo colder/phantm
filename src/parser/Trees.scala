@@ -4,7 +4,7 @@ import phpanalysis.Positional;
 
 // todo, namespaces
 object Trees {
-    abstract case class Tree();
+    abstract case class Tree() extends Positional;
 
     case class Program(stmts: List[Statement]) extends Tree;
     case class ArgumentDecl(v: Identifier, hint: Option[TypeHint], default: Option[Expression], byref: Boolean) extends Tree;
@@ -65,9 +65,9 @@ object Trees {
     case class InitVariable(v: Variable, init: Option[Expression]) extends Tree
 
     case class Label(name: Identifier) extends Tree
-    case class Identifier(value: String) extends Tree with Positional
+    case class Identifier(value: String) extends Tree
 
-    case class CallArg(value: Expression, forceref: Boolean) extends Tree with Positional
+    case class CallArg(value: Expression, forceref: Boolean) extends Tree
 
     abstract class ObjectAccess extends Tree
     abstract class OAScalar extends ObjectAccess
@@ -168,8 +168,8 @@ object Trees {
     case class Closure(args: List[ArgumentDecl], retref: Boolean, body: Statement) extends Expression
     case class Isset(vs: List[Variable]) extends Expression
     case class Empty(v: Variable) extends Expression
-    case class Include(path: Expression, once: Boolean) extends Expression with Positional
-    case class Require(path: Expression, once: Boolean) extends Expression with Positional
+    case class Include(path: Expression, once: Boolean) extends Expression
+    case class Require(path: Expression, once: Boolean) extends Expression
     case class Constant(name: Identifier) extends Expression
     case class ClassConstant(cl: ClassRef, const: Identifier) extends Expression
     case class New(cl: ClassRef, args: List[CallArg]) extends Expression
