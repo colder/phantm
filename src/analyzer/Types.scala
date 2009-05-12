@@ -24,4 +24,13 @@ object Types {
         override def allowTypeCastTo(tpe: Type): Boolean = true
     }
 
+    trait Typed {
+        self =>
+
+        private var _tpe: Type = TMixed
+
+        def setType(tpe: Type): self.type = { _tpe = tpe; this }
+        def getType: Type = _tpe
+    }
+
 }

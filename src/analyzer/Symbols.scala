@@ -22,11 +22,22 @@ object Symbols extends Reporter {
   }
 
 
-  class GlobalScope {
+  class Scope {
+    var variables: HashMap[String,VariableSymbol] = new HashMap[String,VariableSymbol]
+
+    def lookupVariable(n: String): Option[VariableSymbol] = variables.get(n)
+
+    def registerVariable(cs: VariableSymbol) : Unit = variables.get(cs.name) match {
+      case None => variables += ((cs.name, cs))
+      case Some(x) => /* no error */
+    }
+  }
+
+  class Global {
     var classes: HashMap[String,ClassSymbol] = new HashMap[String,ClassSymbol]
     var functions: HashMap[String,FunctionSymbol] = new HashMap[String,FunctionSymbol]
     var constants: HashMap[String,ConstantSymbol] = new HashMap[String,ConstantSymbol]
-    var variables: HashMap[String,VariableSymbol] = new HashMap[String,VariableSymbol]
+    val scope = new Scope
 
     def lookupClass(n: String): Option[ClassSymbol] = classes.get(n)
 
@@ -50,20 +61,19 @@ object Symbols extends Reporter {
     }
   }
 
-  class FunctionSymbol(val name: String) extends Symbol {
-    var variables: HashMap[String,VariableSymbol] = new HashMap[String,VariableSymbol]
-
-    def lookupVariable(n: String): Option[VariableSymbol] = variables.get(n)
-
-    def registerVariable(cs: VariableSymbol) : Unit = variables.get(cs.name) match {
-      case None => variables += ((cs.name, cs))
-      case Some(x) => /* no error */
-    }
+  class FunctionSymbol(val name: String) extends Symbol with Typed {
+    val scope = new Scope
   }
 
-  class ClassSymbol(val name: String) extends Symbol
-  class ConstantSymbol(val name: String) extends Symbol
-  class VariableSymbol(val name: String) extends Symbol
+  class MethodSymbol(val name: String) extends Symbol with Typed {
+    val scope = new Scope
+  }
+
+  class InterfaceSymbol(val name: String, extend: List[String]) extends Symbol with Typed {
+  }
+  class ClassSymbol(val name: String, parent: Option[String], ifaces: List[String]) extends Symbol with Typed
+  class ConstantSymbol(val name: String) extends Symbol with Typed
+  class VariableSymbol(val name: String) extends Symbol with Typed
 
 
 }

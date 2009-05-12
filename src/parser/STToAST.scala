@@ -402,7 +402,7 @@ case class STToAST(st: ParseNode) {
                 PHPString(string_literal(child(n, 1)))
             case List("T_START_HEREDOC", "T_END_HEREDOC") =>
                 PHPString("")
-        }).setPos(child(n, 2))
+        }).setPos(child(n, 0))
     }
 
     def static_class_constant(n: ParseNode): Expression = {
@@ -1130,7 +1130,7 @@ case class STToAST(st: ParseNode) {
     }
 
     def t_variable(n: ParseNode): SimpleVariable = {
-        SimpleVariable(Identifier(n.tokenContent.substring(1)).setPos(n.line, n.column, n.file))
+        SimpleVariable(Identifier(n.tokenContent.substring(1)).setPos(n.line, n.column, n.file)).setPos(n.line, n.column, n.file)
     }
 
     def encaps_var_offset(n: ParseNode): Expression = {

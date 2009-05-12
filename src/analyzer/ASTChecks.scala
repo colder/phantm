@@ -66,6 +66,15 @@ case class ASTChecks(node: Tree) extends ASTTraversal[CheckContext](node, CheckC
                 }
             }
 
+            // Check for variable variables
+            case v @ VariableVariable(ex) => {
+                notice("Variable variables should be avoided, use arrays instead", v)
+            }
+
+            case d @ DynamicObjectProperty(o, ex) => {
+                notice("Dynamic object properties should be avoided", ex)
+            }
+
             case _ =>
         }
 
