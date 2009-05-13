@@ -105,25 +105,25 @@ case class STToAST(st: ParseNode) {
     def non_empty_parameter_list(n: ParseNode): List[ArgumentDecl] = {
         childrenNames(n) match {
             case List("optional_class_type", "T_VARIABLE") =>
-                List(ArgumentDecl(identifier(child(n, 1)), optional_class_type(child(n, 0)), None, false).setPos(child(n, 1)))
+                List(ArgumentDecl(t_variable(child(n, 1)), optional_class_type(child(n, 0)), None, false).setPos(child(n, 1)))
             case List("optional_class_type", "T_BITWISE_AND", "T_VARIABLE") =>
-                List(ArgumentDecl(identifier(child(n, 2)), optional_class_type(child(n, 0)), None, true).setPos(child(n, 2)))
+                List(ArgumentDecl(t_variable(child(n, 2)), optional_class_type(child(n, 0)), None, true).setPos(child(n, 2)))
             case List("optional_class_type", "T_VARIABLE", "T_ASSIGN", "static_expr") =>
-                List(ArgumentDecl(identifier(child(n, 1)), optional_class_type(child(n, 0)), Some(static_expr(child(n, 3))), false).setPos(child(n, 1)))
+                List(ArgumentDecl(t_variable(child(n, 1)), optional_class_type(child(n, 0)), Some(static_expr(child(n, 3))), false).setPos(child(n, 1)))
             case List("optional_class_type", "T_BITWISE_AND", "T_VARIABLE", "T_ASSIGN", "static_expr") =>
-                List(ArgumentDecl(identifier(child(n, 2)), optional_class_type(child(n, 0)), Some(static_expr(child(n, 4))), true).setPos(child(n, 2)))
+                List(ArgumentDecl(t_variable(child(n, 2)), optional_class_type(child(n, 0)), Some(static_expr(child(n, 4))), true).setPos(child(n, 2)))
             case List("non_empty_parameter_list", "T_COMMA", "optional_class_type", "T_VARIABLE") =>
                 non_empty_parameter_list(child(n, 0)) :::
-                List(ArgumentDecl(identifier(child(n, 3)), optional_class_type(child(n, 2)), None, false).setPos(child(n, 3)))
+                List(ArgumentDecl(t_variable(child(n, 3)), optional_class_type(child(n, 2)), None, false).setPos(child(n, 3)))
             case List("non_empty_parameter_list", "T_COMMA", "optional_class_type", "T_BITWISE_AND", "T_VARIABLE") =>
                 non_empty_parameter_list(child(n, 0)) :::
-                List(ArgumentDecl(identifier(child(n, 4)), optional_class_type(child(n, 2)), None, true).setPos(child(n, 4)))
+                List(ArgumentDecl(t_variable(child(n, 4)), optional_class_type(child(n, 2)), None, true).setPos(child(n, 4)))
             case List("non_empty_parameter_list", "T_COMMA", "optional_class_type", "T_VARIABLE", "T_ASSIGN", "static_expr") =>
                 non_empty_parameter_list(child(n, 0)) :::
-                List(ArgumentDecl(identifier(child(n, 3)), optional_class_type(child(n, 2)), Some(static_expr(child(n, 5))), false).setPos(child(n, 3)))
+                List(ArgumentDecl(t_variable(child(n, 3)), optional_class_type(child(n, 2)), Some(static_expr(child(n, 5))), false).setPos(child(n, 3)))
             case List("non_empty_parameter_list", "T_COMMA", "optional_class_type", "T_BITWISE_AND", "T_VARIABLE", "T_ASSIGN", "static_expr") =>
                 non_empty_parameter_list(child(n, 0)) :::
-                List(ArgumentDecl(identifier(child(n, 4)), optional_class_type(child(n, 2)), Some(static_expr(child(n, 6))), true).setPos(child(n, 4)))
+                List(ArgumentDecl(t_variable(child(n, 4)), optional_class_type(child(n, 2)), Some(static_expr(child(n, 6))), true).setPos(child(n, 4)))
         }
     }
 

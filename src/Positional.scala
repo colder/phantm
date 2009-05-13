@@ -8,6 +8,8 @@ trait Positional {
     var col: Int = -1;
     var file: String = "<Unknown>";
 
+    def getPos =  file+" line "+line+" column "+col;
+
     def setPos(l: Int, c: Int, f: String): self.type = {
         line = l;
         col = c;

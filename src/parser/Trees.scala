@@ -1,13 +1,14 @@
 package phpanalysis.parser;
 
 import phpanalysis.Positional;
+import phpanalysis.analyzer.Symbols.Symbolic;
 
 // todo, namespaces
 object Trees {
     abstract case class Tree() extends Positional;
 
     case class Program(stmts: List[Statement]) extends Tree;
-    case class ArgumentDecl(v: Identifier, hint: Option[TypeHint], default: Option[Expression], byref: Boolean) extends Tree;
+    case class ArgumentDecl(v: SimpleVariable, hint: Option[TypeHint], default: Option[Expression], byref: Boolean) extends Tree;
     case class MethodDecl(name: Identifier, flags: List[MemberFlag], args: List[ArgumentDecl], retref: Boolean, body: Option[Statement]) extends Tree
     case class PropertyDecl(v: Identifier, flags: List[MemberFlag], default: Option[Expression]) extends Tree;
     case class ConstantDecl(v: Identifier, value: Expression) extends Tree;
@@ -65,7 +66,7 @@ object Trees {
     case class InitVariable(v: Variable, init: Option[Expression]) extends Tree
 
     case class Label(name: Identifier) extends Tree
-    case class Identifier(value: String) extends Tree
+    case class Identifier(value: String) extends Tree with Symbolic
 
     case class CallArg(value: Expression, forceref: Boolean) extends Tree
 

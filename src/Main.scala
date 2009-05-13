@@ -14,7 +14,9 @@ object Main {
                     case Some(node) => {
                         val t: Tree = new STToAST(node) getAST;
                         // Traverse the ast to look for ovious mistakes.
-                        ASTChecks(t) traverse
+                        ASTChecks(t) traverse;
+                        CollectSymbols(t) traverse;
+                        analyzer.Symbols.emitSummary
                     }
                     case None => println("Compilation failed.")
                 }
