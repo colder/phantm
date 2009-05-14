@@ -98,7 +98,7 @@ object Symbols extends Reporter {
     }
   }
 
-  class MethodSymbol(val name: String) extends Symbol with Typed with Scope {
+  class MethodSymbol(name: String) extends FunctionSymbol(name) {
 
   }
 

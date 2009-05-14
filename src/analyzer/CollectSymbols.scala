@@ -24,6 +24,12 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
                 GlobalSymbols.registerFunction(fs)
                 newCtx = Context(fs)
 
+
+            case ClassDecl(name, flags, parent, interfaces, methods, static_props, props, consts) => 
+                val cs = new ClassSymbol(name.value, None, Nil).setPos(name);
+                GlobalSymbols.registerClass(cs);
+
+
             case SimpleVariable(id) =>
                 val vs = new VariableSymbol(id.value).setPos(id)
                 ctx.varScope.registerVariable(vs)
