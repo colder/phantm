@@ -3,7 +3,6 @@ package phpanalysis.analyzer;
 import phpanalysis.parser.Trees.Tree;
 
 abstract class ASTTraversal[ContextType](root: Tree, initCtx: ContextType) {
-    private var nodes: List[(Tree, ContextType)] = (root, initCtx) :: Nil;
 
     def elements(p:Product) = (0 until p.productArity).map(p.productElement(_))
 
@@ -30,19 +29,29 @@ abstract class ASTTraversal[ContextType](root: Tree, initCtx: ContextType) {
         }
     }
 
-    def visit(node: Tree, ctx: ContextType): ContextType
+    def traverse (visit: (Tree, ContextType) => (ContextType, Boolean)): Unit = {
+        var nodes: List[(Tree, ContextType)] = (root, initCtx) :: Nil;
 
-    def traverse: Unit = nodes match {
-        case (node, ctx) :: ns => {
-            val newCtx: ContextType = visit(node, ctx)
+        def traverse0: Unit = nodes match {
+            case (node, ctx) :: ns => {
+                visit(node, ctx) match {
+                    case (newCtx, continue) =>
+                        nodes = ns
 
-            nodes = ns
+                        if (continue) {
+                            /* DFS */
+                            node match {
+                                case p: Product => nodes = (elements(p) flatMap { el: Any => addRec(el, newCtx) } toList) ::: nodes
+                                case t: Tree => /* ignore */
+                            }
+                        }
 
-            /* DFS */
-            nodes = (elements(node) flatMap { el: Any => addRec(el, newCtx) } toList) ::: nodes
-
-            traverse
+                        traverse0
+                }
+            }
+            case Nil =>
         }
-        case Nil =>
+
+        traverse0
     }
 }

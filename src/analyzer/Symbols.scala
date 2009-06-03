@@ -4,7 +4,7 @@ import scala.collection.mutable.HashMap
 import Types._
 
 
-object Symbols extends Reporter {
+object Symbols {
   trait Symbolic {
     self =>
 
@@ -55,33 +55,38 @@ object Symbols extends Reporter {
 
     def registerClass(cs: ClassSymbol) : Unit = classes.get(cs.name) match {
       case None => classes += ((cs.name, cs))
-      case Some(x) => error("Class " + cs.name + " already declared (previously declared in "+x.getPos+")", cs)
+      case Some(x) => Reporter.error("Class " + cs.name + " already declared (previously declared in "+x.getPos+")", cs)
     }
 
     def lookupFunction(n: String): Option[FunctionSymbol] = functions.get(n)
 
     def registerFunction(fs: FunctionSymbol) : Unit = functions.get(fs.name) match {
       case None => functions += ((fs.name, fs))
-      case Some(x) => error("Function " + fs.name + " already declared (previously declared in "+x.getPos+")", fs)
+      case Some(x) => Reporter.error("Function " + fs.name + " already declared (previously declared in "+x.getPos+")", fs)
     }
 
     def lookupConstant(n: String): Option[ConstantSymbol] = constants.get(n)
 
     def registerConstant(cs: ConstantSymbol) : Unit = constants.get(cs.name) match {
       case None => constants += ((cs.name, cs))
-      case Some(x) => error("Function " + cs.name + " already declared (previously declared in "+x.getPos+")", cs)
+      case Some(x) => Reporter.error("Function " + cs.name + " already declared (previously declared in "+x.getPos+")", cs)
     }
+
+    def getClasses: List[ClassSymbol] = classes map { x => x._2 } toList
+    def getFunctions: List[FunctionSymbol] = functions map { x => x._2 } toList
+    def getConstants: List[ConstantSymbol] = constants map { x => x._2 } toList
   }
 
   class FunctionSymbol(val name: String) extends Symbol with Typed with Scope {
     val args = new HashMap[String, (VariableSymbol, Boolean)]();
 
     def registerArgument(vs: VariableSymbol, byref: Boolean) = args.get(vs.name) match {
-        case Some(x) => error("Argument "+vs.name+" already defined (previously defined in "+x._1.getPos+")", vs)
+        case Some(x) => Reporter.error("Argument "+vs.name+" already defined (previously defined in "+x._1.getPos+")", vs)
         case None => args += ((vs.name, (vs, byref)))
 
     }
-    override def getVariables: List[VariableSymbol] = (args map { x => x._2._1} toList) ::: super.getVariables
+
+    def getArgsVariables: List[VariableSymbol] = getArguments ::: super.getVariables
 
     override def lookupVariable(n: String): Option[VariableSymbol] = args.get(n) match {
         case Some((vs, byref)) => Some(vs)
@@ -96,37 +101,228 @@ object Symbols extends Reporter {
             case Some(x) => /* no error */
           }
     }
+
+    def getArguments = args map { x => x._2._1} toList
   }
 
-  class MethodSymbol(name: String) extends FunctionSymbol(name) {
+  abstract class MemberVisibility {
+    def stricterThan(o: MemberVisibility): Boolean;
+  }
+  object MVPublic extends MemberVisibility {
+    override def toString = "public";
+    override def stricterThan(o: MemberVisibility) = false
+  }
+  object MVPrivate extends MemberVisibility {
+    override def toString = "private";
+    override def stricterThan(o: MemberVisibility) = o != MVPrivate
+  }
+  object MVProtected extends MemberVisibility {
+    override def toString = "protected";
+    override def stricterThan(o: MemberVisibility) = o == MVPublic
+  }
+
+  class MethodSymbol(val cs: ClassSymbol, name: String, val visibility: MemberVisibility) extends FunctionSymbol(name);
+  class PropertySymbol(val cs: ClassSymbol, name: String, val visibility: MemberVisibility) extends VariableSymbol(name);
+  class ClassConstantSymbol(val cs: ClassSymbol,  name: String) extends ConstantSymbol(name);
+
+  case class LookupResult[T](ms: Option[T], visibError: Option[MemberVisibility], staticClash: Boolean) {
+      def isError = ms == None || visibError != None
+  }
+
+  class InterfaceSymbol(val name: String, val extend: List[String]) extends Symbol with Typed
+
+  class ClassSymbol(val name: String, val parent: Option[ClassSymbol], ifaces: List[String]) extends Symbol with Typed {
+    val methods = new HashMap[String, MethodSymbol]();
+    val properties = new HashMap[String, PropertySymbol]();
+    val static_properties = new HashMap[String, PropertySymbol]();
+    val constants = new HashMap[String, ClassConstantSymbol]();
+
+    /* if a parent is defined and the method is defined in its parent, then the method can't be more restrictive */
+    def registerMethod(ms: MethodSymbol) : Unit = methods.get(ms.name) match {
+        case Some(x) => Reporter.error("Method "+name+"::"+ms.name+" already defined (previously defined in "+x.getPos+")", ms)
+        case None    =>
+            parent match {
+                case Some(pcs) => pcs.lookupMethod(ms.name, None) match {
+                        case LookupResult(Some(pms), _, _) => {
+                            if (ms.visibility stricterThan pms.visibility) {
+                                Reporter.error("Method "+name+"::"+ms.name+" cannot overwrite "+pms.cs.name+"::"+pms.name+" with visibility "+ms.visibility+" (was "+pms.visibility+")", ms)
+                            } else {
+                                // todo: check prototypes
+                                methods += ((ms.name, ms))
+                            }
+                        }
+                        case LookupResult(None, _, _) => methods += ((ms.name, ms))
+                    }
+                case None => methods += ((ms.name, ms))
+            }
+    }
+    /** looking up a method follows those rules:
+     * 1) lookup the method localy, check PPP rules against the current scope
+     * 2) if not found, lookup on the parent
+     * TODO: __call()
+     */
+
+    def lookupMethod(name: String, from: Option[ClassSymbol]): LookupResult[MethodSymbol] = methods.get(name) match {
+        case Some(ms) => ms.visibility match {
+            case MVPublic => LookupResult(Some(ms), None, false)
+            case MVProtected => from match {
+                case Some(from_cs) =>
+                    if (from_cs subclassOf this) {
+                        LookupResult(Some(ms), None, false)
+                    } else {
+                        LookupResult(Some(ms), Some(MVProtected), false)
+                    }
+                case None =>
+                    LookupResult(Some(ms), Some(MVProtected), false)
+            }
+            case MVPrivate => from match {
+                case Some(from_cs) =>
+                    if (from_cs == this) {
+                        LookupResult(Some(ms), None, false)
+                    } else {
+                        LookupResult(Some(ms), Some(MVPrivate), false)
+                    }
+                case None =>
+                    LookupResult(Some(ms), Some(MVPrivate), false)
+            }
+        }
+        case None => parent match {
+            case Some(pcs) => pcs.lookupMethod(name, from)
+            case None => LookupResult(None, None, false)
+        }
+
+    }
+
+    def registerConstant(cs: ClassConstantSymbol): Unit = constants.get(cs.name) match {
+        case Some(x) => Reporter.error("Class constant "+name+"::"+cs.name+" already declared (previously declared in "+x.getPos+")", cs)
+        case None    => constants += ((cs.name, cs))
+    }
+
+    def lookupConstant(name: String): Option[ClassConstantSymbol] = constants.get(name) match {
+        case Some(x) => Some(x)
+        case None => parent match {
+            case Some(pcs) => pcs.lookupConstant(name)
+            case None => None
+        }
+    }
+
+
+    def registerStaticProperty(ps: PropertySymbol): Unit = properties.get(ps.name) match {
+        case Some(x) => Reporter.error("Property "+name+"::"+ps.name+" already declared (previously declared as a property in "+x.getPos+")", ps)
+        case None    => static_properties.get(ps.name) match {
+            case Some(x) => Reporter.error("Property "+name+"::"+ps.name+" already declared (previously declared as a static property in "+x.getPos+")", ps)
+            case None    => static_properties += ((ps.name, ps))
+        }
+    }
+
+    def registerProperty(ps: PropertySymbol): Unit = static_properties.get(ps.name) match {
+        case Some(x) => Reporter.error("Property "+name+"::"+ps.name+" already declared (previously declared as a static property in "+x.getPos+")", ps)
+        case None    => properties.get(ps.name) match {
+            case Some(x) => Reporter.error("Property "+name+"::"+ps.name+" already declared (previously declared as a property in "+x.getPos+")", ps)
+            case None    => properties += ((ps.name, ps))
+        }
+    }
+
+    private def lookupAnyProperty(name: String, from: Option[ClassSymbol], in: HashMap[String, PropertySymbol]): LookupResult[PropertySymbol] = in.get(name) match {
+        case Some(ps) => ps.visibility match {
+            case MVPublic => LookupResult(Some(ps), None, false)
+            case MVProtected => from match {
+                case Some(from_cs) => 
+                    if (from_cs subclassOf this) {
+                        LookupResult(Some(ps), None, false)
+                    } else {
+                        LookupResult(Some(ps), Some(MVProtected), false)
+                    }
+                case None =>
+                    LookupResult(Some(ps), Some(MVProtected), false)
+            }
+            case MVPrivate => from match {
+                case Some(from_cs) => 
+                    if (from_cs == this) {
+                        LookupResult(Some(ps), None, false)
+                    } else {
+                        LookupResult(Some(ps), Some(MVPrivate), false)
+                    }
+                case None =>
+                    LookupResult(Some(ps), Some(MVPrivate), false)
+            }
+        }
+        case None => parent match {
+            // todo: Maybe copy all parent non-private properties?
+            case Some(pcs) => pcs.lookupAnyProperty(name, from, in)
+            case None => LookupResult(None, None, false)
+        }
+
+    }
+
+    def lookupProperty(name: String, from: Option[ClassSymbol]): LookupResult[PropertySymbol] = lookupAnyProperty(name, from, properties)
+
+    def lookupStaticProperty(name: String, from: Option[ClassSymbol]): LookupResult[PropertySymbol] = {
+        val staticClash = lookupAnyProperty(name, from, properties) match {
+            case LookupResult(Some(ps), Some(MVPrivate), _) => true
+            case _ => false
+        }
+
+        lookupAnyProperty(name, from, static_properties) match {
+            case LookupResult(res, visError, statClash) => LookupResult(res, visError, statClash || statClash)
+        }
+    }
+
+    def subclassOf(target: ClassSymbol): Boolean = {
+        if (this == target) true
+        else parent match {
+            case None => false
+            case Some(cs) => cs subclassOf target
+        }
+    }
+
+    def getMethods: List[MethodSymbol] = methods map { x => x._2 } toList
+    def getConstants: List[ClassConstantSymbol] = constants map { x => x._2 } toList
+    def getProperties: List[PropertySymbol] = properties map { x => x._2 } toList
+    def getStaticProperties: List[PropertySymbol] = static_properties map { x => x._2 } toList
 
   }
 
-  class InterfaceSymbol(val name: String, extend: List[String]) extends Symbol with Typed
-  class ClassSymbol(val name: String, parent: Option[String], ifaces: List[String]) extends Symbol with Typed
   class ConstantSymbol(val name: String) extends Symbol with Typed
   class VariableSymbol(val name: String) extends Symbol with Typed
 
   def emitSummary = {
-        def emitScope(s: Scope) = {
+        def emitScope(s: Scope, p:String) = {
             for (val v <- s.getVariables) {
-                println("Var "+v.name+"("+v.id+")")
+                println(p+"$"+v.name+"@"+v.id+"")
             }
         }
-        for (val cs <- GlobalSymbols.classes) {
-            println("----");
-            println("Class: "+cs._1)
-            println("----");
+        for (val cs <- GlobalSymbols.getClasses) {
+            print("Class "+cs.name+"@"+cs.id)
+            cs.parent match {
+                case Some(pcs) => println(" extends "+pcs.name+"@"+pcs.id+" {");
+                case None => println(" {");
+            }
+            for (val cs <- cs.getConstants) {
+                println("  const "+cs.name+"@"+cs.id);
+            }
+            for (val ps <- cs.getStaticProperties) {
+                println("  static "+ps.visibility+" $"+ps.name+"@"+ps.id);
+            }
+
+            for (val ps <- cs.getProperties) {
+                println("  "+ps.visibility+" $"+ps.name+"@"+ps.id);
+            }
+
+            for (val ms <- cs.getMethods) {
+                println("  "+ms.visibility+" function "+ms.name+"@"+ms.id+" "+(ms.getArguments.map { x => "$"+x.name+"@"+x.id } mkString("(", ", ", ")"))+" {");
+                emitScope(ms, "    ");
+                println("  }");
+            }
+            println("}")
         }
 
-        for (val fs <- GlobalSymbols.functions) {
-            println("----");
-            println("Function: "+fs._1)
-            println("Scope:");
-            emitScope(fs._2);
-            println("----");
+        for (val fs <- GlobalSymbols.getFunctions) {
+            println("function "+fs.name+"@"+fs.id+" "+(fs.getArguments.map { x => "$"+x.name+"@"+x.id } mkString("(", ", ", ")"))+"{");
+            emitScope(fs, "  ");
+            println("  }");
         }
 
-        emitScope(GlobalSymbols)
+        emitScope(GlobalSymbols, "")
   }
 }

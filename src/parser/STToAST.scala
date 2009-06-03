@@ -157,13 +157,13 @@ case class STToAST(st: ParseNode) {
     def class_variable_declaration(n: ParseNode, vm: List[MemberFlag]): List[PropertyDecl] = {
         childrenNames(n) match {
             case List("class_variable_declaration", "T_COMMA", "T_VARIABLE") =>
-                class_variable_declaration(child(n, 0), vm) ::: List(PropertyDecl(identifier(child(n, 2)), vm, None).setPos(child(n, 2)))
+                class_variable_declaration(child(n, 0), vm) ::: List(PropertyDecl(varIdentifier(child(n, 2)), vm, None).setPos(child(n, 2)))
             case List("class_variable_declaration", "T_COMMA", "T_VARIABLE", "T_ASSIGN", "static_expr") =>
-                class_variable_declaration(child(n, 0), vm) ::: List(PropertyDecl(identifier(child(n, 2)), vm, Some(static_expr(child(n, 4)))).setPos(child(n, 2)))
+                class_variable_declaration(child(n, 0), vm) ::: List(PropertyDecl(varIdentifier(child(n, 2)), vm, Some(static_expr(child(n, 4)))).setPos(child(n, 2)))
             case List("T_VARIABLE") =>
-                List(PropertyDecl(identifier(child(n, 0)), vm, None).setPos(child(n, 0)))
+                List(PropertyDecl(varIdentifier(child(n, 0)), vm, None).setPos(child(n, 0)))
             case List("T_VARIABLE", "T_ASSIGN", "static_expr") =>
-                List(PropertyDecl(identifier(child(n, 0)), vm, Some(static_expr(child(n, 2)))).setPos(child(n, 0)))
+                List(PropertyDecl(varIdentifier(child(n, 0)), vm, Some(static_expr(child(n, 2)))).setPos(child(n, 0)))
         }
     }
 
@@ -211,7 +211,7 @@ case class STToAST(st: ParseNode) {
             case List("T_STATIC") => MFStatic
             case List("T_ABSTRACT") => MFAbstract
             case List("T_FINAL") => MFFinal
-        }).setPos(child(n, 0))
+        }).setPos(child(n, 0));
     }
 
     def class_entry_type(n: ParseNode): ClassFlag = {
@@ -222,7 +222,7 @@ case class STToAST(st: ParseNode) {
         }).setPos(child(n, 0))
     }
 
-    def extends_from(n: ParseNode): Option[ClassRef] = {
+    def extends_from(n: ParseNode): Option[StaticClassRef] = {
         childrenNames(n) match {
             case List() =>
                 None
@@ -240,7 +240,7 @@ case class STToAST(st: ParseNode) {
         }
     }
 
-    def implements_list(n: ParseNode): List[ClassRef] = {
+    def implements_list(n: ParseNode): List[StaticClassRef] = {
         childrenNames(n) match {
             case List() =>
                 List()
@@ -249,7 +249,7 @@ case class STToAST(st: ParseNode) {
         }
     }
 
-    def interface_list(n: ParseNode): List[ClassRef] = {
+    def interface_list(n: ParseNode): List[StaticClassRef] = {
         childrenNames(n) match {
             case List("fully_qualified_class_name") =>
                 List(fully_qualified_class_name(child(n)))
@@ -539,7 +539,7 @@ case class STToAST(st: ParseNode) {
         }
     }
 
-    def fully_qualified_class_name(n: ParseNode): ClassRef = {
+    def fully_qualified_class_name(n: ParseNode): StaticClassRef = {
         var root: NSRoot = NSNone
         var c: ParseNode = childrenNames(n) match {
             case List("namespace_name") => root = NSNone; child(n)
@@ -1127,6 +1127,10 @@ case class STToAST(st: ParseNode) {
 
     def identifier(n: ParseNode): Identifier = {
         Identifier(n.tokenContent).setPos(n.line, n.column, n.file)
+    }
+
+    def varIdentifier(n: ParseNode): Identifier = {
+        Identifier(n.tokenContent.substring(1)).setPos(n.line, n.column, n.file)
     }
 
     def t_variable(n: ParseNode): SimpleVariable = {

@@ -9,17 +9,17 @@ object Types {
     }
 
 
-    case object TInt extends Type
-    case object TBoolean extends Type
-    case object TFloat extends Type
-    case object TString extends Type
-    case object TArray extends Type
-    case object TResource extends Type
-    case object TNull extends Type
+    object TInt extends Type
+    object TBoolean extends Type
+    object TFloat extends Type
+    object TString extends Type
+    object TArray extends Type
+    object TResource extends Type
+    object TNull extends Type
     case class TObject(cl: ClassSymbol) extends Type
-    case object TAnyObject extends Type
+    object TAnyObject extends Type
 
-    case object TMixed extends Type {
+    object TMixed extends Type {
         override def isSubTypeOf(tpe: Type): Boolean = true
         override def allowTypeCastTo(tpe: Type): Boolean = true
     }

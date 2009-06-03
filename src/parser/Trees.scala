@@ -5,7 +5,7 @@ import phpanalysis.analyzer.Symbols.Symbolic;
 
 // todo, namespaces
 object Trees {
-    abstract case class Tree() extends Positional;
+    abstract class Tree extends Positional;
 
     case class Program(stmts: List[Statement]) extends Tree;
     case class ArgumentDecl(v: SimpleVariable, hint: Option[TypeHint], default: Option[Expression], byref: Boolean) extends Tree;
@@ -83,8 +83,8 @@ object Trees {
 
     case class ClassDecl(name: Identifier,
                          flags: ClassFlag,
-                         parent: Option[ClassRef],
-                         interfaces: List[ClassRef],
+                         parent: Option[StaticClassRef],
+                         interfaces: List[StaticClassRef],
                          methods: List[MethodDecl],
                          static_props: List[PropertyDecl],
                          props: List[PropertyDecl],
@@ -128,7 +128,6 @@ object Trees {
     case class ObjectProperty(obj: Expression, property: Identifier) extends Variable
     case class DynamicObjectProperty(obj: Expression, property: Expression) extends Variable
     case class ClassProperty(cl: ClassRef, property: Variable) extends Variable
-
 
     case class ExpandArray(vars: List[Variable], expr: Expression) extends Expression
     case class Assign(vari: Variable, value: Expression, byref: Boolean) extends Expression
@@ -180,6 +179,8 @@ object Trees {
 
 
     abstract class Scalar extends Expression
+    case class PHPTrue() extends Scalar
+    case class PHPFalse() extends Scalar
     case class PHPInteger(value: Int) extends Scalar
     case class PHPFloat(value: Float) extends Scalar
     case class PHPString(value: String) extends Scalar

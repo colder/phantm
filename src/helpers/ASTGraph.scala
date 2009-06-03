@@ -50,7 +50,10 @@ class ASTGraph extends Helper {
                         case node: Tree =>  {
                             emit("  node"+id+"[label=\""+getLabel(node)+"\"]\n");
 
-                            for(c <- elements(node)) dotPrint(c, id)
+                            node match {
+                                case p: Product => for(c <- elements(p)) dotPrint(c, id)
+                                case t: Tree => /* ignore */
+                            }
                         }
 
                         case (t1, t2) => {

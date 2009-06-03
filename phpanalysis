@@ -1,0 +1,2 @@
+#!/bin/sh
+scala -classpath classes phpanalysis.Main $*
