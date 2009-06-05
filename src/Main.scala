@@ -2,16 +2,33 @@ package phpanalysis;
 
 import phpanalysis.parser._;
 import phpanalysis.analyzer._;
+import phpanalysis.controlflow._;
 import phpanalysis.parser.Trees.Tree;
 import java.io._;
 
 object Main {
+    var files: List[String] = Nil;
+    var displaySymbols = false;
+
     def main(args: Array[String]): Unit = {
         if (args.length > 0) {
-            for (file <- args) compile(file)
+            handleArgs(args.toList);
+
+            if (files.length == 0) {
+                println("No file provided.")
+                usage
+            } else {
+                for (file <- files) compile(file)
+            }
         } else {
             usage
         }
+    }
+
+    def handleArgs(args: List[String]): Unit = args match {
+        case "-s" :: xs => displaySymbols = true; handleArgs(xs);
+        case x :: xs => files = files ::: x :: Nil; handleArgs(xs);
+        case Nil => 
     }
 
     def compile(file: String) = {
@@ -19,17 +36,24 @@ object Main {
             new Compiler(file) compile match {
                 case Some(node) => {
                     // Compute the AST FROM the node
-                    val t: Tree = new STToAST(node) getAST;
+                    val ast: Tree = new STToAST(node) getAST;
                     Reporter.errorMilestone
                     // Traverse the ast to look for ovious mistakes.
-                    ASTChecks(t) execute;
+                    ASTChecks(ast) execute;
                     Reporter.errorMilestone
                     // Collect symbols and detect obvious types errors
-                    CollectSymbols(t) execute;
+                    CollectSymbols(ast) execute;
                     Reporter.errorMilestone
 
-                    // Emit summary of all symbols
-                    analyzer.Symbols.emitSummary
+                    if (displaySymbols) {
+                        // Emit summary of all symbols
+                        analyzer.Symbols.emitSummary
+                    }
+
+                    // Build CFGs and analyzes them
+                    CFGChecks(ast) execute;
+                    Reporter.errorMilestone
+
                 }
                 case None => println("Compilation failed.")
             }
@@ -39,6 +63,7 @@ object Main {
     }
 
     def usage = {
-        println("Usage: phpanalysis <files ...>");
+        println("Usage:   phpanalysis [-s] <files ...>");
+        println("Options: -s : Print symbol summary");
     }
 }

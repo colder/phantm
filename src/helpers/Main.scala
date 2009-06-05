@@ -34,6 +34,8 @@ object Main {
         opts match {
             case "-o" :: path :: xs =>
                 output = Some(path); handle_options(xs)
+            case "-t" :: "CFG" :: xs =>
+                helper = new CFGGraph(); handle_options(xs)
             case "-t" :: "AST" :: xs =>
                 helper = new ASTGraph(); handle_options(xs)
             case "-t" :: "Tokens" :: xs =>

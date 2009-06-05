@@ -106,7 +106,7 @@ object Trees {
     case class If(cond: Expression, then: Statement, elze: Option[Statement]) extends Statement
     case class While(cond: Expression, then: Statement) extends Statement
     case class DoWhile(body: Statement, cond: Expression) extends Statement
-    case class For(init: List[Expression], cond: List[Expression], step: List[Expression], then: Statement) extends Statement
+    case class For(init: Statement, cond: Expression, step: Statement, then: Statement) extends Statement
     case class Switch(expr: Expression, cases: List[(Option[Expression], Statement)]) extends Statement
     case class Break(level: Expression) extends Statement
     case class Continue(level: Expression) extends Statement
@@ -184,7 +184,7 @@ object Trees {
     case class PHPInteger(value: Int) extends Scalar
     case class PHPFloat(value: Float) extends Scalar
     case class PHPString(value: String) extends Scalar
-    case class Null() extends Scalar
+    case class PHPNull() extends Scalar
 
     // Magic constants
     case class MCFile() extends Scalar

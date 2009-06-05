@@ -60,6 +60,9 @@ FROM FLEX -> JFLEX
     private boolean clearMorePrefix;  
 
     // same functionality as Flex's yymore()
+    public void cleanMore() {
+        this.clearMorePrefix = true;
+    }
     public void more() {
         this.morePrefix.append(this.yytext());
         this.clearMorePrefix = false;        
@@ -424,42 +427,45 @@ NEWLINE = ("\r"|"\n"|"\r\n")
 
 <ST_IN_SCRIPTING>"#"|"//" {
 	yybegin(ST_ONE_LINE_COMMENT);
-	more();
+//  more();
 }
 
 <ST_ONE_LINE_COMMENT>"?"|"%"|">" {
-	more();
+//	more();
 }
 
 <ST_ONE_LINE_COMMENT>[^\n\r?%>]+ {
-	more();
+//	more();
 }
 
 <ST_ONE_LINE_COMMENT>{NEWLINE} {
+    cleanMore();
 	yybegin(ST_IN_SCRIPTING);
 }
 
 <ST_ONE_LINE_COMMENT>"?>"|"%>" {
     // yypushback(length() - 2);
+    cleanMore();
     yypushback(2);
     yybegin(ST_IN_SCRIPTING);
 }
 
 <ST_IN_SCRIPTING>"/*" {
 	yybegin(ST_COMMENT);
-	more();
+	//more();
 }
 
 <ST_COMMENT>[^*]+ {
-	more();
+//	more();
 }
 
 <ST_COMMENT>"*/" {
+    cleanMore();
 	yybegin(ST_IN_SCRIPTING);
 }
 
 <ST_COMMENT>"*" {
-	more();
+//	more();
 }
 
 <ST_IN_SCRIPTING>("?>"|"</script"{WHITESPACE}*">"){NEWLINE}? {
@@ -622,6 +628,7 @@ NEWLINE = ("\r"|"\n"|"\r\n")
 }
 
 <ST_COMMENT><<EOF>> {
+    cleanMore();
     System.err.println("EOF inside comment!");
     return null;
 }

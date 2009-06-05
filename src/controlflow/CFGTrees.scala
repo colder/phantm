@@ -34,6 +34,9 @@ object CFGTrees {
                                  id: parser.Trees.Identifier,
                                  params: List[CFGSimpleValue]) extends CFGStatement
 
+  case class CFGArrayAssignNext(arr: CFGVariable,
+                            expr: CFGSimpleValue) extends CFGStatement
+
   case class CFGArrayAssign(arr: CFGVariable,
                             index: CFGSimpleValue,
                             expr: CFGSimpleValue) extends CFGStatement
@@ -65,7 +68,14 @@ object CFGTrees {
   case class CFGStringLit(value: String) extends CFGSimpleValue
   case object CFGTrue extends CFGSimpleValue
   case object CFGFalse extends CFGSimpleValue
+  case object CFGNull extends CFGSimpleValue
   case object CFGThis extends CFGSimpleValue
+  case object CFGEmptyArray extends CFGSimpleValue
+  case class CFGInstanceof(lhs: CFGSimpleValue, cl: parser.Trees.ClassRef) extends CFGSimpleValue
+  case class CFGArrayNext(ar: CFGSimpleValue) extends CFGSimpleValue
+  case class CFGArrayCurElement(ar: CFGSimpleValue) extends CFGSimpleValue
+  case class CFGArrayCurKey(ar: CFGSimpleValue) extends CFGSimpleValue
+  case class CFGArrayCurIsValid(ar: CFGSimpleValue) extends CFGSimpleValue
 
   case class CFGNew(tpe: parser.Trees.Identifier, params: List[CFGSimpleValue]) extends CFGSimpleValue
 
@@ -78,6 +88,7 @@ object CFGTrees {
   case object DIV extends CFGBinaryOperator { override def toString = "/" }
   case object CONCAT extends CFGBinaryOperator { override def toString = "." }
   case object MOD extends CFGBinaryOperator { override def toString = "%" }
+  case object INSTANCEOF extends CFGBinaryOperator { override def toString = "instanceof" }
 
   case object BOOLEANAND extends CFGBinaryOperator { override def toString = "&&" }
   case object BOOLEANOR extends CFGBinaryOperator { override def toString = "||" }
@@ -124,15 +135,24 @@ object CFGTrees {
       case CFGAssignTernary(v, i, then, elze) => v + assOp + i + " ? " + then + " : " + elze
       case CFGAssign(v, e) => v + assOp + e
       case CFGArrayAssign(a, i, e) => a + "[" + i + "]" + assOp + e
+      case CFGArrayAssignNext(a, e) => a + "[]" + assOp + e
       case CFGSkip => "..."
       case CFGAssume(l, o, r) => "[" + l + o + r + "]"
       case CFGStringLit(value) => "\\\"" + value + "\\\""
       case CFGNumLit(value) => value.toString
       case CFGNew(tpe, params) => "new " + tpe.value + params.mkString("(", ", ", ")")
       case CFGTrue => "true"
+      case CFGNull => "null"
+      case CFGEmptyArray => "array()"
       case CFGFalse => "false"
       case CFGError() => "error"
       case CFGThis => "this"
+      case CFGArrayNext(a) => a + ".next"
+      case CFGArrayCurKey(a) => a + ".key"
+      case CFGArrayCurElement(a) => a + ".current"
+      case CFGArrayCurIsValid(a) => a + ".valid"
+      case CFGInstanceof(obj, parser.Trees.StaticClassRef(_, _, id)) => obj + " instanceof "+id.value
+      case CFGInstanceof(obj, _) => obj + " instanceof ?"
       case CFGIdentifier(sym) => sym.name
       case CFGTempID(value) => value
     }

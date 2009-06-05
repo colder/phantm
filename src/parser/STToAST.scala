@@ -270,7 +270,9 @@ case class STToAST(st: ParseNode) {
             case List("T_DO", "statement", "T_WHILE", "T_OPEN_BRACES", "expr", "T_CLOSE_BRACES", "T_SEMICOLON") =>
                 DoWhile(statement(child(n, 1)), expr(child(n, 4)))
             case List("T_FOR", "T_OPEN_BRACES", "for_expr", "T_SEMICOLON", "for_expr", "T_SEMICOLON", "for_expr", "T_CLOSE_BRACES", "for_statement") =>
-                For(for_expr(child(n, 2)), for_expr(child(n, 4)), for_expr(child(n, 6)), for_statement(child(n, 8)))
+                val conds = for_expr(child(n, 4))
+
+                For(Block(for_expr(child(n, 2))), conds reduceLeft { (x, y) => BooleanAnd(x,y) }, Block(for_expr(child(n, 6))), for_statement(child(n, 8)))
             case List("T_SWITCH", "T_OPEN_BRACES", "expr", "T_CLOSE_BRACES", "switch_case_list") => 
                 Switch(expr(child(n, 2)), switch_case_list(child(n, 4)))
             case List("T_BREAK", "T_SEMICOLON") =>
@@ -282,7 +284,7 @@ case class STToAST(st: ParseNode) {
             case List("T_CONTINUE", "expr", "T_SEMICOLON") =>
                 Continue(expr(child(n, 1)))
             case List("T_RETURN", "T_SEMICOLON") =>
-                Return(Null().setPos(child(n, 0)))
+                Return(PHPNull().setPos(child(n, 0)))
             case List("T_RETURN", "expr", "T_SEMICOLON") =>
                 Return(expr(child(n, 1)))
             case List("T_GLOBAL", "global_var_list", "T_SEMICOLON") => 
@@ -350,7 +352,15 @@ case class STToAST(st: ParseNode) {
         root.setPos(child(n, 0))
 
         if (parts.length == 1) {
-            Constant(parts.head).setPos(parts.head)
+            var res : Expression = Constant(parts.head);
+            if (parts.head.value.toLowerCase.equals("true")){
+                res = PHPTrue()
+            } else if (parts.head.value.toLowerCase.equals("false")) {
+                res = PHPFalse()
+            } else if (parts.head.value.toLowerCase.equals("null")) {
+                res = PHPNull()
+            }
+            res.setPos(parts.head)
         } else {
             unspecified(n)
         }
@@ -765,11 +775,13 @@ case class STToAST(st: ParseNode) {
             case List("T_ARRAY", "T_OPEN_BRACES", "array_pair_list", "T_CLOSE_BRACES") =>
                 Array(array_pair_list(child(n, 2)))
             case List("T_BACKTICK", "backticks_expr", "T_BACKTICK") =>
-                notyet(n)
+                Execute("...");
             case List("T_PRINT", "expr") =>
                 Print(expr(child(n, 1)))
             case List("T_FUNCTION", "is_reference", "T_OPEN_BRACES", "parameter_list", "T_CLOSE_BRACES", "lexical_vars", "T_OPEN_CURLY_BRACES", "inner_statement_list", "T_CLOSE_CURLY_BRACES") =>
                 notyet(n)
+            case List("base_variable_with_function_calls") =>
+                base_variable_with_function_calls(child(n))
             case _ => unspecified(n)
         }).setPos(child(n, 0))
     }
@@ -1184,7 +1196,7 @@ case class STToAST(st: ParseNode) {
         childrenNames(n) match {
             case List("non_empty_array_pair_list", "T_COMMA", "expr", "T_DOUBLE_ARROW", "expr") =>
                 non_empty_array_pair_list(child(n, 0)) ::: List((Some(expr(child(n, 2))), expr(child(n, 4)), false))
-            case List("non_empty_array_pair_list", "T_COMMA expr") =>
+            case List("non_empty_array_pair_list", "T_COMMA", "expr") =>
                 non_empty_array_pair_list(child(n, 0)) ::: List((None, expr(child(n, 2)), false))
             case List("non_empty_array_pair_list", "T_COMMA", "expr", "T_DOUBLE_ARROW", "T_BITWISE_AND", "variable") =>
                 non_empty_array_pair_list(child(n, 0)) ::: List((Some(expr(child(n, 2))), variable(child(n, 5)), true))

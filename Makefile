@@ -1,6 +1,6 @@
-all: scalafiles
+partial: scalafiles
 
-rebuild: cup jflex javafiles scalafiles
+all: cup jflex javafiles scalafiles
 
 complete: build_cup all
 

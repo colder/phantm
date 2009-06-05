@@ -142,6 +142,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
 
             case SimpleVariable(id) =>
                 val vs = new VariableSymbol(id.value).setPos(id)
+                id.setSymbol(vs);
                 ctx.varScope.registerVariable(vs)
             case _ =>
         }

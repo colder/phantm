@@ -1,6 +1,6 @@
 package phpanalysis.controlflow
  
-object ASTtoCFG {
+object ASTToCFG {
   import parser.Trees._
   import analyzer.Symbols._
   import analyzer.Types._
@@ -8,8 +8,12 @@ object ASTtoCFG {
 
   /** Builds a control flow graph from a method declaration. */
   def convertAST(statements: List[Statement]): CFG = {
+    // Contains the entry+exit vertices for continue/break
+    var controlStack: List[(Vertex, Vertex)] = Nil
+
     val cfg: CFG = new CFG
     val assertionsEnabled: Boolean = true
+    val retval: CFGTempID = CFGTempID("retval");
     type Vertex = cfg.Vertex
 
     /** Creates fresh variable names on demand. */
@@ -86,21 +90,28 @@ object ASTtoCFG {
             val e2 = expr(rhs)
             Emit.statementCont(CFGAssume(e1, LT, e2), trueCont)
             Emit.statementCont(CFGAssume(e1, GEQ, e2), falseCont)
-          case mc @ MethodCall(obj, id, args) =>
-            val e = expr(mc)
-            Emit.statementCont(CFGAssume(e, EQUALS, CFGTrue), trueCont)
-            Emit.statementCont(CFGAssume(e, NOTEQUALS, CFGTrue), falseCont)
+          case SmallerEqual(lhs, rhs) =>
+            val e1 = expr(lhs)
+            val e2 = expr(rhs)
+            Emit.statementCont(CFGAssume(e1, LEQ, e2), trueCont)
+            Emit.statementCont(CFGAssume(e1, GT, e2), falseCont)
           case PHPTrue() =>
             Emit.goto(trueCont)
           case PHPFalse() =>
             Emit.goto(falseCont)
+          case PHPNull() =>
+            Emit.goto(falseCont)
+          case PHPInteger(n) =>
+            if (n == 0)
+                Emit.goto(falseCont)
+            else
+                Emit.goto(trueCont)
           case BooleanNot(not) =>
             condExpr(not, trueCont, falseCont)
-          case v @ SimpleVariable(name) => 
-            val e = expr(v)
+          case ex : Expression =>
+            val e = expr(ex)
             Emit.statementCont(CFGAssume(e, EQUALS, CFGTrue), trueCont)
             Emit.statementCont(CFGAssume(e, NOTEQUALS, CFGTrue), falseCont)
-          case _ => error("Woot!?! unexpected expression in condExpr()")
       }
     }
  
@@ -114,149 +125,127 @@ object ASTtoCFG {
     /** If an expression can be translated without flattening, does it and
       * returns the result in a Some(...) instance. Otherwise returns None. */
     def alreadySimple(ex: Expression): Option[CFGSimpleValue] = ex match {
+      case SimpleVariable(v) => Some(idFromId(v))
       case PHPInteger(v) => Some(CFGNumLit(v))
       case PHPString(v) => Some(CFGStringLit(v))
       case PHPTrue() => Some(CFGTrue)
       case PHPFalse() => Some(CFGFalse)
+      case PHPNull() => Some(CFGNull)
       case _ => None
     }
  
-    /** Flattens complex expressions, or simply returns simple ones. */
-    
     def notyet(ex: Expression) = throw new Exception("Not yet implemented in CFG: "+ex);
 
-    def exprStore(v: CFGVariable, ex: Expression): CFGStatement = alreadySimple(ex) match {
-        case Some(x) => CFGAssign(v, x)
+    // If the assignation can easily be done, do it already
+    def exprStore(v: CFGVariable, ex: Expression): CFGStatement = exprStoreGet(v, ex) match {
+        case Some(stmt) => stmt
+        case None => CFGAssign(v, expr(ex));
+    }
+
+    def exprStoreGet(v: CFGVariable, ex: Expression): Option[CFGStatement] = alreadySimple(ex) match {
+        case Some(x) => Some(CFGAssign(v, x))
         case None => 
             ex match {
-                case ExpandArray(vars, expr) =>
-                    notyet(ex)
-                case Assign(vari, value, byref) =>
-                    notyet(ex)
+                case ArrayEntry(arr, index) => 
+                    Some(CFGAssignBinary(v, expr(arr), ARRAYREAD, expr(index))) 
                 case Clone(obj) =>
-                    notyet(ex)
+                    Some(CFGAssignUnary(v, CLONE, expr(obj)))
                 case Plus(lhs, rhs) =>
-                    notyet(ex)
+                    Some(CFGAssignBinary(v, expr(lhs), PLUS, expr(rhs)))
                 case Minus(lhs, rhs) =>
-                    notyet(ex)
+                    Some(CFGAssignBinary(v, expr(lhs), MINUS, expr(rhs)))
                 case Div(lhs, rhs) =>
-                    notyet(ex)
+                    Some(CFGAssignBinary(v, expr(lhs), DIV, expr(rhs)))
                 case Mult(lhs, rhs) =>
-                    notyet(ex)
+                    Some(CFGAssignBinary(v, expr(lhs), MULT, expr(rhs)))
                 case Concat(lhs, rhs) =>
-                    notyet(ex)
+                    Some(CFGAssignBinary(v, expr(lhs), CONCAT, expr(rhs)))
                 case Mod(lhs, rhs) =>
-                    notyet(ex)
-                case PreInc(rhs) =>
-                    notyet(ex)
-                case PostInc(rhs) =>
-                    notyet(ex)
-                case PreDec(rhs) =>
-                    notyet(ex)
-                case PostDec(rhs) =>
-                    notyet(ex)
-                case BooleanAnd(lhs, rhs) =>
-                    notyet(ex)
-                case BooleanOr(lhs, rhs) =>
-                    notyet(ex)
+                    Some(CFGAssignBinary(v, expr(lhs), MOD, expr(rhs)))
                 case BooleanXor(lhs, rhs) =>
-                    notyet(ex)
+                    Some(CFGAssignBinary(v, expr(lhs), BOOLEANXOR, expr(rhs)))
                 case BitwiseAnd(lhs, rhs) =>
-                    notyet(ex)
+                    Some(CFGAssignBinary(v, expr(lhs), BITWISEAND, expr(rhs)))
                 case BitwiseOr(lhs, rhs) =>
-                    notyet(ex)
+                    Some(CFGAssignBinary(v, expr(lhs), BITWISEOR, expr(rhs)))
                 case BitwiseXor(lhs, rhs) =>
-                    notyet(ex)
+                    Some(CFGAssignBinary(v, expr(lhs), BITWISEXOR, expr(rhs)))
                 case ShiftLeft(lhs, rhs) =>
-                    notyet(ex)
+                    Some(CFGAssignBinary(v, expr(lhs), SHIFTLEFT, expr(rhs)))
                 case ShiftRight(lhs, rhs) =>
-                    notyet(ex)
+                    Some(CFGAssignBinary(v, expr(lhs), SHIFTRIGHT, expr(rhs)))
                 case BooleanNot(rhs) =>
-                    notyet(ex)
+                    Some(CFGAssignUnary(v, BOOLEANNOT, expr(rhs)))
                 case BitwiseNot(rhs) =>
-                    notyet(ex)
-                case Equal(lhs, rhs) =>
-                    notyet(ex)
-                case Identical(lhs, rhs) =>
-                    notyet(ex)
-                case Smaller(lhs, rhs) =>
-                    notyet(ex)
-                case SmallerEqual(lhs, rhs) =>
-                    notyet(ex)
-                case InstanceOf(lhs, rhs) =>
-                    notyet(ex)
-                case Ternary(cond, then, elze) =>
-                    notyet(ex)
-                case Cast(typ, value) =>
-                    notyet(ex)
+                    Some(CFGAssignUnary(v, BITSIWENOT, expr(rhs)))
+                case InstanceOf(lhs, cr) =>
+                    Some(CFGAssign(v, CFGInstanceof(expr(lhs), cr)))
+                case Ternary(cond, Some(then), elze) =>
+                    Some(CFGAssignTernary(v, expr(cond), expr(then), expr(elze)))
+                case Ternary(cond, None, elze) =>
+                    Some(CFGAssignTernary(v, expr(cond), v, expr(elze)))
                 case Silence(value) =>
-                    notyet(ex)
-                case Exit(value) =>
-                    notyet(ex)
-                case Array(values) =>
-                    notyet(ex)
+                    Some(CFGAssign(v, expr(value)))
                 case Execute(value) =>
-                    notyet(ex)
+                    Some(CFGAssignFunctionCall(v, internalFunction("shell_exec"), List(CFGStringLit(value))))
                 case Print(value) =>
-                    notyet(ex)
+                    Some(CFGAssignFunctionCall(v, internalFunction("print"), List(expr(value))))
                 case Eval(value) =>
-                    notyet(ex)
-                case Closure(args, retref, body) =>
-                    notyet(ex)
-                case Isset(vs) =>
-                    notyet(ex)
-                case Empty(v) =>
-                    notyet(ex)
-                case Include(path, once) =>
-                    notyet(ex)
-                case Require(path, once) =>
-                    notyet(ex)
-                case Constant(name) =>
-                    notyet(ex)
-                case ClassConstant(cl, const) =>
-                    notyet(ex)
-                case New(cl, args) =>
-                    notyet(ex)
-                case FunctionCall(name, args) =>
-                    notyet(ex)
-                case MethodCall(obj, name, args) =>
-                    notyet(ex)
-                case StaticMethodCall(cl, name, args) =>
-                    notyet(ex)
-              /*
-              case Plus(lhs: Expression, rhs: Expression) => 
-                CFGAssignBinary(v, expr(lhs), PLUS, expr(rhs))
-              case Minus(lhs: Expression, rhs: Expression) => 
-                CFGAssignBinary(v, expr(lhs), MINUS, expr(rhs))
-              case Div(lhs: Expression, rhs: Expression) => 
-                CFGAssignBinary(v, expr(lhs), DIV, expr(rhs))
-              case Mult(lhs: Expression, rhs: Expression) => 
-                CFGAssignBinary(v, expr(lhs), TIMES, expr(rhs))
-              case ArrayOffset(arr: Expression, index: Expression) => 
-                if (assertionsEnabled) {
-                    arrayBoundsAssert(arr, index)
-                }
-                CFGAssignBinary(v, expr(arr), ARRAYREAD, expr(index)) 
-              case NewIntArray(size: Expression) => 
-                CFGAssignUnary(v, NEWINTARRAY, expr(size))
-              case Not(e: Expression) => 
-                CFGAssignUnary(v, NOT, expr(e))
-              case MethodCall(obj, id, args) => 
-                CFGAssignMethodCall(v, expr(obj), id, args.map(expr))
-              case _ => 
-                CFGAssign(v, expr(ex))
-                */
+                    Some(CFGAssignFunctionCall(v, internalFunction("eval"), List(expr(value))))
+                case Empty(va) =>
+                    Some(CFGAssignFunctionCall(v, internalFunction("empty"), List(expr(va))))
+                case FunctionCall(StaticFunctionRef(_, _, name), args) =>
+                    Some(CFGAssignFunctionCall(v, name, args map { a => expr(a.value) }))
+                case MethodCall(obj, StaticMethodRef(id), args) => 
+                    Some(CFGAssignMethodCall(v, expr(obj), id, args.map {a => expr(a.value) }))
+                case _ => 
+                    None
             }
+    }
+
+    def internalFunction(name: String): parser.Trees.Identifier = {
+        GlobalSymbols.lookupFunction(name) match {
+            case Some(s) => Identifier(name).setSymbol(s)
+            case None => Identifier(name+"(?)");
+        }
     }
 
     def expr(ex: Expression): CFGSimpleValue = alreadySimple(ex) match {
         case Some(x) => x
-        case None => 
-            ex match {
-                case _ => 
-                    val v = FreshVariable("expr")
-                    ex match {
-                        case BooleanAnd(lhs, rhs) =>
+        case None => ex match {
+            case _ => 
+                var v: CFGVariable = FreshVariable("expr")
+                exprStoreGet(v, ex) match {
+                    case Some(stmt) => Emit.statement(stmt)
+                    case _ => ex match {
+                        case VariableVariable(name) =>
+                            // TODO
+                        case NextArrayEntry(array) =>
+                            // TODO
+                        case ObjectProperty(obj, property) =>
+                            // TODO
+                        case DynamicObjectProperty(obj, property) =>
+                            // TODO
+                        case ClassProperty(cl, property) =>
+                            // TODO
+                        case ExpandArray(vars, expr) =>
+                            // TODO
+                        case Assign(SimpleVariable(id), value, byref) =>
+                            v = idFromId(id);
+                            Emit.statement(exprStore(v, value))
+                        case PreInc(SimpleVariable(id)) =>
+                            Emit.statement(CFGAssignBinary(idFromId(id), idFromId(id), PLUS, CFGNumLit(1)))
+                            v = idFromId(id);
+                        case PreDec(SimpleVariable(id)) =>
+                            Emit.statement(CFGAssignBinary(idFromId(id), idFromId(id), MINUS, CFGNumLit(1)))
+                            v = idFromId(id);
+                        case PostInc(SimpleVariable(id)) =>
+                            Emit.statement(CFGAssignBinary(v, idFromId(id), PLUS, CFGNumLit(1)))
+                            Emit.statement(CFGAssignBinary(idFromId(id), idFromId(id), PLUS, CFGNumLit(1)))
+                        case PostDec(SimpleVariable(id)) =>
+                            Emit.statement(CFGAssignBinary(v, idFromId(id), MINUS, CFGNumLit(1)))
+                            Emit.statement(CFGAssignBinary(idFromId(id), idFromId(id), MINUS, CFGNumLit(1)))
+                        case _: BooleanAnd | _: BooleanOr | _: Equal | _: Identical | _: Smaller  | _: SmallerEqual =>
                             val trueV = cfg.newVertex
                             val falseV = cfg.newVertex
                             condExpr(ex, falseV, trueV)
@@ -264,50 +253,24 @@ object ASTtoCFG {
                             Emit.statementBetween(falseV, CFGAssign(v, CFGFalse), afterV)
                             Emit.statementBetween(trueV, CFGAssign(v, CFGTrue), afterV)
                             Emit.setPC(afterV)
-                        case BooleanOr(lhs, rhs) => 
-                            val trueV = cfg.newVertex
-                            val falseV = cfg.newVertex
-                            condExpr(ex, falseV, trueV)
-                            val afterV = cfg.newVertex
-                            Emit.statementBetween(falseV, CFGAssign(v, CFGFalse), afterV)
-                            Emit.statementBetween(trueV, CFGAssign(v, CFGTrue), afterV)
-                            Emit.setPC(afterV)
-                        case Equal(lhs, rhs) =>
-                            val trueV = cfg.newVertex
-                            val falseV = cfg.newVertex
-                            condExpr(ex, falseV, trueV)
-                            val afterV = cfg.newVertex
-                            Emit.statementBetween(falseV, CFGAssign(v, CFGFalse), afterV)
-                            Emit.statementBetween(trueV, CFGAssign(v, CFGTrue), afterV)
-                            Emit.setPC(afterV)
-                        case Smaller(lhs, rhs) => 
-                            val trueV = cfg.newVertex
-                            val falseV = cfg.newVertex
-                            condExpr(ex, falseV, trueV)
-                            val afterV = cfg.newVertex
-                            Emit.statementBetween(falseV, CFGAssign(v, CFGFalse), afterV)
-                            Emit.statementBetween(trueV, CFGAssign(v, CFGTrue), afterV)
-                            Emit.setPC(afterV)
-                        case Plus(lhs, rhs) => Emit.statement(CFGAssignBinary(v, expr(lhs), PLUS, expr(rhs)))
-                            /*(lhs.getType, rhs.getType) match {
-                            case (TInt, TInt) => CFGAssignBinary(v, expr(lhs), PLUS, expr(rhs))
-                            case (TString, _) | (_, TString) => CFGAssignBinary(v, expr(lhs), PLUS, expr(rhs))
-                        }*/
-                        case Minus(lhs, rhs) =>
-                            Emit.statement(CFGAssignBinary(v, expr(lhs), MINUS, expr(rhs)))
-                        case Div(lhs, rhs) =>
-                            Emit.statement(CFGAssignBinary(v, expr(lhs), DIV, expr(rhs)))
-                        case Mult(lhs, rhs) =>
-                            Emit.statement(CFGAssignBinary(v, expr(lhs), MULT, expr(rhs)))
-                        case ArrayEntry(arr, index) => 
-                            Emit.statement(CFGAssignBinary(v, expr(arr), ARRAYREAD, expr(index))) 
-                        case MethodCall(obj, StaticMethodRef(id), args) => 
-                            Emit.statement(CFGAssignMethodCall(v, expr(obj), id, args.map {a => expr(a.value) }))
-                        case BooleanNot(e) => 
-                            Emit.statement(CFGAssignUnary(v, BOOLEANNOT, expr(e)))
-                        case _ => error("Woot!?! Unexpected exprression in expr()"+ ex.getClass)
+                        case Isset(vs) =>
+                            if (vs.length > 1) {
+                                notyet(ex);
+                            } else {
+                                Emit.statement(CFGAssignFunctionCall(v, internalFunction("isset"), List(expr(vs.first))))
+                            }
+                        case Array(values) =>
+                            Emit.statement(CFGAssign(v, CFGEmptyArray))
+                            for (av <- values) av match {
+                                case (Some(x), va, byref) =>
+                                    Emit.statement(CFGArrayAssign(v, expr(x), expr(va)))
+                                case (None, va, byref) =>
+                                    Emit.statement(CFGArrayAssignNext(v, expr(va)))
+                            }
+                        case _ => error("expr() not handling correctly: "+ ex)
                     }
-                    v
+                }
+                v
             }
     }
 
@@ -324,6 +287,8 @@ object ASTtoCFG {
     
     /** Emits a single statement. cont = where to continue after the statement */
     def stmt(s: Statement, cont: Vertex): Unit = s match {
+        case LabelDecl(name) =>
+            // GOTO
         case Block(sts) =>
             stmts(sts, cont)
             Emit.setPC(cont)
@@ -348,21 +313,187 @@ object ASTtoCFG {
             cfg.openGroup("while", Emit.getPC)
             condExpr(cond, cont, beginWhileV)
             Emit.setPC(beginWhileV)
+            controlStack = (beginV, cont) :: controlStack
             stmt(st, beginV)
+            controlStack = controlStack.tail
             cfg.closeGroup(cont)
+            Emit.setPC(cont)
+        case DoWhile(body, cond) =>
+            val beginV = Emit.getPC
+            val beginCheck = cfg.newVertex
+            cfg.openGroup("doWhile", beginV)
+            controlStack = (beginCheck, cont) :: controlStack
+            stmt(body, beginCheck)
+            condExpr(cond, cont, beginV)
+            controlStack = controlStack.tail
+            cfg.closeGroup(cont)
+            Emit.setPC(cont)
+        case For(init, cond, step, then) => 
+            cfg.openGroup("for", Emit.getPC)
+            val beginCondV = cfg.newVertex
+            val beginBodyV = cfg.newVertex
+            val beginStepV = cfg.newVertex
+            stmt(init, beginCondV);
+            Emit.setPC(beginCondV);
+            condExpr(cond, cont, beginBodyV)
+            Emit.setPC(beginBodyV);
+            controlStack = (beginStepV, cont) :: controlStack
+            stmt(then, beginStepV);
+            controlStack = controlStack.tail
+            Emit.setPC(beginStepV);
+            stmt(step, beginCondV);
+            cfg.closeGroup(cont)
+            Emit.setPC(cont);
+        case Switch(input, cases) =>
+            val beginSwitchV = Emit.getPC
+            var curCaseV = cfg.newVertex
+            var nextCaseV = cfg.newVertex
+            var nextCondV = cfg.newVertex
+            var conds: List[(Expression, Vertex)] = Nil;
+            var default: Option[Vertex] = None;
+
+            cfg.openGroup("switch", beginSwitchV)
+
+            controlStack = (cont, cont) :: controlStack
+
+            Emit.setPC(curCaseV);
+            // First, we put the statements in place:
+            for (val c <- cases) c match {
+                case (None, ts) =>
+                    default = Some(Emit.getPC)
+
+                    Emit.setPC(curCaseV)
+                    stmt(ts, nextCaseV)
+                    curCaseV = nextCaseV
+                    nextCaseV = cfg.newVertex
+                case (Some(v), Block(List())) =>
+                    conds = conds ::: (v, Emit.getPC) :: Nil
+                case (Some(v), Block(tss)) =>
+                    conds = conds ::: (v, Emit.getPC) :: Nil
+
+                    Emit.setPC(curCaseV)
+                    stmts(tss, nextCaseV)
+                    curCaseV = nextCaseV
+                    nextCaseV = cfg.newVertex
+            }
+
+
+            // Then, we link to conditions
+            Emit.setPC(beginSwitchV)
+            for (val c <- conds) c match {
+                case (ex, v) => 
+                    condExpr(Equal(input, ex), nextCondV, v)
+                    Emit.setPC(nextCondV)
+                    nextCondV = cfg.newVertex
+            }
+
+            default match {
+                case Some(v) =>
+                    Emit.statementCont(CFGSkip, v);
+                case None =>
+                    Emit.statementCont(CFGSkip, cont);
+            }
+
+            Emit.setPC(curCaseV);
+            Emit.statementCont(CFGSkip, cont);
+
+            controlStack = controlStack.tail
+
+            cfg.closeGroup(cont)
+            Emit.setPC(cont)
+        case Continue(PHPInteger(level)) =>
+            if (level > controlStack.length) {
+                Reporter.error("Continue level exceeding control structure deepness.", s);
+            } else {
+                Emit.statementCont(CFGSkip, controlStack(level-1)._1)
+                Emit.setPC(cont)
+            }
+        case Continue(_) =>
+            Reporter.notice("Dynamic continue statement ignored", s);
+            Emit.setPC(cont)
+
+        case Break(PHPInteger(level)) =>
+            if (level > controlStack.length) {
+                Reporter.error("Break level exceeding control structure deepness.", s);
+            } else {
+                Emit.statementCont(CFGSkip, controlStack(level-1)._2)
+                Emit.setPC(cont)
+            }
+        case Break(_) =>
+            Reporter.notice("Dynamic break statement ignored", s);
+            Emit.setPC(cont)
+        case Static(vars) =>
+            for (v <- vars) v match {
+                case InitVariable(SimpleVariable(id), Some(ex)) =>
+                    Emit.statementCont(exprStore(idFromId(id), ex), cont)
+                    Emit.setPC(cont);
+                case InitVariable(SimpleVariable(id), None) =>
+                    Emit.statementCont(CFGAssign(idFromId(id), CFGNull), cont)
+                    Emit.setPC(cont);
+                case _ => // ignore
+                    Emit.goto(cont)
+            }
+        case Global(vars) =>
+            Emit.goto(cont)
+        case Echo(expr) =>
+            Emit.goto(cont)
+        case Html(content) =>
+            Emit.goto(cont)
+        case Void() =>
+            Emit.goto(cont)
+        case Unset(vars) =>
+            Emit.goto(cont)
+        case Return(expr) =>
+            Emit.statementCont(exprStore(retval, expr), cfg.exit)
+            Emit.setPC(cont)
+        case Exit(Some(value)) =>
+            val retV = FreshVariable("exit")
+            Emit.statementCont(exprStore(retV, value), cfg.exit)
+            Emit.setPC(cont)
+        case Exit(None) =>
+            val retV = FreshVariable("exit")
+            Emit.statementCont(CFGAssign(retV, CFGNumLit(0)), cfg.exit)
             Emit.setPC(cont)
         case Assign(SimpleVariable(id), value, byref) =>
             Emit.statementCont(exprStore(idFromId(id), value), cont)
             Emit.setPC(cont)
-        /*
-        case ArrayAssign(id, index, value) =>
-            if (assertionsEnabled) {
-                arrayBoundsAssert(id, index)
+        case Foreach(ex, SimpleVariable(as), _, optkey, _, body) =>
+            val v = FreshVariable("val")
+            val condV = cfg.newVertex
+            val assignCurV = cfg.newVertex
+            val assignKeyV = cfg.newVertex
+            val bodyV = cfg.newVertex
+            val nextV = cfg.newVertex
+            Emit.statementCont(exprStore(v, ex), condV)
+
+            Emit.setPC(condV)
+            Emit.statementCont(CFGAssume(CFGArrayCurIsValid(v), EQUALS, CFGTrue), assignCurV)
+            Emit.statementCont(CFGAssume(CFGArrayCurIsValid(v), NOTEQUALS, CFGTrue), cont)
+
+            Emit.setPC(assignCurV)
+            Emit.statementCont(CFGAssign(idFromId(as), CFGArrayCurElement(v)), assignKeyV)
+
+            Emit.setPC(assignKeyV)
+            optkey match {
+                case Some(x) => 
+                    Emit.statementCont(CFGAssign(idFromId(as), CFGArrayCurElement(v)), bodyV)
+                case None =>
+                    Emit.goto(bodyV)
             }
-            Emit.statementCont(CFGArrayAssign(idFromId(id), expr(index), expr(value)), cont)
+            Emit.setPC(bodyV)
+
+            stmt(body, nextV)
+
+            Emit.setPC(nextV)
+            Emit.statementCont(CFGAssign(v, CFGArrayNext(v)), condV)
             Emit.setPC(cont)
-        */
-    } 
+
+
+        case e: Expression =>
+            val v = FreshVariable("val");
+            Emit.statementCont(exprStore(v, e), cont)
+            Emit.setPC(cont)
+    }
 
     /** Removes useless Skip edges by short-circuiting them. */
     def fewerSkips = {
@@ -385,13 +516,13 @@ object ASTtoCFG {
       }
     }
 
-    val retvertex = cfg.newVertex
-    val retV = FreshVariable("result")
-
     Emit.setPC(cfg.entry)
-    stmts(statements, retvertex)
+    val codeEntry = cfg.newVertex
+    Emit.statementBetween(cfg.entry, CFGAssign(retval, CFGNull) , codeEntry)
+    Emit.setPC(codeEntry)
+    stmts(statements, cfg.exit)
     Emit.setPC(cfg.exit)
-    //fewerSkips
+    fewerSkips
     cfg
     }
 }
