@@ -1,0 +1,328 @@
+%        File: report.tex
+%
+\documentclass[a4paper]{article}
+\usepackage[pdftex]{graphicx}
+\usepackage{float}
+\floatstyle{ruled}
+\newfloat{listing}{hbtH}{lop}
+\floatname{listing}{Listing}
+\renewcommand{\topfraction}{0.85}   % This sets the percentage for how much floats get from the ‘top’ of the text of a page
+\renewcommand{\textfraction}{0}   % This sets a similar percentage for how much of a page needs to be text before no more floats can be placed on that page
+\renewcommand{\floatpagefraction}{0.80} % This sets how much of the page must be taken by a float before that page can be ‘all’ floats
+
+\author{Etienne Kneuss\\
+\textsc{\small{Semester Project}}\\
+\textsc{\small{Summer '09}}\\
+\texttt{etienne.kneuss@epfl.ch}
+}
+\title{Static analysis for the PHP language}
+\bibliographystyle{unsrt}
+\begin{document}
+\maketitle
+\begin{abstract}
+  This report presents the work that was done to implement a static analysis
+  tool for the PHP programming language. This tool aims at providing feedback
+  to a developer by checking for multiple mis-uses of the language and should
+  reduce the risk of encountering fatal errors at runtime after deployement of
+  PHP based application.
+\end{abstract}
+\section{Introduction}
+The PHP programming language is a compiled language. However, the compilation is
+done, by default, each time a certain php file is requested. This means that the
+compilation has to be fast and hence can't do much analysis and checks. Most of
+the checks are thus made at runtime. This project aims at providing a static
+analysis tool able to catch some programming errors that PHP would only report
+at runtime. Despite the fact that PHP is one of the most used programming language
+used to develop web applications, the ammount of work being put on static analysis
+is very limited. At this day, I'm only aware of one other tool providing static
+analysis for PHP, written in C++. However, the primary goal of such tool is
+not directly to provide feedback to developers.
+
+\section{Design}
+This tool consists of a custom PHP compiler, translating the code
+into structures such as Abstract Syntax Trees (AST) and then Control Flow Graphs
+(CFG) which are needed in order to analyse aspects of the code. This compiler is
+divided into five distinct parts:
+\begin{enumerate}
+  \item Lexing
+  \item Parsing and Abstract Syntax Trees
+  \item Semantic Analysis
+  \item Crontrol Flow Graphs
+  \item Helpers
+\end{enumerate}
+
+Some sections were implemented in Java, since the tool used requires it, but the
+main part of the compiler is written in Scala.
+
+\subsection{Lexing}
+The lexer uses a modified version of JFlex\footnote{JFlex: http://jflex.de}. The
+original PHP compiler uses flex as scanner. The modification done to JFlex is
+the implementation of flex's \verb=yymore()=, which currently lacks in JFlex.
+This function is used to tell the scanner that the following rules should be
+appended to \verb=yytext= instead of overwriting it. The JFlex syntax file is an
+adapted version of the original flex file. This step was done in Java.
+
+\subsection{Parsing and Abstract Syntax Trees}
+The parser, as mentionned before, is based on a modified version of CUP. CUP is
+a java based parser generator which uses a syntax similar to yacc, the parser
+generator used in the original PHP compiler. The version of CUP used for this
+project differs from the original one in two points:
+\begin{enumerate}
+  \item The original CUP cannot handle large syntax files. Indeed, since CUP
+    directly writes the parsing tables as properties of the generated class,
+    the size of the class properties can become too large for \emph{javacc}. The
+    PHP grammar being quite big, the resulting parser class couldn't be compiled.
+    To solve the problem, CUP was modified to provide an option specifying that the
+    the multiple tables should be written into files and loaded at runtime. This
+    modification was proposed to be included inside CUP.
+  \item To avoid the troubles of referencing scala classes, the parser
+    generator was modified to translate the application of the production into a
+    simple tree which could then be translated by a Scala class entirely.
+\end{enumerate}
+
+The Syntax Tree (ST) is then translated into an AST. This is done by visiting
+the tree and decomposing syntax elements:
+
+\begin{listing}
+\begin{verbatim}
+    // ...
+    def extends_from(n: ParseNode): Option[StaticClassRef] = {
+        childrenNames(n) match {
+            case List() =>
+                None
+            case List("T_EXTENDS", "fully_qualified_class_name") =>
+                Some(fully_qualified_class_name(child(n, 1)))
+        }
+    }
+    // ...
+\end{verbatim}
+  \caption{parser/STToAST.scala: Example of ST to AST decomposition}
+\end{listing}
+
+\begin{itemize}
+  \item \verb=chidldrenNames(node)= is used to return a list of strings,
+    representing the tokens or productions.
+  \item \verb=child(node, index)= is used to access the N'th child
+\end{itemize}
+
+\begin{figure}
+  \begin{center}
+  \includegraphics[scale=0.3]{ST.jpg}
+  \end{center}
+  \caption{Syntax Tree for "\$a = 1 + \$b;"}
+\end{figure}
+
+\begin{figure}
+  \begin{center}
+  \includegraphics[scale=0.3]{AST.jpg}
+  \end{center}
+  \caption{Abstract Syntax Tree for "\$a = 1 + \$b;"}
+\end{figure}
+
+\subsection{Semantic Analysis}
+Some checks can be done direcly by looking at the AST. Indeed, PHP provides a
+wide range of features, some of them being considered nowadays as bad practice.
+This tool emits notices for the following issues:
+
+\begin{itemize}
+  \item Non top-level declaration: PHP allows a developer to conditionnaly
+    declare functions or classes. This not only generates problems with the
+    following analysis, but also induces some performance hits on servers equipied
+    with so-called opcode cachers. Those opcode cachers are responsible for caching
+    the intermediate--or compiled version of each file, function and class. The
+    goal being to speed up the process by reducing the number of compilations
+    required per request. This cannot be done easily if those declarations are
+    conditional.
+  \item Call-time pass-by-ref: a function accepting a reference\footnote{PHP
+    References: https://php.net/references} has to be defined as such, but PHP
+    allows the developer to pass a reference at the time of the call, even to a
+    function not declared to receive one. This feature is deprecated, and can cause
+    unwanted side-effects.
+  \item Non-trivial include calls: the \verb=include=\footnote{PHP Include:
+    http://php.net/include} statement allows a developer to execute the given file
+    in the current scope. The argument representing the file to include can be
+    dynamic. This tool will try to resolve dynamic expressions that are most
+    commonly used to be able to extend the analysis to that file. In case the
+    expression is too dynamic, that include call will be ignored. Any
+    combination of those expressions are considered as trivial dynamic expressions
+    for include calls:
+    \begin{itemize}
+      \item the concatenation operator: "."
+      \item the \verb=dirname()=\footnote{PHP dirname: http://php.net/dirname} function,
+          used to retrieve the parent directory of the path passed as argument
+      \item constants
+      \item class constants
+      \item string
+    \end{itemize}
+  \item Dynamic object properties: PHP allows dynamic references to an object property
+    using a variable or expression (e.g. \verb.$name = "a"; $obj->$name. instead of
+    \verb.$obj->a.). This is usually considered as bad practice since arrays are
+    usually prefered for such tasks.
+  \item Dynamic variables: PHP allows to reference a variable using either a
+    variable, or an expression\footnote{PHP Variable variables:
+    http://php.net/variables.variable}: (\verb=$$var= or
+    \verb=${'prefix'.$name.foo()}=).
+\end{itemize}
+
+Another part of the semantic analysis consists of validating the usage of
+identifiers such as variables, functions or classes. The goal is to ensure that
+no obvious semantic errors such as inheritance cycles, or visibility
+inconsistances exist.
+
+\begin{listing}
+  \begin{verbatim}
+<?php
+class A extends D { } 
+class B extends A { }
+class C extends A { }
+?>
+  \end{verbatim}
+  \caption{Class inheritance cycle}
+\end{listing}
+
+\begin{listing}
+  \begin{verbatim}
+test.php:2  Error: Classes A -> B -> C form an inheritance cycle
+class A extends B {}
+^
+test.php:4  Error: Class C extends non-existent class A
+class C extends A {}
+                ^
+2 errors occured, abort
+  \end{verbatim}
+  \caption{Cycle detection error}
+\end{listing}
+
+\begin{listing}
+  \begin{verbatim}
+<?php
+class A {
+    public function test() {}
+}
+
+class B extends A {
+    protected function test() {}
+}
+?>
+  \end{verbatim}
+  \caption{Visibility inconsistance}
+\end{listing}
+
+\begin{listing}
+  \begin{verbatim}
+test.php:7  Error: Method B::test cannot overwrite A::test 
+                   with visibility protected (was public)
+    protected function test() {}
+                       ^
+1 error occured, abort
+  \end{verbatim}
+  \caption{Visibility error}
+\end{listing}
+
+Since PHP allows a developer to dynamically create and reference variables, it
+is close to impossible to detect undeclared or unused variables solely based on
+symbols collection. PHP is also loosely typed, which means type propagations
+and checks cannot sanely be done using the AST only. In fact, the AST is only the
+intermediate step that only let us do trivial checks. To analyse more complex
+aspects of a program, this tool will use control flow graphs (CFG) which are
+derived from ASTs.
+
+\subsection{Control flow graphs}
+Control flow graphs modelize the flow of values through the different control
+structures. It will be used here to detect unreachable branches of code, and to
+propagate types. Some basic type checks can be done, but since PHP does
+automatic type juggling, only few type errors resulting in fatal errors can
+occur. However this tool can be set to be verbose and emit notices for each
+type juggling, giving the chance to catch un-wanted type-juggling side effects.
+
+\begin{listing}
+  \begin{verbatim}
+<?php
+function test() {
+  $a = 0;
+  for($i = 0; $i < 10; $i++) {
+    $a += $i;
+  }
+}
+?>
+  \end{verbatim}
+  \caption{Control structure example}
+  \label{cfg1}
+\end{listing}
+
+\begin{figure}
+  \begin{center}
+  \includegraphics[scale=0.3]{CFG1.jpg}
+  \end{center}
+  \caption{Control flow graph for Listing~\ref{cfg1}}
+\end{figure}
+
+\begin{listing}
+  \begin{verbatim}
+<?php
+function test() {
+  $a = 0;
+  for($i = 0; $i < 10; $i++) {
+    break;
+    $a += $i;
+  }
+}
+?>
+  \end{verbatim}
+  \caption{Control structure with unreachable code}
+  \label{cfg2}
+\end{listing}
+
+\begin{figure}
+  \begin{center}
+  \includegraphics[scale=0.3]{CFG2.jpg}
+  \end{center}
+  \caption{Control flow graph for Listing~\ref{cfg2}, showing unreachable branches}
+\end{figure}
+
+\subsection{Helpers}
+In order to check that parts of the tool was working as expected, some helpers were
+developped to retrieve information about each steps. The main helpers are able to generate:
+\begin{itemize}
+  \item A list of tokens generated from the file
+  \item A dot file representing the Syntax Tree graph
+  \item A dot file representing the Abstract Syntax Tree
+  \item A dot file representing the Control Flow Graph, highlighting control structures
+    such as \verb=if=, \verb=for=, \verb=foreach=, \verb=while=, \verb=dowhile=
+\end{itemize}
+
+Those helpers were used to generate the figures presented in this report.
+
+\section{Limitations and future work}
+As the timespan of this project was only one semester, only some limited
+analysis has been done, and some shortcuts were taken.  For example, PHP
+references were ignored as they add much more complexity to the process, while
+their usage is limited. Additionally, even though the code base for the syntax
+is PHP 5.3, some of its features such as namespaces or closures has been left
+out. The aim of this project being to provide something useful, some implementation
+details were ignored, which means that the current codebase contains several
+\emph{TODO} annotation, that would have to be looked over whenever some
+additional time on this project.
+
+Much more analysis could be done, such as value ranges analysis, that can help
+guide the traversal of the CFG to gain precision. Also, the model used for
+arrays could be precised to allow more fine-grained analysis.
+
+\section{Conclusions}
+This project was really interessant because it was based on a real language, used
+every day by millions of users wolrdwide. Such a tool, once reaching stability
+and soundness to some extent can make a considerable impact. However, due to the
+number of lacks in the current implementation, the tool as-is wouldn't be of
+much help in most cases. I hope that I'll find more time to work on it, either
+on my free time or as a school-related project, because I feel that there is a
+real gap to fill regarding static analysis of PHP related programs and scripts.
+
+\addcontentsline{toc}{section}{References}
+\begin{thebibliography}{99}
+  \bibitem{tigerbook}A.W. Appel {\it Modern Compiler Implementation in Java}
+    Cambridge University Press (2002)
+  \bibitem{recdescent}\mbox{http://lara.epfl.ch/dokuwiki/compilation:} \mbox{example\_efficient\_code\_for\_conditionals}
+\end{thebibliography}
+
+
+\end{document}
