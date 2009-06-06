@@ -27,6 +27,8 @@ class CFGGraph extends Helper {
 case class CheckContext();
 
 case class CFGGraphs(node: Tree) extends ASTTraversal[CheckContext](node, CheckContext()) {
+    var result: String = "";
+    var n = 1;
 
     /**
      * Visit the nodes and aggregate information inside the context to provide
@@ -36,9 +38,14 @@ case class CFGGraphs(node: Tree) extends ASTTraversal[CheckContext](node, CheckC
         var newCtx = ctx;
 
         node match {
+            case Program(stmts) =>
+                val cfg: CFG = ASTToCFG.convertAST(stmts)
+                cfg.writeDottyToFile("result.cfg-"+n, "Main");
+                n = n + 1;
             case FunctionDecl(name, args, retref, body) =>
                 val cfg: CFG = ASTToCFG.convertAST(List(body))
-                cfg.writeDottyToFile("result.cfg")
+                cfg.writeDottyToFile("result.cfg-"+n, name.value);
+                n = n + 1;
 
             case _ =>
         }

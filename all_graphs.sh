@@ -11,11 +11,15 @@ DIST_PATH=/home/wwwrun/colder.ch/project/
 NAME=`basename $1`
 if [ -f "result.st" ]; then
     dot -Tjpg -o ${DIST_PATH}${NAME}-AST.jpg result.ast && mv result.ast ${DIST_PATH}${NAME}-AST.jpg.txt
+    echo "Graph saved to http://project.colder.ch/$NAME-AST.jpg"
     dot -Tjpg -o ${DIST_PATH}${NAME}-ST.jpg result.st && mv result.st ${DIST_PATH}${NAME}-ST.jpg.txt
-    dot -Tjpg -o ${DIST_PATH}${NAME}-CFG.jpg result.cfg && mv result.cfg ${DIST_PATH}${NAME}-CFG.jpg.txt
+    echo "Graph saved to http://project.colder.ch/$NAME-ST.jpg"
+    for f in result.cfg-*; do
+        N=`echo $f | cut -d'-' -f2`
+        dot -Tjpg -o ${DIST_PATH}${NAME}-CFG${N}.jpg $f && mv $f ${DIST_PATH}${NAME}-CFG${N}.jpg.txt
+        echo "Graph saved to http://project.colder.ch/$NAME-CFG${N}.jpg"
+    done
+    #/dot -Tjpg -o ${DIST_PATH}${NAME}-CFG.jpg result.cfg && cp result.cfg ${DIST_PATH}${NAME}-CFG.jpg.txt
 
     cp $1 ${DIST_PATH}${NAME}s
-    echo "Graph saved to $JPG_PATH (http://project.colder.ch/$NAME-AST.jpg)"
-    echo "Graph saved to $JPG_PATH (http://project.colder.ch/$NAME-ST.jpg)"
-    echo "Graph saved to $JPG_PATH (http://project.colder.ch/$NAME-CFG.jpg)"
 fi

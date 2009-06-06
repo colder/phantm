@@ -187,7 +187,7 @@ class LabeledDirectedGraphImp[LabelType] extends LabeledDirectedGraph[LabelType]
   override def toString: String = edges.toList.map(_.toString).mkString("{ ", ", ", " }")
   
   /** The following method prints out a string readable using GraphViz. */
-  def toDotString: String = {
+  def toDotString(title: String): String = {
     var res: StringBuffer = new StringBuffer()
     def emit(s: String) = res.append(s)
     def arrow(x: String, y: String) = {
@@ -200,6 +200,7 @@ class LabeledDirectedGraphImp[LabelType] extends LabeledDirectedGraph[LabelType]
     }
  
     emit("digraph D {\n")
+    emit(" label=\""+title+"\"\n")
     emit(" entry [color=darkolivegreen1,style=filled];\n")
     emit(" exit [color=orangered1,style=filled];\n")
 
@@ -217,10 +218,10 @@ class LabeledDirectedGraphImp[LabelType] extends LabeledDirectedGraph[LabelType]
   }
  
   /** Writes the graph to a file readable with GraphViz. */
-  def writeDottyToFile(fname: String): Unit = {
+  def writeDottyToFile(fname: String, title: String): Unit = {
     import java.io.{BufferedWriter, FileWriter}
     val out = new BufferedWriter(new FileWriter(fname))
-    out.write(toDotString)
+    out.write(toDotString(title))
     out.close
   }
  
@@ -228,13 +229,13 @@ class LabeledDirectedGraphImp[LabelType] extends LabeledDirectedGraph[LabelType]
    * directly viewing the generated file using one of the two following
    * methods. */
   def dotGvView: Unit = {
-    writeDottyToFile(dotFileName)
+    writeDottyToFile(dotFileName, "")
     exec("dot " + dotFileName + " -Tps -o" + psFileName)
     exec("gv " + psFileName)
   }
   
   def dottyView: Unit = {
-    writeDottyToFile(dotFileName)
+    writeDottyToFile(dotFileName, "")
     exec("dotty " + dotFileName)
   }
   

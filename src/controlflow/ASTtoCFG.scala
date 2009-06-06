@@ -286,12 +286,12 @@ object ASTToCFG {
     }
     
     /** Emits a single statement. cont = where to continue after the statement */
-    def stmt(s: Statement, cont: Vertex): Unit = s match {
+    def stmt(s: Statement, cont: Vertex): Unit = { 
+      s match {
         case LabelDecl(name) =>
             // GOTO
         case Block(sts) =>
             stmts(sts, cont)
-            Emit.setPC(cont)
         case If(cond, then, elze) =>
             val thenV = cfg.newVertex
             val elzeV = cfg.newVertex
@@ -317,7 +317,6 @@ object ASTToCFG {
             stmt(st, beginV)
             controlStack = controlStack.tail
             cfg.closeGroup(cont)
-            Emit.setPC(cont)
         case DoWhile(body, cond) =>
             val beginV = Emit.getPC
             val beginCheck = cfg.newVertex
@@ -327,7 +326,6 @@ object ASTToCFG {
             condExpr(cond, cont, beginV)
             controlStack = controlStack.tail
             cfg.closeGroup(cont)
-            Emit.setPC(cont)
         case For(init, cond, step, then) => 
             cfg.openGroup("for", Emit.getPC)
             val beginCondV = cfg.newVertex
@@ -343,7 +341,6 @@ object ASTToCFG {
             Emit.setPC(beginStepV);
             stmt(step, beginCondV);
             cfg.closeGroup(cont)
-            Emit.setPC(cont);
         case Switch(input, cases) =>
             val beginSwitchV = Emit.getPC
             var curCaseV = cfg.newVertex
@@ -400,33 +397,26 @@ object ASTToCFG {
             controlStack = controlStack.tail
 
             cfg.closeGroup(cont)
-            Emit.setPC(cont)
         case Continue(PHPInteger(level)) =>
             if (level > controlStack.length) {
                 Reporter.error("Continue level exceeding control structure deepness.", s);
             } else {
                 Emit.statementCont(CFGSkip, controlStack(level-1)._1)
-                Emit.setPC(cont)
             }
         case Continue(_) =>
             Reporter.notice("Dynamic continue statement ignored", s);
-            Emit.setPC(cont)
-
         case Break(PHPInteger(level)) =>
             if (level > controlStack.length) {
                 Reporter.error("Break level exceeding control structure deepness.", s);
             } else {
                 Emit.statementCont(CFGSkip, controlStack(level-1)._2)
-                Emit.setPC(cont)
             }
         case Break(_) =>
             Reporter.notice("Dynamic break statement ignored", s);
-            Emit.setPC(cont)
         case Static(vars) =>
             for (v <- vars) v match {
                 case InitVariable(SimpleVariable(id), Some(ex)) =>
                     Emit.statementCont(exprStore(idFromId(id), ex), cont)
-                    Emit.setPC(cont);
                 case InitVariable(SimpleVariable(id), None) =>
                     Emit.statementCont(CFGAssign(idFromId(id), CFGNull), cont)
                     Emit.setPC(cont);
@@ -445,18 +435,14 @@ object ASTToCFG {
             Emit.goto(cont)
         case Return(expr) =>
             Emit.statementCont(exprStore(retval, expr), cfg.exit)
-            Emit.setPC(cont)
         case Exit(Some(value)) =>
             val retV = FreshVariable("exit")
             Emit.statementCont(exprStore(retV, value), cfg.exit)
-            Emit.setPC(cont)
         case Exit(None) =>
             val retV = FreshVariable("exit")
             Emit.statementCont(CFGAssign(retV, CFGNumLit(0)), cfg.exit)
-            Emit.setPC(cont)
         case Assign(SimpleVariable(id), value, byref) =>
             Emit.statementCont(exprStore(idFromId(id), value), cont)
-            Emit.setPC(cont)
         case Foreach(ex, SimpleVariable(as), _, optkey, _, body) =>
             val v = FreshVariable("val")
             val condV = cfg.newVertex
@@ -486,13 +472,14 @@ object ASTToCFG {
 
             Emit.setPC(nextV)
             Emit.statementCont(CFGAssign(v, CFGArrayNext(v)), condV)
-            Emit.setPC(cont)
-
-
+        case _: FunctionDecl | _: ClassDecl | _: InterfaceDecl => 
+            /* ignore */
+            Emit.goto(cont);
         case e: Expression =>
             val v = FreshVariable("val");
             Emit.statementCont(exprStore(v, e), cont)
-            Emit.setPC(cont)
+      }
+      Emit.setPC(cont)
     }
 
     /** Removes useless Skip edges by short-circuiting them. */

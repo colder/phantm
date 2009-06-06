@@ -15,6 +15,9 @@ case class CFGChecks(node: Tree) extends ASTTraversal[CheckContext](node, CheckC
         var newCtx = ctx;
 
         node match {
+            case Program(stmts) =>
+                val cfg: CFG = ASTToCFG.convertAST(stmts)
+
             case FunctionDecl(name, args, retref, body) =>
                 val cfg: CFG = ASTToCFG.convertAST(List(body))
 
