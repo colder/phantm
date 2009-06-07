@@ -4,7 +4,7 @@ object CFGTrees {
   import analyzer.Symbols._
   import analyzer.Types._
 
-  sealed abstract class CFGTree {
+  sealed abstract class CFGTree extends Positional {
     override def toString = stringRepr(this)
   }
 
@@ -41,7 +41,7 @@ object CFGTrees {
                             index: CFGSimpleValue,
                             expr: CFGSimpleValue) extends CFGStatement
 
-  case class CFGError() extends CFGStatement with Positional {
+  case class CFGError() extends CFGStatement {
     override def toString = stringRepr(this);
   }
 
@@ -54,7 +54,7 @@ object CFGTrees {
   sealed abstract class CFGVariable extends CFGSimpleValue 
 
   /** Used to represent the identifiers from the original program. */
-  case class CFGIdentifier(symbol: VariableSymbol) extends CFGVariable with Symbolic with Positional {
+  case class CFGIdentifier(symbol: VariableSymbol) extends CFGVariable with Symbolic {
     override def getSymbol = symbol
     override def setSymbol(s: Symbol) = this
     override def getType = symbol.getType
@@ -64,13 +64,15 @@ object CFGTrees {
 
   /** Used to represent intermediate values (fresh identifiers). */
   case class CFGTempID(value: String) extends CFGVariable
+  case class CFGVariableVar(v: CFGSimpleValue) extends CFGVariable
+
   case class CFGNumLit(value: Int) extends CFGSimpleValue
   case class CFGStringLit(value: String) extends CFGSimpleValue
-  case object CFGTrue extends CFGSimpleValue
-  case object CFGFalse extends CFGSimpleValue
-  case object CFGNull extends CFGSimpleValue
-  case object CFGThis extends CFGSimpleValue
-  case object CFGEmptyArray extends CFGSimpleValue
+  case class CFGTrue() extends CFGSimpleValue
+  case class CFGFalse() extends CFGSimpleValue
+  case class CFGNull() extends CFGSimpleValue
+  case class CFGThis() extends CFGSimpleValue
+  case class CFGEmptyArray() extends CFGSimpleValue
   case class CFGInstanceof(lhs: CFGSimpleValue, cl: parser.Trees.ClassRef) extends CFGSimpleValue
   case class CFGArrayNext(ar: CFGSimpleValue) extends CFGSimpleValue
   case class CFGArrayCurElement(ar: CFGSimpleValue) extends CFGSimpleValue
@@ -141,12 +143,12 @@ object CFGTrees {
       case CFGStringLit(value) => "\\\"" + value + "\\\""
       case CFGNumLit(value) => value.toString
       case CFGNew(tpe, params) => "new " + tpe.value + params.mkString("(", ", ", ")")
-      case CFGTrue => "true"
-      case CFGNull => "null"
-      case CFGEmptyArray => "array()"
-      case CFGFalse => "false"
+      case CFGTrue() => "true"
+      case CFGNull() => "null"
+      case CFGEmptyArray() => "array()"
+      case CFGFalse() => "false"
       case CFGError() => "error"
-      case CFGThis => "this"
+      case CFGThis() => "this"
       case CFGArrayNext(a) => a + ".next"
       case CFGArrayCurKey(a) => a + ".key"
       case CFGArrayCurElement(a) => a + ".current"
@@ -155,6 +157,7 @@ object CFGTrees {
       case CFGInstanceof(obj, _) => obj + " instanceof ?"
       case CFGIdentifier(sym) => sym.name
       case CFGTempID(value) => value
+      case CFGVariableVar(v) => "*("+v+")"
     }
   }
 }

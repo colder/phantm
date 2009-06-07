@@ -138,10 +138,10 @@ object Trees {
     case class Mult(lhs: Expression, rhs: Expression) extends Expression
     case class Concat(lhs: Expression, rhs: Expression) extends Expression
     case class Mod(lhs: Expression, rhs: Expression) extends Expression
-    case class PreInc(rhs: Expression) extends Expression
-    case class PostInc(rhs: Expression) extends Expression
-    case class PreDec(rhs: Expression) extends Expression
-    case class PostDec(rhs: Expression) extends Expression
+    case class PreInc(rhs: Variable) extends Expression
+    case class PostInc(rhs: Variable) extends Expression
+    case class PreDec(rhs: Variable) extends Expression
+    case class PostDec(rhs: Variable) extends Expression
     case class BooleanAnd(lhs: Expression, rhs: Expression) extends Expression
     case class BooleanOr(lhs: Expression, rhs: Expression) extends Expression
     case class BooleanXor(lhs: Expression, rhs: Expression) extends Expression

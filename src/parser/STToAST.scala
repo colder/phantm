@@ -686,10 +686,10 @@ case class STToAST(st: ParseNode) {
                 Assign(variable_w(child(n, 0)), ShiftLeft(variable(child(n, 0)), expr(child(n, 2))).setPos(child(n, 1)), false)
             case List("variable", "T_SR_EQUAL", "expr") =>
                 Assign(variable_w(child(n, 0)), ShiftRight(variable(child(n, 0)), expr(child(n, 2))).setPos(child(n, 1)), false)
-            case List("variable", "T_INC") => PostInc(expr(child(n, 0)))
-            case List("T_INC", "variable") => PreInc(expr(child(n, 1)))
-            case List("variable", "T_DEC") => PostDec(expr(child(n, 0)))
-            case List("T_DEC", "variable") => PreDec(expr(child(n, 1)))
+            case List("variable", "T_INC") => PostInc(variable_w(child(n, 0)))
+            case List("T_INC", "variable") => PreInc(variable_w(child(n, 1)))
+            case List("variable", "T_DEC") => PostDec(variable_w(child(n, 0)))
+            case List("T_DEC", "variable") => PreDec(variable_w(child(n, 1)))
             case List("expr", "T_BOOLEAN_OR", "expr") =>
                 BooleanOr(expr(child(n, 0)), expr(child(n, 2)))
             case List("expr", "T_BOOLEAN_AND", "expr") =>
