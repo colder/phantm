@@ -139,6 +139,10 @@ FROM FLEX -> JFLEX
         }
         return this.fileName;
     }
+
+    public boolean isLabelStart(char c) {
+        return ((c) >= 'a' && (c) <= 'z') || ((c) >= 'A' && (c) <= 'Z') || (c) == '_' || (c) >= 0x7F;
+    }
 %}
 
 
@@ -234,7 +238,7 @@ NEWLINE = ("\r"|"\n"|"\r\n")
     "print" { return symbol(Symbols.T_PRINT, "T_PRINT"); }
     "class" { return symbol(Symbols.T_CLASS, "T_CLASS"); }
     "extends" { return symbol(Symbols.T_EXTENDS, "T_EXTENDS"); }
-    "::" { return symbol(Symbols.T_PAAMAYIM_NEKUDOTAYIM, "T_PAAMAYIM_NEKUDOTAYIM"); }
+    "::" { return symbol(Symbols.T_DOUBLE_COLON, "T_DOUBLE_COLON"); }
     "new" { return symbol(Symbols.T_NEW, "T_NEW"); }
     "var" { return symbol(Symbols.T_VAR, "T_VAR"); }
     "eval" { return symbol(Symbols.T_EVAL, "T_EVAL"); }
@@ -322,6 +326,45 @@ NEWLINE = ("\r"|"\n"|"\r\n")
 <ST_IN_SCRIPTING>"("{TABS_AND_SPACES}("bool"|"boolean"){TABS_AND_SPACES}")" { return symbol(Symbols.T_BOOL_CAST, "T_BOOL_CAST"); }
 <ST_IN_SCRIPTING>"("{TABS_AND_SPACES}("unset"){TABS_AND_SPACES}")" { return symbol(Symbols.T_UNSET_CAST, "T_UNSET_CAST"); }
 
+<ST_DOUBLE_QUOTES>[\"] {
+    yybegin(ST_IN_SCRIPTING);
+    return symbol(Symbols.T_DOUBLE_QUOTE, "T_DOUBLE_QUOTE");
+}
+
+<ST_DOUBLE_QUOTES,ST_BACKQUOTE,ST_HEREDOC>"{$" {
+    pushState(ST_IN_SCRIPTING);
+    yypushback(1);
+    return symbol(Symbols.T_CURLY_OPEN, "T_CURLY_OPEN");
+}
+
+<ST_DOUBLE_QUOTES>{ANY_CHAR} {
+    scanner:
+    while(zzMarkedPos < zzEndRead) {
+        switch(zzBuffer[zzMarkedPos]) {
+            case '"':
+                break scanner;
+            case '$':
+                if (zzBuffer[zzMarkedPos+1] == '{' || isLabelStart(zzBuffer[zzMarkedPos+1])) {
+                    break scanner;
+                }
+                break;
+            case '{':
+                if (zzBuffer[zzMarkedPos+1] == '$') {
+                    break scanner;
+                }
+                break;
+            case '\\':
+                if (zzMarkedPos+2 < zzEndRead) {
+                    zzMarkedPos+=2;
+                }
+                continue scanner;
+        }
+        zzMarkedPos++;
+    }
+
+    return symbol(Symbols.T_ENCAPSED_AND_WHITESPACE, "T_ENCAPSED_AND_WHITESPACE");
+}
+
 <ST_IN_SCRIPTING,ST_DOUBLE_QUOTES,ST_BACKQUOTE,ST_HEREDOC>"->" {
 	pushState(ST_LOOKING_FOR_PROPERTY);
     return symbol(Symbols.T_OBJECT_OPERATOR, "T_OBJECT_OPERATOR");
@@ -377,30 +420,28 @@ NEWLINE = ("\r"|"\n"|"\r\n")
 // <YYINITIAL>(([^<]|"<"[^?%s<]){1,400})|"<s"|"<" {
 <YYINITIAL>(([^<]|"<"[^?%s<])*)|"<s"|"<" {
     // NJ: replaced {1,400} by * (because it's faster)
-    //return new Yytoken("T_INLINE_HTML", text());
     return symbol(Symbols.T_INLINE_HTML, "T_INLINE_HTML");
 }
 
 <YYINITIAL>"<?"|"<script"{WHITESPACE}+"language"{WHITESPACE}*"="{WHITESPACE}*("php"|"\"php\""|"\'php\'"){WHITESPACE}*">" {
     yybegin(ST_IN_SCRIPTING);
+    return symbol(Symbols.T_OPEN_TAG, "T_OPEN_TAG");
 }
 
 <YYINITIAL>"<%="|"<?=" {
     yybegin(ST_IN_SCRIPTING);
     //return new Yytoken("T_ECHO", text());
-    return symbol(Symbols.T_ECHO, "T_ECHO");
+    return symbol(Symbols.T_OPEN_TAG_WITH_ECHO, "T_OPEN_TAG_WITH_ECHO");
 }
 
 <YYINITIAL>"<%" {
     yybegin(ST_IN_SCRIPTING);
+    return symbol(Symbols.T_OPEN_TAG, "T_OPEN_TAG");
 }
 
 <YYINITIAL>"<?php"([ \t]|{NEWLINE}) {
 	yybegin(ST_IN_SCRIPTING);
-}
-
-<YYINITIAL>"<?php_track_vars?>"{NEWLINE}? {
-    return symbol(Symbols.T_INLINE_HTML, "T_INLINE_HTML");
+    return symbol(Symbols.T_OPEN_TAG, "T_OPEN_TAG");
 }
 
 <ST_IN_SCRIPTING,ST_DOUBLE_QUOTES,ST_HEREDOC,ST_BACKQUOTE>"$"{LABEL} {
@@ -409,11 +450,6 @@ NEWLINE = ("\r"|"\n"|"\r\n")
 
 
 <ST_IN_SCRIPTING>{LABEL} {
-    return symbol(Symbols.T_STRING, "T_STRING");
-}
-
-
-<ST_DOUBLE_QUOTES,ST_BACKQUOTE,ST_HEREDOC>{LABEL} {
     return symbol(Symbols.T_STRING, "T_STRING");
 }
 
@@ -488,7 +524,7 @@ NEWLINE = ("\r"|"\n"|"\r\n")
 }
 
 <ST_IN_SCRIPTING>[\"] {
-	yybegin(ST_DOUBLE_QUOTES);
+    yybegin(ST_DOUBLE_QUOTES);
     return symbol(Symbols.T_DOUBLE_QUOTE, "T_DOUBLE_QUOTE");
 }
 

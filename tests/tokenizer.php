@@ -33,7 +33,15 @@ $tokens_chars = array(
 
 foreach(token_get_all(file_get_contents($argv[1])) as $t) {
     if (is_array($t)) {
-        echo token_name($t[0])."($t[1])\n";
+        if (token_name($t[0]) == "T_WHITESPACE") continue;
+        if (token_name($t[0]) == "T_COMMENT") continue;
+        if (token_name($t[0]) == "T_DOC_COMMENT") continue;
+
+        if (token_name($t[0]) == "T_PAAMAYIM_NEKUDOTAYIM") {
+            echo "T_DOUBLE_COLON($t[1])\n";
+        } else {
+            echo token_name($t[0])."($t[1])\n";
+        }
         //echo token_name($t[0])."\n";
     } else {
         echo $tokens_chars[$t]."($t)\n";

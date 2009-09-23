@@ -8,6 +8,7 @@ class Tokenizer extends Helper{
     def generate(input: String, printStream: java.io.PrintStream): Unit = {
         try {
                val l = new Lexer(new java.io.FileReader(input));
+               l.setFileName(input);
                var sym: java_cup.runtime.Symbol = l.next_token();
 
                while(sym != null && sym.sym != 0) {

@@ -236,8 +236,10 @@ terminal ParseNode T_OBJECT_OPERATOR;
 terminal ParseNode T_OPEN_BRACES;
 terminal ParseNode T_OPEN_CURLY_BRACES;
 terminal ParseNode T_OPEN_RECT_BRACES;
+terminal ParseNode T_OPEN_TAG;
+terminal ParseNode T_OPEN_TAG_WITH_ECHO;
 terminal ParseNode T_OR_EQUAL;
-terminal ParseNode T_PAAMAYIM_NEKUDOTAYIM;
+terminal ParseNode T_DOUBLE_COLON;
 terminal ParseNode T_PLUS;
 terminal ParseNode T_PLUS_EQUAL;
 terminal ParseNode T_POINT;
@@ -794,16 +796,16 @@ function_call ::=
     | T_NS_SEPARATOR namespace_name T_OPEN_BRACES 
 				function_call_parameter_list
 				T_CLOSE_BRACES
-    | class_name T_PAAMAYIM_NEKUDOTAYIM T_STRING T_OPEN_BRACES 
+    | class_name T_DOUBLE_COLON T_STRING T_OPEN_BRACES 
 			function_call_parameter_list
 			T_CLOSE_BRACES
-    | class_name T_PAAMAYIM_NEKUDOTAYIM variable_without_objects T_OPEN_BRACES 
+    | class_name T_DOUBLE_COLON variable_without_objects T_OPEN_BRACES 
 			function_call_parameter_list
 			T_CLOSE_BRACES
-    | reference_variable T_PAAMAYIM_NEKUDOTAYIM T_STRING T_OPEN_BRACES 
+    | reference_variable T_DOUBLE_COLON T_STRING T_OPEN_BRACES 
 			function_call_parameter_list
 			T_CLOSE_BRACES
-    | reference_variable T_PAAMAYIM_NEKUDOTAYIM variable_without_objects T_OPEN_BRACES 
+    | reference_variable T_DOUBLE_COLON variable_without_objects T_OPEN_BRACES 
 			function_call_parameter_list
 			T_CLOSE_BRACES
     | variable_without_objects  T_OPEN_BRACES 
@@ -888,7 +890,7 @@ static_expr ::=
 ;
 
 static_class_constant ::= 
-      class_name T_PAAMAYIM_NEKUDOTAYIM T_STRING
+      class_name T_DOUBLE_COLON T_STRING
 ;
 
 scalar ::= 
@@ -1020,8 +1022,8 @@ variable_without_objects ::=
 ;
 
 static_member ::= 
-      class_name T_PAAMAYIM_NEKUDOTAYIM variable_without_objects
-    | reference_variable T_PAAMAYIM_NEKUDOTAYIM variable_without_objects
+      class_name T_DOUBLE_COLON variable_without_objects
+    | reference_variable T_DOUBLE_COLON variable_without_objects
 ;
 
 base_variable_with_function_calls ::= 
@@ -1145,6 +1147,6 @@ isset_variables ::=
 ;
 
 class_constant ::= 
-      class_name T_PAAMAYIM_NEKUDOTAYIM T_STRING
-    | reference_variable T_PAAMAYIM_NEKUDOTAYIM T_STRING
+      class_name T_DOUBLE_COLON T_STRING
+    | reference_variable T_DOUBLE_COLON T_STRING
 ;

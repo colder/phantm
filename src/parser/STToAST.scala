@@ -417,7 +417,7 @@ case class STToAST(st: ParseNode) {
 
     def static_class_constant(n: ParseNode): Expression = {
         childrenNames(n) match {
-            case List("class_name", "T_PAAMAYIM_NEKUDOTAYIM", "T_STRING") =>
+            case List("class_name", "T_DOUBLE_COLON", "T_STRING") =>
                 val cn = class_name(child(n, 0))
                 ClassConstant(cn, identifier(child(n, 2))).setPos(cn)
         }
@@ -933,13 +933,13 @@ case class STToAST(st: ParseNode) {
             case List("T_NS_SEPARATOR", "namespace_name", "T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") =>
                 val parts = namespace_name(child(n, 1))
                 FunctionCall(StaticFunctionRef(NSGlobal.setPos(child(n, 0)).setPos(child(n, 0)), parts.init, parts.last), function_call_parameter_list(child(n, 4)))
-            case List("class_name", "T_PAAMAYIM_NEKUDOTAYIM", "T_STRING", "T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") =>
+            case List("class_name", "T_DOUBLE_COLON", "T_STRING", "T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") =>
                 StaticMethodCall(class_name(child(n, 0)), StaticMethodRef(identifier(child(n, 2))).setPos(child(n, 2)), function_call_parameter_list(child(n, 4)))
-            case List("class_name", "T_PAAMAYIM_NEKUDOTAYIM", "variable_without_objects", "T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") =>
+            case List("class_name", "T_DOUBLE_COLON", "variable_without_objects", "T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") =>
                 StaticMethodCall(class_name(child(n, 0)), DynamicMethodRef(variable_without_objects(child(n, 2))).setPos(child(n, 2)), function_call_parameter_list(child(n, 4)))
-            case List("reference_variable", "T_PAAMAYIM_NEKUDOTAYIM", "T_STRING", "T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") =>
+            case List("reference_variable", "T_DOUBLE_COLON", "T_STRING", "T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") =>
                 StaticMethodCall(DynamicClassRef(reference_variable(child(n, 0))).setPos(child(n, 0)), StaticMethodRef(identifier(child(n, 2))).setPos(child(n, 2)), function_call_parameter_list(child(n, 4)))
-            case List("reference_variable", "T_PAAMAYIM_NEKUDOTAYIM", "variable_without_objects", "T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") =>
+            case List("reference_variable", "T_DOUBLE_COLON", "variable_without_objects", "T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") =>
                 StaticMethodCall(DynamicClassRef(reference_variable(child(n, 0))).setPos(child(n, 0)), DynamicMethodRef(variable_without_objects(child(n, 2))).setPos(child(n, 2)), function_call_parameter_list(child(n, 4)))
             case List("variable_without_objects", "T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") =>
                 FunctionCall(VarFunctionRef(variable_without_objects(child(n, 0))).setPos(child(n, 0)), function_call_parameter_list(child(n, 2)))
@@ -962,9 +962,9 @@ case class STToAST(st: ParseNode) {
 
     def static_member(n: ParseNode) = {
         (childrenNames(n) match {
-            case List("class_name", "T_PAAMAYIM_NEKUDOTAYIM", "variable_without_objects") =>
+            case List("class_name", "T_DOUBLE_COLON", "variable_without_objects") =>
                 ClassProperty(class_name(child(n, 0)), variable_without_objects(child(n, 2))).setPos(child(n, 0))
-            case List("reference_variable", "T_PAAMAYIM_NEKUDOTAYIM", "variable_without_objects") =>
+            case List("reference_variable", "T_DOUBLE_COLON", "variable_without_objects") =>
                 ClassProperty(VarClassRef(reference_variable(child(n, 0))).setPos(child(n, 0)), variable_without_objects(child(n, 2)))
         }).setPos(child(n, 0))
     }
@@ -1078,10 +1078,10 @@ case class STToAST(st: ParseNode) {
 
     def class_constant(n: ParseNode): Expression = {
         childrenNames(n) match {
-            case List("class_name", "T_PAAMAYIM_NEKUDOTAYIM", "T_STRING") =>
+            case List("class_name", "T_DOUBLE_COLON", "T_STRING") =>
                 val cn = class_name(child(n, 0));
                 ClassConstant(cn, identifier(child(n, 2))).setPos(cn)
-            case List("reference_variable", "T_PAAMAYIM_NEKUDOTAYIM", "T_STRING") =>
+            case List("reference_variable", "T_DOUBLE_COLON", "T_STRING") =>
                 val rv = reference_variable(child(n, 0));
                 ClassConstant(VarClassRef(rv).setPos(rv), identifier(child(n, 2))).setPos(rv)
         }
