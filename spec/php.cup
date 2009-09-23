@@ -959,6 +959,8 @@ expr ::=
     | expr T_MODULO expr
     | expr T_SL expr
     | expr T_SR expr
+    | T_PLUS expr
+    | T_MINUS expr
     | T_NOT expr
     | T_BITWISE_NOT expr
     | expr T_IS_IDENTICAL expr
