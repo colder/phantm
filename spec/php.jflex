@@ -340,24 +340,24 @@ NEWLINE = ("\r"|"\n"|"\r\n")
 <ST_DOUBLE_QUOTES>{ANY_CHAR} {
     scanner:
     while(zzMarkedPos < zzEndRead) {
-        switch(zzBuffer[zzMarkedPos]) {
+        switch(zzBuffer[zzMarkedPos-1]) {
             case '"':
+                zzMarkedPos--;
                 break scanner;
             case '$':
-                if (zzBuffer[zzMarkedPos+1] == '{' || isLabelStart(zzBuffer[zzMarkedPos+1])) {
+                if (zzBuffer[zzMarkedPos] == '{' || isLabelStart(zzBuffer[zzMarkedPos])) {
+                    zzMarkedPos--;
                     break scanner;
                 }
                 break;
             case '{':
-                if (zzBuffer[zzMarkedPos+1] == '$') {
+                if (zzBuffer[zzMarkedPos] == '$') {
+                    zzMarkedPos--;
                     break scanner;
                 }
                 break;
             case '\\':
-                if (zzMarkedPos+2 < zzEndRead) {
-                    zzMarkedPos+=2;
-                }
-                continue scanner;
+                zzMarkedPos++;
         }
         zzMarkedPos++;
     }
@@ -576,10 +576,6 @@ NEWLINE = ("\r"|"\n"|"\r\n")
 
 }
 
-<ST_DOUBLE_QUOTES,ST_BACKQUOTE,ST_HEREDOC>{ESCAPED_AND_WHITESPACE} {
-    return symbol(Symbols.T_ENCAPSED_AND_WHITESPACE, "T_ENCAPSED_AND_WHITESPACE");
-}
-
 <ST_SINGLE_QUOTE>([^'\\]|\\[^'\\])+ {
     return symbol(Symbols.T_ENCAPSED_AND_WHITESPACE, "T_ENCAPSED_AND_WHITESPACE");
 }
@@ -620,10 +616,6 @@ NEWLINE = ("\r"|"\n"|"\r\n")
     return symbol(Symbols.T_STRING, "T_STRING");
 }
 
-<ST_DOUBLE_QUOTES>"\\\"" {
-    return symbol(Symbols.T_STRING, "T_STRING");
-}
-
 <ST_BACKQUOTE>"\\`" {
     return symbol(Symbols.T_STRING, "T_STRING");
 }
@@ -636,18 +628,10 @@ NEWLINE = ("\r"|"\n"|"\r\n")
     return symbol(Symbols.T_STRING, "T_STRING");
 }
 
-<ST_DOUBLE_QUOTES,ST_BACKQUOTE,ST_HEREDOC>"\\"{ANY_CHAR} {
-    return symbol(Symbols.T_STRING, "T_STRING");
-}
-
 <ST_HEREDOC>[\"'`]+ {
     return symbol(Symbols.T_ENCAPSED_AND_WHITESPACE, "T_ENCAPSED_AND_WHITESPACE");
 }
 
-<ST_DOUBLE_QUOTES>[\"] {
-    yybegin(ST_IN_SCRIPTING);
-    return symbol(Symbols.T_DOUBLE_QUOTE, "T_DOUBLE_QUOTE");
-}
 
 <ST_BACKQUOTE>[`] {
     yybegin(ST_IN_SCRIPTING);
@@ -670,7 +654,7 @@ NEWLINE = ("\r"|"\n"|"\r\n")
 }
 
 <ST_IN_SCRIPTING,YYINITIAL,ST_DOUBLE_QUOTES,ST_BACKQUOTE,ST_SINGLE_QUOTE,ST_HEREDOC>{ANY_CHAR} {
-    System.err.println("read ANY_CHAR at wrong place:");
+    System.err.println("read ANY_CHAR at wrong place (state="+yystate()+"):");
     System.err.println("line " + yyline + ", column " + yycolumn);
     System.err.println("character: " + text());
     return null;
