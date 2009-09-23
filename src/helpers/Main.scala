@@ -42,6 +42,8 @@ object Main {
                 helper = new Tokenizer(); handle_options(xs)
             case "-t" :: "ST" :: xs =>
                 helper = new STGraph(); handle_options(xs)
+            case "-t" :: "lint" :: xs =>
+                helper = new Lint(); handle_options(xs)
             case path :: Nil =>
                 input = Some(path)
             case Nil =>

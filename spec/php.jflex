@@ -425,23 +425,23 @@ NEWLINE = ("\r"|"\n"|"\r\n")
 
 <YYINITIAL>"<?"|"<script"{WHITESPACE}+"language"{WHITESPACE}*"="{WHITESPACE}*("php"|"\"php\""|"\'php\'"){WHITESPACE}*">" {
     yybegin(ST_IN_SCRIPTING);
-    return symbol(Symbols.T_OPEN_TAG, "T_OPEN_TAG");
+//    return symbol(Symbols.T_OPEN_TAG, "T_OPEN_TAG");
 }
 
 <YYINITIAL>"<%="|"<?=" {
     yybegin(ST_IN_SCRIPTING);
     //return new Yytoken("T_ECHO", text());
-    return symbol(Symbols.T_OPEN_TAG_WITH_ECHO, "T_OPEN_TAG_WITH_ECHO");
+//    return symbol(Symbols.T_OPEN_TAG_WITH_ECHO, "T_OPEN_TAG_WITH_ECHO");
 }
 
 <YYINITIAL>"<%" {
     yybegin(ST_IN_SCRIPTING);
-    return symbol(Symbols.T_OPEN_TAG, "T_OPEN_TAG");
+//    return symbol(Symbols.T_OPEN_TAG, "T_OPEN_TAG");
 }
 
 <YYINITIAL>"<?php"([ \t]|{NEWLINE}) {
 	yybegin(ST_IN_SCRIPTING);
-    return symbol(Symbols.T_OPEN_TAG, "T_OPEN_TAG");
+//    return symbol(Symbols.T_OPEN_TAG, "T_OPEN_TAG");
 }
 
 <ST_IN_SCRIPTING,ST_DOUBLE_QUOTES,ST_HEREDOC,ST_BACKQUOTE>"$"{LABEL} {

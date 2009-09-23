@@ -36,6 +36,8 @@ foreach(token_get_all(file_get_contents($argv[1])) as $t) {
         if (token_name($t[0]) == "T_WHITESPACE") continue;
         if (token_name($t[0]) == "T_COMMENT") continue;
         if (token_name($t[0]) == "T_DOC_COMMENT") continue;
+        if (token_name($t[0]) == "T_OPEN_TAG") continue;
+        if (token_name($t[0]) == "T_OPEN_TAG_WITH_ECHO") continue;
 
         if (token_name($t[0]) == "T_PAAMAYIM_NEKUDOTAYIM") {
             echo "T_DOUBLE_COLON($t[1])\n";

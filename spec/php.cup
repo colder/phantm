@@ -363,7 +363,6 @@ non terminal ParseNode static_class_constant;
 non terminal ParseNode static_member;
 non terminal ParseNode static_expr;
 non terminal ParseNode static_var_list;
-non terminal ParseNode string_literal;
 non terminal ParseNode switch_case_list;
 non terminal ParseNode top_statement;
 non terminal ParseNode top_statement_list;
@@ -874,7 +873,7 @@ common_scalar ::=
     | T_METHOD_C
     | T_FUNC_C
     | T_NS_C
-    | T_START_HEREDOC string_literal T_END_HEREDOC
+    | T_START_HEREDOC T_CONSTANT_ENCAPSED_STRING T_END_HEREDOC
     | T_START_HEREDOC T_END_HEREDOC
 ;
 
@@ -1101,19 +1100,11 @@ non_empty_array_pair_list ::=
     | T_BITWISE_AND variable
 ;
 
-string_literal ::=
-       string_literal T_ENCAPSED_AND_WHITESPACE
-     | string_literal T_STRING
-     | T_STRING
-     | T_ENCAPSED_AND_WHITESPACE
-;
-
 encaps_list ::= 
       encaps_list encaps_var
-    | encaps_list T_STRING
     | encaps_list T_ENCAPSED_AND_WHITESPACE
     | encaps_var
-    | string_literal encaps_var
+    |  T_ENCAPSED_AND_WHITESPACE encaps_var
 ;
 
 encaps_var ::= 
