@@ -15,9 +15,11 @@ if [ -f "result.st" ]; then
     dot -Tjpg -o ${DIST_PATH}${NAME}-ST.jpg result.st && mv result.st ${DIST_PATH}${NAME}-ST.jpg.txt
     echo "Graph saved to http://project.colder.ch/$NAME-ST.jpg"
     for f in result.cfg-*; do
-        N=`echo $f | cut -d'-' -f2`
-        dot -Tjpg -o ${DIST_PATH}${NAME}-CFG${N}.jpg $f && mv $f ${DIST_PATH}${NAME}-CFG${N}.jpg.txt
-        echo "Graph saved to http://project.colder.ch/$NAME-CFG${N}.jpg"
+        if [ $f != 'result.cfg-*' ]; then
+            N=`echo $f | cut -d'-' -f2`
+            dot -Tjpg -o ${DIST_PATH}${NAME}-CFG${N}.jpg $f && mv $f ${DIST_PATH}${NAME}-CFG${N}.jpg.txt
+            echo "Graph saved to http://project.colder.ch/$NAME-CFG${N}.jpg"
+        fi
     done
     #/dot -Tjpg -o ${DIST_PATH}${NAME}-CFG.jpg result.cfg && cp result.cfg ${DIST_PATH}${NAME}-CFG.jpg.txt
 

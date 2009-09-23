@@ -157,8 +157,10 @@ object ASTToCFG {
         case Some(x) => Some(CFGAssign(v, x))
         case None => 
             ex match {
+                case ObjectProperty(obj, index) => 
+                    Some(CFGAssignBinary(v, expr(obj), OBJECTREAD, idFromId(index)))
                 case ArrayEntry(arr, index) => 
-                    Some(CFGAssignBinary(v, expr(arr), ARRAYREAD, expr(index))) 
+                    Some(CFGAssignBinary(v, expr(arr), ARRAYREAD, expr(index)))
                 case Clone(obj) =>
                     Some(CFGAssignUnary(v, CLONE, expr(obj)))
                 case Plus(lhs, rhs) =>
@@ -209,6 +211,10 @@ object ASTToCFG {
                     Some(CFGAssignFunctionCall(v, name, args map { a => expr(a.value) }))
                 case MethodCall(obj, StaticMethodRef(id), args) => 
                     Some(CFGAssignMethodCall(v, expr(obj), id, args.map {a => expr(a.value) }))
+                case Array(Nil) =>
+                    Some(CFGAssign(v, CFGEmptyArray()))
+                case New(StaticClassRef(_, _, id), args) =>
+                    Some(CFGAssign(v, CFGNew(id, args map { a => expr(a.value) })))
                 case _ => 
                     None
             }
@@ -234,41 +240,56 @@ object ASTToCFG {
                             // TODO
                         case NextArrayEntry(array) =>
                             Reporter.error("The [] operator does not generate any value", ex);
-                        case ObjectProperty(obj, property) =>
-                            // TODO
                         case DynamicObjectProperty(obj, property) =>
                             // TODO
                         case ClassProperty(cl, property) =>
                             // TODO
                         case ExpandArray(vars, expr) =>
                             // TODO
-                        case Assign(ArrayEntry(SimpleVariable(va), index), value, byref) =>
                         case Assign(va, value, byref) =>
                             va match {
                                 case SimpleVariable(id) =>
                                     v = idFromId(id)
                                     Emit.statement(exprStore(v, value))
+                                case VariableVariable(ex) =>
+                                    v = varFromVar(va)
+                                    Emit.statement(exprStore(v, value))
                                 case ArrayEntry(SimpleVariable(id), index) =>
                                     val e = expr(value);
                                     retval = Some(e)
-                                    Emit.statement(CFGArrayAssign(idFromId(id), expr(index), e).setPos(va))
+                                    Emit.statement(CFGAssignArray(idFromId(id), expr(index), e).setPos(va))
                                 case ArrayEntry(ex, index) =>
                                     val varray =  FreshVariable("arr")
                                     Emit.statement(exprStore(varray, ex))
                                     val vindex = expr(index)
                                     val e = expr(value)
                                     retval = Some(e)
-                                    Emit.statement(CFGArrayAssign(varray, vindex, e).setPos(va))
+                                    Emit.statement(CFGAssignArray(varray, vindex, e).setPos(va))
                                 case NextArrayEntry(SimpleVariable(id)) =>
                                     val e = expr(value)
                                     retval = Some(e)
-                                    Emit.statement(CFGArrayAssignNext(idFromId(id), e).setPos(va))
+                                    Emit.statement(CFGAssignArrayNext(idFromId(id), e).setPos(va))
                                 case NextArrayEntry(ex) =>
                                     val varray =  FreshVariable("arr")
                                     Emit.statement(exprStore(varray, ex))
                                     val e = expr(value)
                                     retval = Some(e)
-                                    Emit.statement(CFGArrayAssignNext(varray, e).setPos(va))
+                                    Emit.statement(CFGAssignArrayNext(varray, e).setPos(va))
+                                case ObjectProperty(obj, property) => 
+                                    val vobj = FreshVariable("obj")
+                                    Emit.statement(exprStore(vobj, obj))
+                                    val e = expr(value)
+                                    retval = Some(e)
+                                    Emit.statement(CFGAssignObjectProperty(vobj, idFromId(property), e).setPos(va)) 
+                                case DynamicObjectProperty(obj, property) =>
+                                    val vobj = FreshVariable("obj")
+                                    Emit.statement(exprStore(vobj, obj))
+                                    val vprop = FreshVariable("prop")
+                                    Emit.statement(exprStore(vprop, property))
+                                    val e = expr(value)
+                                    retval = Some(e)
+                                    Emit.statement(CFGAssignObjectProperty(vobj, CFGVariableVar(vprop), e).setPos(va)) 
+                                case ClassProperty(cl, property) =>
                                 case _ => notyet(ex)
                             }
                         case PreInc(vAST) =>
@@ -305,10 +326,11 @@ object ASTToCFG {
                             Emit.statement(CFGAssign(v, CFGEmptyArray()).setPos(ex))
                             for (av <- values) av match {
                                 case (Some(x), va, byref) =>
-                                    Emit.statement(CFGArrayAssign(v, expr(x), expr(va)).setPos(x))
+                                    Emit.statement(CFGAssignArray(v, expr(x), expr(va)).setPos(x))
                                 case (None, va, byref) =>
-                                    Emit.statement(CFGArrayAssignNext(v, expr(va)).setPos(va))
+                                    Emit.statement(CFGAssignArrayNext(v, expr(va)).setPos(va))
                             }
+
                         case _ => error("expr() not handling correctly: "+ ex)
                     }
                 }
@@ -521,8 +543,10 @@ object ASTToCFG {
             /* ignore */
             Emit.goto(cont);
         case e: Expression =>
-            val v = FreshVariable("val");
-            Emit.statementCont(exprStore(v, e), cont)
+//            val v = FreshVariable("val");
+            expr(e)
+            Emit.goto(cont)
+//            Emit.statementCont(exprStore(v, e), cont)
       }
       Emit.setPC(cont)
     }
