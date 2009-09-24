@@ -836,12 +836,8 @@ dynamic_class_name_reference ::=
 ;
 
 dynamic_class_name_variable_properties ::=
-      dynamic_class_name_variable_properties dynamic_class_name_variable_property
+      dynamic_class_name_variable_properties T_OBJECT_OPERATOR object_property
     | /* empty */
-;
-
-dynamic_class_name_variable_property ::=
-      T_OBJECT_OPERATOR object_property
 ;
 
 exit_expr ::=

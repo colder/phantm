@@ -20,8 +20,8 @@ object Main {
                             case None =>
                                 helper.generate(path, System.out)
                         }
-                    } catch { 
-                        case e: Exception => println(e.getMessage); e.printStackTrace
+                    } catch {
+                        case e => System.err.println(input+": "+e.getMessage); e.printStackTrace
                     }
                 case None => throw new Exception()
             }

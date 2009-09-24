@@ -728,6 +728,8 @@ case class STToAST(st: ParseNode) {
                 Plus(PHPInteger(0), expr(child(n, 1)))
             case List("T_NOT", "expr") =>
                 BooleanNot(expr(child(n, 1)))
+            case List("T_AT", "expr") =>
+                Silence(expr(child(n, 1)))
             case List("T_BITWISE_NOT", "expr") =>
                 BitwiseNot(expr(child(n, 1)))
             case List("expr", "T_IS_IDENTICAL", "expr") =>
@@ -736,7 +738,7 @@ case class STToAST(st: ParseNode) {
                 BooleanNot(Identical(expr(child(n, 0)), expr(child(n, 2))).setPos(child(n, 1)))
             case List("expr", "T_IS_EQUAL", "expr") =>
                 Equal(expr(child(n, 0)), expr(child(n, 2)))
-            case List("expr", "T_IS_NOT_EQUAL", " expr") =>
+            case List("expr", "T_IS_NOT_EQUAL", "expr") =>
                 BooleanNot(Equal(expr(child(n, 0)), expr(child(n, 2))).setPos(child(n, 1)))
             case List("expr", "T_IS_SMALLER", "expr") =>
                 Smaller(expr(child(n, 0)), expr(child(n, 2)))
@@ -778,7 +780,11 @@ case class STToAST(st: ParseNode) {
                 scalar(child(n,0))
             case List("T_ARRAY", "T_OPEN_BRACES", "array_pair_list", "T_CLOSE_BRACES") =>
                 Array(array_pair_list(child(n, 2)))
+            case List("T_LIST", "T_OPEN_BRACES", "assignment_list", "T_CLOSE_BRACES", "T_ASSIGN", "expr") =>
+                // TODO: Assign array items to vars
+                expr(child(n, 5))
             case List("T_BACKTICK", "backticks_expr", "T_BACKTICK") =>
+                // TODO: backticks_expr
                 Execute("...");
             case List("T_PRINT", "expr") =>
                 Print(expr(child(n, 1)))
@@ -808,13 +814,51 @@ case class STToAST(st: ParseNode) {
         }
     }
 
+    // Derive $a->foo->bar[]->gee->stuff()->bla into an expression
+    def deriveOAList(baseex: Expression, oaList: List[ObjectAccess]) = {
+        var ex = baseex
+        for(val oa <- oaList) {
+            oa match {
+                case OAIdentifier(id) => ex = ObjectProperty(ex, id).setPos(ex)
+                case OAArray(array, indexes) => for (val id <- indexes) id match {
+                        case Some(i) => ex = ArrayEntry(ex, i).setPos(ex)
+                        case None => ex = NextArrayEntry(ex).setPos(ex)
+                    }
+                case OAExpression(exp) => ex = DynamicObjectProperty(ex, exp).setPos(ex)
+                case OAMethod(name, args) => name match {
+                    case OAIdentifier(id) => ex = MethodCall(ex, StaticMethodRef(id).setPos(id), args).setPos(ex)
+                    case OAExpression(e)  => ex = MethodCall(ex, DynamicMethodRef(e).setPos(e), args).setPos(ex)
+                    case OAArray(array, indexes) =>  {
+                        for (val id <- indexes) id match {
+                            case Some(i) => ex = ArrayEntry(ex, i).setPos(ex)
+                            case None => ex = NextArrayEntry(ex).setPos(ex)
+                        }
+
+                        ex = FunctionCall(DynamicFunctionRef(ex).setPos(ex), args).setPos(ex)
+                    }
+                }
+            }
+        }
+        ex
+    }
+
     def dynamic_class_name_reference(n: ParseNode): ClassRef = {
         childrenNames(n) match {
             case List("base_variable", "T_OBJECT_OPERATOR", "object_property", "dynamic_class_name_variable_properties") =>
-                notyet(n);
+                val oaList: List[ObjectAccess] = List(object_property(child(n, 2))) ::: dynamic_class_name_variable_properties(child(n, 3))
+                DynamicClassRef(deriveOAList(base_variable(child(n, 0)), oaList))
             case List("base_variable") =>
                 val bv = base_variable(child(n))
                 VarClassRef(bv).setPos(bv)
+        }
+    }
+
+    def dynamic_class_name_variable_properties(n: ParseNode): List[ObjectAccess] = {
+        childrenNames(n) match {
+            case List("dynamic_class_name_variable_properties", "T_OBJECT_OPERATOR", "object_property") =>
+                dynamic_class_name_variable_properties(child(n, 0)) ::: List(object_property(child(n, 2)))
+            case List() =>
+                List()
         }
     }
 
@@ -867,30 +911,7 @@ case class STToAST(st: ParseNode) {
         childrenNames(n) match {
             case List("base_variable_with_function_calls", "T_OBJECT_OPERATOR", "object_property", "method_or_not", "variable_properties") => 
                 val oaList: List[ObjectAccess] = List(object_property_method(child(n, 2), child(n, 3))) ::: variable_properties(child(n, 4))
-                var ex: Expression = base_variable_with_function_calls(child(n, 0))
-                for(val oa <- oaList) {
-                    oa match {
-                        case OAIdentifier(id) => ex = ObjectProperty(ex, id).setPos(ex)
-                        case OAArray(array, indexes) => for (val id <- indexes) id match {
-                                case Some(i) => ex = ArrayEntry(ex, i).setPos(ex)
-                                case None => ex = NextArrayEntry(ex).setPos(ex)
-                            }
-                        case OAExpression(exp) => ex = DynamicObjectProperty(ex, exp).setPos(ex)
-                        case OAMethod(name, args) => name match {
-                            case OAIdentifier(id) => ex = MethodCall(ex, StaticMethodRef(id).setPos(id), args).setPos(ex)
-                            case OAExpression(e)  => ex = MethodCall(ex, DynamicMethodRef(e).setPos(e), args).setPos(ex)
-                            case OAArray(array, indexes) =>  {
-                                for (val id <- indexes) id match {
-                                    case Some(i) => ex = ArrayEntry(ex, i).setPos(ex)
-                                    case None => ex = NextArrayEntry(ex).setPos(ex)
-                                }
-
-                                ex = FunctionCall(DynamicFunctionRef(ex).setPos(ex), args).setPos(ex)
-                            }
-                        }
-                    }
-                }
-                ex
+                deriveOAList(base_variable_with_function_calls(child(n, 0)), oaList);
             case List("base_variable_with_function_calls") => 
                 base_variable_with_function_calls(child(n))
         }
@@ -1148,7 +1169,7 @@ case class STToAST(st: ParseNode) {
         (childrenNames(n) match {
             case List("T_ISSET", "T_OPEN_BRACES", "isset_variables", "T_CLOSE_BRACES") =>
                 Isset(isset_variables(child(n, 2)))
-            case List("T_EMPTY", "T_OPEN_BRACES", "variable_r", "T_CLOSE_BRACES") =>
+            case List("T_EMPTY", "T_OPEN_BRACES", "variable", "T_CLOSE_BRACES") =>
                 Empty(variable_u(child(n, 2)))
             case List("T_INCLUDE", "expr") =>
                 Include(expr(child(n, 1)), false)
