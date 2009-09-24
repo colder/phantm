@@ -1,0 +1,6 @@
+plop
+<?php
+?>
+plip
+<?= plop(); ?>
+<? plap(); ?>
