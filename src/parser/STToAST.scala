@@ -408,8 +408,8 @@ case class STToAST(st: ParseNode) {
                 MCFunction()
             case List("T_NS_C") =>
                 MCNamespace()
-            case List("T_START_HEREDOC", "string_literal", "T_END_HEREDOC") =>
-                PHPString(string_literal(child(n, 1)))
+            case List("T_START_HEREDOC", "T_CONSTANT_ENCAPSED_STRING", "T_END_HEREDOC") =>
+                PHPString(child(n, 1).tokenContent)
             case List("T_START_HEREDOC", "T_END_HEREDOC") =>
                 PHPString("")
         }).setPos(child(n, 0))
@@ -1087,19 +1087,6 @@ case class STToAST(st: ParseNode) {
         }
     }
 
-    def string_literal(n: ParseNode): String = {
-        childrenNames(n) match {
-            case List("string_literal", "T_ENCAPSED_AND_WHITESPACE") => 
-                string_literal(child(n, 0))+child(n, 1).tokenContent
-            case List("string_literal", "T_STRING") =>
-                string_literal(child(n, 0))+child(n, 1).tokenContent
-            case List("T_STRING") =>
-                child(n, 0).tokenContent
-            case List("T_ENCAPSED_AND_WHITESPACE") =>
-                child(n, 0).tokenContent
-        }
-    }
-
     def encaps_list(n: ParseNode): Expression = {
         childrenNames(n) match {
             case List("encaps_list", "encaps_var") =>
@@ -1108,15 +1095,11 @@ case class STToAST(st: ParseNode) {
             case List("encaps_list", "T_ENCAPSED_AND_WHITESPACE") =>
                 val el = encaps_list(child(n, 0))
                 Concat(el, PHPString(child(n, 1).tokenContent).setPos(child(n, 1))).setPos(el)
-            case List("encaps_list", "T_STRING") =>
-                val el = encaps_list(child(n, 0))
-                Concat(el, PHPString(child(n, 1).tokenContent).setPos(child(n, 1))).setPos(el)
             case List("encaps_var") =>
-                encaps_var(child(n, 1))
-            case List("string_literal", "encaps_var") =>
+                encaps_var(child(n, 0))
+            case List("T_ENCAPSED_AND_WHITESPACE", "encaps_var") =>
                 val l = child(n, 0)
-                val sl = string_literal(l)
-                Concat(PHPString(sl).setPos(l), encaps_var(child(n, 1))).setPos(l)
+                Concat(PHPString(l.tokenContent).setPos(l), encaps_var(child(n, 1))).setPos(l)
         }
     }
 
