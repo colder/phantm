@@ -722,6 +722,10 @@ case class STToAST(st: ParseNode) {
                 ShiftLeft(expr(child(n, 0)), expr(child(n, 2)))
             case List("expr", "T_SR", "expr") =>
                 ShiftRight(expr(child(n, 0)), expr(child(n, 2)))
+            case List("T_MINUS", "expr") =>
+                Minus(PHPInteger(0), expr(child(n, 1)))
+            case List("T_PLUS", "expr") =>
+                Plus(PHPInteger(0), expr(child(n, 1)))
             case List("T_NOT", "expr") =>
                 BooleanNot(expr(child(n, 1)))
             case List("T_BITWISE_NOT", "expr") =>
