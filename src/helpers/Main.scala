@@ -21,7 +21,7 @@ object Main {
                                 helper.generate(path, System.out)
                         }
                     } catch {
-                        case e => System.err.println(input+": "+e.getMessage); e.printStackTrace
+                        case e => System.err.println(path+": "+e.getMessage); e.printStackTrace
                     }
                 case None => throw new Exception()
             }

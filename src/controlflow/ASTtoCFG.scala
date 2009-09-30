@@ -289,7 +289,8 @@ object ASTToCFG {
                                     val e = expr(value)
                                     retval = Some(e)
                                     Emit.statement(CFGAssignObjectProperty(vobj, CFGVariableVar(vprop), e).setPos(va)) 
-                                case ClassProperty(cl, property) =>
+                                case ClassProperty(cl, property) => notyet(ex)
+
                                 case _ => notyet(ex)
                             }
                         case PreInc(vAST) =>
@@ -322,6 +323,8 @@ object ASTToCFG {
                             } else {
                                 Emit.statement(CFGAssignFunctionCall(v, internalFunction("isset"), List(expr(vs.first))).setPos(ex))
                             }
+                        case Require(path, once) =>
+                            //todo
                         case Array(values) =>
                             Emit.statement(CFGAssign(v, CFGEmptyArray()).setPos(ex))
                             for (av <- values) av match {
@@ -408,6 +411,29 @@ object ASTToCFG {
             Emit.setPC(beginStepV);
             stmt(step, beginCondV);
             cfg.closeGroup(cont)
+        case Try(body, catches) =>
+            val beginTrV = Emit.getPC
+            val dispatchExceptionV = cfg.newVertex
+            dispatchers = dispatchExceptionV :: dispatchers
+
+            // First, execute the body
+            Emit.setPC(beginTryV)
+            stmt(body)
+            Emit.goto(cont)
+
+            // We define the dispatcher based on the catch conditions
+            for (c <- catches) c match {
+                case Catch(cd, catchBody) =>
+                    val beginCatchV = cfg.newVertex
+                    //Connect the dispatcher to that catch
+
+
+                    Emit.setPC(beginCatchV)
+                    stmt(catchBody)
+                    Emit.goto(cont)
+            }
+
+            dispatchers = dispatchers.tail
         case Switch(input, cases) =>
             val beginSwitchV = Emit.getPC
             var curCaseV = cfg.newVertex
