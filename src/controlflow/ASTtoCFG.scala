@@ -31,7 +31,7 @@ object ASTToCFG {
     /** Creates fresh variable tree nodes on demand. */
     object FreshVariable {
       def apply(prefix: String, tpe: Type) = CFGTempID(FreshName(prefix)).setType(tpe)
-      def apply(prefix: String) = CFGTempID(FreshName(prefix)).setType(TMixed)
+      def apply(prefix: String) = CFGTempID(FreshName(prefix)).setType(TAny)
     }
 
     /** Helper to add edges and vertices to the nascent CFG while maintaining
@@ -159,7 +159,7 @@ object ASTToCFG {
         case None => 
             ex match {
                 case ObjectProperty(obj, index) => 
-                    Some(CFGAssignBinary(v, expr(obj), OBJECTREAD, idFromId(index)))
+                    Some(CFGAssignBinary(v, expr(obj), OBJECTREAD, FreshVariable(index.value)))
                 case ArrayEntry(arr, index) => 
                     Some(CFGAssignBinary(v, expr(arr), ARRAYREAD, expr(index)))
                 case Clone(obj) =>
