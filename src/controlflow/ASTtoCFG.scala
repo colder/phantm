@@ -10,6 +10,7 @@ object ASTToCFG {
   def convertAST(statements: List[Statement]): CFG = {
     // Contains the entry+exit vertices for continue/break
     var controlStack: List[(Vertex, Vertex)] = Nil
+    var dispatchers: List[(Vertex, CFGTempID)] = Nil
 
     val cfg: CFG = new CFG
     val assertionsEnabled: Boolean = true
@@ -412,9 +413,14 @@ object ASTToCFG {
             stmt(step, beginCondV);
             cfg.closeGroup(cont)
         case Try(body, catches) =>
+            Emit.goto(cont)
+            /*
             val beginTrV = Emit.getPC
             val dispatchExceptionV = cfg.newVertex
-            dispatchers = dispatchExceptionV :: dispatchers
+            val ex = FreshVariable("exception")
+            dispatchers = (dispatchExceptionV, ex) :: dispatchers
+
+
 
             // First, execute the body
             Emit.setPC(beginTryV)
@@ -422,18 +428,24 @@ object ASTToCFG {
             Emit.goto(cont)
 
             // We define the dispatcher based on the catch conditions
+            val nextCatchV = cfg.newVertex
+            val beginCatchV = cfg.newVertex
             for (c <- catches) c match {
                 case Catch(cd, catchBody) =>
-                    val beginCatchV = cfg.newVertex
-                    //Connect the dispatcher to that catch
+                    Emit.setPC(dispatchExceptionV)
 
+                    // Connect the dispatcher to that catch
+                    Emit.statementCont(CFGAssume(CFGInstanceof(ex, cd), EQUALS, CFGTrue), beginCatchV)
+                    Emit.statementCont(CFGAssume(CFGInstanceof(ex, cd), NOTEQUALS, CFGTrue), nextCatchV)
 
                     Emit.setPC(beginCatchV)
                     stmt(catchBody)
                     Emit.goto(cont)
+
             }
 
             dispatchers = dispatchers.tail
+            */
         case Switch(input, cases) =>
             val beginSwitchV = Emit.getPC
             var curCaseV = cfg.newVertex
