@@ -3,7 +3,6 @@ package phpanalysis.controlflow
 object ASTToCFG {
   import parser.Trees._
   import analyzer.Symbols._
-  import analyzer.Types._
   import CFGTrees._
 
   /** Builds a control flow graph from a method declaration. */
@@ -30,8 +29,8 @@ object ASTToCFG {
 
     /** Creates fresh variable tree nodes on demand. */
     object FreshVariable {
-      def apply(prefix: String, tpe: Type) = CFGTempID(FreshName(prefix)).setType(tpe)
-      def apply(prefix: String) = CFGTempID(FreshName(prefix)).setType(TAny)
+      //def apply(prefix: String, tpe: Type) = CFGTempID(FreshName(prefix))
+      def apply(prefix: String) = CFGTempID(FreshName(prefix))
     }
 
     /** Helper to add edges and vertices to the nascent CFG while maintaining

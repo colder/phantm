@@ -80,7 +80,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
             cs.registerMethod(ms)
             for (a <- m.args) {
                 // TODO: type hints
-                val vs = new VariableSymbol(a.v.name.value).setPos(a.v).setType(TAny)
+                val vs = new VariableSymbol(a.v.name.value).setPos(a.v)
                 ms.registerArgument(vs, a.byref);
             }
         }
@@ -113,7 +113,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
                 val fs = new FunctionSymbol(name.value).setPos(name)
                 for (val a <- args) {
                     // TODO: type hints
-                    val vs = new VariableSymbol(a.v.name.value).setPos(a.v).setType(TAny)
+                    val vs = new VariableSymbol(a.v.name.value).setPos(a.v)
                     fs.registerArgument(vs, a.byref);
                 }
                 GlobalSymbols.registerFunction(fs)

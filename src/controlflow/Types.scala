@@ -1,5 +1,5 @@
-package phpanalysis.analyzer;
-import Symbols._
+package phpanalysis.controlflow;
+import analyzer.Symbols._
 
 
 object Types {

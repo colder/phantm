@@ -1,7 +1,6 @@
 package phpanalysis.analyzer
 
 import scala.collection.mutable.HashMap
-import Types._
 
 
 object Symbols {
@@ -77,7 +76,7 @@ object Symbols {
     def getConstants: List[ConstantSymbol] = constants map { x => x._2 } toList
   }
 
-  class FunctionSymbol(val name: String) extends Symbol with Typed with Scope {
+  class FunctionSymbol(val name: String) extends Symbol with Scope {
     val args = new HashMap[String, (VariableSymbol, Boolean)]();
 
     def registerArgument(vs: VariableSymbol, byref: Boolean) = args.get(vs.name) match {
@@ -129,9 +128,9 @@ object Symbols {
       def isError = ms == None || visibError != None
   }
 
-  class InterfaceSymbol(val name: String, val extend: List[String]) extends Symbol with Typed
+  class InterfaceSymbol(val name: String, val extend: List[String]) extends Symbol
 
-  class ClassSymbol(val name: String, val parent: Option[ClassSymbol], ifaces: List[String]) extends Symbol with Typed {
+  class ClassSymbol(val name: String, val parent: Option[ClassSymbol], ifaces: List[String]) extends Symbol {
     val methods = new HashMap[String, MethodSymbol]();
     val properties = new HashMap[String, PropertySymbol]();
     val static_properties = new HashMap[String, PropertySymbol]();
@@ -283,8 +282,8 @@ object Symbols {
 
   }
 
-  class ConstantSymbol(val name: String) extends Symbol with Typed
-  class VariableSymbol(val name: String) extends Symbol with Typed
+  class ConstantSymbol(val name: String) extends Symbol
+  class VariableSymbol(val name: String) extends Symbol
 
   def emitSummary = {
         def emitScope(s: Scope, p:String) = {
