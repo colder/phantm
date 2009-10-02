@@ -8,6 +8,7 @@ object CFGTrees {
   }
 
   sealed abstract class CFGStatement extends CFGTree
+  case class CFGUnset(variable: CFGVariable) extends CFGStatement
   case class CFGAssign(variable: CFGVariable, value: CFGSimpleValue) extends CFGStatement
 
   case class CFGAssignUnary(variable: CFGVariable,
@@ -51,6 +52,7 @@ object CFGTrees {
   }
 
   case class CFGAssume(lhs: CFGSimpleValue, relOp: CFGRelationalOperator, rhs: CFGSimpleValue) extends CFGStatement
+  case class CFGPrint(rhs: CFGSimpleValue) extends CFGStatement
 
   case object CFGSkip extends CFGStatement
 
@@ -128,6 +130,7 @@ object CFGTrees {
   case object PREDEC extends CFGUnaryOperator { override def toString = "-- (pre)" }
   case object POSTDEC extends CFGUnaryOperator { override def toString = "-- (post)" }
   case object SILENCE extends CFGUnaryOperator { override def toString = "@" }
+  case object PRINT extends CFGUnaryOperator { override def toString = "print" }
 
   def stringRepr(tree: CFGTree): String = {
     val assOp = " := "
@@ -146,7 +149,9 @@ object CFGTrees {
       case CFGAssignObjectProperty(o, p, e) => o + "->" + p + assOp + e
       case CFGSkip => "..."
       case CFGAssume(l, o, r) => "[" + l + o + r + "]"
-      case CFGStringLit(value) => "\\\"" + value + "\\\""
+      case CFGPrint(v) => "print("+v+")"
+      case CFGUnset(v) => "unset("+v+")"
+      case CFGStringLit(value) => "\"" + value + "\""
       case CFGNumLit(value) => value.toString
       case CFGNew(tpe, params) => "new " + tpe.value + params.mkString("(", ", ", ")")
       case CFGTrue() => "true"

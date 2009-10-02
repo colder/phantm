@@ -521,6 +521,7 @@ object ASTToCFG {
             for (v <- vars) v match {
                 case InitVariable(SimpleVariable(id), Some(ex)) =>
                     Emit.statementCont(exprStore(idFromId(id), ex), cont)
+                    Emit.setPC(cont);
                 case InitVariable(SimpleVariable(id), None) =>
                     Emit.statementCont(CFGAssign(idFromId(id), CFGNull().setPos(id)), cont)
                     Emit.setPC(cont);
@@ -529,13 +530,33 @@ object ASTToCFG {
             }
         case Global(vars) =>
             Emit.goto(cont)
-        case Echo(expr) =>
+        case Echo(exs) =>
+            var nextEcho = cfg.newVertex
+            var lastValidNext = nextEcho
+            for (e <- exs) {
+                Emit.statementCont(CFGPrint(expr(e)), nextEcho)
+                Emit.setPC(nextEcho)
+                lastValidNext = nextEcho
+                nextEcho = cfg.newVertex
+            }
+
+            Emit.setPC(lastValidNext)
             Emit.goto(cont)
         case Html(content) =>
-            Emit.goto(cont)
+            Emit.statementCont(CFGPrint(CFGStringLit(content)), cont)
         case Void() =>
             Emit.goto(cont)
         case Unset(vars) =>
+            var nextUnset = cfg.newVertex
+            var lastValidNext = nextUnset
+            for (v <- vars) {
+                Emit.statementCont(CFGUnset(varFromVar(v)), nextUnset)
+                Emit.setPC(nextUnset)
+                lastValidNext = nextUnset
+                nextUnset = cfg.newVertex
+            }
+
+            Emit.setPC(lastValidNext)
             Emit.goto(cont)
         case Return(expr) =>
             Emit.statementCont(exprStore(retval, expr), cfg.exit)

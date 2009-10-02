@@ -119,13 +119,17 @@ FROM FLEX -> JFLEX
 
     // shorthand for constructing Symbol objects
     private Symbol symbol(int type, String name) {
+        return symbol(type, name, text());
+    }
+
+    private Symbol symbol(int type, String name, String content) {
         // use the Symbol's "left value" as line number
         int line = yyline + 1;
         return new Symbol(
             type, 
             line, 
             -1, 
-            new ParseNode(type, name, text(), line, yycolumn, getFileName()));
+            new ParseNode(type, name, content, line, yycolumn, getFileName()));
     }
 
     // always call this method after constructing the lexer object
@@ -179,7 +183,6 @@ TABS_AND_SPACES = [ \t]*
 // rules for them (because of CUP, which doesn't support character tokens)
 // TOKENS = [;:,.\[\]()|\^&+\-/*=%!~$<>?@]
 // ENCAPSED_TOKENS = [\[\]{}$]
-ESCAPED_AND_WHITESPACE = [\n\t\r #'.:;,()|\^&+\-/*=%!~<>?@]+
 ANY_CHAR = (.|[\n])
 NEWLINE = ("\r"|"\n"|"\r\n")
 
@@ -516,11 +519,11 @@ NEWLINE = ("\r"|"\n"|"\r\n")
 }
 
 <ST_IN_SCRIPTING>([\"]([^$\"\\]|("\\".))*[\"]) {
-    return symbol(Symbols.T_CONSTANT_ENCAPSED_STRING, "T_CONSTANT_ENCAPSED_STRING");
+    return symbol(Symbols.T_CONSTANT_ENCAPSED_STRING, "T_CONSTANT_ENCAPSED_STRING", text().substring(1, text().length()-1));
 }
 
 <ST_IN_SCRIPTING>([']([^'\\]|("\\".))*[']) {
-    return symbol(Symbols.T_CONSTANT_ENCAPSED_STRING, "T_CONSTANT_ENCAPSED_STRING");
+    return symbol(Symbols.T_CONSTANT_ENCAPSED_STRING, "T_CONSTANT_ENCAPSED_STRING", text().substring(1, text().length()-1));
 }
 
 <ST_IN_SCRIPTING>[\"] {

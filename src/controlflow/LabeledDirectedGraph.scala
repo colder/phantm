@@ -80,6 +80,7 @@ class LabeledDirectedGraphImp[LabelType] extends LabeledDirectedGraph[LabelType]
     from.out -= edge
     to.in -= edge
   }
+ def escape(s: String) = s.replaceAll("\"", "\\\\\"").replaceAll("\\\n", "\\\\n")
 
   private var groups: List[Group] = Nil;
   private var groupStack: List[Group] = Nil;
@@ -104,6 +105,7 @@ class LabeledDirectedGraphImp[LabelType] extends LabeledDirectedGraph[LabelType]
         }
      }
 
+
      def toDotString(res: StringBuffer) : Unit = {
          val colors = List("bisque", "khaki", "mistyrose", "lightcyan", "mediumorchid", "aquamarine", "antiquewhite")
          def emit(s: String) = res.append(s)
@@ -117,7 +119,7 @@ class LabeledDirectedGraphImp[LabelType] extends LabeledDirectedGraph[LabelType]
         node [style=filled, color=white];
         style=filled;
         labeljust=l;
-        label="""+name+""";
+        label="""+escape(name)+""";
         color=""");
 
          val colornumber: String = if((n/colors.size)%3 == 0) "" else ((n/colors.size)%3)+"";
@@ -196,7 +198,7 @@ class LabeledDirectedGraphImp[LabelType] extends LabeledDirectedGraph[LabelType]
     
     def makeBoxed(id : String, name : String) = {
       emit(id); emit("[shape=box,color=lightblue,style=filled,label=\""); 
-      emit(name); emit("\"];\n")
+      emit(escape(name)); emit("\"];\n")
     }
  
     emit("digraph D {\n")
