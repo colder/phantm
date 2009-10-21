@@ -119,10 +119,10 @@ object ASTToCFG {
     def varFromVar(v: Variable): CFGVariable = v match {
         case SimpleVariable(id) => idFromId(id)
         case VariableVariable(ex) => CFGVariableVar(expr(ex)).setPos(v)
-        case ArrayEntry(array, index) => notyet(v)
-        case NextArrayEntry(array) => notyet(v)
-        case ObjectProperty(obj, property) => notyet(v)
-        case DynamicObjectProperty(obj, property) => notyet(v)
+        case ArrayEntry(array, index) => CFGArrayEntry(expr(array), expr(index))
+        case NextArrayEntry(array) => CFGNextArrayEntry(expr(array))
+        case ObjectProperty(obj, property) => CFGObjectProperty(expr(obj), CFGStringLit(property.value))
+        case DynamicObjectProperty(obj, property) => CFGObjectProperty(expr(obj), expr(property))
         case ClassProperty(cl, property) => notyet(v)
     }
 
@@ -157,9 +157,9 @@ object ASTToCFG {
         case Some(x) => Some(CFGAssign(v, x))
         case None => 
             ex match {
-                case ObjectProperty(obj, index) => 
+                case ObjectProperty(obj, index) =>
                     Some(CFGAssignBinary(v, expr(obj), OBJECTREAD, FreshVariable(index.value)))
-                case ArrayEntry(arr, index) => 
+                case ArrayEntry(arr, index) =>
                     Some(CFGAssignBinary(v, expr(arr), ARRAYREAD, expr(index)))
                 case Clone(obj) =>
                     Some(CFGAssignUnary(v, CLONE, expr(obj)))
@@ -280,7 +280,7 @@ object ASTToCFG {
                                     Emit.statement(exprStore(vobj, obj))
                                     val e = expr(value)
                                     retval = Some(e)
-                                    Emit.statement(CFGAssignObjectProperty(vobj, idFromId(property), e).setPos(va)) 
+                                    Emit.statement(CFGAssignObjectProperty(vobj, CFGStringLit(property.value), e).setPos(va)) 
                                 case DynamicObjectProperty(obj, property) =>
                                     val vobj = FreshVariable("obj")
                                     Emit.statement(exprStore(vobj, obj))
@@ -333,6 +333,10 @@ object ASTToCFG {
                                 case (None, va, byref) =>
                                     Emit.statement(CFGAssignArrayNext(v, expr(va)).setPos(va))
                             }
+                        case StaticMethodCall(cl, id, args) =>
+                            // todo
+                        case ClassConstant(cl, id) =>
+                            // todo
 
                         case _ => error("expr() not handling correctly: "+ ex)
                     }
@@ -411,6 +415,8 @@ object ASTToCFG {
             Emit.setPC(beginStepV);
             stmt(step, beginCondV);
             cfg.closeGroup(cont)
+        case Throw(ex) =>
+            Emit.goto(cont)
         case Try(body, catches) =>
             Emit.goto(cont)
             /*

@@ -33,7 +33,7 @@ class ASTGraph extends Helper {
             }
         }
 
-        def escape(s: String) = s.replaceAll("\"", "\\\\\"").replaceAll("\n", "\\\\n")
+        def escape(s: String) = s.replaceAll("\\\\", "\\\\\\\\").replaceAll("\"", "\\\\\"").replaceAll("\n", "\\\\n")
 
         def elements(p:Product) = (0 until p.productArity).map(p.productElement(_))
 

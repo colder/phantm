@@ -80,7 +80,7 @@ class LabeledDirectedGraphImp[LabelType] extends LabeledDirectedGraph[LabelType]
     from.out -= edge
     to.in -= edge
   }
- def escape(s: String) = s.replaceAll("\"", "\\\\\"").replaceAll("\\\n", "\\\\n")
+ def escape(s: String) = s.replaceAll("\\\\", "\\\\\\\\").replaceAll("\"", "\\\\\"").replaceAll("\\\n", "\\\\n")
 
   private var groups: List[Group] = Nil;
   private var groupStack: List[Group] = Nil;
@@ -226,23 +226,6 @@ class LabeledDirectedGraphImp[LabelType] extends LabeledDirectedGraph[LabelType]
     out.write(toDotString(title))
     out.close
   }
- 
-  /** If you have installed the GraphViz utilities, you can also try
-   * directly viewing the generated file using one of the two following
-   * methods. */
-  def dotGvView: Unit = {
-    writeDottyToFile(dotFileName, "")
-    exec("dot " + dotFileName + " -Tps -o" + psFileName)
-    exec("gv " + psFileName)
-  }
-  
-  def dottyView: Unit = {
-    writeDottyToFile(dotFileName, "")
-    exec("dotty " + dotFileName)
-  }
-  
-  private val dotFileName = "graph.dot"
-  private val psFileName = "graph.ps"
-  
+
   private def exec(command: String): Unit = Runtime.getRuntime.exec(command)
 }

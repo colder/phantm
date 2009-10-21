@@ -10,7 +10,7 @@ fi
 DIST_PATH=/home/wwwrun/colder.ch/project/
 NAME=`basename $1`
 if [ -f "result.st" ]; then
-    dot -Tjpg -o ${DIST_PATH}${NAME}-AST.jpg result.ast && mv result.ast ${DIST_PATH}${NAME}-AST.jpg.txt
+    dot -Tsvg -o ${DIST_PATH}${NAME}-AST.svg result.ast && mv result.ast ${DIST_PATH}${NAME}-AST.svg.txt
     echo "Graph saved to http://project.colder.ch/$NAME-AST.jpg"
     dot -Tjpg -o ${DIST_PATH}${NAME}-ST.jpg result.st && mv result.st ${DIST_PATH}${NAME}-ST.jpg.txt
     echo "Graph saved to http://project.colder.ch/$NAME-ST.jpg"

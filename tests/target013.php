@@ -8,3 +8,6 @@ $a = new A;
 $a->b = 2;
 
 echo $a->b;
+
+
+

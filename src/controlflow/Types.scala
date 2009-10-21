@@ -20,11 +20,9 @@ object Types {
     object TNull extends Type
 
     case class TUnion(l: Type, r: Type) extends Type {
-        
     }
 
     case class TObject(cl: ClassType) extends Type
-    case class TArray(valuesType: Type) extends Type
 
     object TAnyObject extends Type
 

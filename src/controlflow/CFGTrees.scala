@@ -2,6 +2,7 @@ package phpanalysis.controlflow
 
 object CFGTrees {
   import analyzer.Symbols._
+  import Types._
 
   sealed abstract class CFGTree extends Positional {
     override def toString = stringRepr(this)
@@ -61,7 +62,7 @@ object CFGTrees {
   sealed abstract class CFGVariable extends CFGSimpleValue 
 
   /** Used to represent the identifiers from the original program. */
-  case class CFGIdentifier(symbol: VariableSymbol) extends CFGVariable with Symbolic {
+  case class CFGIdentifier(symbol: VariableSymbol) extends CFGVariable with Symbolic with Typed {
     override def getSymbol = symbol
     override def setSymbol(s: Symbol) = this
     override def toString = stringRepr(this)
@@ -70,6 +71,9 @@ object CFGTrees {
   /** Used to represent intermediate values (fresh identifiers). */
   case class CFGTempID(value: String) extends CFGVariable
   case class CFGVariableVar(v: CFGSimpleValue) extends CFGVariable
+  case class CFGArrayEntry(arr: CFGSimpleValue, index: CFGSimpleValue) extends CFGVariable
+  case class CFGNextArrayEntry(arr: CFGSimpleValue) extends CFGVariable
+  case class CFGObjectProperty(obj: CFGSimpleValue, index: CFGSimpleValue) extends CFGVariable
 
   case class CFGNumLit(value: Int) extends CFGSimpleValue
   case class CFGStringLit(value: String) extends CFGSimpleValue
@@ -169,6 +173,9 @@ object CFGTrees {
       case CFGIdentifier(sym) => sym.name
       case CFGTempID(value) => value
       case CFGVariableVar(v) => "*("+v+")"
+      case CFGArrayEntry(arr, index) => arr+"["+index+"]"
+      case CFGNextArrayEntry(arr) => arr+"[]"
+      case CFGObjectProperty(obj, prop) => obj+"->"+prop;
     }
   }
 }
