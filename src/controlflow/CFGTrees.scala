@@ -140,7 +140,7 @@ object CFGTrees {
     val assOp = " := "
 
     tree match {
-      case CFGAssignMethodCall(v, r, mid, p) => v + assOp + r + "." + mid.value + p.mkString("(", ", ", ")")
+      case CFGAssignMethodCall(v, r, mid, p) => v + assOp + r + "->" + mid.value + p.mkString("(", ", ", ")")
       case CFGAssignFunctionCall(v, fid, p) => v + assOp + fid.value + p.mkString("(", ", ", ")")
       case CFGAssignUnary(v, u, e) => v + assOp + u + e
       case CFGAssignBinary(v, l, ARRAYREAD, r) => v + assOp + l + "[" + r + "]"

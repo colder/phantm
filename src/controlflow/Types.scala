@@ -34,6 +34,7 @@ object Types {
     case object TString extends Type
 
     case object TResource extends Type
+    case object TArray extends Type
     case object TNull extends Type
 
     class TUnion extends Type {

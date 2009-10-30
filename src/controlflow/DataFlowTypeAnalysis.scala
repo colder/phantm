@@ -62,7 +62,7 @@ case class TypeTransferFunction(silent: Boolean) extends TransferFunction[TypeEn
             case CFGFalse() => TBoolean
             case CFGNull() => TNull
             case CFGThis() => TAnyObject
-            case CFGEmptyArray() => TAny
+            case CFGEmptyArray() => TArray
             case CFGInstanceof(lhs, cl) => TBoolean
             case CFGArrayNext(ar) => TAny
             case CFGArrayCurElement(ar) => TAny
@@ -158,11 +158,25 @@ case class TypeTransferFunction(silent: Boolean) extends TransferFunction[TypeEn
             // We want to typecheck v1/v2 according to OP
             typeCheckBinOP(v1, op, v2); env // todo: pollute env
 
+          case CFGAssignObjectProperty(obj, prop, ex) =>
+            //expect(obj, TAnyObject);
+            env
+
+          case CFGAssignArrayNext(arr, expr) =>
+            expect(arr, TArray); env
+
+          case CFGAssignArray(arr, index, expr) =>
+            expect(arr, TArray); env
+
+          case CFGAssignMethodCall(v, r, mid, p) =>
+            expect(r, TAnyObject); env
+
           case CFGAssume(v1, op, v2) => op match {
               case LT | LEQ | GEQ | GT =>
                 expect(v1, TInt); expect(v2, TInt); env
               case EQUALS | IDENTICAL | NOTEQUALS | NOTIDENTICAL =>
                 expect(v2, expect(v1, TAny)); env
+
           }
 
           case _ => println(node+" not yet handled"); env

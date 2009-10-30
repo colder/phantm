@@ -234,21 +234,21 @@ object ASTToCFG {
         case Some(x) => x
         case None => ex match {
             case _ => 
-                var v: CFGVariable = FreshVariable("expr")
+                var v: CFGVariable = FreshVariable("expr").setPos(ex)
                 var retval: Option[CFGSimpleValue] = None
                 exprStoreGet(v, ex) match {
                     case Some(stmt) => stmt.setPos(ex); Emit.statement(stmt)
                     case _ => ex match {
                         case VariableVariable(name) =>
-                            // TODO
+                            notyet(ex)
                         case NextArrayEntry(array) =>
                             Reporter.error("The [] operator does not generate any value", ex);
                         case DynamicObjectProperty(obj, property) =>
-                            // TODO
+                            notyet(ex)
                         case ClassProperty(cl, property) =>
-                            // TODO
+                            notyet(ex)
                         case ExpandArray(vars, expr) =>
-                            // TODO
+                            notyet(ex)
                         case Assign(va, value, byref) =>
                             va match {
                                 case SimpleVariable(id) =>
@@ -327,7 +327,7 @@ object ASTToCFG {
                                 Emit.statement(CFGAssignFunctionCall(v, internalFunction("isset"), List(expr(vs.first))).setPos(ex))
                             }
                         case Require(path, once) =>
-                            //todo
+                            notyet(ex); // TODO
                         case Array(values) =>
                             Emit.statement(CFGAssign(v, CFGEmptyArray()).setPos(ex))
                             for (av <- values) av match {
@@ -337,9 +337,9 @@ object ASTToCFG {
                                     Emit.statement(CFGAssignArrayNext(v, expr(va)).setPos(va))
                             }
                         case StaticMethodCall(cl, id, args) =>
-                            // todo
+                            notyet(ex); // TODO
                         case ClassConstant(cl, id) =>
-                            // todo
+                            notyet(ex); // TODO
 
                         case _ => error("expr() not handling correctly: "+ ex)
                     }
