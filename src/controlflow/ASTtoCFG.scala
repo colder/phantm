@@ -128,9 +128,12 @@ object ASTToCFG {
 
     /** Transforms an identifier from the AST to one for the CFG. */
     def idFromId(id: Identifier): CFGIdentifier = {
-      // should be enforced by type checking and by construction
-      assert(id.getSymbol.isInstanceOf[VariableSymbol])
-      CFGIdentifier(id.getSymbol.asInstanceOf[VariableSymbol]).setPos(id)
+        // should be enforced by type checking and by construction
+        id.getSymbol match {
+            case vs: VariableSymbol => 
+                CFGIdentifier(vs).setPos(id)
+            case _ => error("Woooot?");
+        }
     }
     
     /** If an expression can be translated without flattening, does it and

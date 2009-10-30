@@ -80,6 +80,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
             cs.registerMethod(ms)
             for (a <- m.args) {
                 // TODO: type hints
+                println("Arrgsss")
                 val vs = new VariableSymbol(a.v.name.value).setPos(a.v)
                 ms.registerArgument(vs, a.byref);
             }
@@ -141,9 +142,14 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
 
 
             case SimpleVariable(id) =>
-                val vs = new VariableSymbol(id.value).setPos(id)
-                id.setSymbol(vs);
-                ctx.varScope.registerVariable(vs)
+                ctx.varScope.lookupVariable(id.value) match {
+                    case Some(vs) =>
+                        id.setSymbol(vs)
+                    case None =>
+                        val vs = new VariableSymbol(id.value).setPos(id)
+                        id.setSymbol(vs);
+                        ctx.varScope.registerVariable(vs)
+                }
             case _ =>
         }
 

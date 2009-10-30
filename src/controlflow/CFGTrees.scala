@@ -2,7 +2,6 @@ package phpanalysis.controlflow
 
 object CFGTrees {
   import analyzer.Symbols._
-  import Types._
 
   sealed abstract class CFGTree extends Positional {
     override def toString = stringRepr(this)
@@ -60,16 +59,17 @@ object CFGTrees {
   sealed abstract class CFGExpression extends CFGTree
   sealed abstract class CFGSimpleValue extends CFGExpression
   sealed abstract class CFGVariable extends CFGSimpleValue 
+  sealed abstract class CFGSimpleVariable extends CFGVariable
 
   /** Used to represent the identifiers from the original program. */
-  case class CFGIdentifier(symbol: VariableSymbol) extends CFGVariable with Symbolic with Typed {
+  case class CFGIdentifier(symbol: VariableSymbol) extends CFGSimpleVariable with Symbolic {
     override def getSymbol = symbol
     override def setSymbol(s: Symbol) = this
     override def toString = stringRepr(this)
   }
 
   /** Used to represent intermediate values (fresh identifiers). */
-  case class CFGTempID(value: String) extends CFGVariable
+  case class CFGTempID(value: String) extends CFGSimpleVariable
   case class CFGVariableVar(v: CFGSimpleValue) extends CFGVariable
   case class CFGArrayEntry(arr: CFGSimpleValue, index: CFGSimpleValue) extends CFGVariable
   case class CFGNextArrayEntry(arr: CFGSimpleValue) extends CFGVariable

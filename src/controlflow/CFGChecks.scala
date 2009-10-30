@@ -17,13 +17,20 @@ case class CFGChecks(node: Tree) extends ASTTraversal[CheckContext](node, CheckC
         node match {
             case Program(stmts) =>
                 val cfg: CFG = ASTToCFG.convertAST(stmts)
+                val tfa = new TypeFlowAnalyzer(cfg)
+                tfa.analyze
+
 
             case FunctionDecl(name, args, retref, body) =>
                 val cfg: CFG = ASTToCFG.convertAST(List(body))
+                val tfa = new TypeFlowAnalyzer(cfg)
+                tfa.analyze
 
             case ClassDecl(name, flags, parent, interfaces, methods, static_props, props, consts) =>
                 for (m <- methods) if (m.body != None) {
                     val cfg: CFG = ASTToCFG.convertAST(List(m.body.get))
+                    val tfa = new TypeFlowAnalyzer(cfg)
+                    tfa.analyze
                     cfg
                 }
 
