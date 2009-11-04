@@ -1,5 +1,7 @@
 package phpanalysis.controlflow
  
+import scala.collection.mutable.HashSet;
+
 abstract class TransferFunction[E, S] {
   def apply(node : S, x : E) : E
 }
@@ -34,7 +36,16 @@ class AnalysisAlgoritm[E <: Environment[E],S]
     var change = true
     while (change) {
       change = false
-      for (v <- cfg.V) {
+      // We should traverse the graph in order
+      var toProcess = List(cfg.entry)
+      var processed = HashSet[Vertex]();
+
+      while (toProcess != Nil) {
+        val v = toProcess.head
+        toProcess = toProcess.tail
+
+        processed += v
+
         val oldFact : E = facts(v)
         var newFact : E = oldFact
         for (e <- cfg.inEdges(v)) {
@@ -44,6 +55,12 @@ class AnalysisAlgoritm[E <: Environment[E],S]
         if (!(newFact equals oldFact)) {
           change = true;
           facts = facts.update(v, newFact)
+        }
+
+        for (e <- cfg.outEdges(v)) {
+            if (!(processed contains e.v2)) {
+                toProcess = toProcess ::: e.v2 :: Nil
+            }
         }
       }
     }

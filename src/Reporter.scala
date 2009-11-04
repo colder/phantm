@@ -1,12 +1,13 @@
 package phpanalysis;
 import scala.io.Source;
-import scala.collection.mutable.HashMap;
+import scala.collection.mutable.{HashMap,HashSet};
 
 /* The reported trait is reponsible to output formatted errors */
 object Reporter {
     private var files = new HashMap[String, List[String]]();
     private var errorsCount = 0
     private var noticesCount = 0
+    private var errors = new HashSet[(String, String, Positional)]();
 
     def error(msg: String) = {
         errorsCount += 1;
@@ -14,21 +15,24 @@ object Reporter {
     }
     def error(msg: String, pos: Positional) = {
         errorsCount += 1;
-        emit("Error: ", msg, pos);
+        errors += (("Error: ", msg, pos));
     }
 
     def notice(msg: String, pos: Positional) = {
         noticesCount += 1;
-        emit("Notice: ", msg, pos);
+        errors += (("Notice: ", msg, pos));
     }
 
     case class ErrorException(n: Int) extends RuntimeException;
 
     def errorMilestone = {
-        if (errorsCount > 0)
-            throw new ErrorException(errorsCount);
-        else
+        for ((p, msg, pos) <- errors.toList.sort{(x,y) => x._3.line < y._3.line || x._3.col < y._3.col}) {
+            emit(p, msg, pos)
+        }
+        if (errorsCount > 0) {
             errorsCount = 0;
+            throw new ErrorException(errorsCount);
+        }
     }
 
     private def emit(prefix: String, msg: String, pos: Positional) = {

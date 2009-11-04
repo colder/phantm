@@ -6,6 +6,8 @@ abstract trait LabeledDirectedGraph[LabelType] {
   type Vertex
   /** The type of the edges */
   type Edge
+  /** root of the graph */
+  val entry: Vertex;
   /** The vertices */
   def V: Set[Vertex]
   /** The edges */
@@ -22,7 +24,7 @@ abstract trait LabeledDirectedGraph[LabelType] {
   def -= (from: Vertex, lab: LabelType, to: Vertex)
   /** Generates a new, isomorphic labeled directed graphs where the new labels
    * are obtained by mapping the function to the existing ones */
-  def labelMap[NewLabel](f: LabelType => NewLabel): LabeledDirectedGraph[NewLabel]
+//  def labelMap[NewLabel](f: LabelType => NewLabel): LabeledDirectedGraph[NewLabel]
 }
 
 
@@ -45,8 +47,7 @@ object EdgeCounter {
   }
 }
  
-/** A concrete yet type-paremetric implementation */
-class LabeledDirectedGraphImp[LabelType] extends LabeledDirectedGraph[LabelType] {
+abstract class LabeledDirectedGraphImp[LabelType] extends LabeledDirectedGraph[LabelType] {
  
   type Vertex = VertexImp[LabelType]
   type Edge = EdgeImp[LabelType]
@@ -173,6 +174,7 @@ class LabeledDirectedGraphImp[LabelType] extends LabeledDirectedGraph[LabelType]
   def inEdges(v: Vertex)  = v.in
   def outEdges(v: Vertex) = v.out
  
+  /*
   def labelMap[NewLabel](f: LabelType => NewLabel): LabeledDirectedGraphImp[NewLabel] = {
     val g = new LabeledDirectedGraphImp[NewLabel]
     var vertexMap = Map[Vertex, g.Vertex]()
@@ -184,6 +186,7 @@ class LabeledDirectedGraphImp[LabelType] extends LabeledDirectedGraph[LabelType]
     }
     g
   }
+  */
  
   /** For visualization purposes. */
   override def toString: String = edges.toList.map(_.toString).mkString("{ ", ", ", " }")

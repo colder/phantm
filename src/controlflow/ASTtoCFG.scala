@@ -161,7 +161,7 @@ object ASTToCFG {
         case None => 
             ex match {
                 case ObjectProperty(obj, index) =>
-                    Some(CFGAssignBinary(v, expr(obj), OBJECTREAD, FreshVariable(index.value)))
+                    Some(CFGAssignBinary(v, expr(obj), OBJECTREAD, FreshVariable(index.value).setPos(index)))
                 case ArrayEntry(arr, index) =>
                     Some(CFGAssignBinary(v, expr(arr), ARRAYREAD, expr(index)))
                 case Clone(obj) =>
@@ -262,7 +262,7 @@ object ASTToCFG {
                                     retval = Some(e)
                                     Emit.statement(CFGAssignArray(idFromId(id), expr(index), e).setPos(va))
                                 case ArrayEntry(ex, index) =>
-                                    val varray =  FreshVariable("arr")
+                                    val varray =  FreshVariable("arr").setPos(va)
                                     Emit.statement(exprStore(varray, ex))
                                     val vindex = expr(index)
                                     val e = expr(value)
@@ -273,21 +273,21 @@ object ASTToCFG {
                                     retval = Some(e)
                                     Emit.statement(CFGAssignArrayNext(idFromId(id), e).setPos(va))
                                 case NextArrayEntry(ex) =>
-                                    val varray =  FreshVariable("arr")
+                                    val varray =  FreshVariable("arr").setPos(va)
                                     Emit.statement(exprStore(varray, ex))
                                     val e = expr(value)
                                     retval = Some(e)
                                     Emit.statement(CFGAssignArrayNext(varray, e).setPos(va))
                                 case ObjectProperty(obj, property) => 
-                                    val vobj = FreshVariable("obj")
+                                    val vobj = FreshVariable("obj").setPos(obj)
                                     Emit.statement(exprStore(vobj, obj))
                                     val e = expr(value)
                                     retval = Some(e)
                                     Emit.statement(CFGAssignObjectProperty(vobj, CFGStringLit(property.value), e).setPos(va)) 
                                 case DynamicObjectProperty(obj, property) =>
-                                    val vobj = FreshVariable("obj")
+                                    val vobj = FreshVariable("obj").setPos(obj)
                                     Emit.statement(exprStore(vobj, obj))
-                                    val vprop = FreshVariable("prop")
+                                    val vprop = FreshVariable("prop").setPos(property)
                                     Emit.statement(exprStore(vprop, property))
                                     val e = expr(value)
                                     retval = Some(e)
@@ -570,15 +570,15 @@ object ASTToCFG {
         case Return(expr) =>
             Emit.statementCont(exprStore(retval, expr), cfg.exit)
         case Exit(Some(value)) =>
-            val retV = FreshVariable("exit")
+            val retV = FreshVariable("exit").setPos(s)
             Emit.statementCont(exprStore(retV, value), cfg.exit)
         case Exit(None) =>
-            val retV = FreshVariable("exit")
+            val retV = FreshVariable("exit").setPos(s)
             Emit.statementCont(CFGAssign(retV, CFGNumLit(0)).setPos(s), cfg.exit)
         case Assign(SimpleVariable(id), value, byref) =>
             Emit.statementCont(exprStore(idFromId(id), value), cont)
         case Foreach(ex, as, _, optkey, _, body) =>
-            val v = FreshVariable("val")
+            val v = FreshVariable("val").setPos(ex)
             val condV = cfg.newVertex
             val assignCurV = cfg.newVertex
             val assignKeyV = cfg.newVertex

@@ -5,6 +5,40 @@ import scala.collection.immutable.HashMap
 import scala.collection.immutable.Map
 import Types._
 
+case object TypeLattice extends Lattice {
+    import Types._
+    type E = Type
+
+    def leq(x : Type, y : Type) = (x,y) match {
+        case (TNone, _) => true
+        case (_, TAny) => true
+        case (x, y) if x == y => true
+        case (t1: TPreciseArray, TAnyArray) => true
+        case (t1: TUnion, t2: TUnion) => t1.types subsetOf t2.types
+        case _ => false
+    }
+
+    val top = TAny
+    val bottom = TNone
+
+    def join(x : Type, y : Type) = {
+        val res = (x,y) match {
+        case (TNone, _) => y
+        case (_, TNone) => x
+        case (TAnyArray, t: TPreciseArray) => TAnyArray
+        case (t: TPreciseArray, TAnyArray) => TAnyArray
+        case (t1: TPreciseArray, t2: TPreciseArray) => t1 merge t2
+        case (t1, t2) if t1 == t2 => t1
+        case (t1, t2) => TUnion(t1, t2)
+    }
+        //println("Joining "+x+" and "+y+", result: "+res)
+        res
+    }
+
+    // unused
+    def meet(x : Type, y : Type) = x
+}
+
 case class TypeEnvironment(map: Map[CFGSimpleVariable, Type]) extends Environment[TypeEnvironment] {
     def this() = {
         this(new HashMap[CFGSimpleVariable, Type]);
@@ -17,7 +51,7 @@ case class TypeEnvironment(map: Map[CFGSimpleVariable, Type]) extends Environmen
     }
 
     def union(e: TypeEnvironment) = {
-        val newmap = new scala.collection.mutable.HashMap[CFGSimpleVariable,Type]();
+        val newmap = new scala.collection.mutable.HashMap[CFGSimpleVariable, Type]();
         for ((v,t) <- map) {
             newmap(v) = t
         }
@@ -25,7 +59,7 @@ case class TypeEnvironment(map: Map[CFGSimpleVariable, Type]) extends Environmen
         for ((v,t) <- e.map) {
             if (newmap contains v) {
          //       println("colliding vars!:"+v)
-                newmap(v) = newmap(v) union t
+                newmap(v) = TypeLattice.join(newmap(v), t)
             } else {
                 newmap(v) = t
             }
@@ -62,7 +96,7 @@ case class TypeTransferFunction(silent: Boolean) extends TransferFunction[TypeEn
             case CFGFalse() => TBoolean
             case CFGNull() => TNull
             case CFGThis() => TAnyObject
-            case CFGEmptyArray() => TArray
+            case CFGEmptyArray() => new TPreciseArray()
             case CFGInstanceof(lhs, cl) => TBoolean
             case CFGArrayNext(ar) => TAny
             case CFGArrayCurElement(ar) => TAny
@@ -85,54 +119,55 @@ case class TypeTransferFunction(silent: Boolean) extends TransferFunction[TypeEn
 
         def expect(v1: CFGSimpleValue, typ: Type): Type = {
             val vtyp = typeFromSimpleValue(v1);
-            if (typ contains vtyp) {
+            if (TypeLattice.leq(vtyp, typ)) {
                 vtyp
             } else {
-                notice("Potential type mismatch: expected: "+typ+", found: "+vtyp.toText, v1)
-                TAny
+                notice("Potential type mismatch: expected: "+typ+", found: "+vtyp, v1)
+                //notice("Potential type mismatch: expected: "+typ.toText+", found: "+vtyp.toText, v1)
+                typ
             }
         }
 
         def typeCheckBinOP(v1: CFGSimpleValue, op: CFGBinaryOperator, v2: CFGSimpleValue): Type = {
             op match {
                 case PLUS =>
-                    expect(v1, TInt); expect(v2, TInt); TInt
+                    expect(v1, TInt); expect(v2, TInt)
                 case MINUS =>
-                    expect(v1, TInt); expect(v2, TInt); TInt
+                    expect(v1, TInt); expect(v2, TInt)
                 case MULT =>
-                    expect(v1, TInt); expect(v2, TInt); TInt
+                    expect(v1, TInt); expect(v2, TInt)
                 case DIV =>
-                    expect(v1, TInt); expect(v2, TInt); TInt
+                    expect(v1, TInt); expect(v2, TInt)
                 case CONCAT =>
-                    expect(v1, TString); expect(v2, TString); TString
+                    expect(v1, TString); expect(v2, TString)
                 case MOD =>
-                    expect(v1, TInt); expect(v2, TInt); TInt
+                    expect(v1, TInt); expect(v2, TInt)
                 case INSTANCEOF =>
                     expect(v1, TAnyObject); expect(v2, TString); TBoolean
                 case BOOLEANAND =>
-                    expect(v1, TBoolean); expect(v2, TBoolean); TBoolean
+                    expect(v1, TBoolean); expect(v2, TBoolean)
                 case BOOLEANOR =>
-                    expect(v1, TBoolean); expect(v2, TBoolean); TBoolean
+                    expect(v1, TBoolean); expect(v2, TBoolean)
                 case BOOLEANXOR =>
-                    expect(v1, TBoolean); expect(v2, TBoolean); TBoolean
+                    expect(v1, TBoolean); expect(v2, TBoolean)
                 case BITWISEAND =>
-                    expect(v1, TInt); expect(v2, TInt); TInt
+                    expect(v1, TInt); expect(v2, TInt)
                 case BITWISEOR =>
-                    expect(v1, TInt); expect(v2, TInt); TInt
+                    expect(v1, TInt); expect(v2, TInt)
                 case BITWISEXOR =>
-                    expect(v1, TInt); expect(v2, TInt); TInt
+                    expect(v1, TInt); expect(v2, TInt)
                 case SHIFTLEFT =>
-                    expect(v1, TInt); expect(v2, TInt); TInt
+                    expect(v1, TInt); expect(v2, TInt)
                 case SHIFTRIGHT =>
-                    expect(v1, TInt); expect(v2, TInt); TInt
+                    expect(v1, TInt); expect(v2, TInt)
                 case LT =>
-                    expect(v1, TInt); expect(v2, TInt); TBoolean
+                    expect(v1, TInt); expect(v2, TInt)
                 case LEQ =>
-                    expect(v1, TInt); expect(v2, TInt); TBoolean
+                    expect(v1, TInt); expect(v2, TInt)
                 case GEQ =>
-                    expect(v1, TInt); expect(v2, TInt); TBoolean
+                    expect(v1, TInt); expect(v2, TInt)
                 case GT =>
-                    expect(v1, TInt); expect(v2, TInt); TBoolean
+                    expect(v1, TInt); expect(v2, TInt)
                 case EQUALS =>
                     expect(v2, expect(v1, TAny)); TBoolean
                 case IDENTICAL =>
@@ -143,8 +178,29 @@ case class TypeTransferFunction(silent: Boolean) extends TransferFunction[TypeEn
                     expect(v2, expect(v1, TAny)); TBoolean
                 case OBJECTREAD =>
                     expect(v1, TAnyObject); TAny
-                case ARRAYREAD =>
-                    expect(v1, TAny); TAny
+                case ARRAYREAD => 
+                    val r = (expect(v1, TAnyArray), v2) match {
+                        case (TAnyArray, _) =>
+                            TAny
+                        case (a: TPreciseArray, CFGNumLit(i)) =>
+                            a.lookup(i+"") match {
+                                case Some(t) =>
+                                    t
+                                case None =>
+                                    notice("Undefined array index '"+i+"'", v1)
+                                    TNull
+                            }
+                        case (a: TPreciseArray, CFGStringLit(s)) =>
+                            a.lookup(s) match {
+                                case Some(t) =>
+                                    t
+                                case None =>
+                                    notice("Undefined array index '"+s+"'", v1)
+                                    TNull
+                            }
+                        case _ => TAny
+                    }
+                    r
             }
       }
 
@@ -163,10 +219,44 @@ case class TypeTransferFunction(silent: Boolean) extends TransferFunction[TypeEn
             env
 
           case CFGAssignArrayNext(arr, expr) =>
-            expect(arr, TArray); env
+            arr match {
+                case id: CFGSimpleVariable => 
+                    val t = env.lookup(id) match {
+                      case Some(t: TArray) => t
+                      case Some(_) => expect(arr, TAnyArray); new TPreciseArray()
+                      case None => new TPreciseArray()
+                    }
+                    t.injectNext(typeFromSimpleValue(expr))
+                    env.inject(id, t)
+
+                case _ => println("simple identified expeceted!!")
+            }
+            env
 
           case CFGAssignArray(arr, index, expr) =>
-            expect(arr, TArray); env
+            arr match {
+                case id: CFGSimpleVariable =>
+                    val t = env.lookup(id) match {
+                      case Some(t: TArray) => t
+                      case Some(_) => expect(arr, TAnyArray); new TPreciseArray()
+                      case None => new TPreciseArray()
+                    }
+
+                    val exprTyp = typeFromSimpleValue(expr)
+
+                    index match {
+                      case CFGNumLit(i)        => t.inject(i+"", exprTyp)
+                      case CFGStringLit(index) => t.inject(index, exprTyp)
+                      case _ =>
+                        expect(index, TUnion(TInt, TString))
+                        // we pollute
+                        t.pollute(exprTyp)
+                    }
+                    env.inject(id, t)
+
+                case _ => println("simple identified expeceted!!")
+            }
+            env
 
           case CFGAssignMethodCall(v, r, mid, p) =>
             expect(r, TAnyObject); env
@@ -178,6 +268,9 @@ case class TypeTransferFunction(silent: Boolean) extends TransferFunction[TypeEn
                 expect(v2, expect(v1, TAny)); env
 
           }
+
+          case CFGPrint(v) => env
+          case CFGUnset(id: CFGSimpleVariable) => env.inject(id, TNull); env
 
           case _ => println(node+" not yet handled"); env
       }
@@ -194,10 +287,11 @@ case class TypeFlowAnalyzer(cfg: CFG) {
         aa.init
         aa.computeFixpoint
 
-        /*
+        //*
         for ((v,e) <- aa.getResult) {
             println("node "+v+" has env "+e);
-        } */
+        }
+        // */
 
         aa.pass(TypeTransferFunction(false))
     }
