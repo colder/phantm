@@ -180,15 +180,12 @@ object Types {
         def apply(t1: TUnion, t2: Type): Unit = t1 add t2
         def apply(t1: Type, t2: TUnion): Unit = t2 add t1
         def apply(t1: Type, t2: Type): Type = {
-            println("Union ot "+t1+" and "+t2)
             if (t1 == t2) {
-                println(" ==> "+t1)
                 t1
             } else {
                 val t = new TUnion;
                 t add t1
                 t add t2
-                println(" => "+t)
                 t
             }
         }
