@@ -2,6 +2,7 @@ package phpanalysis.controlflow
 
 import CFGTrees._
 import scala.collection.immutable.HashMap
+import scala.collection.immutable.HashSet
 import scala.collection.immutable.Map
 import Types._
 
@@ -14,7 +15,8 @@ case object TypeLattice extends Lattice {
         case (_, TAny) => true
         case (x, y) if x == y => true
         case (t1: TPreciseArray, TAnyArray) => true
-        case (t1: TUnion, t2: TUnion) => t1.types subsetOf t2.types
+        case (t1: TUnion, t2: TUnion) =>
+            (HashSet[Type]() ++ t1.types) subsetOf (HashSet[Type]() ++ t2.types)
         case _ => false
     }
 

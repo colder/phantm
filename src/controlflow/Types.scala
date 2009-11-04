@@ -151,21 +151,24 @@ object Types {
     }
 
     class TUnion extends Type {
-        val types = new HashSet[Type]();
+        var types: List[Type] = Nil
 
         def add(t: Type) = t match {
             case t1: TUnion =>
                 for (t2 <- t1.types) {
-                    types += t2
+                    if (!(types contains t)) {
+                        types = t2 :: types
+                    }
                 }
-
             case _ =>
-                types += t
+                if (!(types contains t)) {
+                    types = t :: types
+                }
         }
 
         override def equals(t: Any) = t match {
             case tu: TUnion =>
-                types  == tu.types
+                (new HashSet[Type]() ++ types)  == (new HashSet[Type]() ++ tu.types)
             case _ => false
         }
 
@@ -177,12 +180,15 @@ object Types {
         def apply(t1: TUnion, t2: Type): Unit = t1 add t2
         def apply(t1: Type, t2: TUnion): Unit = t2 add t1
         def apply(t1: Type, t2: Type): Type = {
+            println("Union ot "+t1+" and "+t2)
             if (t1 == t2) {
+                println(" ==> "+t1)
                 t1
             } else {
                 val t = new TUnion;
                 t add t1
                 t add t2
+                println(" => "+t)
                 t
             }
         }
