@@ -21,7 +21,7 @@ object Types {
     abstract class TArray extends Type {
         def lookup(index: String): Option[Type];
         def inject(index: String, typ: Type);
-        def injectNext(typ: Type);
+        def injectNext(typ: Type, p: Positional);
         def pollute(typ: Type);
         def duplicate: TArray;
     }
@@ -29,7 +29,7 @@ object Types {
     case object TAnyArray extends TArray {
         def lookup(index: String) = Some(TAny)
         def inject(index: String, typ: Type) = {}
-        def injectNext(typ: Type) = {}
+        def injectNext(typ: Type, p: Positional) = {}
         def pollute(typ: Type) = {}
         def duplicate = this
         override def toString = "Array[?]"
@@ -39,6 +39,7 @@ object Types {
     class TPreciseArray(val entries: Map[String, Type], pollutedTypeInit: Option[Type], nextFreeIndexInit: Int) extends TArray {
         var nextFreeIndex = nextFreeIndexInit
         var pollutedType = pollutedTypeInit
+        var pushPositions = HashSet[String]()
 
         def this() = this(HashMap[String, Type](), None, 0)
 
@@ -47,12 +48,15 @@ object Types {
             entries += ((index, typ))
         }
 
-        def injectNext(typ: Type) = {
-            // Used to inject and specific entry=>type relationship
-            while(entries.get(nextFreeIndex+"") != None) {
-                nextFreeIndex += 1;
+        def injectNext(typ: Type, p: Positional) = {
+            if (!(pushPositions contains p.getPos)) {
+                // Used to inject and specific entry=>type relationship
+                while(entries.get(nextFreeIndex+"") != None) {
+                    nextFreeIndex += 1;
+                }
+                entries += ((nextFreeIndex+"", typ))
+                pushPositions += p.getPos
             }
-            entries += ((nextFreeIndex+"", typ))
         }
 
         def pollute(typ: Type) = {

@@ -87,7 +87,6 @@ case class TypeEnvironment(map: Map[CFGSimpleVariable, Type]) extends Environmen
 case class TypeTransferFunction(silent: Boolean) extends TransferFunction[TypeEnvironment, CFGStatement] {
     def notice(msg: String, pos: Positional) = if (!silent) Reporter.notice(msg, pos)
 
-
     def apply(node : CFGStatement, env : TypeEnvironment) : TypeEnvironment = {
         def typeFromSimpleValue(sv: CFGSimpleValue): Type = sv match {
             case CFGNumLit(value) => TInt
@@ -98,18 +97,22 @@ case class TypeTransferFunction(silent: Boolean) extends TransferFunction[TypeEn
             case CFGThis() => TAnyObject
             case CFGEmptyArray() => new TPreciseArray()
             case CFGInstanceof(lhs, cl) => TBoolean
-            case CFGArrayNext(ar) => TAny
+            case CFGArrayNext(ar) => typeFromSimpleValue(ar)
+            case CFGArrayCurElement(id: CFGSimpleVariable) =>
+                env.lookup(id) match {
+                    case Some(TAnyArray) =>
+                        TAny
+                    case Some(t: TPreciseArray) =>
+                        t.entries.values.reduceLeft(TypeLattice.join)
+                    case _ =>
+                        TAny
+                }
             case CFGArrayCurElement(ar) => TAny
-            case CFGArrayCurKey(ar) => TAny
-            case CFGArrayCurIsValid(ar) => TAny
+            case CFGArrayCurKey(ar) => TUnion(TString, TInt)
+            case CFGArrayCurIsValid(ar) => expect(ar, TAnyArray); TBoolean
             case CFGNew(tpe, params) => TAnyObject
-            case id @ CFGIdentifier(vs) =>
+            case id: CFGSimpleVariable =>
               env.lookup(id) match {
-                  case Some(t) => t
-                  case None => TAny
-              }
-            case tid @ CFGTempID(vs) =>
-              env.lookup(tid) match {
                   case Some(t) => t
                   case None => TAny
               }
@@ -117,15 +120,16 @@ case class TypeTransferFunction(silent: Boolean) extends TransferFunction[TypeEn
               TAny
         }
 
-        def expect(v1: CFGSimpleValue, typ: Type): Type = {
+        def expect(v1: CFGSimpleValue, typs: Type*): Type = {
             val vtyp = typeFromSimpleValue(v1);
-            if (TypeLattice.leq(vtyp, typ)) {
-                vtyp
-            } else {
-                notice("Potential type mismatch: expected: "+typ+", found: "+vtyp, v1)
-                //notice("Potential type mismatch: expected: "+typ.toText+", found: "+vtyp.toText, v1)
-                typ
+            for (t <- typs) {
+                if (TypeLattice.leq(vtyp, t)) {
+                    return vtyp
+                }
             }
+            notice("Potential type mismatch: expected: "+typs.toList.map{x => x.toText}.mkString(" or ")+", found: "+vtyp.toText, v1)
+            //notice("Potential type mismatch: expected: "+typs.toList.mkString(" or ")+", found: "+vtyp, v1)
+            typs.toList.head
         }
 
         def typeCheckBinOP(v1: CFGSimpleValue, op: CFGBinaryOperator, v2: CFGSimpleValue): Type = {
@@ -179,7 +183,7 @@ case class TypeTransferFunction(silent: Boolean) extends TransferFunction[TypeEn
                 case OBJECTREAD =>
                     expect(v1, TAnyObject); TAny
                 case ARRAYREAD => 
-                    val r = (expect(v1, TAnyArray), v2) match {
+                    val r = (expect(v1, TAnyArray, TString), v2) match {
                         case (TAnyArray, _) =>
                             TAny
                         case (a: TPreciseArray, CFGNumLit(i)) =>
@@ -206,7 +210,12 @@ case class TypeTransferFunction(silent: Boolean) extends TransferFunction[TypeEn
 
       node match {
           case CFGAssign(vr: CFGSimpleVariable, v1) =>
-            env.inject(vr, typeFromSimpleValue(v1));
+//            println("Assigning "+v1+" to "+vr+"("+typeFromSimpleValue(v1)+")...")
+//            println(env);
+            val e = env.inject(vr, typeFromSimpleValue(v1));
+//            println("Done: "+e.lookup(vr))
+//            println(e)
+            e
           case CFGAssignBinary(vr: CFGSimpleVariable, v1, op, v2) =>
             // We want to typecheck v1/v2 according to OP
             env.inject(vr, typeCheckBinOP(v1, op, v2));
@@ -226,12 +235,11 @@ case class TypeTransferFunction(silent: Boolean) extends TransferFunction[TypeEn
                       case Some(_) => expect(arr, TAnyArray); new TPreciseArray()
                       case None => new TPreciseArray()
                     }
-                    t.injectNext(typeFromSimpleValue(expr))
+                    t.injectNext(typeFromSimpleValue(expr), expr)
                     env.inject(id, t)
 
-                case _ => println("simple identified expeceted!!")
+                case _ => println("simple identified expeceted!!"); env
             }
-            env
 
           case CFGAssignArray(arr, index, expr) =>
             arr match {
@@ -254,9 +262,8 @@ case class TypeTransferFunction(silent: Boolean) extends TransferFunction[TypeEn
                     }
                     env.inject(id, t)
 
-                case _ => println("simple identified expeceted!!")
+                case _ => println("simple identified expeceted!!"); env
             }
-            env
 
           case CFGAssignMethodCall(v, r, mid, p) =>
             expect(r, TAnyObject); env
@@ -287,8 +294,8 @@ case class TypeFlowAnalyzer(cfg: CFG) {
         aa.init
         aa.computeFixpoint
 
-        //*
-        for ((v,e) <- aa.getResult) {
+        /*
+        for ((v,e) <- aa.getResult.toList.sort{(x,y) => x._1.name < y._1.name}) {
             println("node "+v+" has env "+e);
         }
         // */

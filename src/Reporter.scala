@@ -7,7 +7,7 @@ object Reporter {
     private var files = new HashMap[String, List[String]]();
     private var errorsCount = 0
     private var noticesCount = 0
-    private var errors = new HashSet[(String, String, Positional)]();
+    private var errors = new HashSet[(String, String, Positional, String)]();
 
     def error(msg: String) = {
         errorsCount += 1;
@@ -15,18 +15,18 @@ object Reporter {
     }
     def error(msg: String, pos: Positional) = {
         errorsCount += 1;
-        errors += (("Error: ", msg, pos));
+        errors += (("Error: ", msg, pos, pos.getPos));
     }
 
     def notice(msg: String, pos: Positional) = {
         noticesCount += 1;
-        errors += (("Notice: ", msg, pos));
+        errors += (("Notice: ", msg, pos, pos.getPos));
     }
 
     case class ErrorException(n: Int) extends RuntimeException;
 
     def errorMilestone = {
-        for ((p, msg, pos) <- errors.toList.sort{(x,y) => x._3.line < y._3.line || x._3.col < y._3.col}) {
+        for ((p, msg, pos, _) <- errors.toList.sort{(x,y) => x._3.line < y._3.line || x._3.col < y._3.col}) {
             emit(p, msg, pos)
         }
         if (errorsCount > 0) {

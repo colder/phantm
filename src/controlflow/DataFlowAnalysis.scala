@@ -43,26 +43,27 @@ class AnalysisAlgoritm[E <: Environment[E],S]
       while (toProcess != Nil) {
         val v = toProcess.head
         toProcess = toProcess.tail
+        if (!(processed contains v)) {
+            for (e <- cfg.outEdges(v)) {
+              val oldFact : E = facts(e.v2)
+              val propagated = transferFun(e.lab, facts(e.v1))
+              val newFact = oldFact union propagated
 
-        processed += v
-
-        val oldFact : E = facts(v)
-        var newFact : E = oldFact
-        for (e <- cfg.inEdges(v)) {
-          val propagated = transferFun(e.lab, facts(e.v1))
-          newFact = newFact union propagated
-        }
-        if (!(newFact equals oldFact)) {
-          change = true;
-          facts = facts.update(v, newFact)
-        }
-
-        for (e <- cfg.outEdges(v)) {
-            if (!(processed contains e.v2)) {
-                toProcess = toProcess ::: e.v2 :: Nil
+              if (!(newFact equals oldFact)) {
+                change = true;
+                facts = facts.update(e.v2, newFact)
+              }
+              toProcess = toProcess ::: e.v2 :: Nil
             }
+            processed += v
         }
       }
+    }
+  }
+
+  def dumpFacts = {
+    for ((v,e) <- facts.toList.sort{(x,y) => x._1.name < y._1.name}) {
+        println("  "+v+" => "+e)
     }
   }
   def getResult : Map[Vertex,E] = facts

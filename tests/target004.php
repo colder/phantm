@@ -1,7 +1,8 @@
 <?php
 $a = new StdClass;
 
-$a+1; // type error
+// type error
+$a+1;
 
 
 $a = "str";
@@ -14,4 +15,4 @@ echo $a[3]; // out of bounds
 
 // option
 $a = array(1, 2, 3);
-echo $a[3]; // out of bounds/undefined index
+$a[3]; // out of bounds/undefined index

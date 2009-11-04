@@ -1,4 +1,5 @@
 <?php
 $a = array(1,2,3, "string");
 
-$a[0]->plop; // error, array $a doesn't contain objects
+// error, array $a doesn't contain objects
+$a[0]->plop;
