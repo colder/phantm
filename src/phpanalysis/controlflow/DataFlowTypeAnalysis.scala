@@ -258,7 +258,7 @@ case class TypeTransferFunction(silent: Boolean) extends TransferFunction[TypeEn
                       case CFGNumLit(i)        => t.inject(i+"", exprTyp)
                       case CFGStringLit(index) => t.inject(index, exprTyp)
                       case _ =>
-                        expect(index, TUnion(TInt, TString))
+                        expect(index, TInt, TString)
                         // we pollute
                         t.pollute(exprTyp)
                     }
@@ -296,7 +296,7 @@ case class TypeFlowAnalyzer(cfg: CFG) {
         aa.init
         aa.computeFixpoint
 
-        /*
+        //*
         for ((v,e) <- aa.getResult.toList.sort{(x,y) => x._1.name < y._1.name}) {
             println("node "+v+" has env "+e);
         }

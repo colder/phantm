@@ -1,9 +1,11 @@
 partial: scalafiles
 
-all: cup jflex javafiles scalafiles
+all: setup cup jflex javafiles scalafiles
 
 complete: build_cup all
 
+setup:
+	@ test -d classes || mkdir classes
 build_cup:
 	cd lib/cup && ant
 
@@ -20,7 +22,7 @@ javafiles:
 	javac -cp lib/cup/dist/java-cup-11a-runtime.jar -d classes/ `find java -name "*.java"`
 
 scalafiles:
-	fsc -unchecked -deprecation -d classes `find src -name "*.scala"`
+	fsc -classpath lib/cup/dist/java-cup-11a-runtime.jar -unchecked -deprecation -d classes `find src -name "*.scala"`
 
 test:
 	scala -verbose -classpath classes phpanalysis.Main tests/*.php
