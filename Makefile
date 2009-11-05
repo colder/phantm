@@ -6,6 +6,7 @@ complete: build_cup all
 
 setup:
 	@ test -d classes || mkdir classes
+
 build_cup:
 	cd lib/cup && ant
 
@@ -22,7 +23,7 @@ javafiles:
 	javac -cp lib/cup/dist/java-cup-11a-runtime.jar -d classes/ `find java -name "*.java"`
 
 scalafiles:
-	fsc -classpath lib/cup/dist/java-cup-11a-runtime.jar -unchecked -deprecation -d classes `find src -name "*.scala"`
+	@ ant
 
 test:
 	scala -verbose -classpath classes phpanalysis.Main tests/*.php
