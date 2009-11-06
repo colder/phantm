@@ -205,7 +205,16 @@ object TypeFlow {
                                         notice("Undefined array index '"+s+"'", v1)
                                         TNull
                                 }
-                            case _ => TAny
+                            case (a: TPreciseArray, _) =>
+                                // union of every types + default type
+                                var t = a.entries map { _._2 } reduceLeft { (x,y) => x union y }
+                                if (a.pollutedType != None) {
+                                    t = t union a.pollutedType.get
+                                }
+                                t
+                            case _ =>
+                                TAny
+
                         }
                         r
                 }

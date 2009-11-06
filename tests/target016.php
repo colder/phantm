@@ -1,6 +1,10 @@
 <?php
 $a = array();
-$a['a'] = array();
-$a['a']['b'] = 2;
+$a['a'] = 2;
 
-echo $a['a']['b'];
+$i = 1;
+
+$a[$i] = "string";
+
+$a[$i]+2;
+
