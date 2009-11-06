@@ -21,6 +21,7 @@ if [ -f "result.st" ]; then
             echo "Graph saved to http://project.colder.ch/$NAME-CFG${N}.jpg"
         fi
     done
+    rm result.cfg
     #/dot -Tjpg -o ${DIST_PATH}${NAME}-CFG.jpg result.cfg && cp result.cfg ${DIST_PATH}${NAME}-CFG.jpg.txt
 
     cp $1 ${DIST_PATH}${NAME}s
