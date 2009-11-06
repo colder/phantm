@@ -1,17 +1,8 @@
 package phpanalysis.controlflow
- 
+
 import scala.collection.mutable.HashSet;
 
-abstract class TransferFunction[E, S] {
-  def apply(node : S, x : E) : E
-}
-
-abstract class Environment[E <: Environment[_]] {
-    def union (env: E): E;
-    def equals (env: E): Boolean;
-}
-
-class AnalysisAlgoritm[E <: Environment[E],S]
+class AnalysisAlgorithm[E <: Environment[E],S]
                (transferFun : TransferFunction[E,S],
 		baseEnv : E,
 		cfg : LabeledDirectedGraphImp[S])

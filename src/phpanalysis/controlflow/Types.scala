@@ -2,6 +2,8 @@ package phpanalysis.controlflow;
 import analyzer.Symbols._
 import scala.collection.mutable.{HashSet, HashMap, Map}
 
+import TypeFlow._
+
 
 object Types {
     sealed abstract class Type {
