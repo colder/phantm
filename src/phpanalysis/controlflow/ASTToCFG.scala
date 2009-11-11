@@ -139,13 +139,26 @@ object ASTToCFG {
     /** If an expression can be translated without flattening, does it and
       * returns the result in a Some(...) instance. Otherwise returns None. */
     def alreadySimple(ex: Expression): Option[CFGSimpleValue] = ex match {
-      case ArrayEntry(ar, ind) => Some(CFGArrayEntry(expr(ar), expr(ind)))
-      case SimpleVariable(v) => Some(idFromId(v))
-      case PHPInteger(v) => Some(CFGNumLit(v).setPos(ex))
-      case PHPString(v) => Some(CFGStringLit(v).setPos(ex))
-      case PHPTrue() => Some(CFGTrue().setPos(ex))
-      case PHPFalse() => Some(CFGFalse().setPos(ex))
-      case PHPNull() => Some(CFGNull().setPos(ex))
+      case ArrayEntry(ar, ind) =>
+        Some(CFGArrayEntry(expr(ar), expr(ind)).setPos(ex))
+      case NextArrayEntry(ar) =>
+        Some(CFGNextArrayEntry(expr(ar)).setPos(ex))
+      case ObjectProperty(obj, property) =>
+        Some(CFGObjectProperty(expr(obj), CFGStringLit(property.value).setPos(property)).setPos(ex))
+      case DynamicObjectProperty(obj, ind) =>
+        Some(CFGObjectProperty(expr(obj), expr(ind)))
+      case SimpleVariable(v) =>
+        Some(idFromId(v))
+      case PHPInteger(v) =>
+        Some(CFGNumLit(v).setPos(ex))
+      case PHPString(v) =>
+        Some(CFGStringLit(v).setPos(ex))
+      case PHPTrue() =>
+        Some(CFGTrue().setPos(ex))
+      case PHPFalse() =>
+        Some(CFGFalse().setPos(ex))
+      case PHPNull() =>
+        Some(CFGNull().setPos(ex))
       case _ => None
     }
  
