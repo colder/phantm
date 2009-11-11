@@ -1,4 +1,4 @@
 classes
 java/phpanalysis/parser/*.java
 java/phpanalysis/parser/*.bin
-**/*.swp
+**/.*.sw?
