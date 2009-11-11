@@ -34,6 +34,7 @@ object CFGTrees {
                                  id: parser.Trees.Identifier,
                                  params: List[CFGSimpleValue]) extends CFGStatement
 
+  /*
   case class CFGAssignArrayNext(arr: CFGVariable,
                             expr: CFGSimpleValue) extends CFGStatement
 
@@ -41,10 +42,13 @@ object CFGTrees {
   case class CFGAssignArray(arr: CFGVariable,
                             index: CFGSimpleValue,
                             expr: CFGSimpleValue) extends CFGStatement
+                            */
 
+  /*
   case class CFGAssignObjectProperty(obj: CFGVariable,
                             prop: CFGSimpleValue,
                             expr: CFGSimpleValue) extends CFGStatement
+  */
 
 
   case class CFGError() extends CFGStatement {
@@ -148,9 +152,9 @@ object CFGTrees {
       case CFGAssignBinary(v, l, b, r) => v + assOp + l + " " + b + " " + r
       case CFGAssignTernary(v, i, then, elze) => v + assOp + i + " ? " + then + " : " + elze
       case CFGAssign(v, e) => v + assOp + e
-      case CFGAssignArray(a, i, e) => a + "[" + i + "]" + assOp + e
-      case CFGAssignArrayNext(a, e) => a + "[]" + assOp + e
-      case CFGAssignObjectProperty(o, p, e) => o + "->" + p + assOp + e
+//      case CFGAssignArray(a, i, e) => a + "[" + i + "]" + assOp + e
+//      case CFGAssignArrayNext(a, e) => a + "[]" + assOp + e
+//      case CFGAssignObjectProperty(o, p, e) => o + "->" + p + assOp + e
       case CFGSkip => "..."
       case CFGAssume(l, o, r) => "[" + l + o + r + "]"
       case CFGPrint(v) => "print("+v+")"

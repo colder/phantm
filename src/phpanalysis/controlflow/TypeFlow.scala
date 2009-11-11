@@ -235,11 +235,11 @@ object TypeFlow {
                 // We want to typecheck v1/v2 according to OP
                 typeCheckBinOP(v1, op, v2); env // todo: pollute env
 
-              case CFGAssignObjectProperty(obj, prop, ex) =>
+              case CFGAssign(CFGObjectProperty(obj, prop), ex) =>
                 //expect(obj, TAnyObject);
                 env
 
-              case CFGAssignArrayNext(arr, expr) =>
+              case CFGAssign(CFGNextArrayEntry(arr), expr) =>
                 arr match {
                     case id: CFGSimpleVariable => 
                         val t = env.lookup(id) match {
@@ -253,7 +253,7 @@ object TypeFlow {
                     case _ => println("simple identified expeceted!!"); env
                 }
 
-              case CFGAssignArray(arr, index, expr) =>
+              case CFGAssign(CFGArrayEntry(arr, index), expr) =>
                 arr match {
                     case id: CFGSimpleVariable =>
                         val t = env.lookup(id) match {

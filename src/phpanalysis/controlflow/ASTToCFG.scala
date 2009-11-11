@@ -139,6 +139,7 @@ object ASTToCFG {
     /** If an expression can be translated without flattening, does it and
       * returns the result in a Some(...) instance. Otherwise returns None. */
     def alreadySimple(ex: Expression): Option[CFGSimpleValue] = ex match {
+      case ArrayEntry(ar, ind) => Some(CFGArrayEntry(expr(ar), expr(ind)))
       case SimpleVariable(v) => Some(idFromId(v))
       case PHPInteger(v) => Some(CFGNumLit(v).setPos(ex))
       case PHPString(v) => Some(CFGStringLit(v).setPos(ex))
@@ -162,8 +163,10 @@ object ASTToCFG {
             ex match {
                 case ObjectProperty(obj, index) =>
                     Some(CFGAssignBinary(v, expr(obj), OBJECTREAD, FreshVariable(index.value).setPos(index)))
+                /*
                 case ArrayEntry(arr, index) =>
                     Some(CFGAssignBinary(v, expr(arr), ARRAYREAD, expr(index)))
+                    */
                 case Clone(obj) =>
                     Some(CFGAssignUnary(v, CLONE, expr(obj)))
                 case Plus(lhs, rhs) =>
@@ -257,7 +260,18 @@ object ASTToCFG {
                                 case VariableVariable(ex) =>
                                     v = varFromVar(va)
                                     Emit.statement(exprStore(v, value))
+                                case ae @ ArrayEntry(arr, ind) =>
+                                    Emit.statement(CFGAssign(CFGArrayEntry(expr(arr), expr(ind)).setPos(ae), expr(value)));
+                                case nae @ NextArrayEntry(arr) =>
+                                    Emit.statement(CFGAssign(CFGNextArrayEntry(expr(arr)).setPos(nae), expr(value)));
+                                case op @ ObjectProperty(obj, property) =>
+                                    Emit.statement(CFGAssign(CFGObjectProperty(expr(obj), CFGStringLit(property.value).setPos(property)).setPos(op), expr(value)));
+                                case dop @ DynamicObjectProperty(obj, property) =>
+                                    Emit.statement(CFGAssign(CFGObjectProperty(expr(obj), expr(property)).setPos(dop), expr(value)));
+
+                                /*
                                 case ArrayEntry(SimpleVariable(id), index) =>
+                                    Emit.statement(CFGAssign(expr(
                                     val e = expr(value);
                                     retval = Some(e)
                                     Emit.statement(CFGAssignArray(idFromId(id), expr(index), e).setPos(va))
@@ -292,6 +306,7 @@ object ASTToCFG {
                                     val e = expr(value)
                                     retval = Some(e)
                                     Emit.statement(CFGAssignObjectProperty(vobj, CFGVariableVar(vprop), e).setPos(va)) 
+                                */
                                 case ClassProperty(cl, property) => notyet(ex)
 
                                 case _ => notyet(ex)
@@ -332,9 +347,9 @@ object ASTToCFG {
                             Emit.statement(CFGAssign(v, CFGEmptyArray()).setPos(ex))
                             for (av <- values) av match {
                                 case (Some(x), va, byref) =>
-                                    Emit.statement(CFGAssignArray(v, expr(x), expr(va)).setPos(x))
+                                    Emit.statement(CFGAssign(CFGArrayEntry(v, expr(x)), expr(va)).setPos(ex))
                                 case (None, va, byref) =>
-                                    Emit.statement(CFGAssignArrayNext(v, expr(va)).setPos(va))
+                                    Emit.statement(CFGAssign(CFGNextArrayEntry(v).setPos(va), expr(va)).setPos(ex))
                             }
                         case StaticMethodCall(cl, id, args) =>
                             notyet(ex); // TODO
