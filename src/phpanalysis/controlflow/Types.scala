@@ -21,33 +21,44 @@ object Types {
     case class TClass(cd: ClassSymbol) extends ClassType
 
     abstract class TArray extends Type {
+        self=>
         def lookup(index: String): Option[Type];
-        def inject(index: String, typ: Type);
-        def injectNext(typ: Type, p: Positional);
-        def pollute(typ: Type);
+        def inject(index: String, typ: Type): self.type;
+        def injectNext(typ: Type, p: Positional): self.type;
+        def pollute(typ: Type): self.type;
         def duplicate: TArray;
     }
 
     case object TAnyArray extends TArray {
         def lookup(index: String) = Some(TAny)
-        def inject(index: String, typ: Type) = {}
-        def injectNext(typ: Type, p: Positional) = {}
-        def pollute(typ: Type) = {}
+        def inject(index: String, typ: Type) = this
+        def injectNext(typ: Type, p: Positional) = this
+        def pollute(typ: Type) = this
         def duplicate = this
         override def toString = "Array[?]"
         override def toText = "any array"
     }
 
     class TPreciseArray(val entries: Map[String, Type], pollutedTypeInit: Option[Type], nextFreeIndexInit: Int) extends TArray {
+        self =>
+        import CFGTrees._
+
         var nextFreeIndex = nextFreeIndexInit
         var pollutedType = pollutedTypeInit
         var pushPositions = HashSet[String]()
 
         def this() = this(HashMap[String, Type](), None, 0)
 
+        def inject(index: CFGSimpleValue, typ: Type): self.type = index match {
+          case CFGNumLit(i)        => inject(i+"", typ)
+          case CFGStringLit(index) => inject(index, typ)
+          case _ => pollute(typ)
+        }
+
         def inject(index: String, typ: Type) = {
             // Used to inject and specific entry=>type relationship
             entries += ((index, typ))
+            this
         }
 
         def injectNext(typ: Type, p: Positional) = {
@@ -59,6 +70,7 @@ object Types {
                 entries += ((nextFreeIndex+"", typ))
                 pushPositions += p.getPos
             }
+            this
         }
 
         def pollute(typ: Type) = {
@@ -72,6 +84,8 @@ object Types {
                     case None => Some(typ)
                 }
             }
+
+            this
         }
 
         def lookup(index: String): Option[Type] = {
