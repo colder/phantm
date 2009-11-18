@@ -220,13 +220,37 @@ object TypeFlow {
                 }
           }
 
+          def complexAssign(v: CFGVariable, ex: CFGSimpleValue): TypeEnvironment = {
+                var line: List[(CFGSimpleValue, Type)] = Nil;
+                println("Got: "+v+" = "+ex);
+                def linearize(sv: CFGSimpleValue, typ: Type): Unit = {
+                    line = (sv, typ) :: line;
+                    sv match {
+                        case CFGVariableVar(v) =>
+                            linearize(v, TString)
+                        case CFGArrayEntry(arr, index) =>
+                            val t = new TPreciseArray().inject(index, typ)
+                            linearize(arr, t)
+                        case CFGNextArrayEntry(arr) =>
+                            val t = new TPreciseArray().injectNext(typ, arr)
+                            linearize(arr, t)
+                        case _ =>
+                    }
+                }
+
+                linearize(v, typeFromSimpleValue(ex))
+
+                println("Linearized: ")
+                print(" - ")
+                println(line.mkString("\n - "))
+
+                env
+          }
+
+
           node match {
               case CFGAssign(vr: CFGSimpleVariable, v1) =>
-    //            println("Assigning "+v1+" to "+vr+"("+typeFromSimpleValue(v1)+")...")
-    //            println(env);
                 val e = env.inject(vr, typeFromSimpleValue(v1));
-    //            println("Done: "+e.lookup(vr))
-    //            println(e)
                 e
               case CFGAssignBinary(vr: CFGSimpleVariable, v1, op, v2) =>
                 // We want to typecheck v1/v2 according to OP
@@ -235,6 +259,10 @@ object TypeFlow {
                 // We want to typecheck v1/v2 according to OP
                 typeCheckBinOP(v1, op, v2); env // todo: pollute env
 
+              case CFGAssign(ca: CFGVariable, ex) =>
+                complexAssign(ca, ex)
+
+              /*
               case CFGAssign(CFGObjectProperty(obj, prop), ex) =>
                 //expect(obj, TAnyObject);
                 env
@@ -276,7 +304,7 @@ object TypeFlow {
 
                     case _ => println("simple identified expeceted!!"); env
                 }
-
+                */
               case CFGAssignMethodCall(v, r, mid, p) =>
                 expect(r, TAnyObject); env
 
