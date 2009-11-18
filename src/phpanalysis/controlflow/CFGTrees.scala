@@ -60,7 +60,7 @@ object CFGTrees {
 
   case object CFGSkip extends CFGStatement
 
-  sealed abstract class CFGExpression extends CFGTree
+  sealed abstract class CFGExpression extends CFGStatement
   sealed abstract class CFGSimpleValue extends CFGExpression
   sealed abstract class CFGVariable extends CFGSimpleValue 
   sealed abstract class CFGSimpleVariable extends CFGVariable
@@ -126,8 +126,10 @@ object CFGTrees {
   case object NOTEQUALS extends CFGBinaryOperator with CFGRelationalOperator { override def toString = "!=" }
   case object NOTIDENTICAL extends CFGBinaryOperator with CFGRelationalOperator { override def toString = "!==" }
 
+  /*
   case object ARRAYREAD extends CFGBinaryOperator
   case object OBJECTREAD extends CFGBinaryOperator
+  */
 
   sealed abstract class CFGUnaryOperator
   case object BOOLEANNOT extends CFGUnaryOperator { override def toString = "!" }
@@ -147,8 +149,10 @@ object CFGTrees {
       case CFGAssignMethodCall(v, r, mid, p) => v + assOp + r + "->" + mid.value + p.mkString("(", ", ", ")")
       case CFGAssignFunctionCall(v, fid, p) => v + assOp + fid.value + p.mkString("(", ", ", ")")
       case CFGAssignUnary(v, u, e) => v + assOp + u + e
+      /*
       case CFGAssignBinary(v, l, ARRAYREAD, r) => v + assOp + l + "[" + r + "]"
       case CFGAssignBinary(v, l, OBJECTREAD, r) => v + assOp + l + "->" + r
+      */
       case CFGAssignBinary(v, l, b, r) => v + assOp + l + " " + b + " " + r
       case CFGAssignTernary(v, i, then, elze) => v + assOp + i + " ? " + then + " : " + elze
       case CFGAssign(v, e) => v + assOp + e

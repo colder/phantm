@@ -119,6 +119,25 @@ object TypeFlow {
                       case Some(t) => t
                       case None => TAny
                   }
+                case CFGArrayEntry(ar, ind) =>
+                    expect(ind, TString, TInt)
+
+                    expect(ar, TAnyArray) match {
+                        case t: TArray =>
+                            t.lookup(ind) match {
+                                case Some(rt) => rt
+                                case None =>
+                                    notice("Undefined array index "+stringRepr(ind), ar)
+                                    TNull
+                            }
+                        case _ =>
+                            println("Woops?? invlid type returned from expect");
+                            TAny
+                    }
+
+                case CFGObjectProperty(obj, p) =>
+                    expect(obj, TAnyObject);
+
                 case _ =>
                   TAny
             }
@@ -131,7 +150,6 @@ object TypeFlow {
                     }
                 }
                 notice("Potential type mismatch: expected: "+typs.toList.map{x => x.toText}.mkString(" or ")+", found: "+vtyp.toText, v1)
-                //notice("Potential type mismatch: expected: "+typs.toList.mkString(" or ")+", found: "+vtyp, v1)
                 typs.toList.head
             }
 
@@ -183,6 +201,7 @@ object TypeFlow {
                         expect(v2, expect(v1, TAny)); TBoolean
                     case NOTIDENTICAL =>
                         expect(v2, expect(v1, TAny)); TBoolean
+                    /*
                     case OBJECTREAD =>
                         expect(v1, TAnyObject); TAny
                     case ARRAYREAD => 
@@ -217,6 +236,7 @@ object TypeFlow {
 
                         }
                         r
+                        */
                 }
           }
 
@@ -254,8 +274,10 @@ object TypeFlow {
 
                 var e = env
 
+                //println("Assign: "+v+" = "+ex);
                 // Let's traverse all up to the last elem (the outermost assign)
                 for ((elem, ct, rt) <- elems.init) {
+                    //println(" Checking for "+elem +"(actualType: "+typeFromSimpleValue(elem)+", checkType: "+ct+", resultType: "+rt+")");
                     val resultingType = (rt, typeFromSimpleValue(elem)) match {
                         // If both the type resulting from the assign and the
                         // previous type are arrays: we merge
@@ -386,9 +408,14 @@ object TypeFlow {
 
               }
 
-              case CFGPrint(v) => env
+              case CFGPrint(v) =>
+                expect(v, TInt, TString, TAnyObject);
+                env
               case CFGUnset(id: CFGSimpleVariable) => env.inject(id, TNull); env
 
+              case ex: CFGSimpleValue =>
+                expect(ex, TAny);
+                env
               case _ => println(node+" not yet handled"); env
           }
       }

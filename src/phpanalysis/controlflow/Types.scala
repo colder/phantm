@@ -22,8 +22,19 @@ object Types {
 
     abstract class TArray extends Type {
         self=>
+        import CFGTrees._
         def lookup(index: String): Option[Type];
+        def lookup(index: CFGSimpleValue): Option[Type] = index match {
+          case CFGNumLit(i)        => lookup(i+"")
+          case CFGStringLit(index) => lookup(index)
+          case _ => Some(TAny) // Should never happen without error in the parent
+        }
         def inject(index: String, typ: Type): self.type;
+        def inject(index: CFGSimpleValue, typ: Type): self.type = index match {
+          case CFGNumLit(i)        => inject(i+"", typ)
+          case CFGStringLit(index) => inject(index, typ)
+          case _ => pollute(typ)
+        }
         def injectNext(typ: Type, p: Positional): self.type;
         def pollute(typ: Type): self.type;
         def duplicate: TArray;
@@ -41,7 +52,6 @@ object Types {
 
     class TPreciseArray(val entries: Map[String, Type], pollutedTypeInit: Option[Type], nextFreeIndexInit: Int) extends TArray {
         self =>
-        import CFGTrees._
 
         var nextFreeIndex = nextFreeIndexInit
         var pollutedType = pollutedTypeInit
@@ -49,11 +59,6 @@ object Types {
 
         def this() = this(HashMap[String, Type](), None, 0)
 
-        def inject(index: CFGSimpleValue, typ: Type): self.type = index match {
-          case CFGNumLit(i)        => inject(i+"", typ)
-          case CFGStringLit(index) => inject(index, typ)
-          case _ => pollute(typ)
-        }
 
         def inject(index: String, typ: Type) = {
             // Used to inject and specific entry=>type relationship
@@ -77,12 +82,12 @@ object Types {
             // When the index is unknown, we have to pollute every entries
             for ((i,t) <- entries) {
                 entries(i) = t union typ
-                // we flag the array to allow lookup to return Any instead of None
-                // since the key=>value relationship is not longer safe
-                pollutedType = pollutedType match { 
-                    case Some(pt) => Some(pt union typ)
-                    case None => Some(typ)
-                }
+            }
+            // we flag the array to allow lookup to return Any instead of None
+            // since the key=>value relationship is not longer safe
+            pollutedType = pollutedType match { 
+                case Some(pt) => Some(pt union typ)
+                case None => Some(typ)
             }
 
             this

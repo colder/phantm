@@ -174,9 +174,9 @@ object ASTToCFG {
         case Some(x) => Some(CFGAssign(v, x))
         case None => 
             ex match {
+                /*
                 case ObjectProperty(obj, index) =>
                     Some(CFGAssignBinary(v, expr(obj), OBJECTREAD, FreshVariable(index.value).setPos(index)))
-                /*
                 case ArrayEntry(arr, index) =>
                     Some(CFGAssignBinary(v, expr(arr), ARRAYREAD, expr(index)))
                     */
@@ -639,8 +639,7 @@ object ASTToCFG {
             Emit.goto(cont);
         case e: Expression =>
 //            val v = FreshVariable("val");
-            expr(e)
-            Emit.goto(cont)
+            Emit.statementCont(expr(e), cont);
 //            Emit.statementCont(exprStore(v, e), cont)
       }
       Emit.setPC(cont)
