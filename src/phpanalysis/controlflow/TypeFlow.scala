@@ -221,41 +221,60 @@ object TypeFlow {
           }
 
           def complexAssign(v: CFGVariable, ex: CFGSimpleValue): TypeEnvironment = {
-                var line: List[(CFGSimpleValue, Type, Type)] = Nil;
-                //println("Got: "+v+" = "+ex);
+                var elems: List[(CFGSimpleValue, Type, Type)] = Nil;
+
                 def linearize(sv: CFGSimpleValue, checkType: Type, resultType: Type, pass: Int): Unit = {
-                    line = (sv, checkType, resultType) :: line;
+                    // Recursive function that pushes each array parts and compute types
+                    elems = (sv, checkType, resultType) :: elems;
                     sv match {
                         case CFGVariableVar(v) =>
                             linearize(v, TString, TString, pass+1)
                         case CFGArrayEntry(arr, index) =>
+                            // We always will end up with a precise array
+                            // The check type depends on the pass (i.e. deepness)
+                            // pass == 0 means this is the most outer assign,
+                            // which only needs to be checked against AnyArray
                             val rt = new TPreciseArray().inject(index, resultType);
                             val ct = if (pass > 0) new TPreciseArray().inject(index, checkType) else TAnyArray;
+
                             linearize(arr, ct, rt, pass+1)
                         case CFGNextArrayEntry(arr) =>
+                            // ditto ArrayEntry
                             val rt = new TPreciseArray().injectNext(resultType, arr);
                             val ct = if (pass > 0) new TPreciseArray().injectNext(checkType, arr) else TAnyArray;
+
                             linearize(arr, ct, rt, pass+1)
                         case _ =>
                     }
                 }
 
+                // We lineraize the recursive structure
                 val ext = typeFromSimpleValue(ex);
                 linearize(v, ext, ext, 0)
 
                 var e = env
 
-                for ((elem, ct, rt) <- line.init) {
-                    //println("Checking "+elem+"["+typeFromSimpleValue(elem)+"] (check: "+ct+")(after: "+rt+")")
-
+                // Let's traverse all up to the last elem (the outermost assign)
+                for ((elem, ct, rt) <- elems.init) {
                     val resultingType = (rt, typeFromSimpleValue(elem)) match {
+                        // If both the type resulting from the assign and the
+                        // previous type are arrays: we merge
                         case (a: TArray, b: TArray) =>
-                            // We need to merge those arrays in a special way
+                            // assignMerge will recursively merge types of recursive arrays
+                            // we cannot use Lattice.Join as we do not want unions.
+                            // i.e. $a['foo']['bar'] = 2; $a['foo']['bar'] =
+                            // "str"; should not end with:
+                            //    $a -> Array[foo => Array[bar => {TInt, TString}]]
+                            // but
+                            //    $a -> Array[foo => Array[bar => String]]
                             def assignMerge(from: Type, to: Type): Type = (from,to) match {
                                 case (from: TPreciseArray, to: TPreciseArray) =>
                                     import scala.collection.mutable.HashMap
                                     import Math.max
 
+                                    // Shouldn't be needed as the resulting
+                                    // type should never be polluted, by
+                                    // construction
                                     val newPollutedType = (from.pollutedType, to.pollutedType) match {
                                         case (Some(pt1), Some(pt2)) => Some(TypeLattice.join(pt1, pt2))
                                         case (Some(pt1), None) => Some(pt1)
@@ -273,22 +292,22 @@ object TypeFlow {
                                     }
 
                                     new TPreciseArray(newEntries, newPollutedType, max(from.nextFreeIndex, to.nextFreeIndex))
+                                // In case not both types are arrays, we
+                                // always end up with the target type
                                 case (a, b) => b
                             }
-                     //       expect(elem, ct)
                             assignMerge(b, a)
                         case (a: TArray, b) =>
-                     //       expect(elem, ct)
                             rt
                         case _ =>
-                            println("Woooops?? What is that type?")
+                            println("Woooops?? Why is that type here, resulting type should be an Array !?")
                             rt
                     }
 
-                    //println("  Setting to: "+resultingType)
-
                     elem match {
                         case sv: CFGSimpleVariable =>
+                            // Due to our deep type system, checking
+                            // the base variable should be enough
                             expect(elem, ct)
                             e = e.inject(sv, resultingType);
                         case _ =>
