@@ -201,42 +201,6 @@ object TypeFlow {
                         expect(v2, expect(v1, TAny)); TBoolean
                     case NOTIDENTICAL =>
                         expect(v2, expect(v1, TAny)); TBoolean
-                    /*
-                    case OBJECTREAD =>
-                        expect(v1, TAnyObject); TAny
-                    case ARRAYREAD => 
-                        val r = (expect(v1, TAnyArray, TString), v2) match {
-                            case (TAnyArray, _) =>
-                                TAny
-                            case (a: TPreciseArray, CFGNumLit(i)) =>
-                                a.lookup(i+"") match {
-                                    case Some(t) =>
-                                        t
-                                    case None =>
-                                        notice("Undefined array index '"+i+"'", v1)
-                                        TNull
-                                }
-                            case (a: TPreciseArray, CFGStringLit(s)) =>
-                                a.lookup(s) match {
-                                    case Some(t) =>
-                                        t
-                                    case None =>
-                                        notice("Undefined array index '"+s+"'", v1)
-                                        TNull
-                                }
-                            case (a: TPreciseArray, _) =>
-                                // union of every types + default type
-                                var t = a.entries map { _._2 } reduceLeft { (x,y) => x union y }
-                                if (a.pollutedType != None) {
-                                    t = t union a.pollutedType.get
-                                }
-                                t
-                            case _ =>
-                                TAny
-
-                        }
-                        r
-                        */
                 }
           }
 
@@ -354,49 +318,6 @@ object TypeFlow {
               case CFGAssign(ca: CFGVariable, ex) =>
                 complexAssign(ca, ex)
 
-              /*
-              case CFGAssign(CFGObjectProperty(obj, prop), ex) =>
-                //expect(obj, TAnyObject);
-                env
-
-              case CFGAssign(CFGNextArrayEntry(arr), expr) =>
-                arr match {
-                    case id: CFGSimpleVariable => 
-                        val t = env.lookup(id) match {
-                          case Some(t: TArray) => t
-                          case Some(_) => expect(arr, TAnyArray); new TPreciseArray()
-                          case None => new TPreciseArray()
-                        }
-                        t.injectNext(typeFromSimpleValue(expr), expr)
-                        env.inject(id, t)
-
-                    case _ => println("simple identified expeceted!!"); env
-                }
-
-              case CFGAssign(CFGArrayEntry(arr, index), expr) =>
-                arr match {
-                    case id: CFGSimpleVariable =>
-                        val t = env.lookup(id) match {
-                          case Some(t: TArray) => t
-                          case Some(_) => expect(arr, TAnyArray); new TPreciseArray()
-                          case None => new TPreciseArray()
-                        }
-
-                        val exprTyp = typeFromSimpleValue(expr)
-
-                        index match {
-                          case CFGNumLit(i)        => t.inject(i+"", exprTyp)
-                          case CFGStringLit(index) => t.inject(index, exprTyp)
-                          case _ =>
-                            expect(index, TInt, TString)
-                            // we pollute
-                            t.pollute(exprTyp)
-                        }
-                        env.inject(id, t)
-
-                    case _ => println("simple identified expeceted!!"); env
-                }
-                */
               case CFGAssignMethodCall(v, r, mid, p) =>
                 expect(r, TAnyObject); env
 

@@ -34,22 +34,6 @@ object CFGTrees {
                                  id: parser.Trees.Identifier,
                                  params: List[CFGSimpleValue]) extends CFGStatement
 
-  /*
-  case class CFGAssignArrayNext(arr: CFGVariable,
-                            expr: CFGSimpleValue) extends CFGStatement
-
-
-  case class CFGAssignArray(arr: CFGVariable,
-                            index: CFGSimpleValue,
-                            expr: CFGSimpleValue) extends CFGStatement
-                            */
-
-  /*
-  case class CFGAssignObjectProperty(obj: CFGVariable,
-                            prop: CFGSimpleValue,
-                            expr: CFGSimpleValue) extends CFGStatement
-  */
-
 
   case class CFGError() extends CFGStatement {
     override def toString = stringRepr(this);
@@ -126,11 +110,6 @@ object CFGTrees {
   case object NOTEQUALS extends CFGBinaryOperator with CFGRelationalOperator { override def toString = "!=" }
   case object NOTIDENTICAL extends CFGBinaryOperator with CFGRelationalOperator { override def toString = "!==" }
 
-  /*
-  case object ARRAYREAD extends CFGBinaryOperator
-  case object OBJECTREAD extends CFGBinaryOperator
-  */
-
   sealed abstract class CFGUnaryOperator
   case object BOOLEANNOT extends CFGUnaryOperator { override def toString = "!" }
   case object BITSIWENOT extends CFGUnaryOperator { override def toString = "~" }
@@ -149,16 +128,9 @@ object CFGTrees {
       case CFGAssignMethodCall(v, r, mid, p) => v + assOp + r + "->" + mid.value + p.mkString("(", ", ", ")")
       case CFGAssignFunctionCall(v, fid, p) => v + assOp + fid.value + p.mkString("(", ", ", ")")
       case CFGAssignUnary(v, u, e) => v + assOp + u + e
-      /*
-      case CFGAssignBinary(v, l, ARRAYREAD, r) => v + assOp + l + "[" + r + "]"
-      case CFGAssignBinary(v, l, OBJECTREAD, r) => v + assOp + l + "->" + r
-      */
       case CFGAssignBinary(v, l, b, r) => v + assOp + l + " " + b + " " + r
       case CFGAssignTernary(v, i, then, elze) => v + assOp + i + " ? " + then + " : " + elze
       case CFGAssign(v, e) => v + assOp + e
-//      case CFGAssignArray(a, i, e) => a + "[" + i + "]" + assOp + e
-//      case CFGAssignArrayNext(a, e) => a + "[]" + assOp + e
-//      case CFGAssignObjectProperty(o, p, e) => o + "->" + p + assOp + e
       case CFGSkip => "..."
       case CFGAssume(l, o, r) => "[" + l + o + r + "]"
       case CFGPrint(v) => "print("+v+")"
