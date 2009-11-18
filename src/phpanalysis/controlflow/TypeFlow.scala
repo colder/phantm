@@ -246,7 +246,7 @@ object TypeFlow {
                 var e = env
 
                 for ((elem, ct, rt) <- line.init) {
-                    println("Checking "+elem+"["+typeFromSimpleValue(elem)+"] (check: "+ct+")(after: "+rt+")")
+                    //println("Checking "+elem+"["+typeFromSimpleValue(elem)+"] (check: "+ct+")(after: "+rt+")")
 
                     val resultingType = (rt, typeFromSimpleValue(elem)) match {
                         case (a: TArray, b: TArray) =>
@@ -275,20 +275,21 @@ object TypeFlow {
                                     new TPreciseArray(newEntries, newPollutedType, max(from.nextFreeIndex, to.nextFreeIndex))
                                 case (a, b) => b
                             }
-                            expect(elem, ct)
+                     //       expect(elem, ct)
                             assignMerge(b, a)
                         case (a: TArray, b) =>
-                            expect(elem, ct)
+                     //       expect(elem, ct)
                             rt
                         case _ =>
                             println("Woooops?? What is that type?")
                             rt
                     }
 
-                    println("  Setting to: "+resultingType)
+                    //println("  Setting to: "+resultingType)
 
                     elem match {
                         case sv: CFGSimpleVariable =>
+                            expect(elem, ct)
                             e = e.inject(sv, resultingType);
                         case _ =>
                     }

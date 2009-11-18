@@ -819,14 +819,14 @@ case class STToAST(st: ParseNode) {
         var ex = baseex
         for(val oa <- oaList) {
             oa match {
-                case OAIdentifier(id) => ex = ObjectProperty(ex, id).setPos(ex)
+                case OAIdentifier(id) => ex = ObjectProperty(ex, id).setPos(id)
                 case OAArray(array, indexes) => for (val id <- indexes) id match {
                         case Some(i) => ex = ArrayEntry(ex, i).setPos(ex)
                         case None => ex = NextArrayEntry(ex).setPos(ex)
                     }
                 case OAExpression(exp) => ex = DynamicObjectProperty(ex, exp).setPos(ex)
                 case OAMethod(name, args) => name match {
-                    case OAIdentifier(id) => ex = MethodCall(ex, StaticMethodRef(id).setPos(id), args).setPos(ex)
+                    case OAIdentifier(id) => ex = MethodCall(ex, StaticMethodRef(id).setPos(id), args).setPos(id)
                     case OAExpression(e)  => ex = MethodCall(ex, DynamicMethodRef(e).setPos(e), args).setPos(ex)
                     case OAArray(array, indexes) =>  {
                         for (val id <- indexes) id match {
