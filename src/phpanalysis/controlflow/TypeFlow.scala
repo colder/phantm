@@ -221,30 +221,80 @@ object TypeFlow {
           }
 
           def complexAssign(v: CFGVariable, ex: CFGSimpleValue): TypeEnvironment = {
-                var line: List[(CFGSimpleValue, Type)] = Nil;
-                println("Got: "+v+" = "+ex);
-                def linearize(sv: CFGSimpleValue, typ: Type): Unit = {
-                    line = (sv, typ) :: line;
+                var line: List[(CFGSimpleValue, Type, Type)] = Nil;
+                //println("Got: "+v+" = "+ex);
+                def linearize(sv: CFGSimpleValue, checkType: Type, resultType: Type, pass: Int): Unit = {
+                    line = (sv, checkType, resultType) :: line;
                     sv match {
                         case CFGVariableVar(v) =>
-                            linearize(v, TString)
+                            linearize(v, TString, TString, pass+1)
                         case CFGArrayEntry(arr, index) =>
-                            val t = new TPreciseArray().inject(index, typ)
-                            linearize(arr, t)
+                            val rt = new TPreciseArray().inject(index, resultType);
+                            val ct = if (pass > 0) new TPreciseArray().inject(index, checkType) else TAnyArray;
+                            linearize(arr, ct, rt, pass+1)
                         case CFGNextArrayEntry(arr) =>
-                            val t = new TPreciseArray().injectNext(typ, arr)
-                            linearize(arr, t)
+                            val rt = new TPreciseArray().injectNext(resultType, arr);
+                            val ct = if (pass > 0) new TPreciseArray().injectNext(checkType, arr) else TAnyArray;
+                            linearize(arr, ct, rt, pass+1)
                         case _ =>
                     }
                 }
 
-                linearize(v, typeFromSimpleValue(ex))
+                val ext = typeFromSimpleValue(ex);
+                linearize(v, ext, ext, 0)
 
-                println("Linearized: ")
-                print(" - ")
-                println(line.mkString("\n - "))
+                var e = env
 
-                env
+                for ((elem, ct, rt) <- line.init) {
+                    println("Checking "+elem+"["+typeFromSimpleValue(elem)+"] (check: "+ct+")(after: "+rt+")")
+
+                    val resultingType = (rt, typeFromSimpleValue(elem)) match {
+                        case (a: TArray, b: TArray) =>
+                            // We need to merge those arrays in a special way
+                            def assignMerge(from: Type, to: Type): Type = (from,to) match {
+                                case (from: TPreciseArray, to: TPreciseArray) =>
+                                    import scala.collection.mutable.HashMap
+                                    import Math.max
+
+                                    val newPollutedType = (from.pollutedType, to.pollutedType) match {
+                                        case (Some(pt1), Some(pt2)) => Some(TypeLattice.join(pt1, pt2))
+                                        case (Some(pt1), None) => Some(pt1)
+                                        case (None, Some(pt2)) => Some(pt2)
+                                        case (None, None) => None
+                                    }
+
+                                    val newEntries = HashMap[String, Type]() ++ from.entries;
+
+                                    for((index, typ)<- to.entries) {
+                                        newEntries(index) = newEntries.get(index) match {
+                                            case Some(t) => assignMerge(t, typ)
+                                            case None => typ
+                                        }
+                                    }
+
+                                    new TPreciseArray(newEntries, newPollutedType, max(from.nextFreeIndex, to.nextFreeIndex))
+                                case (a, b) => b
+                            }
+                            expect(elem, ct)
+                            assignMerge(b, a)
+                        case (a: TArray, b) =>
+                            expect(elem, ct)
+                            rt
+                        case _ =>
+                            println("Woooops?? What is that type?")
+                            rt
+                    }
+
+                    println("  Setting to: "+resultingType)
+
+                    elem match {
+                        case sv: CFGSimpleVariable =>
+                            e = e.inject(sv, resultingType);
+                        case _ =>
+                    }
+                }
+
+                e
           }
 
 

@@ -146,7 +146,7 @@ object ASTToCFG {
       case ObjectProperty(obj, property) =>
         Some(CFGObjectProperty(expr(obj), CFGStringLit(property.value).setPos(property)).setPos(ex))
       case DynamicObjectProperty(obj, ind) =>
-        Some(CFGObjectProperty(expr(obj), expr(ind)))
+        Some(CFGObjectProperty(expr(obj), expr(ind)).setPos(ex))
       case SimpleVariable(v) =>
         Some(idFromId(v))
       case PHPInteger(v) =>

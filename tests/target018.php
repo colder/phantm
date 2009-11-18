@@ -1,4 +1,4 @@
 <?php
-$a = array("foo" => "bar");
-$a['gee']['bar'] = 2;
-echo $a['foo']['bar'];
+$a = array();
+$a['foo']['bar'] = 3;
+$a['foo']['bar']['gee'] = "asd";
