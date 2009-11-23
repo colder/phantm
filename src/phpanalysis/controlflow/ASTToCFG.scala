@@ -119,10 +119,10 @@ object ASTToCFG {
     def varFromVar(v: Variable): CFGVariable = v match {
         case SimpleVariable(id) => idFromId(id)
         case VariableVariable(ex) => CFGVariableVar(expr(ex)).setPos(v)
-        case ArrayEntry(array, index) => CFGArrayEntry(expr(array), expr(index))
-        case NextArrayEntry(array) => CFGNextArrayEntry(expr(array))
-        case ObjectProperty(obj, property) => CFGObjectProperty(expr(obj), CFGStringLit(property.value))
-        case DynamicObjectProperty(obj, property) => CFGObjectProperty(expr(obj), expr(property))
+        case ArrayEntry(array, index) => CFGArrayEntry(expr(array), expr(index)).setPos(v)
+        case NextArrayEntry(array) => CFGNextArrayEntry(expr(array)).setPos(v)
+        case ObjectProperty(obj, property) => CFGObjectProperty(expr(obj), CFGStringLit(property.value)).setPos(v)
+        case DynamicObjectProperty(obj, property) => CFGObjectProperty(expr(obj), expr(property)).setPos(v)
         case ClassProperty(cl, property) => notyet(v)
     }
 
@@ -139,16 +139,8 @@ object ASTToCFG {
     /** If an expression can be translated without flattening, does it and
       * returns the result in a Some(...) instance. Otherwise returns None. */
     def alreadySimple(ex: Expression): Option[CFGSimpleValue] = ex match {
-      case ArrayEntry(ar, ind) =>
-        Some(CFGArrayEntry(expr(ar), expr(ind)).setPos(ex))
-      case NextArrayEntry(ar) =>
-        Some(CFGNextArrayEntry(expr(ar)).setPos(ex))
-      case ObjectProperty(obj, property) =>
-        Some(CFGObjectProperty(expr(obj), CFGStringLit(property.value).setPos(property)).setPos(ex))
-      case DynamicObjectProperty(obj, ind) =>
-        Some(CFGObjectProperty(expr(obj), expr(ind)).setPos(ex))
-      case SimpleVariable(v) =>
-        Some(idFromId(v))
+      case v: Variable =>
+        Some(varFromVar(v))
       case PHPInteger(v) =>
         Some(CFGNumLit(v).setPos(ex))
       case PHPString(v) =>
@@ -244,42 +236,17 @@ object ASTToCFG {
         case Some(x) => x
         case None => ex match {
             case _ => 
+                println("not already simple, expression is: "+ex);
                 var v: CFGVariable = FreshVariable("expr").setPos(ex)
                 var retval: Option[CFGSimpleValue] = None
                 exprStoreGet(v, ex) match {
                     case Some(stmt) => stmt.setPos(ex); Emit.statement(stmt)
                     case _ => ex match {
-                        case VariableVariable(name) =>
-                            notyet(ex)
-                        case NextArrayEntry(array) =>
-                            Reporter.error("The [] operator does not generate any value", ex);
-                        case DynamicObjectProperty(obj, property) =>
-                            notyet(ex)
-                        case ClassProperty(cl, property) =>
-                            notyet(ex)
                         case ExpandArray(vars, expr) =>
                             notyet(ex)
                         case Assign(va, value, byref) =>
-                            va match {
-                                case SimpleVariable(id) =>
-                                    v = idFromId(id)
-                                    Emit.statement(exprStore(v, value))
-                                case VariableVariable(ex) =>
-                                    v = varFromVar(va)
-                                    Emit.statement(exprStore(v, value))
-                                case ae @ ArrayEntry(arr, ind) =>
-                                    Emit.statement(CFGAssign(CFGArrayEntry(expr(arr), expr(ind)).setPos(ae), expr(value)));
-                                case nae @ NextArrayEntry(arr) =>
-                                    Emit.statement(CFGAssign(CFGNextArrayEntry(expr(arr)).setPos(nae), expr(value)));
-                                case op @ ObjectProperty(obj, property) =>
-                                    Emit.statement(CFGAssign(CFGObjectProperty(expr(obj), CFGStringLit(property.value).setPos(property)).setPos(op), expr(value)));
-                                case dop @ DynamicObjectProperty(obj, property) =>
-                                    Emit.statement(CFGAssign(CFGObjectProperty(expr(obj), expr(property)).setPos(dop), expr(value)));
-
-                                case ClassProperty(cl, property) => notyet(ex)
-
-                                case _ => notyet(ex)
-                            }
+                            v = varFromVar(va);
+                            Emit.statement(exprStore(v, value));
                         case PreInc(vAST) =>
                             val vCFG = varFromVar(vAST)
                             Emit.statement(CFGAssignBinary(vCFG, vCFG, PLUS, CFGNumLit(1)).setPos(ex))
