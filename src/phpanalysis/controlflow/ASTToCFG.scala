@@ -228,20 +228,25 @@ object ASTToCFG {
     def internalFunction(name: String): parser.Trees.Identifier = {
         GlobalSymbols.lookupFunction(name) match {
             case Some(s) => Identifier(name).setSymbol(s)
-            case None => Identifier(name+"(?)");
+            case None => Identifier(name);
         }
     }
 
     def expr(ex: Expression): CFGSimpleValue = alreadySimple(ex) match {
         case Some(x) => x
         case None => ex match {
-            case _ => 
-                println("not already simple, expression is: "+ex);
+            case _ =>
                 var v: CFGVariable = FreshVariable("expr").setPos(ex)
                 var retval: Option[CFGSimpleValue] = None
                 exprStoreGet(v, ex) match {
                     case Some(stmt) => stmt.setPos(ex); Emit.statement(stmt)
                     case _ => ex match {
+                        case Exit(Some(value)) =>
+                            val retV = FreshVariable("exit").setPos(ex)
+                            Emit.statementCont(exprStore(retV, value), cfg.exit)
+                        case Exit(None) =>
+                            val retV = FreshVariable("exit").setPos(ex)
+                            Emit.statementCont(CFGAssign(retV, CFGNumLit(0)).setPos(ex), cfg.exit)
                         case ExpandArray(vars, expr) =>
                             notyet(ex)
                         case Assign(va, value, byref) =>
@@ -520,12 +525,6 @@ object ASTToCFG {
             Emit.goto(cont)
         case Return(expr) =>
             Emit.statementCont(exprStore(retval, expr), cfg.exit)
-        case Exit(Some(value)) =>
-            val retV = FreshVariable("exit").setPos(s)
-            Emit.statementCont(exprStore(retV, value), cfg.exit)
-        case Exit(None) =>
-            val retV = FreshVariable("exit").setPos(s)
-            Emit.statementCont(CFGAssign(retV, CFGNumLit(0)).setPos(s), cfg.exit)
         case Assign(SimpleVariable(id), value, byref) =>
             Emit.statementCont(exprStore(idFromId(id), value), cont)
         case Foreach(ex, as, _, optkey, _, body) =>

@@ -10,6 +10,7 @@ object Symbols {
     private var _sym: Option[Symbol] = None
 
     def setSymbol(sym: Symbol): self.type = { _sym = Some(sym); this }
+    def hasSymbol: Boolean = _sym != None
     def getSymbol: Symbol = _sym match {
         case Some(x) => x
         case None => scala.Predef.error("Cannot access undefined Symbol")

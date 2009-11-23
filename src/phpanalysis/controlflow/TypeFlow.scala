@@ -4,6 +4,7 @@ import CFGTrees._
 import scala.collection.immutable.HashMap
 import scala.collection.immutable.HashSet
 import scala.collection.immutable.Map
+import analyzer.Symbols._
 import Types._
 
 object TypeFlow {
@@ -303,6 +304,10 @@ object TypeFlow {
                 e
           }
 
+          def checkFCall(fcall: CFGAssignFunctionCall, sym: FunctionSymbol) : Type =  {
+            TAny
+          }
+
 
           node match {
               case CFGAssign(vr: CFGSimpleVariable, v1) =>
@@ -328,6 +333,26 @@ object TypeFlow {
                     expect(v2, expect(v1, TAny)); env
 
               }
+
+              case fcall @ CFGAssignFunctionCall(v: CFGSimpleVariable, id, args) =>
+                if (id.hasSymbol) {
+                    id.getSymbol match {
+                        case fs: FunctionSymbol => 
+                            env.inject(v, checkFCall(fcall, fs))
+                        case _ =>
+                            Reporter.notice("Woops "+id.value+" holds a non-function symbol", id)
+                            env.inject(v, TAny)
+                    }
+                } else {
+                    InternalFunctions.lookup(id) match {
+                        case Some(sym) =>
+                            env.inject(v, checkFCall(fcall, sym))
+                        case None =>
+                            Reporter.notice("Function "+id.value+" appears to be undefined!", id)
+                            env.inject(v, TAny)
+                    }
+                }
+
 
               case CFGPrint(v) =>
                 expect(v, TInt, TString, TAnyObject);
