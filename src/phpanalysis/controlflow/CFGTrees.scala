@@ -76,7 +76,7 @@ object CFGTrees {
   case class CFGArrayCurKey(ar: CFGSimpleValue) extends CFGSimpleValue
   case class CFGArrayCurIsValid(ar: CFGSimpleValue) extends CFGSimpleValue
 
-  case class CFGNew(tpe: parser.Trees.Identifier, params: List[CFGSimpleValue]) extends CFGSimpleValue
+  case class CFGNew(cl: CFGSimpleValue, params: List[CFGSimpleValue]) extends CFGSimpleValue
 
   sealed abstract class CFGBinaryOperator
   sealed trait CFGRelationalOperator
@@ -137,7 +137,7 @@ object CFGTrees {
       case CFGUnset(v) => "unset("+v+")"
       case CFGStringLit(value) => "\"" + value + "\""
       case CFGNumLit(value) => value.toString
-      case CFGNew(tpe, params) => "new " + tpe.value + params.mkString("(", ", ", ")")
+      case CFGNew(tpe, params) => "new " + tpe + params.mkString("(", ", ", ")")
       case CFGTrue() => "true"
       case CFGNull() => "null"
       case CFGEmptyArray() => "array()"

@@ -219,7 +219,7 @@ object ASTToCFG {
                 case Array(Nil) =>
                     Some(CFGAssign(v, CFGEmptyArray()))
                 case New(StaticClassRef(_, _, id), args) =>
-                    Some(CFGAssign(v, CFGNew(id, args map { a => expr(a.value) })))
+                    Some(CFGAssign(v, CFGNew(idFromId(id), args map { a => expr(a.value) })))
                 case _ => 
                     None
             }
