@@ -125,7 +125,18 @@ object TypeFlow {
                 case CFGArrayCurElement(ar) => TAny
                 case CFGArrayCurKey(ar) => TUnion(TString, TInt)
                 case CFGArrayCurIsValid(ar) => expect(ar, TAnyArray); TBoolean
-                case CFGNew(tpe, params) => TAnyObject
+                case CFGNew(cr, params) => cr match {
+                    case parser.Trees.StaticClassRef(_, _, id) =>
+                        id.getSymbol match {
+                            case cs: ClassSymbol =>
+                                TPreciseObject(TClass(cs), collection.mutable.HashMap[String,Type]() ++ cs.properties.mapElements[Type] { x => TAny }, None)
+                            case _ =>
+                                error("Incoherent symbol type for class name")
+                                TAnyObject
+                        }
+                    case _ =>
+                        TAnyObject
+                }
                 case id: CFGSimpleVariable =>
                   env.lookup(id) match {
                       case Some(t) => t

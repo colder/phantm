@@ -76,7 +76,7 @@ object CFGTrees {
   case class CFGArrayCurKey(ar: CFGSimpleValue) extends CFGSimpleValue
   case class CFGArrayCurIsValid(ar: CFGSimpleValue) extends CFGSimpleValue
 
-  case class CFGNew(cl: CFGSimpleValue, params: List[CFGSimpleValue]) extends CFGSimpleValue
+  case class CFGNew(cl: parser.Trees.ClassRef, params: List[CFGSimpleValue]) extends CFGSimpleValue
 
   sealed abstract class CFGBinaryOperator
   sealed trait CFGRelationalOperator

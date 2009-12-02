@@ -149,6 +149,14 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
                         id.setSymbol(vs);
                         ctx.varScope.registerVariable(vs)
                 }
+
+            case StaticClassRef(_, _, id) =>
+                GlobalSymbols.lookupClass(id.value) match {
+                    case Some(cs) =>
+                        id.setSymbol(cs)
+                    case None => Reporter.error("Undefined class "+id.value, id);
+                }
+
             case _ =>
         }
 

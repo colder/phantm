@@ -42,7 +42,7 @@ object Trees {
     abstract class ClassRef extends Tree
     case class VarClassRef(v: Variable) extends ClassRef
     case class DynamicClassRef(ex: Expression) extends ClassRef
-    case class StaticClassRef(nsroot: NSRoot, nss: List[Identifier], name: Identifier) extends ClassRef
+    case class StaticClassRef(nsroot: NSRoot, nss: List[Identifier], name: Identifier) extends ClassRef with Symbolic
     case class CalledClass() extends ClassRef
 
     abstract class FunctionRef extends Tree

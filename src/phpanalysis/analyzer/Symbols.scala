@@ -79,11 +79,16 @@ object Symbols {
 
   class FunctionSymbol(val name: String) extends Symbol with Scope {
     val args = new HashMap[String, (VariableSymbol, Boolean)]();
+    var argList: List[(String, VariableSymbol, Boolean)] = Nil;
 
     def registerArgument(vs: VariableSymbol, byref: Boolean) = args.get(vs.name) match {
         case Some(x) => Reporter.error("Argument "+vs.name+" already defined (previously defined in "+x._1.getPos+")", vs)
-        case None => args += ((vs.name, (vs, byref)))
+        case None => args += ((vs.name, (vs, byref))); argList = argList ::: List((vs.name, vs, byref));
 
+    }
+
+    override def toString = {
+        name+argList.map {x => x._1}.mkString("(", ",", ")")
     }
 
     def getArgsVariables: List[VariableSymbol] = getArguments ::: super.getVariables
@@ -102,7 +107,7 @@ object Symbols {
           }
     }
 
-    def getArguments = args map { x => x._2._1} toList
+    def getArguments = argList map { x => x._2} toList
   }
 
   abstract class MemberVisibility {

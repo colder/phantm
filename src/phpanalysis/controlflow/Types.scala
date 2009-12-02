@@ -22,11 +22,11 @@ object Types {
     case object TClassAny extends ClassType {
         def isSubtypeOf(cl2: ClassType) = true;
     }
-    case class TClass(cd: ClassSymbol) extends ClassType {
-        override def toString = cd.name
+    case class TClass(cs: ClassSymbol) extends ClassType {
+        override def toString = cs.name
         def isSubtypeOf(cl2: ClassType) = cl2 match {
             case TClassAny => false
-            case TClass(cd2) => cd.subclassOf(cd2)
+            case TClass(cs2) => cs.subclassOf(cs2)
         }
     }
 
@@ -39,14 +39,42 @@ object Types {
     abstract class TObject extends Type {
         self =>
         def lookupField(index: String): Option[Type];
-        def lookupMethod(index: String): Option[MethodType];
+        def lookupMethod(index: String, from: Option[ClassSymbol]): Option[MethodType];
         def injectField(index: String, typ: Type) : self.type;
     }
 
-    object TAnyObject extends TObject {
+    type ObjectRef = Int
+
+    object ObjectStore {
+        val store = new HashMap[ObjectRef, TDirectObject]();
+        def lookup(ref: ObjectRef): TDirectObject = store.get(ref) match {
+            case Some(o) => o
+            case None => error("Woops incoherent store")
+        }
+    }
+    case class TIndirectObject(val ref: ObjectRef) extends TObject {
+        def lookupField(index: String) = {
+            ObjectStore.lookup(ref).lookupField(index)
+        }
+        def lookupMethod(index: String, from: Option[ClassSymbol]) = {
+            ObjectStore.lookup(ref).lookupMethod(index, from)
+        }
+        def injectField(index: String, typ: Type) = {
+            ObjectStore.lookup(ref).injectField(index, typ)
+            this
+        }
+
+        override def toString = {
+            "(->"+ObjectStore.lookup(ref)+")"
+        }
+    }
+
+    abstract class TDirectObject extends TObject;
+
+    object TAnyObject extends TDirectObject {
         def lookupField(index: String) =
             Some(TAny)
-        def lookupMethod(index: String) =
+        def lookupMethod(index: String, from: Option[ClassSymbol]) =
             Some(TMethodAny);
         def injectField(index: String, typ: Type) =
             this
@@ -56,10 +84,9 @@ object Types {
         }
     }
 
-    class TPreciseObject(val cl: TClass,
+    case class TPreciseObject(val cl: TClass,
                          val fields: Map[String, Type],
-                         var pollutedType: Option[Type],
-                         val methods: Map[String, TMethod]) extends TObject {
+                         var pollutedType: Option[Type]) extends TDirectObject {
 
         def lookupField(index: String) =
             fields.get(index) match {
@@ -67,24 +94,37 @@ object Types {
                 case None => pollutedType
             }
 
-        def lookupMethod(index: String) =
-            methods.get(index)
+        def lookupMethod(index: String, from: Option[ClassSymbol]) =
+            cl.cs.lookupMethod(index, from) match {
+                case LookupResult(Some(ms), _, _) =>
+                    // found method, ignore visibility errors, for now
+                    // Type hints
+                    Some(msToTMethod(ms))
+
+                case LookupResult(None, _, _) =>
+                    None
+            }
+
+        def msToTMethod(ms: MethodSymbol) = {
+            TMethod(ms.argList.map{ x => TAny } .toList, TAny)
+        }
+
         def injectField(index: String, typ: Type) =
             this
 
         override def toString = {
             var r = "Object("+cl+")"
             r = r+"["+(fields.map(x => x._1 +" => "+ x._2).mkString("; "))+(if(pollutedType != None) " ("+pollutedType.get+")" else "")+"]"
-            r = r+"["+(methods.map(x => x._1 +" => "+ x._2).mkString("; "))+"]"
+            r = r+"["+(cl.cs.methods.map(x => x._1+": "+msToTMethod(x._2)).mkString("; "))+"]"
             r
         }
 
         def merge(a2: TPreciseObject): TObject = {
             // Pick superclass class, and subclass methods
-            val newVals = if (cl.isSubtypeOf(a2.cl)) {
-                (a2.cl, methods)
+            val newCl = if (cl.isSubtypeOf(a2.cl)) {
+                a2.cl
             } else if (a2.cl.isSubtypeOf(cl)) {
-                (cl, a2.methods)
+                cl
             } else {
                 // Shortcut, incompatible objects
                 return TAnyObject
@@ -106,7 +146,7 @@ object Types {
                 }
             }
 
-            new TPreciseObject(newVals._1, newFields, newPollutedType, newVals._2)
+            new TPreciseObject(newCl, newFields, newPollutedType)
         }
     }
 
