@@ -3,6 +3,11 @@ phpanalysis
 
 **phpanalysis** is a tool that can be used to spot various kinds of mistakes in your PHP applications
 
+Version
+-------
+
+This is a pre-alpha version. Don't be surprised if debug messages are outputted, or if many features are still missing.
+
 Requirements
 ------------
 In order to use this tool, you need
@@ -10,7 +15,6 @@ In order to use this tool, you need
 * ant
 * Java 1.6 or higher
 * Scala 2.7.7 or higher
-
 
 Installation
 ------------
