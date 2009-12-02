@@ -16,10 +16,18 @@ object Types {
         def toText = toString
     }
 
-    sealed abstract class ClassType
-    case object TClassAny extends ClassType
+    sealed abstract class ClassType {
+        def isSubtypeOf(cl2: ClassType): Boolean;
+    }
+    case object TClassAny extends ClassType {
+        def isSubtypeOf(cl2: ClassType) = true;
+    }
     case class TClass(cd: ClassSymbol) extends ClassType {
         override def toString = cd.name
+        def isSubtypeOf(cl2: ClassType) = cl2 match {
+            case TClassAny => false
+            case TClass(cd2) => cd.subclassOf(cd2)
+        }
     }
 
     sealed abstract class MethodType
@@ -50,10 +58,8 @@ object Types {
 
     class TPreciseObject(val cl: TClass,
                          val fields: Map[String, Type],
-                         pollutedTypeInit: Option[Type],
+                         var pollutedType: Option[Type],
                          val methods: Map[String, TMethod]) extends TObject {
-
-        var pollutedType = pollutedTypeInit
 
         def lookupField(index: String) =
             fields.get(index) match {
@@ -71,6 +77,36 @@ object Types {
             r = r+"["+(fields.map(x => x._1 +" => "+ x._2).mkString("; "))+(if(pollutedType != None) " ("+pollutedType.get+")" else "")+"]"
             r = r+"["+(methods.map(x => x._1 +" => "+ x._2).mkString("; "))+"]"
             r
+        }
+
+        def merge(a2: TPreciseObject): TObject = {
+            // Pick superclass class, and subclass methods
+            val newVals = if (cl.isSubtypeOf(a2.cl)) {
+                (a2.cl, methods)
+            } else if (a2.cl.isSubtypeOf(cl)) {
+                (cl, a2.methods)
+            } else {
+                // Shortcut, incompatible objects
+                return TAnyObject
+            }
+
+            val newPollutedType = (pollutedType, a2.pollutedType) match {
+                case (Some(pt1), Some(pt2)) => Some(TypeLattice.join(pt1, pt2))
+                case (Some(pt1), None) => Some(pt1)
+                case (None, Some(pt2)) => Some(pt2)
+                case (None, None) => None
+            }
+
+            val newFields = HashMap[String, Type]() ++ fields;
+
+            for((index, typ)<- a2.fields) {
+                newFields(index) = newFields.get(index) match {
+                    case Some(t) => TypeLattice.join(t, typ)
+                    case None => typ
+                }
+            }
+
+            new TPreciseObject(newVals._1, newFields, newPollutedType, newVals._2)
         }
     }
 
@@ -104,11 +140,11 @@ object Types {
         override def toText = "any array"
     }
 
-    class TPreciseArray(val entries: Map[String, Type], pollutedTypeInit: Option[Type], nextFreeIndexInit: Int) extends TArray {
+    class TPreciseArray(val entries: Map[String, Type],
+                        var pollutedType: Option[Type],
+                        var nextFreeIndex: Int) extends TArray {
         self =>
 
-        var nextFreeIndex = nextFreeIndexInit
-        var pollutedType = pollutedTypeInit
         var pushPositions = HashSet[String]()
 
         def this() = this(HashMap[String, Type](), None, 0)

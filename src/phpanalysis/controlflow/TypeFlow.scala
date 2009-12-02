@@ -16,6 +16,7 @@ object TypeFlow {
             case (TNone, _) => true
             case (_, TAny) => true
             case (x, y) if x == y => true
+            case (t1: TPreciseObject, TAnyObject) => true
             case (t1: TPreciseArray, TAnyArray) => true
             case (t1: TUnion, t2: TUnion) =>
                 (HashSet[Type]() ++ t1.types) subsetOf (HashSet[Type]() ++ t2.types)
@@ -29,10 +30,20 @@ object TypeFlow {
             val res = (x,y) match {
             case (TNone, _) => y
             case (_, TNone) => x
+
+            case (t1, t2) if t1 == t2 => t1
+
+            // Objects
+            case (TAnyObject, t: TPreciseObject)    => TAnyObject
+            case (t: TPreciseObject, TAnyObject) => TAnyObject
+            case (t1: TPreciseObject, t2: TPreciseObject) => t1 merge t2
+
+            // Arrays
             case (TAnyArray, t: TPreciseArray) => TAnyArray
             case (t: TPreciseArray, TAnyArray) => TAnyArray
             case (t1: TPreciseArray, t2: TPreciseArray) => t1 merge t2
-            case (t1, t2) if t1 == t2 => t1
+
+            // Unions
             case (t1, t2) => TUnion(t1, t2)
         }
             //println("Joining "+x+" and "+y+", result: "+res)
