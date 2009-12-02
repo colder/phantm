@@ -6,9 +6,10 @@ phpanalysis
 Requirements
 ------------
 In order to use this tool, you need
- * ant
- * Java 1.6 or higher
- * Scala 2.7.7 or higher
+
+* ant
+* Java 1.6 or higher
+* Scala 2.7.7 or higher
 
 
 Installation
