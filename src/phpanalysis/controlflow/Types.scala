@@ -18,7 +18,61 @@ object Types {
 
     sealed abstract class ClassType
     case object TClassAny extends ClassType
-    case class TClass(cd: ClassSymbol) extends ClassType
+    case class TClass(cd: ClassSymbol) extends ClassType {
+        override def toString = cd.name
+    }
+
+    sealed abstract class MethodType
+    case object TMethodAny extends MethodType
+    case class TMethod(args: List[Type], ret: Type) extends MethodType {
+        override def toString = args.mkString("(", ", ", ")")+" => "+ret
+    }
+
+    abstract class TObject extends Type {
+        self =>
+        def lookupField(index: String): Option[Type];
+        def lookupMethod(index: String): Option[MethodType];
+        def injectField(index: String, typ: Type) : self.type;
+    }
+
+    object TAnyObject extends TObject {
+        def lookupField(index: String) =
+            Some(TAny)
+        def lookupMethod(index: String) =
+            Some(TMethodAny);
+        def injectField(index: String, typ: Type) =
+            this
+
+        override def toText = {
+            "any object"
+        }
+    }
+
+    class TPreciseObject(val cl: TClass,
+                         val fields: Map[String, Type],
+                         pollutedTypeInit: Option[Type],
+                         val methods: Map[String, TMethod]) extends TObject {
+
+        var pollutedType = pollutedTypeInit
+
+        def lookupField(index: String) =
+            fields.get(index) match {
+                case Some(t) => Some(t)
+                case None => pollutedType
+            }
+
+        def lookupMethod(index: String) =
+            methods.get(index)
+        def injectField(index: String, typ: Type) =
+            this
+
+        override def toString = {
+            var r = "Object("+cl+")"
+            r = r+"["+(fields.map(x => x._1 +" => "+ x._2).mkString("; "))+(if(pollutedType != None) " ("+pollutedType.get+")" else "")+"]"
+            r = r+"["+(methods.map(x => x._1 +" => "+ x._2).mkString("; "))+"]"
+            r
+        }
+    }
 
     abstract class TArray extends Type {
         self=>
@@ -151,9 +205,6 @@ object Types {
     case object TString extends Type {
         override def toText = "string"
     }
-    case object TAnyObject extends Type {
-        override def toText = "any object"
-    }
     case object TAny extends Type {
         override def toText = "any"
     }
@@ -165,10 +216,6 @@ object Types {
     }
     case object TNull extends Type {
         override def toText = "null"
-    }
-
-    case class TObject(cl: ClassType) extends Type {
-        override def toText = cl.toString
     }
 
     class TUnion extends Type {
