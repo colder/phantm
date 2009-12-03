@@ -30,8 +30,12 @@ object Types {
         }
     }
 
-    sealed abstract class MethodType
-    case object TMethodAny extends MethodType
+    sealed abstract class MethodType {
+        val ret: Type;
+    }
+    case object TMethodAny extends MethodType {
+        val ret = TAny
+    }
     case class TMethod(args: List[Type], ret: Type) extends MethodType {
         override def toString = args.mkString("(", ", ", ")")+" => "+ret
     }

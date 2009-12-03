@@ -350,8 +350,23 @@ object TypeFlow {
               case CFGAssign(ca: CFGVariable, ex) =>
                 complexAssign(ca, ex)
 
-              case CFGAssignMethodCall(v, r, mid, p) =>
-                expect(r, TAnyObject); env
+              case CFGAssignMethodCall(v: CFGSimpleVariable, r, mid, p) =>
+                expect(r, TAnyObject) match {
+                    case or: TObjectRef =>
+                        or.lookupMethod(mid.value, env.scope) match {
+                            case Some(mt) =>
+                                // TODO Check for opt args/type hints
+                                env.inject(v, mt.ret)
+                            case None =>
+                                // Check for magic __call ?
+                                if (or.lookupMethod("__call", env.scope) == None) {
+                                    Reporter.notice("Undefined method '" + mid.value + "' in object "+or, mid)
+                                }
+                                env
+                        }
+                    case _ =>
+                        env
+                }
 
               case CFGAssume(v1, op, v2) => op match {
                   case LT | LEQ | GEQ | GT =>
