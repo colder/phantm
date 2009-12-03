@@ -15,6 +15,8 @@ object TypeFlow {
         def leq(x : Type, y : Type) = (x,y) match {
             case (TNone, _) => true
             case (_, TAny) => true
+            case (t1: TObjectRef, TAnyObject) => true
+            case (t1: TPreciseArray, TAnyArray) => true
             case (x, y) if x == y => true
             case (t1: TUnion, t2: TUnion) =>
                 (HashSet[Type]() ++ t1.types) subsetOf (HashSet[Type]() ++ t2.types)

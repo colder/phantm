@@ -43,8 +43,10 @@ object Types {
         def injectField(index: String, typ: Type) : self.type;
     }
 
+    // Objects related types
     type ObjectId = Int
 
+    // Stores the ref => Real Objects relashionship
     object ObjectStore {
         val store = new HashMap[ObjectId, RealObjectType]();
         def lookup(id: ObjectId): RealObjectType = store.get(id) match {
@@ -71,8 +73,11 @@ object Types {
         }
     }
 
+    // Object types exposed to symbols
     abstract class ObjectType extends Type;
+    // Any object, should be only used to typecheck, no symbol should be infered to this type
     case object TAnyObject extends ObjectType;
+    // Reference to an object in the store
     case class TObjectRef(val id: ObjectId) extends ObjectType {
         def realObj = ObjectStore.lookup(id)
 
@@ -93,6 +98,7 @@ object Types {
         }
     }
 
+    // Real object type (in the store) representing any object
     object TAnyRealObject extends RealObjectType {
         def lookupField(index: String) =
             Some(TAny)
@@ -102,6 +108,7 @@ object Types {
             this
     }
 
+    // Real object type (in the store) representing a specific object
     case class TRealObject(val cl: TClass,
                          val fields: Map[String, Type],
                          var pollutedType: Option[Type]) extends RealObjectType{

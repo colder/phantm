@@ -7,7 +7,6 @@ object CFGTrees {
     override def toString = stringRepr(this)
   }
 
-
   var nextID = 0;
 
   def nextStatementID = {
