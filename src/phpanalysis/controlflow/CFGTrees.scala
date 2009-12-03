@@ -7,7 +7,19 @@ object CFGTrees {
     override def toString = stringRepr(this)
   }
 
-  sealed abstract class CFGStatement extends CFGTree
+
+  var nextID = 0;
+
+  def nextStatementID = {
+    nextID += 1
+    nextID
+  }
+
+  sealed abstract class CFGStatement extends CFGTree {
+    self => 
+    var uniqueID: Int = nextStatementID
+  }
+
   case class CFGUnset(variable: CFGVariable) extends CFGStatement
   case class CFGAssign(variable: CFGVariable, value: CFGSimpleValue) extends CFGStatement
 

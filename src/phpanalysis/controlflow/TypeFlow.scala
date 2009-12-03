@@ -16,8 +16,6 @@ object TypeFlow {
             case (TNone, _) => true
             case (_, TAny) => true
             case (x, y) if x == y => true
-            case (t1: TPreciseObject, TAnyObject) => true
-            case (t1: TPreciseArray, TAnyArray) => true
             case (t1: TUnion, t2: TUnion) =>
                 (HashSet[Type]() ++ t1.types) subsetOf (HashSet[Type]() ++ t2.types)
             case _ => false
@@ -34,9 +32,6 @@ object TypeFlow {
             case (t1, t2) if t1 == t2 => t1
 
             // Objects
-            case (TAnyObject, t: TPreciseObject)    => TAnyObject
-            case (t: TPreciseObject, TAnyObject) => TAnyObject
-            case (t1: TPreciseObject, t2: TPreciseObject) => t1 merge t2
 
             // Arrays
             case (TAnyArray, t: TPreciseArray) => TAnyArray
@@ -54,15 +49,18 @@ object TypeFlow {
         def meet(x : Type, y : Type) = x
     }
 
-    case class TypeEnvironment(map: Map[CFGSimpleVariable, Type]) extends Environment[TypeEnvironment] {
+    case class TypeEnvironment(map: Map[CFGSimpleVariable, Type], scope: Option[ClassSymbol]) extends Environment[TypeEnvironment] {
+        def this(scope: Option[ClassSymbol]) = {
+            this(new HashMap[CFGSimpleVariable, Type], scope);
+        }
         def this() = {
-            this(new HashMap[CFGSimpleVariable, Type]);
+            this(new HashMap[CFGSimpleVariable, Type], None);
         }
 
         def lookup(v: CFGSimpleVariable): Option[Type] = map.get(v)
 
         def inject(v: CFGSimpleVariable, typ: Type): TypeEnvironment = {
-            TypeEnvironment(map + ((v, typ)))
+            TypeEnvironment(map + ((v, typ)), scope)
         }
 
         def union(e: TypeEnvironment) = {
@@ -79,12 +77,13 @@ object TypeFlow {
                     newmap(v) = t
                 }
             }
-            val res = new TypeEnvironment(Map[CFGSimpleVariable, Type]()++newmap)
+            val res = new TypeEnvironment(Map[CFGSimpleVariable, Type]()++newmap, scope)
             //println("Result: "+res);
             res
         }
 
         def equals(e: TypeEnvironment): Boolean = {
+            if (scope != e.scope) return false
             if (e.map.size != map.size) return false
             for ((v,t) <- map) {
                 if (!(e.map contains v)) return false
@@ -109,7 +108,7 @@ object TypeFlow {
                 case CFGTrue() => TBoolean
                 case CFGFalse() => TBoolean
                 case CFGNull() => TNull
-                case CFGThis() => TAnyObject
+                case CFGThis() => getObject(node, env.scope)
                 case CFGEmptyArray() => new TPreciseArray()
                 case CFGInstanceof(lhs, cl) => TBoolean
                 case CFGArrayNext(ar) => typeFromSimpleValue(ar)
@@ -129,13 +128,13 @@ object TypeFlow {
                     case parser.Trees.StaticClassRef(_, _, id) =>
                         id.getSymbol match {
                             case cs: ClassSymbol =>
-                                TPreciseObject(TClass(cs), collection.mutable.HashMap[String,Type]() ++ cs.properties.mapElements[Type] { x => TAny }, None)
+                                getObject(node, Some(cs))
                             case _ =>
                                 error("Incoherent symbol type for class name")
-                                TAnyObject
+                                getObject(node, None)
                         }
                     case _ =>
-                        TAnyObject
+                        getObject(node, None)
                 }
                 case id: CFGSimpleVariable =>
                   env.lookup(id) match {
@@ -163,6 +162,10 @@ object TypeFlow {
 
                 case _ =>
                   TAny
+            }
+
+            def getObject(node: CFGStatement, ocs: Option[ClassSymbol]): TObjectRef = {
+                ObjectStore.getOrCreate(node.uniqueID, ocs)
             }
 
             def expect(v1: CFGSimpleValue, typs: Type*): Type = {
@@ -389,11 +392,11 @@ object TypeFlow {
       }
     }
 
-    case class Analyzer(cfg: CFG) {
+    case class Analyzer(cfg: CFG, scope: Option[ClassSymbol]) {
 
 
         def analyze = {
-            val baseEnv = new TypeEnvironment;
+            val baseEnv = new TypeEnvironment(scope);
             val aa = new AnalysisAlgorithm[TypeEnvironment, CFGStatement](TypeTransferFunction(true), baseEnv, cfg)
 
             aa.init

@@ -17,21 +17,27 @@ case class CFGChecks(node: Tree) extends ASTTraversal[CheckContext](node, CheckC
         node match {
             case Program(stmts) =>
                 val cfg: CFG = ASTToCFG.convertAST(stmts)
-                val tfa = new TypeFlow.Analyzer(cfg)
+                val tfa = new TypeFlow.Analyzer(cfg, None)
                 tfa.analyze
 
 
             case FunctionDecl(name, args, retref, body) =>
                 val cfg: CFG = ASTToCFG.convertAST(List(body))
-                val tfa = new TypeFlow.Analyzer(cfg)
+                val tfa = new TypeFlow.Analyzer(cfg, None)
                 tfa.analyze
 
             case ClassDecl(name, flags, parent, interfaces, methods, static_props, props, consts) =>
-                for (m <- methods) if (m.body != None) {
-                    val cfg: CFG = ASTToCFG.convertAST(List(m.body.get))
-                    val tfa = new TypeFlow.Analyzer(cfg)
-                    tfa.analyze
-                    cfg
+                name.getSymbol match {
+                    case cl: Symbols.ClassSymbol =>
+                        for (m <- methods) if (m.body != None) {
+                            val cfg: CFG = ASTToCFG.convertAST(List(m.body.get))
+                            val tfa = new TypeFlow.Analyzer(cfg, Some(cl))
+                            tfa.analyze
+                            cfg
+                        }
+                    case _ =>
+                        error("Incoherent symbol type, should be class")
+
                 }
 
             case _ =>

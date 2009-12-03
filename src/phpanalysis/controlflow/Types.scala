@@ -36,57 +36,75 @@ object Types {
         override def toString = args.mkString("(", ", ", ")")+" => "+ret
     }
 
-    abstract class TObject extends Type {
+    abstract class RealObjectType {
         self =>
         def lookupField(index: String): Option[Type];
         def lookupMethod(index: String, from: Option[ClassSymbol]): Option[MethodType];
         def injectField(index: String, typ: Type) : self.type;
     }
 
-    type ObjectRef = Int
+    type ObjectId = Int
 
     object ObjectStore {
-        val store = new HashMap[ObjectRef, TDirectObject]();
-        def lookup(ref: ObjectRef): TDirectObject = store.get(ref) match {
+        val store = new HashMap[ObjectId, RealObjectType]();
+        def lookup(id: ObjectId): RealObjectType = store.get(id) match {
             case Some(o) => o
             case None => error("Woops incoherent store")
         }
+
+        def getOrCreate(id: ObjectId, ocs: Option[ClassSymbol]) : TObjectRef = store.get(id) match {
+            case Some(_) =>
+                TObjectRef(id)
+            case None =>
+                // We create a new object and place it in the store
+                val rot = ocs match {
+                    case Some(cs) =>
+                        // construct a default object for this class
+                        TRealObject(TClass(cs), collection.mutable.HashMap[String,Type]() ++ cs.properties.mapElements[Type] { x => TAny }, None)
+                    case None =>
+                        // No class => any object
+                        TAnyRealObject
+                }
+
+                store(id) = rot;
+                TObjectRef(id)
+        }
     }
-    case class TIndirectObject(val ref: ObjectRef) extends TObject {
+
+    abstract class ObjectType extends Type;
+    case object TAnyObject extends ObjectType;
+    case class TObjectRef(val id: ObjectId) extends ObjectType {
+        def realObj = ObjectStore.lookup(id)
+
         def lookupField(index: String) = {
-            ObjectStore.lookup(ref).lookupField(index)
+            realObj.lookupField(index)
         }
         def lookupMethod(index: String, from: Option[ClassSymbol]) = {
-            ObjectStore.lookup(ref).lookupMethod(index, from)
+            realObj.lookupMethod(index, from)
         }
         def injectField(index: String, typ: Type) = {
-            ObjectStore.lookup(ref).injectField(index, typ)
+            realObj.injectField(index, typ)
             this
         }
 
+
         override def toString = {
-            "(->"+ObjectStore.lookup(ref)+")"
+            "(#"+id+"->"+realObj+")"
         }
     }
 
-    abstract class TDirectObject extends TObject;
-
-    object TAnyObject extends TDirectObject {
+    object TAnyRealObject extends RealObjectType {
         def lookupField(index: String) =
             Some(TAny)
         def lookupMethod(index: String, from: Option[ClassSymbol]) =
             Some(TMethodAny);
         def injectField(index: String, typ: Type) =
             this
-
-        override def toText = {
-            "any object"
-        }
     }
 
-    case class TPreciseObject(val cl: TClass,
+    case class TRealObject(val cl: TClass,
                          val fields: Map[String, Type],
-                         var pollutedType: Option[Type]) extends TDirectObject {
+                         var pollutedType: Option[Type]) extends RealObjectType{
 
         def lookupField(index: String) =
             fields.get(index) match {
@@ -119,7 +137,7 @@ object Types {
             r
         }
 
-        def merge(a2: TPreciseObject): TObject = {
+        def merge(a2: TRealObject): RealObjectType = {
             // Pick superclass class, and subclass methods
             val newCl = if (cl.isSubtypeOf(a2.cl)) {
                 a2.cl
@@ -127,7 +145,7 @@ object Types {
                 cl
             } else {
                 // Shortcut, incompatible objects
-                return TAnyObject
+                return TAnyRealObject
             }
 
             val newPollutedType = (pollutedType, a2.pollutedType) match {
@@ -146,7 +164,7 @@ object Types {
                 }
             }
 
-            new TPreciseObject(newCl, newFields, newPollutedType)
+            new TRealObject(newCl, newFields, newPollutedType)
         }
     }
 

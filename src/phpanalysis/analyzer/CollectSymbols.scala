@@ -67,6 +67,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
       }
       val cs = new ClassSymbol(cd.name.value, p, Nil).setPos(cd);
       GlobalSymbols.registerClass(cs)
+      cd.name.setSymbol(cs)
 
       list = list ::: List((cs,cd))
       cycleDetectionSet -= cd
