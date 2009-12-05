@@ -2,10 +2,11 @@ partial: scalafiles
 
 all: setup cup jflex javafiles scalafiles
 
-complete: build_cup all
+complete: setup build_cup all
 
 setup:
 	@ test -d classes || mkdir classes
+	@ test -d lib/cup/lib || mkdir classes
 
 build_cup:
 	cd lib/cup && ant
