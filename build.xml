@@ -29,8 +29,8 @@ INITIALISATION
       message="Installed Scala distribution could not be found."
       unless="scala.present"
     />
-    <property name="scala-library.jar" value="${scala.dir}/lib/scala-library.jar"/>
-    <property name="scala-compiler.jar" value="${scala.dir}/lib/scala-compiler.jar"/>
+    <property name="scala-library.jar" value="${scala.dir}/scala-library.jar"/>
+    <property name="scala-compiler.jar" value="${scala.dir}/scala-compiler.jar"/>
     <fail message="Scala library '${scala-library.jar}' is not available">
       <condition><not><and>
         <available classname="scala.Predef"
