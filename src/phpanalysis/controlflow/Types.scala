@@ -30,20 +30,25 @@ object Types {
         }
     }
 
-    sealed abstract class MethodType {
+    sealed abstract class FunctionType {
         val ret: Type;
     }
-    case object TMethodAny extends MethodType {
+    case object TFunctionAny extends FunctionType {
         val ret = TAny
     }
-    case class TMethod(args: List[Type], ret: Type) extends MethodType {
-        override def toString = args.mkString("(", ", ", ")")+" => "+ret
+    case class TFunction(args: List[(Type, Boolean)], ret: Type) extends FunctionType {
+
+        override def toString = args.map{a => a match {
+                case (t, true) => t
+                case (t, false) => "["+t+"]"
+            }}.mkString("(", ", ", ")")+" => "+ret
     }
+
 
     abstract class RealObjectType {
         self =>
         def lookupField(index: String): Option[Type];
-        def lookupMethod(index: String, from: Option[ClassSymbol]): Option[MethodType];
+        def lookupMethod(index: String, from: Option[ClassSymbol]): Option[FunctionType];
         def injectField(index: String, typ: Type) : self.type;
     }
 
@@ -107,7 +112,7 @@ object Types {
         def lookupField(index: String) =
             Some(TAny)
         def lookupMethod(index: String, from: Option[ClassSymbol]) =
-            Some(TMethodAny);
+            Some(TFunctionAny);
         def injectField(index: String, typ: Type) =
             this
     }
@@ -135,7 +140,7 @@ object Types {
             }
 
         def msToTMethod(ms: MethodSymbol) = {
-            TMethod(ms.argList.map{ x => TAny } .toList, TAny)
+            new TFunction(ms.argList.map{ x => (TAny, true)}.toList, TAny)
         }
 
         def injectField(index: String, typ: Type) =

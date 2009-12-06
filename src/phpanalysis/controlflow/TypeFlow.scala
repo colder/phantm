@@ -331,7 +331,11 @@ object TypeFlow {
                 e
           }
 
-          def checkFCall(fcall: CFGAssignFunctionCall, sym: FunctionSymbol) : Type =  {
+          def functionSymbolToFunctionType(fs: FunctionSymbol): FunctionType = {
+            new TFunction(fs.argList.map { a => (TAny, true) }, TAny)
+          }
+
+          def checkFCall(fcall: CFGAssignFunctionCall, sym: FunctionType) : Type =  {
             TAny
           }
 
@@ -380,15 +384,15 @@ object TypeFlow {
                 if (id.hasSymbol) {
                     id.getSymbol match {
                         case fs: FunctionSymbol => 
-                            env.inject(v, checkFCall(fcall, fs))
+                            env.inject(v, checkFCall(fcall, functionSymbolToFunctionType(fs)))
                         case _ =>
                             Reporter.notice("Woops "+id.value+" holds a non-function symbol", id)
                             env.inject(v, TAny)
                     }
                 } else {
                     InternalFunctions.lookup(id) match {
-                        case Some(sym) =>
-                            env.inject(v, checkFCall(fcall, sym))
+                        case Some(ft) =>
+                            env.inject(v, checkFCall(fcall, ft))
                         case None =>
                             Reporter.notice("Function "+id.value+" appears to be undefined!", id)
                             env.inject(v, TAny)
