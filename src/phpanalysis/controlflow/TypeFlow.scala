@@ -34,6 +34,16 @@ object TypeFlow {
             case (t1, t2) if t1 == t2 => t1
 
             // Objects
+            case (TAnyObject, t: TObjectRef) => TAnyObject
+            case (t: TObjectRef, TAnyObject) => TAnyObject
+            case (t1: TObjectRef, t2: TObjectRef) =>
+                (t1.realObj, t2.realObj) match {
+                    case (t1: TRealObject, t2: TRealObject) =>
+                        // todo
+                        TAnyObject
+                    case _ =>
+                        TAnyObject
+                }
 
             // Arrays
             case (TAnyArray, t: TPreciseArray) => TAnyArray
@@ -336,7 +346,21 @@ object TypeFlow {
           }
 
           def checkFCall(fcall: CFGAssignFunctionCall, sym: FunctionType) : Type =  {
-            TAny
+            sym match {
+                case TFunction(args, ret) =>
+                    for (i <- fcall.params.indices) {
+                        if (i >= args.length) {
+                            Reporter.error("Prototype error!", fcall)
+                        } else {
+                            expect(fcall.params(i), args(i)._1)
+                        }
+
+                    }
+                    ret
+
+                case TFunctionAny =>
+                    sym.ret
+            }
           }
 
 
