@@ -20,6 +20,8 @@ object TypeFlow {
             case (x, y) if x == y => true
             case (t1: TUnion, t2: TUnion) =>
                 (HashSet[Type]() ++ t1.types) subsetOf (HashSet[Type]() ++ t2.types)
+            case (t1: TUnion, t2) =>
+                t1.types forall { x => leq(x, t2) }
             case _ => false
         }
 
