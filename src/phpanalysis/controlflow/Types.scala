@@ -101,7 +101,6 @@ object Types {
             this
         }
 
-
         override def toString = {
             "(#"+id+"->"+realObj+")"
         }
@@ -334,7 +333,7 @@ object Types {
         def add(t: Type) = t match {
             case t1: TUnion =>
                 for (t2 <- t1.types) {
-                    if (!(types contains t)) {
+                    if (!(types contains t2)) {
                         types = t2 :: types
                     }
                 }
