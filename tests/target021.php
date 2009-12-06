@@ -4,10 +4,11 @@ $a = new A;
 $b = new A;
 
 
-if (true) {
+if (1+2 > 2) {
     $c = $a;
 } else {
     $c = $b;
+    $c->a = 2;
 }
 
 $c->a = 2;

@@ -1,6 +1,6 @@
-package phpanalysis.controlflow
+package phpanalysis.analyzer
 
-import Types._
+import controlflow.Types._
 import collection.mutable.HashMap
 import parser.Trees._
 import analyzer.Symbols._
