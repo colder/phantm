@@ -38,9 +38,8 @@ object TypeFlow {
             case (t: TObjectRef, TAnyObject) => TAnyObject
             case (t1: TObjectRef, t2: TObjectRef) =>
                 (t1.realObj, t2.realObj) match {
-                    case (t1: TRealObject, t2: TRealObject) =>
-                        // todo
-                        TAnyObject
+                    case (tr1: TRealObject, tr2: TRealObject) =>
+                        TUnion(t1, t2)
                     case _ =>
                         TAnyObject
                 }
