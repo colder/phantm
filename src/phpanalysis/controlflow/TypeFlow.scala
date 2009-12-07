@@ -5,6 +5,7 @@ import scala.collection.immutable.HashMap
 import scala.collection.immutable.HashSet
 import scala.collection.immutable.Map
 import analyzer.Symbols._
+import analyzer.InternalFunctions
 import Types._
 
 object TypeFlow {

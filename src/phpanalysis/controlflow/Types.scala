@@ -221,6 +221,7 @@ object Types {
         var pushPositions = HashSet[String]()
 
         def this() = this(HashMap[String, Type](), None, 0)
+        def this(pollutedType: Type) = this(HashMap[String, Type](), Some(pollutedType), 0)
 
 
         def inject(index: String, typ: Type) = {
