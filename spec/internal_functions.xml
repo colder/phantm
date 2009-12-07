@@ -6906,7 +6906,7 @@
  </function>
 
  <function name="mysql_fetch_array">
-  <return><type name="array"></type></return>
+  <return><type name="array"><type name="string" /><type name="null" /></type></return>
   <args>
    <arg opt="0"><type name="resource"></type></arg>
    <arg opt="0"><type name="int"></type></arg>
@@ -7050,7 +7050,7 @@
  <function name="mysql_list_dbs">
   <return><type name="resource"></type></return>
   <args>
-   <arg opt="0"><type name="int"></type></arg>
+   <arg opt="0"><type name="resource"></type></arg>
   </args>
  </function>
 
@@ -7059,14 +7059,14 @@
   <args>
    <arg opt="0"><type name="string"></type></arg>
    <arg opt="0"><type name="string"></type></arg>
-   <arg opt="0"><type name="int"></type></arg>
+   <arg opt="0"><type name="resource"></type></arg>
   </args>
  </function>
 
  <function name="mysql_list_processes">
   <return><type name="resource"></type></return>
   <args>
-   <arg opt="0"><type name="int"></type></arg>
+   <arg opt="0"><type name="resource"></type></arg>
   </args>
  </function>
 
@@ -7074,7 +7074,7 @@
   <return><type name="resource"></type></return>
   <args>
    <arg opt="0"><type name="string"></type></arg>
-   <arg opt="0"><type name="int"></type></arg>
+   <arg opt="0"><type name="resource"></type></arg>
   </args>
  </function>
 
@@ -7105,7 +7105,7 @@
  <function name="mysql_ping">
   <return><type name="bool"></type></return>
   <args>
-   <arg opt="0"><type name="int"></type></arg>
+   <arg opt="0"><type name="resource"></type></arg>
   </args>
  </function>
 
@@ -7113,7 +7113,7 @@
   <return><type name="resource"></type></return>
   <args>
    <arg opt="0"><type name="string"></type></arg>
-   <arg opt="0"><type name="int"></type></arg>
+   <arg opt="0"><type name="resource"></type></arg>
   </args>
  </function>
 
@@ -7121,7 +7121,7 @@
   <return><type name="string"></type></return>
   <args>
    <arg opt="0"><type name="string"></type></arg>
-   <arg opt="0"><type name="int"></type></arg>
+   <arg opt="0"><type name="resource"></type></arg>
   </args>
  </function>
 
@@ -7129,7 +7129,7 @@
   <return><type name="mixed"></type></return>
   <args>
    <arg opt="0"><type name="resource"></type></arg>
-   <arg opt="0"><type name="int"></type></arg>
+   <arg opt="0"><type name="resource"></type></arg>
    <arg opt="0"><type name="mixed"></type></arg>
   </args>
  </function>
@@ -7138,7 +7138,7 @@
   <return><type name="bool"></type></return>
   <args>
    <arg opt="0"><type name="string"></type></arg>
-   <arg opt="0"><type name="int"></type></arg>
+   <arg opt="0"><type name="resource"></type></arg>
   </args>
  </function>
 
@@ -7146,21 +7146,21 @@
   <return><type name="bool"></type></return>
   <args>
    <arg opt="0"><type name="string"></type></arg>
-   <arg opt="0"><type name="int"></type></arg>
+   <arg opt="0"><type name="resource"></type></arg>
   </args>
  </function>
 
  <function name="mysql_stat">
   <return><type name="string"></type></return>
   <args>
-   <arg opt="0"><type name="int"></type></arg>
+   <arg opt="0"><type name="resource"></type></arg>
   </args>
  </function>
 
  <function name="mysql_thread_id">
   <return><type name="int"></type></return>
   <args>
-   <arg opt="0"><type name="int"></type></arg>
+   <arg opt="0"><type name="resource"></type></arg>
   </args>
  </function>
 
@@ -7168,7 +7168,7 @@
   <return><type name="resource"></type></return>
   <args>
    <arg opt="0"><type name="string"></type></arg>
-   <arg opt="0"><type name="int"></type></arg>
+   <arg opt="0"><type name="resource"></type></arg>
   </args>
  </function>
 
