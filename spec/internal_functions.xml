@@ -7105,7 +7105,7 @@
  <function name="mysql_ping">
   <return><type>bool</type></return>
   <args>
-   <arg opt="0"><type>int</type></arg>
+   <arg opt="0"><type>resource</type></arg>
   </args>
  </function>
 
@@ -7113,7 +7113,7 @@
   <return><type>resource</type></return>
   <args>
    <arg opt="0"><type>string</type></arg>
-   <arg opt="0"><type>int</type></arg>
+   <arg opt="0"><type>resource</type></arg>
   </args>
  </function>
 
@@ -7121,7 +7121,7 @@
   <return><type>string</type></return>
   <args>
    <arg opt="0"><type>string</type></arg>
-   <arg opt="0"><type>int</type></arg>
+   <arg opt="0"><type>resource</type></arg>
   </args>
  </function>
 
@@ -7138,7 +7138,7 @@
   <return><type>bool</type></return>
   <args>
    <arg opt="0"><type>string</type></arg>
-   <arg opt="0"><type>int</type></arg>
+   <arg opt="0"><type>resource</type></arg>
   </args>
  </function>
 
@@ -7146,14 +7146,14 @@
   <return><type>bool</type></return>
   <args>
    <arg opt="0"><type>string</type></arg>
-   <arg opt="0"><type>int</type></arg>
+   <arg opt="0"><type>resource</type></arg>
   </args>
  </function>
 
  <function name="mysql_stat">
   <return><type>string</type></return>
   <args>
-   <arg opt="0"><type>int</type></arg>
+   <arg opt="0"><type>resource</type></arg>
   </args>
  </function>
 
