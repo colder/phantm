@@ -16,6 +16,7 @@ object InternalFunctions {
         case "mixed" => TAny
         case "long" => TInt
         case "int" => TInt
+        case "null" => TNull
         case "number" => TInt
         case "integer" => TInt
         case "float" => TInt
