@@ -14,6 +14,9 @@ build_cup:
 clean-all:
 	find java/phpanalysis/parser/ -type f -iname "*.java" -exec rm '{}' \;
 
+clean:
+	find classes -type f -iname "*.class" -exec rm '{}' \;
+
 touch-scala:
 	find src/phpanalysis/ -type f -iname "*.scala" -exec touch '{}' \;
 
