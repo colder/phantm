@@ -110,8 +110,8 @@ object ASTToCFG {
             condExpr(not, trueCont, falseCont)
           case _ =>
             val e = expr(ex)
-            Emit.statementCont(CFGAssume(e, EQUALS, CFGTrue().setPos(ex)).setPos(ex), trueCont)
-            Emit.statementCont(CFGAssume(e, NOTEQUALS, CFGTrue().setPos(ex)).setPos(ex), falseCont)
+            Emit.statementCont(CFGAssume(CFGTrue().setPos(ex), EQUALS, e).setPos(ex), trueCont)
+            Emit.statementCont(CFGAssume(CFGTrue().setPos(ex), NOTEQUALS, e).setPos(ex), falseCont)
       }
     }
  
@@ -537,8 +537,8 @@ object ASTToCFG {
             Emit.statementCont(exprStore(v, ex), condV)
 
             Emit.setPC(condV)
-            Emit.statementCont(CFGAssume(CFGArrayCurIsValid(v), EQUALS, CFGTrue().setPos(s)).setPos(s), assignCurV)
-            Emit.statementCont(CFGAssume(CFGArrayCurIsValid(v), NOTEQUALS, CFGTrue().setPos(s)).setPos(s), cont)
+            Emit.statementCont(CFGAssume(CFGTrue().setPos(s), EQUALS, CFGArrayCurIsValid(v)).setPos(s), assignCurV)
+            Emit.statementCont(CFGAssume(CFGTrue().setPos(s), NOTEQUALS, CFGArrayCurIsValid(v)).setPos(s), cont)
 
             Emit.setPC(assignCurV)
             Emit.statementCont(CFGAssign(varFromVar(as), CFGArrayCurElement(v).setPos(s)).setPos(as), assignKeyV)
