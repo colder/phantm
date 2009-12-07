@@ -26,18 +26,19 @@ object Reporter {
     case class ErrorException(n: Int) extends RuntimeException;
 
     def errorMilestone = {
-        for ((p, msg, pos, _) <- errors.toList.sort{(x,y) => x._3.line < y._3.line || x._3.col < y._3.col}) {
+        for ((p, msg, pos, _) <- errors.toList.sort{(x,y) => x._3.line < y._3.line || (x._3.line == y._3.line && x._3.col < y._3.col)}) {
             emit(p, msg, pos)
         }
         if (errorsCount > 0) {
+            val ec = errorsCount;
             errorsCount = 0;
-            throw new ErrorException(errorsCount);
+            throw new ErrorException(ec);
         }
     }
 
     private def emit(prefix: String, msg: String, pos: Positional) = {
         println(pos.file+":"+pos.line+"  "+prefix+msg)
-        print(getFileLine(pos.file, pos.line))
+        println(getFileLine(pos.file, pos.line))
 
         var indent: String = ""
         for(i <- 0 until pos.col) indent = indent + " ";
@@ -51,8 +52,17 @@ object Reporter {
         val l = line-1;
 
         if (!files.contains(file)) {
-            val lines = Source.fromFile(file).getLines.toList
-            files += file -> lines
+            import java.io.{BufferedReader, FileReader}
+            val input =  new BufferedReader(new FileReader(file));
+            var line = "";
+            var lines: List[String] = Nil;
+            line = input.readLine()
+            while (line != null){
+                lines = line :: lines;
+                line = input.readLine()
+            }
+
+            files += file -> lines.reverse
         }
         val lines = files(file)
         if (l >= lines.size || l < 0) {
