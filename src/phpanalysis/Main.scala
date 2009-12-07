@@ -3,7 +3,7 @@ package phpanalysis;
 import phpanalysis.parser._;
 import phpanalysis.analyzer._;
 import phpanalysis.controlflow._;
-import phpanalysis.parser.Trees.Tree;
+import phpanalysis.parser.Trees.Program;
 import java.io._;
 
 object Main {
@@ -38,8 +38,10 @@ object Main {
             new Compiler(file) compile match {
                 case Some(node) => {
                     // Compute the AST FROM the node
-                    val ast: Tree = new STToAST(node) getAST;
+                    var ast: Program = new STToAST(node) getAST;
                     Reporter.errorMilestone
+                    // Run AST transformers
+                    ast = IncludeResolver(ast).transform
                     // Traverse the ast to look for ovious mistakes.
                     ASTChecks(ast) execute;
                     Reporter.errorMilestone
