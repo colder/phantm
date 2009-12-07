@@ -17239,7 +17239,7 @@
  </function>
 
  <function name="explode">
-  <return><type name="array"></type></return>
+  <return><type name="array"><type name="string"></type></type></return>
   <args>
    <arg opt="0"><type name="string"></type></arg>
    <arg opt="0"><type name="string"></type></arg>
