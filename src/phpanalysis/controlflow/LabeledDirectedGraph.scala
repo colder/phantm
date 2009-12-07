@@ -229,6 +229,4 @@ abstract class LabeledDirectedGraphImp[LabelType] extends LabeledDirectedGraph[L
     out.write(toDotString(title))
     out.close
   }
-
-  private def exec(command: String): Unit = Runtime.getRuntime.exec(command)
 }
