@@ -9,6 +9,7 @@ import java.io._;
 object Main {
     var files: List[String] = Nil;
     var displaySymbols = false;
+    var displayDebug   = false;
 
     def main(args: Array[String]): Unit = {
         if (args.length > 0) {
@@ -26,7 +27,8 @@ object Main {
     }
 
     def handleArgs(args: List[String]): Unit = args match {
-        case "-s" :: xs => displaySymbols = true; handleArgs(xs);
+        case "--symbols" :: xs => displaySymbols = true; handleArgs(xs);
+        case "--debug" :: xs => displayDebug = true; handleArgs(xs);
         case x :: xs => files = files ::: x :: Nil; handleArgs(xs);
         case Nil => 
     }

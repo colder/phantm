@@ -58,7 +58,7 @@ object Reporter {
             var lines: List[String] = Nil;
             line = input.readLine()
             while (line != null){
-                lines = line :: lines;
+                lines = line.replaceAll("\t", " ").replaceAll("\r", "") :: lines;
                 line = input.readLine()
             }
 
