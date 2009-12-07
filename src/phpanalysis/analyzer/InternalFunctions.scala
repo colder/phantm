@@ -1,9 +1,9 @@
 package phpanalysis.analyzer
 
-import controlflow.Types._
 import collection.mutable.HashMap
 import parser.Trees._
-import analyzer.Symbols._
+import Symbols._
+import Types._
 import scala.xml._
 
 object InternalFunctions {

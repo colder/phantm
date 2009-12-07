@@ -2,7 +2,7 @@ package phpanalysis.analyzer;
 
 import phpanalysis.parser.Trees._
 import phpanalysis.analyzer.Symbols._
-import phpanalysis.controlflow.Types._
+import phpanalysis.analyzer.Types._
 
 import scala.collection.mutable.HashSet
 import scala.collection.mutable.HashMap

@@ -1,8 +1,8 @@
-package phpanalysis.controlflow;
-import analyzer.Symbols._
+package phpanalysis.analyzer;
+import Symbols._
 import scala.collection.mutable.{HashSet, HashMap, Map}
 
-import TypeFlow._
+import controlflow.TypeFlow._
 
 
 object Types {
@@ -185,7 +185,7 @@ object Types {
 
     abstract class TArray extends Type {
         self=>
-        import CFGTrees._
+        import controlflow.CFGTrees._
         def lookup(index: String): Option[Type];
         def lookup(index: CFGSimpleValue): Option[Type] = index match {
           case CFGNumLit(i)        => lookup(i+"")

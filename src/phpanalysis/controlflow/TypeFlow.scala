@@ -6,11 +6,10 @@ import scala.collection.immutable.HashSet
 import scala.collection.immutable.Map
 import analyzer.Symbols._
 import analyzer.InternalFunctions
-import Types._
+import analyzer.Types._
 
 object TypeFlow {
     case object TypeLattice extends Lattice {
-        import Types._
         type E = Type
 
         def leq(x : Type, y : Type) = (x,y) match {
