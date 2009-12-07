@@ -1,3 +1,3 @@
 <?php
 
-$b = substr(1,2,3);
+if ($b = substr(1,2,3));

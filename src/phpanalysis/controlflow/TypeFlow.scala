@@ -15,6 +15,7 @@ object TypeFlow {
         def leq(x : Type, y : Type) = (x,y) match {
             case (TNone, _) => true
             case (_, TAny) => true
+            case (_, TBoolean) => true
             case (t1: TObjectRef, TAnyObject) => true
             case (t1: TPreciseArray, TAnyArray) => true
             case (x, y) if x == y => true
@@ -408,7 +409,7 @@ object TypeFlow {
               case fcall @ CFGAssignFunctionCall(v: CFGSimpleVariable, id, args) =>
                 if (id.hasSymbol) {
                     id.getSymbol match {
-                        case fs: FunctionSymbol => 
+                        case fs: FunctionSymbol =>
                             env.inject(v, checkFCall(fcall, functionSymbolToFunctionType(fs)))
                         case _ =>
                             Reporter.notice("Woops "+id.value+" holds a non-function symbol", id)
@@ -448,11 +449,11 @@ object TypeFlow {
             aa.init
             aa.computeFixpoint
 
-            //*
-            for ((v,e) <- aa.getResult.toList.sort{(x,y) => x._1.name < y._1.name}) {
-                println("node "+v+" has env "+e);
+            if (Main.displayDebug) {
+                for ((v,e) <- aa.getResult.toList.sort{(x,y) => x._1.name < y._1.name}) {
+                    println("node "+v+" has env "+e);
+                }
             }
-            // */
 
             aa.pass(TypeTransferFunction(false))
         }
