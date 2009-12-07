@@ -12,7 +12,7 @@ while($fh && !feof($fh)) {
         if (preg_match("#^(\w+(?:\|\w+)*)\s*([:\w]+)s*\((.*)\)#", $proto, $match)) {
 
             fwrite($ftoh, " <function name=\"$match[2]\">\n");
-            fwrite($ftoh, "  <return><type>".implode("</type><type>", explode("|", $match[1]))."</type></return>\n");
+            fwrite($ftoh, "  <return><type name=\"".implode("\"></type><type name=\"", explode("|", $match[1]))."\"></type></return>\n");
 
             // match args
 
@@ -38,7 +38,7 @@ while($fh && !feof($fh)) {
                         echo "Can't match types!: $arg\n";
                     }
 
-                    fwrite($ftoh, "   <arg opt=\"".(int)($isOPT > 0)."\"><type>".implode("</type><type>", $types)."</type></arg>\n");
+                    fwrite($ftoh, "   <arg opt=\"".(int)($isOPT > 0)."\"><type name=\"".implode("\"></type><type name=\"", $types)."\"></type></arg>\n");
 
                     if ($arg[strlen($arg)-1] == "]") {
                         $isOPT--;
