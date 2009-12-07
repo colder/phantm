@@ -10,7 +10,8 @@ object InternalFunctions {
     private var loaded = false
     private var ftypes = HashMap[String, FunctionType]()
 
-    def strToType(str: String): Type = str.toLowerCase match {
+    def elemsToType(elems: NodeSeq): Type = elems.map { e => elemToType(e) } reduceRight { (a, b) => TUnion(a, b) }
+    def elemToType(elem: Node): Type = (elem \ "@name").text.toLowerCase match {
         case "string" => TString
         case "mixed" => TAny
         case "long" => TInt
@@ -19,13 +20,19 @@ object InternalFunctions {
         case "integer" => TInt
         case "float" => TInt
         case "double" => TInt
-        case "array" => TAnyArray
-        case "object" => TAnyObject
+        case "array" =>
+            if ((elem \ "type").length > 0) {
+                new TPreciseArray(elemsToType(elem \ "type"))
+            } else {
+                TAnyArray
+            }
+        case "object" =>
+            TAnyObject
         case "resource" => TResource
         case "bool" => TBoolean
         case "boolean" => TBoolean
         case "void" => TNull
-        case _ => /*println("Uh?" + str);*/ TAny
+        case _ => TAny
     }
 
     def load = {
@@ -33,10 +40,9 @@ object InternalFunctions {
 
         for (f <- data \\ "function") {
             val name = (f \ "@name").text
-            val returnType = (f \ "return" \ "type").text
-            val args: List[(Type, Boolean)] = ((f \ "args" \\ "arg") map { a => (strToType(a.text), Integer.parseInt((a \ "@opt").text) > 0) }).toList
+            val args: List[(Type, Boolean)] = ((f \ "args" \\ "arg") map { a => (elemsToType(a \ "type"), Integer.parseInt((a \ "@opt").text) > 0) }).toList
 
-            ftypes(name) = new TFunction(args, strToType(returnType))
+            ftypes(name) = new TFunction(args, elemsToType(f \ "return" \ "type"))
         }
         loaded = true;
     }
