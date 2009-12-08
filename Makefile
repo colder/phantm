@@ -20,7 +20,7 @@ clean:
 touch-scala:
 	find src/phpanalysis/ -type f -iname "*.scala" -exec touch '{}' \;
 
-clean-build: touch-scala scalafiles
+rebuild: touch-scala scalafiles
 
 cup:
 	java -jar lib/cup/dist/java-cup-11a.jar -parser Parser -package phpanalysis.parser -destdir java/phpanalysis/parser/ -files -symbols Symbols spec/php.cup
