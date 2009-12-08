@@ -1,5 +1,6 @@
 package phpanalysis.helpers;
 
+import phpanalysis.analyzer.IncludeResolver;
 import phpanalysis.parser._;
 import java.io._;
 
@@ -8,7 +9,7 @@ class ASTGraph extends Helper {
     def generate(input: String, printStream: java.io.PrintStream): Unit = {
             new Compiler(input) compile match {
                 case Some(node) =>
-                    generateDotGraph(STToAST(node).getAST, printStream)
+                    generateDotGraph(IncludeResolver(STToAST(node).getAST).transform, printStream)
                     printStream.close
                 case None =>
                     throw new Exception("Compilation failed");

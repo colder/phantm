@@ -10,7 +10,7 @@ class CFGGraph extends Helper {
     def generate(input: String, printStream: java.io.PrintStream): Unit = {
             new Compiler(input) compile match {
                 case Some(node) =>
-                    val ast = STToAST(node).getAST;
+                    val ast = IncludeResolver(STToAST(node).getAST).transform;
                     
                     CollectSymbols(ast) execute;
                     Reporter.errorMilestone

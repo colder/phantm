@@ -102,7 +102,7 @@ object Trees {
 
     case class LabelDecl(name: Identifier) extends Statement
 
-    case class Block(stmts: List[Statement]) extends Statement
+    case class Block(stmts: List[Statement]) extends Expression // Hack to allow include statments to be resolved
     case class If(cond: Expression, then: Statement, elze: Option[Statement]) extends Statement
     case class While(cond: Expression, then: Statement) extends Statement
     case class DoWhile(body: Statement, cond: Expression) extends Statement

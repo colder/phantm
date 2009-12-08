@@ -56,5 +56,7 @@ abstract class ASTTransform(p: Program) {
                 Foreach(trExpr(what), as, asbyref, key, keybyref, trStmt(body))
             case e: Expression =>
                 trExpr(e)
+            case _ =>
+                st
     }
 }

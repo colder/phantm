@@ -10,6 +10,7 @@ object Main {
     var files: List[String] = Nil;
     var displaySymbols = false;
     var displayDebug   = false;
+    var includePaths   = List(".");
 
     def main(args: Array[String]): Unit = {
         if (args.length > 0) {
