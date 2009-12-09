@@ -8,9 +8,10 @@ import java.io._;
 
 object Main {
     var files: List[String] = Nil;
-    var displaySymbols = false;
-    var displayDebug   = false;
-    var includePaths   = List(".");
+    var displaySymbols  = false;
+    var displayDebug    = false;
+    var displayProgress = false;
+    var includePaths    = List(".");
 
     def main(args: Array[String]): Unit = {
         if (args.length > 0) {
@@ -30,22 +31,28 @@ object Main {
     def handleArgs(args: List[String]): Unit = args match {
         case "--symbols" :: xs => displaySymbols = true; handleArgs(xs);
         case "--debug" :: xs => displayDebug = true; handleArgs(xs);
+        case "--progress" :: xs => displayProgress = true; handleArgs(xs);
         case x :: xs => files = files ::: x :: Nil; handleArgs(xs);
         case Nil => 
     }
 
     def compile(file: String) = {
         try {
+            if (displayProgress) println("1/6 Compiling...")
             new Compiler(file) compile match {
                 case Some(node) => {
+                    if (displayProgress) println("2/6 Simplifying...")
                     // Compute the AST FROM the node
                     var ast: Program = new STToAST(node) getAST;
                     Reporter.errorMilestone
+                    if (displayProgress) println("3/6 Resolving and expanding...")
                     // Run AST transformers
                     ast = IncludeResolver(ast).transform
+                    if (displayProgress) println("4/6 Structural checks...")
                     // Traverse the ast to look for ovious mistakes.
                     ASTChecks(ast) execute;
                     Reporter.errorMilestone
+                    if (displayProgress) println("5/6 Symbolic checks...")
                     // Collect symbols and detect obvious types errors
                     CollectSymbols(ast) execute;
                     Reporter.errorMilestone
@@ -55,6 +62,7 @@ object Main {
                         analyzer.Symbols.emitSummary
                     }
 
+                    if (displayProgress) println("6/6 Type flow analysis...")
                     // Build CFGs and analyzes them
                     CFGChecks(ast) execute;
                     Reporter.errorMilestone
