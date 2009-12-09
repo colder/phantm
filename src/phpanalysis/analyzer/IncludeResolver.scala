@@ -9,7 +9,7 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
             includeFile(ex, path, once, false)
         case Require(path, once) =>
             includeFile(ex, path, once, true)
-        case _ => ex
+        case _ => super.trExpr(ex)
     }
 
     def includeFile(inc: Expression, path: Expression, once: Boolean, require: Boolean): Expression = {

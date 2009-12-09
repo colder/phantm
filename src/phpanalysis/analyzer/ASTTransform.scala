@@ -13,8 +13,84 @@ abstract class ASTTransform(p: Program) {
             md
     }
 
-    def trExpr(ex: Expression): Expression = {
-        ex
+    def trExpr(ex: Expression): Expression = ex match {
+        case v: Variable =>
+            v
+        case s: Scalar =>
+            s
+        case ExpandArray(vars, expr) =>
+            ExpandArray(vars, trExpr(expr))
+        case Assign(vari, value, byref) =>
+            Assign(vari, trExpr(value), byref)
+        case Clone(obj) =>
+            Clone(trExpr(obj))
+        case Plus(lhs, rhs) =>
+            Plus(trExpr(lhs), trExpr(rhs))
+        case Minus(lhs, rhs) =>
+            Minus(trExpr(lhs), trExpr(rhs))
+        case Div(lhs, rhs) =>
+            Div(trExpr(lhs), trExpr(rhs))
+        case Mult(lhs, rhs) =>
+            Mult(trExpr(lhs), trExpr(rhs))
+        case Concat(lhs, rhs) =>
+            Concat(trExpr(lhs), trExpr(rhs))
+        case Mod(lhs, rhs) =>
+            Mod(trExpr(lhs), trExpr(rhs))
+        case BooleanAnd(lhs, rhs) =>
+            BooleanAnd(trExpr(lhs), trExpr(rhs))
+        case BooleanOr(lhs, rhs) =>
+            BooleanOr(trExpr(lhs), trExpr(rhs))
+        case BooleanXor(lhs, rhs) =>
+            BooleanXor(trExpr(lhs), trExpr(rhs))
+        case BitwiseAnd(lhs, rhs) =>
+            BitwiseAnd(trExpr(lhs), trExpr(rhs))
+        case BitwiseOr(lhs, rhs) =>
+            BitwiseOr(trExpr(lhs), trExpr(rhs))
+        case BitwiseXor(lhs, rhs) =>
+            BitwiseXor(trExpr(lhs), trExpr(rhs))
+        case ShiftLeft(lhs, rhs) =>
+            ShiftLeft(trExpr(lhs), trExpr(rhs))
+        case ShiftRight(lhs, rhs) =>
+            ShiftRight(trExpr(lhs), trExpr(rhs))
+        case BooleanNot(rhs) =>
+            BooleanNot(trExpr(rhs))
+        case BitwiseNot(rhs) =>
+            BitwiseNot(trExpr(rhs))
+        case Equal(lhs, rhs) =>
+            Equal(trExpr(lhs), trExpr(rhs))
+        case Identical(lhs, rhs) =>
+            Identical(trExpr(lhs), trExpr(rhs))
+        case Smaller(lhs, rhs) =>
+            Smaller(trExpr(lhs), trExpr(rhs))
+        case SmallerEqual(lhs, rhs) =>
+            SmallerEqual(trExpr(lhs), trExpr(rhs))
+        case InstanceOf(lhs, rhs) =>
+            InstanceOf(trExpr(lhs), rhs)
+        case Ternary(cond, then, elze) =>
+            then match {
+                case Some(th) =>
+                    Ternary(trExpr(cond), Some(trExpr(th)), trExpr(elze))
+                case None =>
+                    Ternary(trExpr(cond), None, trExpr(elze))
+            }
+        case Cast(typ: CastType, value) =>
+            Cast(typ, trExpr(value))
+        case Silence(value) =>
+            Silence(trExpr(value))
+        case Exit(value) =>
+            value match {
+                case Some(v) =>
+                    Exit(Some(trExpr(v)))
+
+                case None =>
+                    Exit(None)
+            }
+        case Print(value) =>
+            Print(trExpr(value))
+        case Eval(value) =>
+            Eval(trExpr(value))
+        case ex => ex
+
     }
 
     def trStmt(st: Statement): Statement = st match {

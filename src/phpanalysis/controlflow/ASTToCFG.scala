@@ -297,6 +297,12 @@ object ASTToCFG {
                         case ClassConstant(cl, id) =>
                             notyet(ex); // TODO
 
+                        case Block(sts) =>
+                            val endblock = cfg.newVertex
+                            stmts(sts, endblock)
+                            Emit.setPC(endblock)
+                            Emit.statement(CFGAssign(v, CFGTrue()).setPos(ex))
+
                         case _ => error("expr() not handling correctly: "+ ex)
                     }
                 }
