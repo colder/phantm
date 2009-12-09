@@ -70,6 +70,12 @@ object ASTToCFG {
       // assert(ex.getType == TBoolean)
 
       ex match {
+          case Exit(Some(value)) =>
+            val retV = FreshVariable("exit").setPos(ex)
+            Emit.statementCont(exprStore(retV, value), cfg.exit)
+          case Exit(None) =>
+            val retV = FreshVariable("exit").setPos(ex)
+            Emit.statementCont(CFGAssign(retV, CFGNumLit(0)).setPos(ex), cfg.exit)
           case BooleanAnd(lhs, rhs) =>
             val soFarTrueV = cfg.newVertex
             condExpr(lhs, falseCont, soFarTrueV)
