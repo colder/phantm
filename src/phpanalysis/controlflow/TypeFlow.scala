@@ -154,18 +154,22 @@ object TypeFlow {
                 }
                 case id: CFGSimpleVariable =>
                   env.lookup(id) match {
-                      case Some(t) => t
-                      case None => TAny
+                    case Some(t) =>
+                        t
+                    case None =>
+                        notice("Potentially undefined variable "+stringRepr(id), id)
+                        TNull
                   }
+
                 case CFGArrayEntry(ar, ind) =>
                     expect(ind, TString, TInt)
 
                     expect(ar, TAnyArray) match {
                         case t: TArray =>
                             t.lookup(ind) match {
-                                case Some(rt) => rt
+                                case Some(t) => t
                                 case None =>
-                                    notice("Undefined array index "+stringRepr(ind), ar)
+                                    notice("Potentially undefined array index "+stringRepr(ind), ar)
                                     TNull
                             }
                         case _ =>
