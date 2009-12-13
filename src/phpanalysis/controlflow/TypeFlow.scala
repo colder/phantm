@@ -281,7 +281,7 @@ object TypeFlow {
 
                 var e = env
 
-                println("Assign: "+v+" = "+ex);
+                //println("Assign: "+v+" = "+ex);
                 // Let's traverse all up to the last elem (the outermost assign)
                 for ((elem, ct, rt) <- elems.init) {
                     //println(" Checking for "+elem +"(actualType: "+typeFromSimpleValue(elem)+", checkType: "+ct+", resultType: "+rt+")");
@@ -320,8 +320,17 @@ object TypeFlow {
                                         }
                                     }
 
+                                    newPollutedType match {
+                                        case Some(pt) =>
+                                            for ((index, typ) <- newEntries) {
+                                                newEntries(index) = TypeLattice.join(pt, typ)
+                                            }
+                                        case None =>
+                                    }
+
+
                                     new TPreciseArray(newEntries, newPollutedType, max(from.nextFreeIndex, to.nextFreeIndex))
-                                // In case not both types are arrays, we
+                                // In case not both types are not arrays, we
                                 // always end up with the target type
                                 case (a, b) => b
                             }
