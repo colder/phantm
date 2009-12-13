@@ -304,7 +304,7 @@ object TypeFlow {
                                     // Shouldn't be needed as the resulting
                                     // type should never be polluted, by
                                     // construction
-                                    val newPollutedType = (from.pollutedType, to.pollutedType) match {
+                                    var newPollutedType = (from.pollutedType, to.pollutedType) match {
                                         case (Some(pt1), Some(pt2)) => Some(TypeLattice.join(pt1, pt2))
                                         case (Some(pt1), None) => Some(pt1)
                                         case (None, Some(pt2)) => Some(pt2)
@@ -320,14 +320,14 @@ object TypeFlow {
                                         }
                                     }
 
-                                    newPollutedType match {
+                                    newPollutedType = newPollutedType match {
                                         case Some(pt) =>
                                             for ((index, typ) <- newEntries) {
                                                 newEntries(index) = TypeLattice.join(pt, typ)
                                             }
-                                        case None =>
+                                            Some(newEntries.values reduceLeft TypeLattice.join)
+                                        case None => None
                                     }
-
 
                                     new TPreciseArray(newEntries, newPollutedType, max(from.nextFreeIndex, to.nextFreeIndex))
                                 // In case not both types are not arrays, we
