@@ -82,19 +82,16 @@ object TypeFlow {
         def union(e: TypeEnvironment) = {
             val newmap = new scala.collection.mutable.HashMap[CFGSimpleVariable, Type]();
             for ((v,t) <- map) {
-                newmap(v) = t
+                newmap(v) = TUnion(t, TNull)
             }
-            //println("Union of "+this+" and "+e+"...")
             for ((v,t) <- e.map) {
                 if (newmap contains v) {
-             //       println("colliding vars!:"+v)
-                    newmap(v) = TypeLattice.join(newmap(v), t)
+                    newmap(v) = TypeLattice.join(map(v), t)
                 } else {
-                    newmap(v) = t
+                    newmap(v) = TUnion(t, TNull)
                 }
             }
             val res = new TypeEnvironment(Map[CFGSimpleVariable, Type]()++newmap, scope)
-            //println("Result: "+res);
             res
         }
 
@@ -284,7 +281,7 @@ object TypeFlow {
 
                 var e = env
 
-                //println("Assign: "+v+" = "+ex);
+                println("Assign: "+v+" = "+ex);
                 // Let's traverse all up to the last elem (the outermost assign)
                 for ((elem, ct, rt) <- elems.init) {
                     //println(" Checking for "+elem +"(actualType: "+typeFromSimpleValue(elem)+", checkType: "+ct+", resultType: "+rt+")");
