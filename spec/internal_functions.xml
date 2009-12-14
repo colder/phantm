@@ -6906,7 +6906,7 @@
  </function>
 
  <function name="mysql_fetch_array">
-  <return><type name="array"><type name="string" /><type name="null" /></type></return>
+  <return><type name="array"><type name="string" /></type></return>
   <args>
    <arg opt="0"><type name="resource"></type></arg>
    <arg opt="0"><type name="int"></type></arg>
@@ -6914,7 +6914,7 @@
  </function>
 
  <function name="mysql_fetch_assoc">
-  <return><type name="array"></type></return>
+  <return><type name="array"><type name="string" /></type></return>
   <args>
    <arg opt="0"><type name="resource"></type></arg>
   </args>
@@ -6945,7 +6945,7 @@
  </function>
 
  <function name="mysql_fetch_row">
-  <return><type name="array"></type></return>
+  <return><type name="array"><type name="string" /></type></return>
   <args>
    <arg opt="0"><type name="resource"></type></arg>
   </args>
@@ -17420,12 +17420,22 @@
  </function>
 
  <function name="str_replace">
-  <return><type name="mixed"></type></return>
+  <return><type name="string"></type></return>
   <args>
    <arg opt="0"><type name="mixed"></type></arg>
    <arg opt="0"><type name="mixed"></type></arg>
+   <arg opt="0"><type name="string"></type></arg>
+   <arg opt="1"><type name="int"></type></arg>
+  </args>
+ </function>
+
+ <function name="str_replace">
+  <return><type name="array"><type name="string"></type></type></return>
+  <args>
    <arg opt="0"><type name="mixed"></type></arg>
-   <arg opt="0"><type name="int"></type></arg>
+   <arg opt="0"><type name="mixed"></type></arg>
+   <arg opt="0"><type name="array"><type name="string"></type></type></arg>
+   <arg opt="1"><type name="int"></type></arg>
   </args>
  </function>
 
