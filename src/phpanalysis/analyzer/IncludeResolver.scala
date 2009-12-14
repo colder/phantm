@@ -52,11 +52,11 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
             case PHPNull() =>
                 Some("")
             case MCFile() =>
-                Some(inc.file)
+                Some(new File(inc.file).getAbsolutePath())
             case MCLine() =>
                 Some(""+inc.line)
             case MCDir() =>
-                Some("__DIR__")
+                Some(dirname(new File(inc.file).getAbsolutePath()))
             case sc: Scalar =>
                 Some(""+sc)
             case _ =>
