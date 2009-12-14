@@ -6,7 +6,7 @@ complete: setup build_cup all
 
 setup:
 	@ test -d classes || mkdir classes
-	@ test -d lib/cup/lib || mkdir classes
+	@ test -d lib/cup/lib || mkdir lib/cup/lib
 
 build_cup:
 	cd lib/cup && ant

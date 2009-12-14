@@ -83,19 +83,16 @@ object TypeFlow {
         def union(e: TypeEnvironment) = {
             val newmap = new scala.collection.mutable.HashMap[CFGSimpleVariable, Type]();
             for ((v,t) <- map) {
-                newmap(v) = t
+                newmap(v) = TUnion(t, TNull)
             }
-            //println("Union of "+this+" and "+e+"...")
             for ((v,t) <- e.map) {
                 if (newmap contains v) {
-             //       println("colliding vars!:"+v)
-                    newmap(v) = TypeLattice.join(newmap(v), t)
+                    newmap(v) = TypeLattice.join(map(v), t)
                 } else {
-                    newmap(v) = t
+                    newmap(v) = TUnion(t, TNull)
                 }
             }
             val res = new TypeEnvironment(Map[CFGSimpleVariable, Type]()++newmap, scope)
-            //println("Result: "+res);
             res
         }
 
@@ -311,7 +308,7 @@ object TypeFlow {
                                     // Shouldn't be needed as the resulting
                                     // type should never be polluted, by
                                     // construction
-                                    val newPollutedType = (from.pollutedType, to.pollutedType) match {
+                                    var newPollutedType = (from.pollutedType, to.pollutedType) match {
                                         case (Some(pt1), Some(pt2)) => Some(TypeLattice.join(pt1, pt2))
                                         case (Some(pt1), None) => Some(pt1)
                                         case (None, Some(pt2)) => Some(pt2)
@@ -327,8 +324,17 @@ object TypeFlow {
                                         }
                                     }
 
+                                    newPollutedType = newPollutedType match {
+                                        case Some(pt) =>
+                                            for ((index, typ) <- newEntries) {
+                                                newEntries(index) = TypeLattice.join(pt, typ)
+                                            }
+                                            Some(newEntries.values reduceLeft TypeLattice.join)
+                                        case None => None
+                                    }
+
                                     new TPreciseArray(newEntries, newPollutedType, max(from.nextFreeIndex, to.nextFreeIndex))
-                                // In case not both types are arrays, we
+                                // In case not both types are not arrays, we
                                 // always end up with the target type
                                 case (a, b) => b
                             }

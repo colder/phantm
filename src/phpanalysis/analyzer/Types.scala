@@ -183,14 +183,14 @@ object Types {
         }
     }
 
-    abstract class TArray extends Type {
+    abstract class TArray(pollutedType: Option[Type]) extends Type {
         self=>
         import controlflow.CFGTrees._
         def lookup(index: String): Option[Type];
         def lookup(index: CFGSimpleValue): Option[Type] = index match {
           case CFGNumLit(i)        => lookup(i+"")
           case CFGStringLit(index) => lookup(index)
-          case _ => Some(TAny) // Should never happen without error in the parent
+          case _ => pollutedType
         }
         def inject(index: String, typ: Type): self.type;
         def inject(index: CFGSimpleValue, typ: Type): self.type = index match {
@@ -203,7 +203,7 @@ object Types {
         def duplicate: TArray;
     }
 
-    case object TAnyArray extends TArray {
+    case object TAnyArray extends TArray(Some(TAny)) {
         def lookup(index: String) = Some(TAny)
         def inject(index: String, typ: Type) = this
         def injectNext(typ: Type, p: Positional) = this
@@ -215,7 +215,7 @@ object Types {
 
     class TPreciseArray(val entries: Map[String, Type],
                         var pollutedType: Option[Type],
-                        var nextFreeIndex: Int) extends TArray {
+                        var nextFreeIndex: Int) extends TArray(pollutedType) {
         self =>
 
         var pushPositions = HashSet[String]()

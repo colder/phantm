@@ -35,15 +35,26 @@ class AnalysisAlgorithm[E <: Environment[E],S]
         val v = toProcess.head
         toProcess = toProcess.tail
         if (!(processed contains v)) {
-            for (e <- cfg.outEdges(v)) {
-              val oldFact : E = facts(e.v2)
-              val propagated = transferFun(e.lab, facts(e.v1))
-              val newFact = oldFact union propagated
+            val oldFact : E = facts(v)
+            var newFact : Option[E] = None
 
-              if (!(newFact equals oldFact)) {
-                change = true;
-                facts = facts.update(e.v2, newFact)
+            for (e <- cfg.inEdges(v)) {
+              val propagated = transferFun(e.lab, facts(e.v1))
+              newFact match {
+                case Some(nf) => newFact = Some(nf union propagated)
+                case None => newFact = Some(propagated)
               }
+
+            }
+
+            newFact match {
+                case Some(nf) if nf != oldFact =>
+                  change = true;
+                  facts = facts.update(v, nf)
+                case _ =>
+            }
+
+            for (e <- cfg.outEdges(v)) {
               toProcess = toProcess ::: e.v2 :: Nil
             }
             processed += v
