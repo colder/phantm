@@ -82,13 +82,13 @@ object TypeFlow {
         def union(e: TypeEnvironment) = {
             val newmap = new scala.collection.mutable.HashMap[CFGSimpleVariable, Type]();
             for ((v,t) <- map) {
-                newmap(v) = TUnion(t, TNull)
+                newmap(v) = t
             }
             for ((v,t) <- e.map) {
                 if (newmap contains v) {
                     newmap(v) = TypeLattice.join(map(v), t)
                 } else {
-                    newmap(v) = TUnion(t, TNull)
+                    newmap(v) = t
                 }
             }
             val res = new TypeEnvironment(Map[CFGSimpleVariable, Type]()++newmap, scope)
