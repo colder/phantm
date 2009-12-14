@@ -15,6 +15,7 @@ object TypeFlow {
         def leq(x : Type, y : Type) = (x,y) match {
             case (TNone, _) => true
             case (_, TAny) => true
+            case (TInt, TString) => true
             case (_, TBoolean) => true
             case (t1: TObjectRef, TAnyObject) => true
             case (t1: TPreciseArray, TAnyArray) => true
@@ -115,7 +116,10 @@ object TypeFlow {
     }
 
     case class TypeTransferFunction(silent: Boolean) extends TransferFunction[TypeEnvironment, CFGStatement] {
+        //def notice(msg: String, pos: Positional) = if (!silent) { new Exception(msg).printStackTrace(); Reporter.notice(msg, pos) }
+        //def error(msg: String, pos: Positional) = if (!silent) { new Exception(msg).printStackTrace(); Reporter.error(msg, pos) }
         def notice(msg: String, pos: Positional) = if (!silent) Reporter.notice(msg, pos)
+        def error(msg: String, pos: Positional) = if (!silent) Reporter.error(msg, pos)
 
         def apply(node : CFGStatement, env : TypeEnvironment) : TypeEnvironment = {
             def typeFromSimpleValue(sv: CFGSimpleValue): Type = sv match {
@@ -146,7 +150,7 @@ object TypeFlow {
                             case cs: ClassSymbol =>
                                 getObject(node, Some(cs))
                             case _ =>
-                                error("Incoherent symbol type for class name")
+                                Predef.error("Incoherent symbol type for class name")
                                 getObject(node, None)
                         }
                     case _ =>
@@ -195,7 +199,7 @@ object TypeFlow {
                         return vtyp
                     }
                 }
-                notice("Potential type mismatch: expected: "+typs.toList.map{x => x.toText}.mkString(" or ")+", found: "+vtyp.toText, v1)
+                notice("Potential type mismatch: expected: "+typs.toList.map{x => x.toText}.mkString(" or ")+", found: "+vtyp.toText+"("+v1+")", v1)
                 typs.toList.head
             }
 
@@ -353,23 +357,54 @@ object TypeFlow {
             new TFunction(fs.argList.map { a => (TAny, true) }, TAny)
           }
 
-          def checkFCall(fcall: CFGAssignFunctionCall, sym: FunctionType) : Type =  {
-            sym match {
-                case TFunction(args, ret) =>
-                    for (i <- fcall.params.indices) {
-                        if (i >= args.length) {
-                            Reporter.error("Prototype error!", fcall)
-                        } else {
-                            expect(fcall.params(i), args(i)._1)
+          def checkFCalls(fcall: CFGAssignFunctionCall, syms: List[FunctionType]) : Type =  {
+            def protoFilter(sym: FunctionType): Boolean = {
+                sym match {
+                    case TFunction(args, ret) =>
+                        var ret = true;
+                        for (i <- fcall.params.indices) {
+                            if (i >= args.length) {
+                                ret = false
+                            } else {
+                                if (!TypeLattice.leq(typeFromSimpleValue(fcall.params(i)), args(i)._1)) {
+                                    //notice("Prototype mismatch because "+fcall.params(i)+"("+typeFromSimpleValue(fcall.params(i))+") </: "+args(i)._1) 
+
+                                    ret = false;
+                                }
+                            }
                         }
-
-                    }
-                    ret
-
-                case TFunctionAny =>
-                    sym.ret
+                        ret
+                    case TFunctionAny =>
+                        true
+                }
             }
-          }
+
+            syms filter protoFilter match {
+                case Nil =>
+                    if (syms.size > 1) {
+                        error("Unmatched function prototype '("+fcall.params.map(typeFromSimpleValue).mkString(", ")+")', candidates are: "+syms.mkString(", "), fcall)
+                        syms.first.ret
+                    } else {
+                        syms.first match {
+                            case TFunction(args, ret) =>
+                                for (i <- fcall.params.indices) {
+                                    if (i >= args.length) {
+                                        error("Prototype error!", fcall)
+                                    } else {
+                                        expect(fcall.params(i), args(i)._1)
+                                    }
+
+                                }
+                                ret
+                            case s =>
+                                s.ret
+                        }
+                    }
+
+                case f :: xs =>
+                    f.ret
+            }
+        }
 
 
           node match {
@@ -396,7 +431,7 @@ object TypeFlow {
                             case None =>
                                 // Check for magic __call ?
                                 if (or.lookupMethod("__call", env.scope) == None) {
-                                    Reporter.notice("Undefined method '" + mid.value + "' in object "+or, mid)
+                                    notice("Undefined method '" + mid.value + "' in object "+or, mid)
                                 }
                                 env
                         }
@@ -416,17 +451,17 @@ object TypeFlow {
                 if (id.hasSymbol) {
                     id.getSymbol match {
                         case fs: FunctionSymbol =>
-                            env.inject(v, checkFCall(fcall, functionSymbolToFunctionType(fs)))
+                            env.inject(v, checkFCalls(fcall, List(functionSymbolToFunctionType(fs))))
                         case _ =>
-                            Reporter.notice("Woops "+id.value+" holds a non-function symbol", id)
+                            notice("Woops "+id.value+" holds a non-function symbol", id)
                             env.inject(v, TAny)
                     }
                 } else {
                     InternalFunctions.lookup(id) match {
-                        case Some(ft) =>
-                            env.inject(v, checkFCall(fcall, ft))
+                        case Some(fts) =>
+                            env.inject(v, checkFCalls(fcall, fts))
                         case None =>
-                            Reporter.notice("Function "+id.value+" appears to be undefined!", id)
+                            notice("Function "+id.value+" appears to be undefined!", id)
                             env.inject(v, TAny)
                     }
                 }

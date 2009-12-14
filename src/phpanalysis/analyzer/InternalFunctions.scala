@@ -8,7 +8,7 @@ import scala.xml._
 
 object InternalFunctions {
     private var loaded = false
-    private var ftypes = HashMap[String, FunctionType]()
+    private var ftypes = HashMap[String, List[FunctionType]]()
 
     def elemsToType(elems: NodeSeq): Type = elems.map { e => elemToType(e) } reduceRight { (a, b) => TUnion(a, b) }
     def elemToType(elem: Node): Type = (elem \ "@name").text.toLowerCase match {
@@ -43,12 +43,12 @@ object InternalFunctions {
             val name = (f \ "@name").text
             val args: List[(Type, Boolean)] = ((f \ "args" \\ "arg") map { a => (elemsToType(a \ "type"), Integer.parseInt((a \ "@opt").text) > 0) }).toList
 
-            ftypes(name) = new TFunction(args, elemsToType(f \ "return" \ "type"))
+            ftypes(name) = new TFunction(args, elemsToType(f \ "return" \ "type")) :: ftypes.getOrElse(name, Nil)
         }
         loaded = true;
     }
 
-    def lookup(id: Identifier): Option[FunctionType] = {
+    def lookup(id: Identifier): Option[List[FunctionType]] = {
         if (!loaded) load
         ftypes.get(id.value)
     }

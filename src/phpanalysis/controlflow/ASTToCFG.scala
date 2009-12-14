@@ -170,7 +170,7 @@ object ASTToCFG {
 
     def exprStoreGet(v: CFGVariable, ex: Expression): Option[CFGStatement] = alreadySimple(ex) match {
         case Some(x) => Some(CFGAssign(v, x))
-        case None => 
+        case None =>
             ex match {
                 case Clone(obj) =>
                     Some(CFGAssignUnary(v, CLONE, expr(obj)))
@@ -211,13 +211,13 @@ object ASTToCFG {
                 case Silence(value) =>
                     Some(CFGAssign(v, expr(value)))
                 case Execute(value) =>
-                    Some(CFGAssignFunctionCall(v, internalFunction("shell_exec"), List(CFGStringLit(value))))
+                    Some(CFGAssignFunctionCall(v, internalFunction("shell_exec").setPos(ex), List(CFGStringLit(value).setPos(ex))))
                 case Print(value) =>
-                    Some(CFGAssignFunctionCall(v, internalFunction("print"), List(expr(value))))
+                    Some(CFGAssignFunctionCall(v, internalFunction("print").setPos(ex), List(expr(value))))
                 case Eval(value) =>
-                    Some(CFGAssignFunctionCall(v, internalFunction("eval"), List(expr(value))))
+                    Some(CFGAssignFunctionCall(v, internalFunction("eval").setPos(ex), List(expr(value))))
                 case Empty(va) =>
-                    Some(CFGAssignFunctionCall(v, internalFunction("empty"), List(expr(va))))
+                    Some(CFGAssignFunctionCall(v, internalFunction("empty").setPos(ex), List(expr(va))))
                 case FunctionCall(StaticFunctionRef(_, _, name), args) =>
                     Some(CFGAssignFunctionCall(v, name, args map { a => expr(a.value) }))
                 case MethodCall(obj, StaticMethodRef(id), args) => 

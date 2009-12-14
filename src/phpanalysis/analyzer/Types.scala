@@ -39,8 +39,8 @@ object Types {
     case class TFunction(args: List[(Type, Boolean)], ret: Type) extends FunctionType {
 
         override def toString = args.map{a => a match {
-                case (t, true) => t
-                case (t, false) => "["+t+"]"
+                case (t, false) => t
+                case (t, true) => "["+t+"]"
             }}.mkString("(", ", ", ")")+" => "+ret
     }
 

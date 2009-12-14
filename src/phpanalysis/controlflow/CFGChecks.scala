@@ -7,15 +7,8 @@ case class CheckContext();
 
 case class CFGChecks(node: Tree) extends ASTTraversal[CheckContext](node, CheckContext()) {
 
-    //var lastMsgLen = 0;
     def display(content: String) = {
         if (Main.displayProgress) {
-            /*
-            if (lastMsgLen > 0) {
-                print((1 to lastMsgLen) map (x => "\b") mkString)
-            }
-            lastMsgLen = content.length
-            */
             println("     - "+content)
         }
     }
@@ -31,6 +24,7 @@ case class CFGChecks(node: Tree) extends ASTTraversal[CheckContext](node, CheckC
             case Program(stmts) =>
                 display("Converting main scope...")
                 val cfg: CFG = ASTToCFG.convertAST(stmts)
+                if (Main.displayDebug) cfg.writeDottyToFile("debug.cfg-main", "Main");
                 display("Analyzing main scope...")
                 val tfa = new TypeFlow.Analyzer(cfg, None)
                 tfa.analyze
