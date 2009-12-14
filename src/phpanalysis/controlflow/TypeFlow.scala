@@ -15,7 +15,6 @@ object TypeFlow {
         def leq(x : Type, y : Type) = (x,y) match {
             case (TNone, _) => true
             case (_, TAny) => true
-            case (TInt, TString) => true
             case (_, TBoolean) => true
             case (t1: TObjectRef, TAnyObject) => true
             case (t1: TPreciseArray, TAnyArray) => true
@@ -211,7 +210,7 @@ object TypeFlow {
                     case DIV =>
                         expect(v1, TInt); expect(v2, TInt)
                     case CONCAT =>
-                        expect(v1, TString); expect(v2, TString)
+                        expect(v1, TString, TInt, TAnyObject); expect(v2, TString, TInt, TAnyObject)
                     case MOD =>
                         expect(v1, TInt); expect(v2, TInt)
                     case INSTANCEOF =>
@@ -463,12 +462,18 @@ object TypeFlow {
                             env.inject(v, TAny)
                     }
                 } else {
-                    InternalFunctions.lookup(id) match {
-                        case Some(fts) =>
-                            env.inject(v, checkFCalls(fcall, fts))
-                        case None =>
-                            notice("Function "+id.value+" appears to be undefined!", id)
-                            env.inject(v, TAny)
+                    // handle special functions
+                    id.value.toLowerCase match {
+                        case "isset" | "empty" =>
+                            env.inject(v, TBoolean); // no need to check the args, this is a no-error function
+                        case _ =>
+                            InternalFunctions.lookup(id) match {
+                                case Some(fts) =>
+                                    env.inject(v, checkFCalls(fcall, fts))
+                                case None =>
+                                    notice("Function "+id.value+" appears to be undefined!", id)
+                                    env.inject(v, TAny)
+                            }
                     }
                 }
 
