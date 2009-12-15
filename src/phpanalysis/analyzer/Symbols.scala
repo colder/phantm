@@ -49,8 +49,16 @@ object Symbols {
 
   object GlobalSymbols extends Scope {
     var classes: HashMap[String,ClassSymbol] = new HashMap[String,ClassSymbol]
+    var ifaces: HashMap[String,IfaceSymbol] = new HashMap[String,IfaceSymbol]
     var functions: HashMap[String,FunctionSymbol] = new HashMap[String,FunctionSymbol]
     var constants: HashMap[String,ConstantSymbol] = new HashMap[String,ConstantSymbol]
+
+    def lookupIface(n: String): Option[IfaceSymbol] = ifaces.get(n)
+
+    def registerIface(is: IfaceSymbol) : Unit = ifaces.get(is.name) match {
+      case None => ifaces += ((is.name, is))
+      case Some(x) => Reporter.error("Interface " + is.name + " already declared (previously declared in "+x.getPos+")", is)
+    }
 
     def lookupClass(n: String): Option[ClassSymbol] = classes.get(n)
 
@@ -131,13 +139,20 @@ object Symbols {
   class PropertySymbol(val cs: ClassSymbol, name: String, val visibility: MemberVisibility) extends VariableSymbol(name);
   class ClassConstantSymbol(val cs: ClassSymbol,  name: String) extends ConstantSymbol(name);
 
+  class IfaceMethodSymbol(val cs: IfaceSymbol, name: String, val visibility: MemberVisibility) extends FunctionSymbol(name);
+  class IfaceConstantSymbol(val cs: IfaceSymbol,  name: String) extends ConstantSymbol(name);
+
   case class LookupResult[T](ms: Option[T], visibError: Option[MemberVisibility], staticClash: Boolean) {
       def isError = ms == None || visibError != None
   }
 
-  class InterfaceSymbol(val name: String, val extend: List[String]) extends Symbol
+  class IfaceSymbol(val name: String, val parents: List[IfaceSymbol]) extends Symbol {
+    val methods = new HashMap[String, IfaceMethodSymbol]();
+    val constants = new HashMap[String, IfaceConstantSymbol]();
 
-  class ClassSymbol(val name: String, val parent: Option[ClassSymbol], ifaces: List[String]) extends Symbol {
+  }
+
+  class ClassSymbol(val name: String, val parent: Option[ClassSymbol], ifaces: List[IfaceSymbol]) extends Symbol {
     val methods = new HashMap[String, MethodSymbol]();
     val properties = new HashMap[String, PropertySymbol]();
     val static_properties = new HashMap[String, PropertySymbol]();
@@ -165,7 +180,6 @@ object Symbols {
     /** looking up a method follows those rules:
      * 1) lookup the method localy, check PPP rules against the current scope
      * 2) if not found, lookup on the parent
-     * TODO: __call()
      */
 
     def lookupMethod(name: String, from: Option[ClassSymbol]): LookupResult[MethodSymbol] = methods.get(name) match {

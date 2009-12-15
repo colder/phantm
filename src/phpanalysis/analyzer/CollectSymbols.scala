@@ -7,12 +7,12 @@ import phpanalysis.analyzer.Types._
 import scala.collection.mutable.HashSet
 import scala.collection.mutable.HashMap
 
-case class Context(varScope: Scope, cl: Option[ClassSymbol]);
+case class Context(varScope: Scope, cl: Option[ClassSymbol], iface: Option[IfaceSymbol]);
 
-case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Context(GlobalSymbols, None)) {
-    var cycleDetectionSet = new HashSet[ClassDecl]
+case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Context(GlobalSymbols, None, None)) {
+    var classCycleDetectionSet = new HashSet[ClassDecl]
     var classesToPass = List[ClassDecl]()
-    var list: List[(ClassSymbol, ClassDecl)] = Nil
+    var classList: List[(ClassSymbol, ClassDecl)] = Nil
 
     /**
      * Visit classes and add them to a waiting list, so they can be processed in right order
@@ -21,6 +21,10 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
         node match {
             case cl @ ClassDecl(name, flags, parent, interfaces, methods, static_props, props, consts) =>
                 classesToPass = classesToPass ::: List(cl)
+            case id @ InterfaceDecl(name, parents, methods, consts) =>
+                // TODO: actually safely register interfaces
+                GlobalSymbols.registerIface(new IfaceSymbol(name.value, Nil))
+
             case _ =>
         }
         (ctx, true)
@@ -40,12 +44,12 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
     }
     
     def firstClassPass0(cd: ClassDecl): Unit = {
-      if (cycleDetectionSet.contains(cd)) { 
-        Reporter.error("Classes " + cycleDetectionSet.map(x => x.name.value).mkString(" -> ") + " form an inheritance cycle", cd)
+      if (classCycleDetectionSet.contains(cd)) { 
+        Reporter.error("Classes " + classCycleDetectionSet.map(x => x.name.value).mkString(" -> ") + " form an inheritance cycle", cd)
         return;
       }
 
-      cycleDetectionSet += cd
+      classCycleDetectionSet += cd
       
       val p: Option[ClassSymbol] = cd.parent match {
         case Some(x) => GlobalSymbols.lookupClass(x.name.value) match {
@@ -69,8 +73,8 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
       GlobalSymbols.registerClass(cs)
       cd.name.setSymbol(cs)
 
-      list = list ::: List((cs,cd))
-      cycleDetectionSet -= cd
+      classList = classList ::: List((cs,cd))
+      classCycleDetectionSet -= cd
 
       classesToPass = classesToPass.remove(_.equals(cd))
     }
@@ -117,6 +121,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
             cs.registerConstant(ccs)
         }
     }
+
     /**
      * Visit the nodes and aggregate information inside the context to provide
      * hints about obvious errors directly from the AST
@@ -152,23 +157,32 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
                 }
                 name.setSymbol(fs)
                 GlobalSymbols.registerFunction(fs)
-                newCtx = Context(fs, None)
+                newCtx = Context(fs, None, None)
 
             case ClassDecl(name, flags, parent, interfaces, methods, static_props, props, consts) =>
                 GlobalSymbols.lookupClass(name.value) match {
                     case Some(cs) =>
-                        newCtx = Context(ctx.varScope, Some(cs))
+                        newCtx = Context(ctx.varScope, Some(cs), None)
                     case None => error("Woops ?!? Came across a phantom class");
                 }
 
+            case InterfaceDecl(name, parents, methods, consts) =>
+                GlobalSymbols.lookupIface(name.value) match {
+                    case Some(iface) =>
+                        newCtx = Context(ctx.varScope, None, Some(iface))
+                    case None => error("Woops ?!? Came across a phantom interface");
+                }
+
             case MethodDecl(name, flags, args, retref, body) =>
-                ctx.cl match {
-                    case Some(cs) => cs.lookupMethod(name.value, Some(cs)) match {
-                        case LookupResult(Some(ms: MethodSymbol), _, _) => newCtx = Context(ms, None)
+                (ctx.cl, ctx.iface) match {
+                    case (Some(cs), _) => cs.lookupMethod(name.value, Some(cs)) match {
+                        case LookupResult(Some(ms: MethodSymbol), _, _) => newCtx = Context(ms, Some(cs), None)
                         case _ => error("Woops?! No such method declared yet??")
                     }
-                    case None =>
-                        error("Woops?!? Got into a method without any class in the context!?!")
+                    case (None, Some(iface)) =>
+                        // nothing
+                    case (None, None) =>
+                        error("Woops?!? Got into a method without any class or interface in the context: (Method: "+name.value+", "+name.getPos+")")
                 }
             case _: ArgumentDecl =>
                 // Skip SimpleVariables contained inside arguments declarations
@@ -210,7 +224,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
         traverse(visitClasses)
 
         firstClassPass;
-        for (val c <- list) {
+        for (val c <- classList) {
             secondClassPass(c._2, c._1);
         }
 
