@@ -5,10 +5,12 @@ import phpanalysis.analyzer._;
 import phpanalysis.controlflow._;
 import phpanalysis.parser.Trees.Program;
 import java.io._;
+import Math.max;
 
 object Main {
     var files: List[String] = Nil;
     var displaySymbols  = false;
+    var verbosity       = 1;
     var displayDebug    = false;
     var displayProgress = false;
     var includePaths    = List(".");
@@ -34,6 +36,12 @@ object Main {
             handleArgs(xs)
         case "--debug" :: xs =>
             displayDebug = true
+            handleArgs(xs)
+        case "--verbose" :: xs =>
+            verbosity = max(verbosity, 2)
+            handleArgs(xs)
+        case "--vverbose" :: xs =>
+            verbosity = max(verbosity, 3)
             handleArgs(xs)
         case "--includepath" :: ip :: xs =>
             includePaths = ip.split(":").toList
