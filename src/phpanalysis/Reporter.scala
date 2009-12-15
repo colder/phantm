@@ -1,13 +1,13 @@
 package phpanalysis;
 import scala.io.Source;
-import scala.collection.mutable.{HashMap,HashSet};
+import scala.collection.mutable.{HashMap,HashSet,Set};
 
 /* The reported trait is reponsible to output formatted errors */
 object Reporter {
     private var files = new HashMap[String, List[String]]();
     private var errorsCount = 0
     private var noticesCount = 0
-    private var errors = new HashSet[(String, String, Positional, String)]();
+    private var errors = new HashMap[String, Set[(String, String, Positional, String)]];
 
     def error(msg: String) = {
         errorsCount += 1;
@@ -15,19 +15,30 @@ object Reporter {
     }
     def error(msg: String, pos: Positional) = {
         errorsCount += 1;
-        errors += (("Error: ", msg, pos, pos.getPos));
+        if (errors.get(pos.file) == None) {
+            errors(pos.file) = HashSet[(String, String, Positional, String)]()
+        }
+
+        errors(pos.file) += (("Error: ", msg, pos, pos.getPos));
     }
 
     def notice(msg: String, pos: Positional) = {
         noticesCount += 1;
-        errors += (("Notice: ", msg, pos, pos.getPos));
+
+        if (errors.get(pos.file) == None) {
+            errors(pos.file) = HashSet[(String, String, Positional, String)]()
+        }
+        errors(pos.file) += (("Notice: ", msg, pos, pos.getPos));
     }
 
     case class ErrorException(n: Int) extends RuntimeException;
 
     def errorMilestone = {
-        for ((p, msg, pos, _) <- errors.toList.sort{(x,y) => x._3.line < y._3.line || (x._3.line == y._3.line && x._3.col < y._3.col)}) {
-            emit(p, msg, pos)
+        for (errsPerFile <- errors.values) {
+            for ((p, msg, pos, _) <- errsPerFile.toList.sort{(x,y) => x._3.line < y._3.line || (x._3.line == y._3.line && x._3.col < y._3.col)}) {
+                emit(p, msg, pos)
+            }
+            println
         }
         if (errorsCount > 0) {
             val ec = errorsCount;
