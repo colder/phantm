@@ -1098,6 +1098,8 @@ case class STToAST(st: ParseNode) {
                 encaps_list(child(n, 1))
             case List("T_START_HEREDOC", "encaps_list", "T_END_HEREDOC") =>
                 encaps_list(child(n, 1))
+            case List("T_DOUBLE_QUOTE", "T_ENCAPSED_AND_WHITESPACE", "T_DOUBLE_QUOTE") => 
+                PHPString(child(n, 1).tokenContent).setPos(child(n, 0))
         }
     }
 

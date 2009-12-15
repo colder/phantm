@@ -896,6 +896,7 @@ scalar ::=
     | T_NS_SEPARATOR namespace_name
     | common_scalar
     | T_DOUBLE_QUOTE encaps_list T_DOUBLE_QUOTE
+    | T_DOUBLE_QUOTE T_ENCAPSED_AND_WHITESPACE T_DOUBLE_QUOTE
     | T_START_HEREDOC encaps_list T_END_HEREDOC
 ;
 
@@ -1102,8 +1103,9 @@ encaps_list ::=
       encaps_list encaps_var
     | encaps_list T_ENCAPSED_AND_WHITESPACE
     | encaps_var
-    |  T_ENCAPSED_AND_WHITESPACE encaps_var
+    | T_ENCAPSED_AND_WHITESPACE encaps_var
 ;
+
 
 encaps_var ::=
       T_VARIABLE
