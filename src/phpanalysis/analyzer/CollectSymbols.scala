@@ -90,7 +90,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
                     case Some(o: THObject) => TAnyObject // TODO: Make it more precise
                     case None => TAny;
                 }
-                ms.registerArgument(vs, a.byref, t);
+                ms.registerArgument(vs, a.byref, t, false);
             }
         }
 
@@ -131,7 +131,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
                         case Some(o: THObject) => TAnyObject // TODO: Make it more precise
                         case None => TAny;
                     }
-                    fs.registerArgument(vs, a.byref, t);
+                    fs.registerArgument(vs, a.byref, t, false);
                 }
                 name.setSymbol(fs)
                 GlobalSymbols.registerFunction(fs)

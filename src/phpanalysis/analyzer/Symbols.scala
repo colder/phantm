@@ -79,12 +79,12 @@ object Symbols {
   }
 
   class FunctionSymbol(val name: String) extends Symbol with Scope {
-    val args = new HashMap[String, (VariableSymbol, Boolean, Type)]();
-    var argList: List[(String, VariableSymbol, Boolean, Type)] = Nil;
+    val args = new HashMap[String, (VariableSymbol, Boolean, Type, Boolean)]();
+    var argList: List[(String, VariableSymbol, Boolean, Type, Boolean)] = Nil;
 
-    def registerArgument(vs: VariableSymbol, byref: Boolean, typ: Type) = args.get(vs.name) match {
+    def registerArgument(vs: VariableSymbol, byref: Boolean, typ: Type, optional: Boolean) = args.get(vs.name) match {
         case Some(x) => Reporter.error("Argument "+vs.name+" already defined (previously defined in "+x._1.getPos+")", vs)
-        case None => args += ((vs.name, (vs, byref, typ))); argList = argList ::: List((vs.name, vs, byref, typ));
+        case None => args += ((vs.name, (vs, byref, typ, optional))); argList = argList ::: List((vs.name, vs, byref, typ, optional));
 
     }
 
@@ -95,7 +95,7 @@ object Symbols {
     def getArgsVariables: List[VariableSymbol] = getArguments ::: super.getVariables
 
     override def lookupVariable(n: String): Option[VariableSymbol] = args.get(n) match {
-        case Some((vs, byref, typ)) => Some(vs)
+        case Some((vs, byref, typ, optional)) => Some(vs)
         case None => variables.get(n)
     }
 
