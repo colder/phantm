@@ -1,6 +1,7 @@
 package phpanalysis.analyzer
 
 import scala.collection.mutable.HashMap
+import Types._
 
 
 object Symbols {
@@ -78,12 +79,12 @@ object Symbols {
   }
 
   class FunctionSymbol(val name: String) extends Symbol with Scope {
-    val args = new HashMap[String, (VariableSymbol, Boolean)]();
-    var argList: List[(String, VariableSymbol, Boolean)] = Nil;
+    val args = new HashMap[String, (VariableSymbol, Boolean, Type)]();
+    var argList: List[(String, VariableSymbol, Boolean, Type)] = Nil;
 
-    def registerArgument(vs: VariableSymbol, byref: Boolean) = args.get(vs.name) match {
+    def registerArgument(vs: VariableSymbol, byref: Boolean, typ: Type) = args.get(vs.name) match {
         case Some(x) => Reporter.error("Argument "+vs.name+" already defined (previously defined in "+x._1.getPos+")", vs)
-        case None => args += ((vs.name, (vs, byref))); argList = argList ::: List((vs.name, vs, byref));
+        case None => args += ((vs.name, (vs, byref, typ))); argList = argList ::: List((vs.name, vs, byref, typ));
 
     }
 
@@ -94,7 +95,7 @@ object Symbols {
     def getArgsVariables: List[VariableSymbol] = getArguments ::: super.getVariables
 
     override def lookupVariable(n: String): Option[VariableSymbol] = args.get(n) match {
-        case Some((vs, byref)) => Some(vs)
+        case Some((vs, byref, typ)) => Some(vs)
         case None => variables.get(n)
     }
 

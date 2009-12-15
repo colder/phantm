@@ -80,9 +80,17 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
             val ms = new MethodSymbol(cs, m.name.value, getVisibility(m.flags)).setPos(m)
             cs.registerMethod(ms)
             for (a <- m.args) {
-                // TODO: type hints
                 val vs = new VariableSymbol(a.v.name.value).setPos(a.v)
-                ms.registerArgument(vs, a.byref);
+                val t = a.hint match {
+                    case Some(THString) => TString
+                    case Some(THInt) => TInt
+                    case Some(THBoolean) => TBoolean
+                    case Some(THFloat) => TInt // TODO: Differientate numeric types
+                    case Some(THArray) => TAnyArray
+                    case Some(o: THObject) => TAnyObject // TODO: Make it more precise
+                    case None => TAny;
+                }
+                ms.registerArgument(vs, a.byref, t);
             }
         }
 
@@ -113,10 +121,19 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
             case FunctionDecl(name, args, retref, body) =>
                 val fs = new FunctionSymbol(name.value).setPos(name)
                 for (val a <- args) {
-                    // TODO: type hints
                     val vs = new VariableSymbol(a.v.name.value).setPos(a.v)
-                    fs.registerArgument(vs, a.byref);
+                    val t = a.hint match {
+                        case Some(THString) => TString
+                        case Some(THInt) => TInt
+                        case Some(THBoolean) => TBoolean
+                        case Some(THFloat) => TInt // TODO: Differientate numeric types
+                        case Some(THArray) => TAnyArray
+                        case Some(o: THObject) => TAnyObject // TODO: Make it more precise
+                        case None => TAny;
+                    }
+                    fs.registerArgument(vs, a.byref, t);
                 }
+                name.setSymbol(fs)
                 GlobalSymbols.registerFunction(fs)
                 newCtx = Context(fs, None)
 

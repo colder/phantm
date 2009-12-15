@@ -359,7 +359,7 @@ object TypeFlow {
           }
 
           def functionSymbolToFunctionType(fs: FunctionSymbol): FunctionType = {
-            new TFunction(fs.argList.map { a => (TAny, true) }, TAny)
+            new TFunction(fs.argList.map { a => (a._4, true) }, TAny)
           }
 
           def checkFCalls(fcall: CFGAssignFunctionCall, syms: List[FunctionType]) : Type =  {
@@ -453,28 +453,24 @@ object TypeFlow {
               }
 
               case fcall @ CFGAssignFunctionCall(v: CFGSimpleVariable, id, args) =>
-                if (id.hasSymbol) {
-                    id.getSymbol match {
-                        case fs: FunctionSymbol =>
+
+                GlobalSymbols.lookupFunction(id.value.toLowerCase) match {
+                    case Some(fs) =>
                             env.inject(v, checkFCalls(fcall, List(functionSymbolToFunctionType(fs))))
-                        case _ =>
-                            notice("Woops "+id.value+" holds a non-function symbol", id)
-                            env.inject(v, TAny)
-                    }
-                } else {
-                    // handle special functions
-                    id.value.toLowerCase match {
-                        case "isset" | "empty" =>
-                            env.inject(v, TBoolean); // no need to check the args, this is a no-error function
-                        case _ =>
-                            InternalFunctions.lookup(id) match {
-                                case Some(fts) =>
-                                    env.inject(v, checkFCalls(fcall, fts))
-                                case None =>
-                                    notice("Function "+id.value+" appears to be undefined!", id)
-                                    env.inject(v, TAny)
-                            }
-                    }
+                    case None =>
+                        // handle special functions
+                        id.value.toLowerCase match {
+                            case "isset" | "empty" =>
+                                env.inject(v, TBoolean); // no need to check the args, this is a no-error function
+                            case _ =>
+                                InternalFunctions.lookup(id) match {
+                                    case Some(fts) =>
+                                        env.inject(v, checkFCalls(fcall, fts))
+                                    case None =>
+                                        notice("Function "+id.value+" appears to be undefined!", id)
+                                        env.inject(v, TAny)
+                                }
+                        }
                 }
 
 
