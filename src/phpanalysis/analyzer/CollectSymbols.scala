@@ -81,7 +81,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
             cs.registerMethod(ms)
             for (a <- m.args) {
                 val vs = new VariableSymbol(a.v.name.value).setPos(a.v)
-                val t = a.hint match {
+                var t: Type = a.hint match {
                     case Some(THString) => TString
                     case Some(THInt) => TInt
                     case Some(THBoolean) => TBoolean
@@ -90,7 +90,15 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
                     case Some(o: THObject) => TAnyObject // TODO: Make it more precise
                     case None => TAny;
                 }
-                ms.registerArgument(vs, a.byref, t, false);
+                if (a.default == Some(PHPNull)) {
+                    /*
+                     * PHP Hack: if you pass null as default value, then null
+                     * is also accepted as type
+                     */
+                     t = TUnion(t, TNull)
+                }
+
+                ms.registerArgument(vs, a.byref, t, a.default != None);
             }
         }
 
@@ -122,7 +130,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
                 val fs = new FunctionSymbol(name.value).setPos(name)
                 for (val a <- args) {
                     val vs = new VariableSymbol(a.v.name.value).setPos(a.v)
-                    val t = a.hint match {
+                    var t: Type = a.hint match {
                         case Some(THString) => TString
                         case Some(THInt) => TInt
                         case Some(THBoolean) => TBoolean
@@ -131,7 +139,16 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
                         case Some(o: THObject) => TAnyObject // TODO: Make it more precise
                         case None => TAny;
                     }
-                    fs.registerArgument(vs, a.byref, t, false);
+
+                    if (a.default == Some(PHPNull)) {
+                        /*
+                         * PHP Hack: if you pass null as default value, then null
+                         * is also accepted as type
+                         */
+                         t = TUnion(t, TNull)
+                    }
+
+                    fs.registerArgument(vs, a.byref, t, a.default != None);
                 }
                 name.setSymbol(fs)
                 GlobalSymbols.registerFunction(fs)
