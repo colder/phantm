@@ -31,6 +31,9 @@ object Main {
     def handleArgs(args: List[String]): Unit = args match {
         case "--symbols" :: xs => displaySymbols = true; handleArgs(xs);
         case "--debug" :: xs => displayDebug = true; handleArgs(xs);
+        case "--includepath" :: ip :: xs =>
+            includePaths = ip.split(":").toList
+            handleArgs(xs)
         case "--progress" :: xs => displayProgress = true; handleArgs(xs);
         case x :: xs => files = files ::: x :: Nil; handleArgs(xs);
         case Nil => 
