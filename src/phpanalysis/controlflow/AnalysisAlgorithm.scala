@@ -4,6 +4,7 @@ import scala.collection.mutable.HashSet;
 
 class AnalysisAlgorithm[E <: Environment[E],S]
                (transferFun : TransferFunction[E,S],
+		bottomEnv : E,
 		baseEnv : E,
 		cfg : LabeledDirectedGraphImp[S])
 {
@@ -12,7 +13,7 @@ class AnalysisAlgorithm[E <: Environment[E],S]
   var facts : Map[Vertex, E] = Map[Vertex,E]()
   
   def init = {
-    facts = Map[Vertex,E]().withDefaultValue(baseEnv)
+    facts = Map[Vertex,E]().withDefaultValue(bottomEnv)
   }
   
   def pass(transferFun: TransferFunction[E,S]) = {
@@ -38,20 +39,20 @@ class AnalysisAlgorithm[E <: Environment[E],S]
             val oldFact : E = facts(v)
             var newFact : Option[E] = None
 
-            for (e <- cfg.inEdges(v)) {
-              val propagated = transferFun(e.lab, facts(e.v1))
-              newFact match {
-                case Some(nf) => newFact = Some(nf union propagated)
-                case None => newFact = Some(propagated)
-              }
+            for (e <- cfg.inEdges(v) if facts(e.v1) differsFrom bottomEnv) {
+                val propagated = transferFun(e.lab, facts(e.v1));
 
+                newFact = newFact match {
+                    case Some(nf) => Some(nf union propagated)
+                    case None => Some(propagated)
+                }
             }
 
-            newFact match {
-                case Some(nf) if nf != oldFact =>
-                  change = true;
-                  facts = facts.update(v, nf)
-                case _ =>
+            val nf = newFact.getOrElse(baseEnv);
+
+            if (nf differsFrom oldFact) {
+                    change = true
+                    facts = facts.update(v, nf)
             }
 
             for (e <- cfg.outEdges(v)) {

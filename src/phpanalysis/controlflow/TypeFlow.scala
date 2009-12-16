@@ -65,16 +65,25 @@ object TypeFlow {
         def meet(x : Type, y : Type) = x
     }
 
-    case object BaseTypeEnvironment extends TypeEnvironment(HashMap[CFGSimpleVariable, Type](), None) {
+    object BaseTypeEnvironment extends TypeEnvironment(HashMap[CFGSimpleVariable, Type](), None) {
         override def union(e: TypeEnvironment) = {
-            BaseTypeEnvironment
+            e
         }
 
-        override def equals(e: TypeEnvironment) = {
-            e == BaseTypeEnvironment
+        override def differsFrom(e: TypeEnvironment): Boolean = {
+            e match {
+                case BaseTypeEnvironment =>
+                    false
+                case _ =>
+                    true
+            }
         }
+        override def toString = {
+            "[_]"
+        }
+
     }
-    case class TypeEnvironment(map: Map[CFGSimpleVariable, Type], scope: Option[ClassSymbol]) extends Environment[TypeEnvironment] {
+    class TypeEnvironment(val map: Map[CFGSimpleVariable, Type], val scope: Option[ClassSymbol]) extends Environment[TypeEnvironment] {
         def this(scope: Option[ClassSymbol]) = {
             this(new HashMap[CFGSimpleVariable, Type], scope);
         }
@@ -85,7 +94,7 @@ object TypeFlow {
         def lookup(v: CFGSimpleVariable): Option[Type] = map.get(v)
 
         def inject(v: CFGSimpleVariable, typ: Type): TypeEnvironment = {
-            TypeEnvironment(map + ((v, typ)), scope)
+            new TypeEnvironment(map + ((v, typ)), scope)
         }
 
         def union(e: TypeEnvironment) = {
@@ -109,18 +118,12 @@ object TypeFlow {
             }
         }
 
-        def equals(e: TypeEnvironment): Boolean = {
+        def differsFrom(e: TypeEnvironment): Boolean = {
             e match {
                 case BaseTypeEnvironment =>
-                    false
-                case _ =>
-                    if (scope != e.scope) return false
-                    if (e.map.size != map.size) return false
-                    for ((v,t) <- map) {
-                        if (!(e.map contains v)) return false
-                        else if (!(e.map(v) equals t)) return false
-                    }
-                    return true
+                    true
+                case e: TypeEnvironment =>
+                    !(scope equals e.scope) || !(map equals e.map)
             }
         }
 
@@ -509,8 +512,9 @@ object TypeFlow {
 
 
         def analyze = {
-            val baseEnv = BaseTypeEnvironment;
-            val aa = new AnalysisAlgorithm[TypeEnvironment, CFGStatement](TypeTransferFunction(true), baseEnv, cfg)
+            val bottomEnv = BaseTypeEnvironment;
+            val baseEnv   = new TypeEnvironment;
+            val aa = new AnalysisAlgorithm[TypeEnvironment, CFGStatement](TypeTransferFunction(true), bottomEnv, baseEnv, cfg)
 
             aa.init
             aa.computeFixpoint
