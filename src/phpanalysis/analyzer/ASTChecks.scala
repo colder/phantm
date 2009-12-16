@@ -2,9 +2,11 @@ package phpanalysis.analyzer;
 
 import phpanalysis.parser.Trees._;
 
-case class CheckContext(topLevel: Boolean);
+case class CheckContext(topLevel: Boolean, inIfCond: Boolean);
 
-case class ASTChecks(node: Tree) extends ASTTraversal[CheckContext](node, CheckContext(true)) {
+case class ASTChecks(node: Tree, context: CheckContext) extends ASTTraversal[CheckContext](node, context) {
+
+    def this(node: Tree) = this(node, CheckContext(true, false))
 
     /**
      * Visit the nodes and aggregate information inside the context to provide
@@ -12,44 +14,58 @@ case class ASTChecks(node: Tree) extends ASTTraversal[CheckContext](node, CheckC
      */
     def visit(node: Tree, ctx: CheckContext): (CheckContext, Boolean) = {
         var newCtx = ctx;
+        var continue = true;
 
         node match {
             case f : FunctionDecl => 
-                newCtx = CheckContext(false); 
+                newCtx = CheckContext(false, false); 
                 if (!ctx.topLevel) {
                     Reporter.notice("Function "+f.name.value+" should be declared at top-level", f.name)
                 }
             case c: ClassDecl =>
-                newCtx = CheckContext(false);
+                newCtx = CheckContext(false, false);
                 if (!ctx.topLevel && Main.verbosity >= 2) {
                     Reporter.notice("Class "+c.name.value+" should be declared at top-level", c.name)
                 }
-            case x: If =>
-                newCtx = CheckContext(false)
+            case x @ If(cond, then, elze) =>
+                // New traversals
+                ASTChecks(cond, CheckContext(false, true)).execute
+                ASTChecks(then, CheckContext(false, false)).execute
+                elze match {
+                    case Some(el) =>
+                        ASTChecks(el, CheckContext(false, false)).execute
+                    case None =>
+                }
+
+                continue = false // Do not do twice
             case x: While =>
-                newCtx = CheckContext(false)
+                newCtx = CheckContext(false, false)
             case x: DoWhile =>
-                newCtx = CheckContext(false)
+                newCtx = CheckContext(false, false)
             case x: Foreach =>
-                newCtx = CheckContext(false)
+                newCtx = CheckContext(false, false)
             case x: Switch =>
-                newCtx = CheckContext(false)
+                newCtx = CheckContext(false, false)
 
             // check for call-time pass-by-ref
-            case FunctionCall(ref, args) => {
-                for (val arg <- args) if (arg.forceref && Main.verbosity >= 2) {
+            case FunctionCall(ref, args) if Main.verbosity >= 2 => {
+                for (val arg <- args) if (arg.forceref) {
                     Reporter.notice("Usage of call-time pass-by-ref is deprecated and should be avoided", arg)
                 }
             }
 
-            case MethodCall(obj, ref, args) => {
-                for (val arg <- args) if (arg.forceref && Main.verbosity >= 2) {
+            case Assign(vr, vl, _) if ctx.inIfCond && Main.verbosity >= 2 => {
+                Reporter.notice("Potential mistake: assignation used in an if condition", node)
+            }
+
+            case MethodCall(obj, ref, args) if Main.verbosity >= 2 => {
+                for (val arg <- args) if (arg.forceref) {
                     Reporter.notice("Usage of call-time pass-by-ref is deprecated and should be avoided", arg)
                 }
             }
 
-            case StaticMethodCall(classref, ref, args) => {
-                for (val arg <- args) if (arg.forceref && Main.verbosity >= 2) {
+            case StaticMethodCall(classref, ref, args) if Main.verbosity >= 2 => {
+                for (val arg <- args) if (arg.forceref) {
                     Reporter.notice("Usage of call-time pass-by-ref is deprecated and should be avoided", arg)
                 }
             }
@@ -66,7 +82,7 @@ case class ASTChecks(node: Tree) extends ASTTraversal[CheckContext](node, CheckC
             case _ =>
         }
 
-        (newCtx, true)
+        (newCtx, continue)
     }
 
     def execute = traverse(visit)
