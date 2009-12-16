@@ -54,7 +54,7 @@ case class ASTChecks(node: Tree, context: CheckContext) extends ASTTraversal[Che
                 }
             }
 
-            case Assign(vr, vl, _) if ctx.inIfCond && Main.verbosity >= 2 => {
+            case a @ Assign(vr, vl, _) if ctx.inIfCond && Main.verbosity >= 2 => {
                 Reporter.notice("Potential mistake: assignation used in an if condition", node)
             }
 

@@ -69,7 +69,7 @@ object Main {
                     ast = IncludeResolver(ast).transform
                     if (displayProgress) println("4/6 Structural checks...")
                     // Traverse the ast to look for ovious mistakes.
-                    ASTChecks(ast) execute;
+                    new ASTChecks(ast) execute;
                     Reporter.errorMilestone
                     if (displayProgress) println("5/6 Symbolic checks...")
                     // Collect symbols and detect obvious types errors

@@ -7,7 +7,7 @@ object Reporter {
     private var files = new HashMap[String, List[String]]();
     private var errorsCount = 0
     private var noticesCount = 0
-    private var errors = new HashMap[String, Set[(String, String, Positional, String)]];
+    private var errors = new HashMap[Option[String], Set[(String, String, Positional, String)]];
 
     def error(msg: String) = {
         errorsCount += 1;
@@ -40,6 +40,7 @@ object Reporter {
             }
             println
         }
+        errors.clear
         if (errorsCount > 0) {
             val ec = errorsCount;
             errorsCount = 0;
@@ -48,13 +49,17 @@ object Reporter {
     }
 
     private def emit(prefix: String, msg: String, pos: Positional) = {
-        println(pos.file+":"+pos.line+"  "+prefix+msg)
-        println(getFileLine(pos.file, pos.line))
+        println(pos.file.getOrElse("?")+":"+pos.line+"  "+prefix+msg)
+        pos.file match {
+            case Some(file) =>
+                println(getFileLine(file, pos.line))
 
-        var indent: String = ""
-        for(i <- 0 until pos.col) indent = indent + " ";
+                var indent: String = ""
+                for(i <- 0 until pos.col) indent = indent + " ";
 
-        println(indent+"^")
+                println(indent+"^")
+            case None =>
+        }
 
     }
 

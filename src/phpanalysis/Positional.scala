@@ -6,30 +6,34 @@ trait Positional {
 
     var line: Int = -1;
     var col: Int = -1;
-    var file: String = "<Unknown>";
+    var file: Option[String] = None;
 
-    def getPos =  file+" line "+line+" column "+col;
+    def getPos =  file.getOrElse("<Unknown>")+" line "+line+" column "+col;
 
     def setPos(l: Int, c: Int, f: String): self.type = {
         line = l;
         col = c;
-        file = f;
+        file = Some(f);
 
         this
     }
 
     def setPos(p: ParseNode): self.type = {
+        var didSet = false;
+
         def lookUp(p: ParseNode): Unit = {
             if (p.isToken) {
+                didSet = true;
                 setPos(p.line, p.column, p.file)
             } else {
                 val it = p.children().listIterator();
-                if (it.hasNext) {
+                while (it.hasNext && !didSet) {
                     lookUp(it.next);
                 }
             }
         }
         lookUp(p)
+        if (!didSet) println("Woops, no position found for "+p.name)
         this
     }
 
