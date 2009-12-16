@@ -216,7 +216,7 @@ object TypeFlow {
                         return vtyp
                     }
                 }
-                notice("Potential type mismatch: expected: "+typs.toList.map{x => x.toText}.mkString(" or ")+", found: "+vtyp.toText+"("+v1+")", v1)
+                notice("Potential type mismatch: expected: "+typs.toList.map{x => x.toText}.mkString(" or ")+", found: "+vtyp.toText, v1)
                 typs.toList.head
             }
 
