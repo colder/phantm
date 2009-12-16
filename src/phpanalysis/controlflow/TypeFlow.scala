@@ -65,6 +65,15 @@ object TypeFlow {
         def meet(x : Type, y : Type) = x
     }
 
+    case object BaseTypeEnvironment extends TypeEnvironment(HashMap[CFGSimpleVariable, Type](), None) {
+        override def union(e: TypeEnvironment) = {
+            BaseTypeEnvironment
+        }
+
+        override def equals(e: TypeEnvironment) = {
+            e == BaseTypeEnvironment
+        }
+    }
     case class TypeEnvironment(map: Map[CFGSimpleVariable, Type], scope: Option[ClassSymbol]) extends Environment[TypeEnvironment] {
         def this(scope: Option[ClassSymbol]) = {
             this(new HashMap[CFGSimpleVariable, Type], scope);
@@ -80,30 +89,39 @@ object TypeFlow {
         }
 
         def union(e: TypeEnvironment) = {
-            val newmap = new scala.collection.mutable.HashMap[CFGSimpleVariable, Type]();
-            for ((v,t) <- map) {
-                newmap(v) = t
+            e match {
+                case BaseTypeEnvironment =>
+                    this
+
+                case _ =>
+                    var newmap = new scala.collection.mutable.HashMap[CFGSimpleVariable, Type]();
+                    for ((v,t) <- map) {
+                        newmap(v) = TypeLattice.join(t, TNull)
+                    }
+                    for ((v,t) <- e.map) {
+                        if (newmap contains v) {
+                            newmap(v) = TypeLattice.join(map(v), t)
+                        } else {
+                            newmap(v) = TypeLattice.join(t, TNull)
+                        }
+                    }
+                    new TypeEnvironment(Map[CFGSimpleVariable, Type]()++newmap, scope)
             }
-            for ((v,t) <- e.map) {
-                if (newmap contains v) {
-                    newmap(v) = TypeLattice.join(map(v), t)
-                } else {
-                    newmap(v) = t
-                }
-            }
-            val res = new TypeEnvironment(Map[CFGSimpleVariable, Type]()++newmap, scope)
-            res
         }
 
         def equals(e: TypeEnvironment): Boolean = {
-            if (scope != e.scope) return false
-            if (e.map.size != map.size) return false
-            for ((v,t) <- map) {
-                if (!(e.map contains v)) return false
-                else if (!(e.map(v) equals t)) return false
+            e match {
+                case BaseTypeEnvironment =>
+                    false
+                case _ =>
+                    if (scope != e.scope) return false
+                    if (e.map.size != map.size) return false
+                    for ((v,t) <- map) {
+                        if (!(e.map contains v)) return false
+                        else if (!(e.map(v) equals t)) return false
+                    }
+                    return true
             }
-
-            return true
         }
 
         override def toString = {
@@ -491,7 +509,7 @@ object TypeFlow {
 
 
         def analyze = {
-            val baseEnv = new TypeEnvironment(scope);
+            val baseEnv = BaseTypeEnvironment;
             val aa = new AnalysisAlgorithm[TypeEnvironment, CFGStatement](TypeTransferFunction(true), baseEnv, cfg)
 
             aa.init
