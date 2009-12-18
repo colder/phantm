@@ -7,7 +7,9 @@ import phpanalysis.analyzer.Symbols.Symbolic;
 object Trees {
     abstract class Tree extends Positional;
 
-    case class Program(stmts: List[Statement]) extends Tree;
+    case class Program(stmts: List[Statement]) extends Tree {
+        def combine(p2: Program): Program = Program(stmts ::: p2.stmts)
+    }
     case class ArgumentDecl(v: SimpleVariable, hint: Option[TypeHint], default: Option[Expression], byref: Boolean) extends Tree;
     case class MethodDecl(name: Identifier, flags: List[MemberFlag], args: List[ArgumentDecl], retref: Boolean, body: Option[Statement]) extends Tree
     case class PropertyDecl(v: Identifier, flags: List[MemberFlag], default: Option[Expression]) extends Tree;

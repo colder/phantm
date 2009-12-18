@@ -23,7 +23,7 @@ object Main {
                 println("No file provided.")
                 usage
             } else {
-                for (file <- files) compile(file)
+                compile(files)
             }
         } else {
             usage
@@ -55,39 +55,40 @@ object Main {
         case Nil =>
     }
 
-    def compile(file: String) = {
+    def compile(files: List[String]) = {
         try {
             if (displayProgress) println("1/6 Compiling...")
-            new Compiler(file) compile match {
-                case Some(node) => {
-                    if (displayProgress) println("2/6 Simplifying...")
-                    // Compute the AST FROM the node
-                    var ast: Program = new STToAST(node) getAST;
-                    Reporter.errorMilestone
-                    if (displayProgress) println("3/6 Resolving and expanding...")
-                    // Run AST transformers
-                    ast = IncludeResolver(ast).transform
-                    if (displayProgress) println("4/6 Structural checks...")
-                    // Traverse the ast to look for ovious mistakes.
-                    new ASTChecks(ast) execute;
-                    Reporter.errorMilestone
-                    if (displayProgress) println("5/6 Symbolic checks...")
-                    // Collect symbols and detect obvious types errors
-                    CollectSymbols(ast) execute;
-                    Reporter.errorMilestone
+            val sts = files map { f => new Compiler(f) compile }
+            if (sts exists { _ == None} ) {
+                println("Compilation failed.")
+            } else {
+                if (displayProgress) println("2/6 Simplifying...")
+                val asts = sts map { st => new STToAST(st.get) getAST }
+                Reporter.errorMilestone
+                var ast: Program = asts.reduceLeft {(a,b) => a combine b}
+                Reporter.errorMilestone
 
-                    if (displaySymbols) {
-                        // Emit summary of all symbols
-                        analyzer.Symbols.emitSummary
-                    }
+                if (displayProgress) println("3/6 Resolving and expanding...")
+                // Run AST transformers
+                ast = IncludeResolver(ast).transform
+                if (displayProgress) println("4/6 Structural checks...")
+                // Traverse the ast to look for ovious mistakes.
+                new ASTChecks(ast) execute;
+                Reporter.errorMilestone
+                if (displayProgress) println("5/6 Symbolic checks...")
+                // Collect symbols and detect obvious types errors
+                CollectSymbols(ast) execute;
+                Reporter.errorMilestone
 
-                    if (displayProgress) println("6/6 Type flow analysis...")
-                    // Build CFGs and analyzes them
-                    CFGChecks(ast) execute;
-                    Reporter.errorMilestone
-
+                if (displaySymbols) {
+                    // Emit summary of all symbols
+                    analyzer.Symbols.emitSummary
                 }
-                case None => println("Compilation failed.")
+
+                if (displayProgress) println("6/6 Type flow analysis...")
+                // Build CFGs and analyzes them
+                CFGChecks(ast) execute;
+                Reporter.errorMilestone
             }
         } catch {
             case Reporter.ErrorException(n) => println(n+" error"+(if (n>1) "s" else "")+" occured, abort")
@@ -95,7 +96,12 @@ object Main {
     }
 
     def usage = {
-        println("Usage:   phpanalysis [-s] <files ...>");
-        println("Options: -s : Print symbol summary");
+        println("Usage:   phpanalysis [..options..] <files ...>");
+        println("Options: --symbols              Display symbols");
+        println("         --debug                Debug information");
+        println("         --verbose              Be more strict");
+        println("         --vverbose             Be nitpicking");
+        println("         --includepath <paths>  Define paths for compile time include resolution");
+        println("         --progress             Display analysis progress");
     }
 }
