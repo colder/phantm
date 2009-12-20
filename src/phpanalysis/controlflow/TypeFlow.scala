@@ -236,7 +236,7 @@ object TypeFlow {
                         t
                     case None =>
                         notice("Potentially undefined variable "+stringRepr(id), id)
-                        TNull
+                        TNone
                   }
 
                 case CFGArrayEntry(ar, ind) =>
@@ -248,7 +248,7 @@ object TypeFlow {
                                 case Some(t) => t
                                 case None =>
                                     notice("Potentially undefined array index "+stringRepr(ind), ar)
-                                    TNull
+                                    TNone
                             }
                         case _ =>
                             println("Woops?? invlid type returned from expect");
@@ -477,7 +477,7 @@ object TypeFlow {
                 case Nil =>
                     if (syms.size > 1) {
                         error("Unmatched function prototype '("+fcall.params.map(typeFromSimpleValue).mkString(", ")+")', candidates are: "+syms.mkString(", "), fcall)
-                        syms.first.ret
+                        TNone
                     } else {
                         syms.first match {
                             case TFunction(args, ret) =>
