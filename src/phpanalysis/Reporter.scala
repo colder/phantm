@@ -22,6 +22,7 @@ object Reporter {
         errors(pos.file) += (("Error: ", msg, pos, pos.getPos));
     }
 
+    def getNoticesCount = noticesCount
     def notice(msg: String, pos: Positional) = {
         noticesCount += 1;
 
@@ -31,7 +32,7 @@ object Reporter {
         errors(pos.file) += (("Notice: ", msg, pos, pos.getPos));
     }
 
-    case class ErrorException(n: Int) extends RuntimeException;
+    case class ErrorException(en: Int, nn: Int) extends RuntimeException;
 
     def errorMilestone = {
         for (errsPerFile <- errors.values) {
@@ -44,7 +45,7 @@ object Reporter {
         if (errorsCount > 0) {
             val ec = errorsCount;
             errorsCount = 0;
-            throw new ErrorException(ec);
+            throw new ErrorException(ec, noticesCount);
         }
     }
 

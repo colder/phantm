@@ -89,9 +89,15 @@ object Main {
                 // Build CFGs and analyzes them
                 CFGChecks(ast) execute;
                 Reporter.errorMilestone
+
+                val n = Reporter.getNoticesCount
+                if (n > 0) {
+                    println(n+" notice"+(if (n>1) "s" else "")+" occured.")
+                }
             }
         } catch {
-            case Reporter.ErrorException(n) => println(n+" error"+(if (n>1) "s" else "")+" occured, abort")
+            case Reporter.ErrorException(en, nn) =>
+                println(nn+" notice"+(if (nn>1) "s" else "")+" and "+en+" error"+(if (en>1) "s" else "")+" occured, abort.")
         }
     }
 
