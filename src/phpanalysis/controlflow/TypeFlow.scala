@@ -182,6 +182,45 @@ object TypeFlow {
                     case _ =>
                         getObject(node, None)
                 }
+                case fcall @ CFGFunctionCall(id, args) =>
+                    GlobalSymbols.lookupFunction(id.value.toLowerCase) match {
+                        case Some(fs) =>
+                                checkFCalls(fcall, List(functionSymbolToFunctionType(fs)))
+                        case None =>
+                            // handle special functions
+                            id.value.toLowerCase match {
+                                case "isset" | "empty" =>
+                                    TBoolean // no need to check the args, this is a no-error function
+                                case _ =>
+                                    InternalFunctions.lookup(id) match {
+                                        case Some(fts) =>
+                                            checkFCalls(fcall, fts)
+                                        case None =>
+                                            notice("Function "+id.value+" appears to be undefined!", id)
+                                            TAny
+                                    }
+                            }
+                    }
+                case CFGMethodCall(r, mid, p) =>
+                    expect(r, TAnyObject) match {
+                        case or: TObjectRef =>
+                            or.lookupMethod(mid.value, env.scope) match {
+                                case Some(mt) =>
+                                    // TODO Check for opt args/type hints
+                                    mt.ret
+                                case None =>
+                                    // Check for magic __call ?
+                                    if (or.lookupMethod("__call", env.scope) == None) {
+                                        notice("Undefined method '" + mid.value + "' in object "+or, mid)
+                                        TNull
+                                    } else {
+                                        TAny
+                                    }
+                            }
+                        case _ =>
+                            TNull
+                    }
+
                 case id: CFGSimpleVariable =>
                   env.lookup(id) match {
                     case Some(t) =>
@@ -396,7 +435,7 @@ object TypeFlow {
             new TFunction(fs.argList.map { a => (a._4, a._5) }, TAny)
           }
 
-          def checkFCalls(fcall: CFGAssignFunctionCall, syms: List[FunctionType]) : Type =  {
+          def checkFCalls(fcall: CFGFunctionCall, syms: List[FunctionType]) : Type =  {
             def protoFilter(sym: FunctionType): Boolean = {
                 sym match {
                     case TFunction(args, ret) =>
@@ -460,24 +499,6 @@ object TypeFlow {
               case CFGAssign(ca: CFGVariable, ex) =>
                 complexAssign(ca, ex)
 
-              case CFGAssignMethodCall(v: CFGSimpleVariable, r, mid, p) =>
-                expect(r, TAnyObject) match {
-                    case or: TObjectRef =>
-                        or.lookupMethod(mid.value, env.scope) match {
-                            case Some(mt) =>
-                                // TODO Check for opt args/type hints
-                                env.inject(v, mt.ret)
-                            case None =>
-                                // Check for magic __call ?
-                                if (or.lookupMethod("__call", env.scope) == None) {
-                                    notice("Undefined method '" + mid.value + "' in object "+or, mid)
-                                }
-                                env
-                        }
-                    case _ =>
-                        env
-                }
-
               case CFGAssume(v1, op, v2) => op match {
                   case LT | LEQ | GEQ | GT =>
                     expect(v1, TInt); expect(v2, TInt); env
@@ -485,35 +506,6 @@ object TypeFlow {
                     expect(v2, expect(v1, TAny)); env
 
               }
-
-              case fcall @ CFGAssignFunctionCall(vto, id, args) =>
-
-                val res = GlobalSymbols.lookupFunction(id.value.toLowerCase) match {
-                    case Some(fs) =>
-                            checkFCalls(fcall, List(functionSymbolToFunctionType(fs)))
-                    case None =>
-                        // handle special functions
-                        id.value.toLowerCase match {
-                            case "isset" | "empty" =>
-                                TBoolean // no need to check the args, this is a no-error function
-                            case _ =>
-                                InternalFunctions.lookup(id) match {
-                                    case Some(fts) =>
-                                        checkFCalls(fcall, fts)
-                                    case None =>
-                                        notice("Function "+id.value+" appears to be undefined!", id)
-                                        TAny
-                                }
-                        }
-                }
-
-                vto match {
-                    case v : CFGSimpleVariable =>
-                        env.inject(v, res)
-                    case _ =>
-                        env
-                }
-
 
               case CFGPrint(v) =>
                 expect(v, TInt, TString, TAnyObject);

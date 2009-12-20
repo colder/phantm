@@ -205,23 +205,23 @@ object ASTToCFG {
                 case InstanceOf(lhs, cr) =>
                     Some(CFGAssign(v, CFGInstanceof(expr(lhs), cr)))
                 case Ternary(cond, Some(then), elze) =>
-                    Some(CFGAssignTernary(v, expr(cond), expr(then), expr(elze)))
+                    Some(CFGAssign(v, CFGTernary(expr(cond), expr(then), expr(elze)).setPos(ex)))
                 case Ternary(cond, None, elze) =>
-                    Some(CFGAssignTernary(v, expr(cond), v, expr(elze)))
+                    Some(CFGAssign(v, CFGTernary( expr(cond), v, expr(elze)).setPos(ex)))
                 case Silence(value) =>
                     Some(CFGAssign(v, expr(value)))
                 case Execute(value) =>
-                    Some(CFGAssignFunctionCall(v, internalFunction("shell_exec").setPos(ex), List(CFGStringLit(value).setPos(ex))))
+                    Some(CFGAssign(v, CFGFunctionCall(internalFunction("shell_exec").setPos(ex), List(CFGStringLit(value).setPos(ex))).setPos(ex)))
                 case Print(value) =>
-                    Some(CFGAssignFunctionCall(v, internalFunction("print").setPos(ex), List(expr(value))))
+                    Some(CFGAssign(v, CFGFunctionCall(internalFunction("print").setPos(ex), List(expr(value))).setPos(ex)))
                 case Eval(value) =>
-                    Some(CFGAssignFunctionCall(v, internalFunction("eval").setPos(ex), List(expr(value))))
+                    Some(CFGAssign(v, CFGFunctionCall(internalFunction("eval").setPos(ex), List(expr(value))).setPos(ex)))
                 case Empty(va) =>
-                    Some(CFGAssignFunctionCall(v, internalFunction("empty").setPos(ex), List(expr(va))))
+                    Some(CFGAssign(v, CFGFunctionCall(internalFunction("empty").setPos(ex), List(expr(va))).setPos(ex)))
                 case FunctionCall(StaticFunctionRef(_, _, name), args) =>
-                    Some(CFGAssignFunctionCall(v, name, args map { a => expr(a.value) }))
+                    Some(CFGAssign(v, CFGFunctionCall(name, args map { a => expr(a.value) }).setPos(ex)))
                 case MethodCall(obj, StaticMethodRef(id), args) => 
-                    Some(CFGAssignMethodCall(v, expr(obj), id, args.map {a => expr(a.value) }))
+                    Some(CFGAssign(v, CFGMethodCall(expr(obj), id, args.map {a => expr(a.value) }).setPos(ex)))
                 case Array(Nil) =>
                     Some(CFGAssign(v, CFGEmptyArray()))
                 case New(cr, args) =>
@@ -286,7 +286,7 @@ object ASTToCFG {
                             if (vs.length > 1) {
                                 notyet(ex); // TODO
                             } else {
-                                Emit.statement(CFGAssignFunctionCall(v, internalFunction("isset"), List(expr(vs.first))).setPos(ex))
+                                Emit.statement(CFGAssign(v, CFGFunctionCall(internalFunction("isset"), List(expr(vs.first))).setPos(ex)).setPos(ex))
                             }
                         case Require(path, once) =>
                             notyet(ex); // TODO

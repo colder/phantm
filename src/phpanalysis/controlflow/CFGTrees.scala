@@ -31,20 +31,6 @@ object CFGTrees {
                              binOp: CFGBinaryOperator,
                              rhs: CFGSimpleValue) extends CFGStatement
 
-  case class CFGAssignTernary(variable: CFGVariable,
-                            test: CFGSimpleValue,
-                            then: CFGSimpleValue,
-                            elze: CFGSimpleValue) extends CFGStatement
-
-  case class CFGAssignFunctionCall(variable: CFGVariable,
-                                 id: parser.Trees.Identifier,
-                                 params: List[CFGSimpleValue]) extends CFGStatement
-
-  case class CFGAssignMethodCall(variable: CFGVariable,
-                                 receiver: CFGSimpleValue,
-                                 id: parser.Trees.Identifier,
-                                 params: List[CFGSimpleValue]) extends CFGStatement
-
 
   case class CFGError() extends CFGStatement {
     override def toString = stringRepr(this);
@@ -86,6 +72,17 @@ object CFGTrees {
   case class CFGArrayCurElement(ar: CFGSimpleValue) extends CFGSimpleValue
   case class CFGArrayCurKey(ar: CFGSimpleValue) extends CFGSimpleValue
   case class CFGArrayCurIsValid(ar: CFGSimpleValue) extends CFGSimpleValue
+
+  case class CFGTernary(cond: CFGSimpleValue,
+                         then: CFGSimpleValue,
+                         elze: CFGSimpleValue) extends CFGSimpleValue
+
+  case class CFGFunctionCall(id: parser.Trees.Identifier,
+                             params: List[CFGSimpleValue]) extends CFGSimpleValue
+
+  case class CFGMethodCall(receiver: CFGSimpleValue,
+                                 id: parser.Trees.Identifier,
+                                 params: List[CFGSimpleValue]) extends CFGSimpleValue
 
   case class CFGNew(cl: parser.Trees.ClassRef, params: List[CFGSimpleValue]) extends CFGSimpleValue
 
@@ -136,11 +133,11 @@ object CFGTrees {
     val assOp = " := "
 
     tree match {
-      case CFGAssignMethodCall(v, r, mid, p) => v + assOp + r + "->" + mid.value + p.mkString("(", ", ", ")")
-      case CFGAssignFunctionCall(v, fid, p) => v + assOp + fid.value + p.mkString("(", ", ", ")")
       case CFGAssignUnary(v, u, e) => v + assOp + u + e
       case CFGAssignBinary(v, l, b, r) => v + assOp + l + " " + b + " " + r
-      case CFGAssignTernary(v, i, then, elze) => v + assOp + i + " ? " + then + " : " + elze
+      case CFGMethodCall(r, mid, p) => r + "->" + mid.value + p.mkString("(", ", ", ")")
+      case CFGFunctionCall(fid, p) => fid.value + p.mkString("(", ", ", ")")
+      case CFGTernary(i, then, elze) => i + " ? " + then + " : " + elze
       case CFGAssign(v, e) => v + assOp + e
       case CFGSkip => "..."
       case CFGAssume(l, o, r) => "[" + l + o + r + "]"
