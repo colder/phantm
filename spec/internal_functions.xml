@@ -7043,7 +7043,7 @@
  <function name="mysql_insert_id">
   <return><type name="int"></type></return>
   <args>
-   <arg opt="0"><type name="int"></type></arg>
+   <arg opt="0"><type name="resource"></type></arg>
   </args>
  </function>
 
