@@ -160,7 +160,7 @@ object ASTToCFG {
       case _ => None
     }
  
-    def notyet(ex: Expression) = throw new Exception("Not yet implemented in CFG: "+ex);
+    def notyet(ex: Expression) = throw new Exception("Not yet implemented in CFG: "+ex+"("+ex.getPos+")");
 
     // If the assignation can easily be done, do it already
     def exprStore(v: CFGVariable, ex: Expression): CFGStatement = exprStoreGet(v, ex) match {

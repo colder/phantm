@@ -154,7 +154,16 @@ object TypeFlow {
                         case Some(TAnyArray) =>
                             TAny
                         case Some(t: TPreciseArray) =>
-                            t.entries.values.reduceLeft(TypeLattice.join)
+                            t.pollutedType match {
+                                case Some(pt) =>
+                                    pt
+                                case None =>
+                                    if (t.entries.size > 0) {
+                                        t.entries.values.reduceLeft(TypeLattice.join)
+                                    } else {
+                                        TNull
+                                    }
+                            }
                         case _ =>
                             TAny
                     }
@@ -349,7 +358,11 @@ object TypeFlow {
                                             for ((index, typ) <- newEntries) {
                                                 newEntries(index) = TypeLattice.join(pt, typ)
                                             }
-                                            Some(newEntries.values reduceLeft TypeLattice.join)
+                                            if (newEntries.size > 0) {
+                                                Some(newEntries.values reduceLeft TypeLattice.join)
+                                            } else {
+                                                Some(pt)
+                                            }
                                         case None => None
                                     }
 
@@ -473,25 +486,32 @@ object TypeFlow {
 
               }
 
-              case fcall @ CFGAssignFunctionCall(v: CFGSimpleVariable, id, args) =>
+              case fcall @ CFGAssignFunctionCall(vto, id, args) =>
 
-                GlobalSymbols.lookupFunction(id.value.toLowerCase) match {
+                val res = GlobalSymbols.lookupFunction(id.value.toLowerCase) match {
                     case Some(fs) =>
-                            env.inject(v, checkFCalls(fcall, List(functionSymbolToFunctionType(fs))))
+                            checkFCalls(fcall, List(functionSymbolToFunctionType(fs)))
                     case None =>
                         // handle special functions
                         id.value.toLowerCase match {
                             case "isset" | "empty" =>
-                                env.inject(v, TBoolean); // no need to check the args, this is a no-error function
+                                TBoolean // no need to check the args, this is a no-error function
                             case _ =>
                                 InternalFunctions.lookup(id) match {
                                     case Some(fts) =>
-                                        env.inject(v, checkFCalls(fcall, fts))
+                                        checkFCalls(fcall, fts)
                                     case None =>
                                         notice("Function "+id.value+" appears to be undefined!", id)
-                                        env.inject(v, TAny)
+                                        TAny
                                 }
                         }
+                }
+
+                vto match {
+                    case v : CFGSimpleVariable =>
+                        env.inject(v, res)
+                    case _ =>
+                        env
                 }
 
 
@@ -503,7 +523,7 @@ object TypeFlow {
               case ex: CFGSimpleValue =>
                 expect(ex, TAny);
                 env
-              case _ => println(node+" not yet handled"); env
+              case _ => notice(node+" not yet handled", node); env
           }
       }
     }
