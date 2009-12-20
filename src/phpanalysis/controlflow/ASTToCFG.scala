@@ -482,7 +482,7 @@ object ASTToCFG {
             if (level > controlStack.length) {
                 Reporter.error("Continue level exceeding control structure deepness.", s);
             } else {
-                Emit.statementCont(CFGSkip, controlStack(level-1)._1)
+                Emit.statementCont(CFGSkip.setPos(s), controlStack(level-1)._1)
             }
         case Continue(_) =>
             Reporter.notice("Dynamic continue statement ignored", s);
@@ -490,7 +490,7 @@ object ASTToCFG {
             if (level > controlStack.length) {
                 Reporter.error("Break level exceeding control structure deepness.", s);
             } else {
-                Emit.statementCont(CFGSkip, controlStack(level-1)._2)
+                Emit.statementCont(CFGSkip.setPos(s), controlStack(level-1)._2)
             }
         case Break(_) =>
             Reporter.notice("Dynamic break statement ignored", s);
@@ -500,7 +500,7 @@ object ASTToCFG {
                     Emit.statementCont(exprStore(idFromId(id), ex), cont)
                     Emit.setPC(cont);
                 case InitVariable(SimpleVariable(id), None) =>
-                    Emit.statementCont(CFGAssign(idFromId(id), CFGNull().setPos(id)), cont)
+                    Emit.statementCont(CFGAssign(idFromId(id), CFGNull().setPos(id)).setPos(s), cont)
                     Emit.setPC(cont);
                 case _ => // ignore
                     Emit.goto(cont)
@@ -511,7 +511,7 @@ object ASTToCFG {
             var nextEcho = cfg.newVertex
             var lastValidNext = nextEcho
             for (e <- exs) {
-                Emit.statementCont(CFGPrint(expr(e)), nextEcho)
+                Emit.statementCont(CFGPrint(expr(e)).setPos(s), nextEcho)
                 Emit.setPC(nextEcho)
                 lastValidNext = nextEcho
                 nextEcho = cfg.newVertex
@@ -520,14 +520,14 @@ object ASTToCFG {
             Emit.setPC(lastValidNext)
             Emit.goto(cont)
         case Html(content) =>
-            Emit.statementCont(CFGPrint(CFGStringLit(content)), cont)
+            Emit.statementCont(CFGPrint(CFGStringLit(content).setPos(s)).setPos(s), cont)
         case Void() =>
             Emit.goto(cont)
         case Unset(vars) =>
             var nextUnset = cfg.newVertex
             var lastValidNext = nextUnset
             for (v <- vars) {
-                Emit.statementCont(CFGUnset(varFromVar(v)), nextUnset)
+                Emit.statementCont(CFGUnset(varFromVar(v)).setPos(s), nextUnset)
                 Emit.setPC(nextUnset)
                 lastValidNext = nextUnset
                 nextUnset = cfg.newVertex

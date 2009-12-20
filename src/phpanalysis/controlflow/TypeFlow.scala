@@ -13,12 +13,21 @@ object TypeFlow {
         type E = Type
 
         def leq(x : Type, y : Type) = (x,y) match {
+            case (x, y) if x == y => true
+
             case (TNone, _) => true
             case (_, TAny) => true
             case (_, TBoolean) => true
             case (t1: TObjectRef, TAnyObject) => true
             case (t1: TPreciseArray, TAnyArray) => true
-            case (x, y) if x == y => true
+            case (t1: TPreciseArray, t2: TPreciseArray) =>
+                // TODO: make it more precise
+                (t1.pollutedType, t2.pollutedType) match {
+                    case (Some(pt1), Some(pt2)) =>
+                        leq(pt1, pt2)
+                    case _ =>
+                        false
+                }
             case (t1: TUnion, t2: TUnion) =>
                 (HashSet[Type]() ++ t1.types) subsetOf (HashSet[Type]() ++ t2.types)
             case (t1, t2: TUnion) =>
@@ -259,13 +268,20 @@ object TypeFlow {
 
             def expect(v1: CFGSimpleValue, typs: Type*): Type = {
                 val vtyp = typeFromSimpleValue(v1);
+                val etyp = typs reduceLeft TypeLattice.join
+                /*
                 for (t <- typs) {
                     if (TypeLattice.leq(vtyp, t)) {
                         return vtyp
                     }
                 }
-                notice("Potential type mismatch: expected: "+typs.toList.map{x => x.toText}.mkString(" or ")+", found: "+vtyp.toText, v1)
-                typs.toList.head
+                */
+                if (TypeLattice.leq(vtyp, etyp)) {
+                    vtyp
+                } else {
+                    notice("Potential type mismatch: expected: "+typs.toList.map{x => x.toText}.mkString(" or ")+", found: "+vtyp.toText, v1)
+                    typs.toList.head
+                }
             }
 
             def typeCheckBinOP(v1: CFGSimpleValue, op: CFGBinaryOperator, v2: CFGSimpleValue): Type = {
@@ -510,7 +526,17 @@ object TypeFlow {
               case CFGPrint(v) =>
                 expect(v, TInt, TString, TAnyObject);
                 env
-              case CFGUnset(id: CFGSimpleVariable) => env.inject(id, TNull); env
+              case CFGUnset(id) =>
+                id match {
+                    case v: CFGSimpleVariable =>
+                        env.inject(v, TNull)
+                    case _ =>
+                        env // TODO
+
+                }
+
+              case CFGSkip =>
+                env
 
               case ex: CFGSimpleValue =>
                 expect(ex, TAny);
