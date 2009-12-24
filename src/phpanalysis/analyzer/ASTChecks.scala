@@ -2,7 +2,7 @@ package phpanalysis.analyzer;
 
 import phpanalysis.parser.Trees._;
 
-case class CheckContext(topLevel: Boolean, inIfCond: Boolean);
+case class CheckContext(topLevel: Boolean, inCond: Boolean);
 
 case class ASTChecks(node: Tree, context: CheckContext) extends ASTTraversal[CheckContext](node, context) {
 
@@ -38,6 +38,15 @@ case class ASTChecks(node: Tree, context: CheckContext) extends ASTTraversal[Che
                 }
 
                 continue = false // Do not do twice
+
+            case x @ For(init, cond, step, body) =>
+                // New traversals
+                ASTChecks(init, CheckContext(false, false)).execute
+                ASTChecks(cond, CheckContext(false, true)).execute
+                ASTChecks(step, CheckContext(false, false)).execute
+                ASTChecks(body, CheckContext(false, false)).execute
+
+                continue = false // Do not do twice
             case x: While =>
                 newCtx = CheckContext(false, false)
             case x: DoWhile =>
@@ -54,7 +63,7 @@ case class ASTChecks(node: Tree, context: CheckContext) extends ASTTraversal[Che
                 }
             }
 
-            case a @ Assign(vr, vl, _) if ctx.inIfCond && Main.verbosity >= 2 => {
+            case a @ Assign(vr, vl, _) if ctx.inCond && Main.verbosity >= 2 => {
                 Reporter.notice("Potential mistake: assignation used in an if condition", node)
             }
 
