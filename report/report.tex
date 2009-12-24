@@ -3,6 +3,7 @@
 \documentclass[a4paper]{article}
 \usepackage[pdftex]{graphicx}
 \usepackage{float}
+\usepackage{hyperref}
 \floatstyle{ruled}
 \newfloat{listing}{hbtH}{lop}
 \floatname{listing}{Listing}
@@ -11,8 +12,6 @@
 \renewcommand{\floatpagefraction}{0.80} % This sets how much of the page must be taken by a float before that page can be ‘all’ floats
 
 \author{Etienne Kneuss\\
-\textsc{\small{Semester Project}}\\
-\textsc{\small{Summer '09}}\\
 \texttt{etienne.kneuss@epfl.ch}
 }
 \title{Static analysis for the PHP language}
@@ -30,37 +29,33 @@
 The PHP programming language is a compiled language. However, the compilation is
 done, by default, each time a certain php file is requested. This means that the
 compilation has to be fast and hence can't do much analysis and checks. Most of
-the checks are thus made at runtime. This project aims at providing a static
-analysis tool able to catch some programming errors that PHP would only report
-at runtime. Despite the fact that PHP is one of the most used programming language
-used to develop web applications, the ammount of work being put on static analysis
-is very limited. At this day, I'm only aware of one other tool providing static
-analysis for PHP, written in C++. However, the primary goal of such tool is
-not directly to provide feedback to developers.
-
+the checks are thus made at runtime. The purpose of this tool is to allow the
+developer to check its work for runtime-errors, without actually running its
+application. Those checks are mostly based on structural checks, coupled with
+a stricter type-system.
 \section{Design}
 This tool consists of a custom PHP compiler, translating the code
 into structures such as Abstract Syntax Trees (AST) and then Control Flow Graphs
-(CFG) which are needed in order to analyse aspects of the code. This compiler is
-divided into five distinct parts:
+(CFG). Fixpoint analysis is then performed on the CFGs. This compiler is
+divided into six distinct parts:
 \begin{enumerate}
   \item Lexing
   \item Parsing and Abstract Syntax Trees
   \item Semantic Analysis
   \item Crontrol Flow Graphs
+  \item Type flow Analysis
   \item Helpers
 \end{enumerate}
 
-Some sections were implemented in Java, since the tool used requires it, but the
-main part of the compiler is written in Scala.
-
 \subsection{Lexing}
-The lexer uses a modified version of JFlex\footnote{JFlex: http://jflex.de}. The
-original PHP compiler uses flex as scanner. The modification done to JFlex is
-the implementation of flex's \verb=yymore()=, which currently lacks in JFlex.
-This function is used to tell the scanner that the following rules should be
-appended to \verb=yytext= instead of overwriting it. The JFlex syntax file is an
-adapted version of the original flex file. This step was done in Java.
+The lexer uses a modified version of JFlex\footnote{JFlex: http://jflex.de}. It
+is thus written in java. The original PHP compiler uses flex as scanner. The
+modification done to JFlex is the implementation of flex's \verb=yymore()=,
+which currently lacks in JFlex. This function is used to tell the scanner that
+the following rules should be appended to \verb=yytext= instead of overwriting
+it. The tokens generated are closely related to those PHP 5.3.0 would generate.
+One notable difference is that we translated every single-char tokens to their
+respective name.
 
 \subsection{Parsing and Abstract Syntax Trees}
 The parser, as mentionned before, is based on a modified version of CUP. CUP is
@@ -105,19 +100,19 @@ the tree and decomposing syntax elements:
   \item \verb=child(node, index)= is used to access the N'th child
 \end{itemize}
 
-\begin{figure}
-  \begin{center}
-  \includegraphics[scale=0.3]{ST.jpg}
-  \end{center}
-  \caption{Syntax Tree for "\$a = 1 + \$b;"}
-\end{figure}
-
-\begin{figure}
-  \begin{center}
-  \includegraphics[scale=0.3]{AST.jpg}
-  \end{center}
-  \caption{Abstract Syntax Tree for "\$a = 1 + \$b;"}
-\end{figure}
+%\begin{figure}
+%  \begin{center}
+%  \includegraphics[scale=0.3]{ST.jpg}
+%  \end{center}
+%  \caption{Syntax Tree for "\$a = 1 + \$b;"}
+%\end{figure}
+%
+%\begin{figure}
+%  \begin{center}
+%  \includegraphics[scale=0.3]{AST.jpg}
+%  \end{center}
+%  \caption{Abstract Syntax Tree for "\$a = 1 + \$b;"}
+%\end{figure}
 
 \subsection{Semantic Analysis}
 Some checks can be done direcly by looking at the AST. Indeed, PHP provides a
@@ -162,6 +157,16 @@ This tool emits notices for the following issues:
     variable, or an expression\footnote{PHP Variable variables:
     http://php.net/variables.variable}: (\verb=$$var= or
     \verb=${'prefix'.$name.foo()}=).
+  \item Assignations in conditional expressions: assignations in PHP return the
+    value assigned, they are hence valid expressions inside conditional
+    expressions. However, history tells us that, most of the time, this is an
+    actual typographic error replacing the assignation operator \verb&=& with
+    the comparison operator \verb&==&. This tool will thus emit a warning if
+    such expression is found inside an \verb&if()& or \verb&for()& condition.
+    We exclude \verb&while()& on purpose as there is a common use-case where
+    assignations are done directly inside the \verb&while()&
+    expression\footnote{PHP mysql\_fetch\_assoc:
+    http://php.net/mysql\_fetch\_assoc}.
 \end{itemize}
 
 Another part of the semantic analysis consists of validating the usage of
@@ -231,10 +236,10 @@ derived from ASTs.
 Control flow graphs modelize the flow of values through the different control
 structures. It will be used here to detect unreachable branches of code, and to
 propagate types. Some basic type checks can be done, but since PHP does
-automatic type juggling, only few type errors resulting in fatal errors can
-occur. However this tool can be set to be verbose and emit notices for each
-type juggling, giving the chance to catch un-wanted type-juggling side effects.
-
+automatic type juggling, only few type errors can result in fatal errors.
+Even though the type error might be fatal, the purpose of this tool is to indicate
+any potential mistakes, since some valid PHP code may still contain programming
+mistakes.
 \begin{listing}
   \begin{verbatim}
 <?php
@@ -250,12 +255,12 @@ function test() {
   \label{cfg1}
 \end{listing}
 
-\begin{figure}
-  \begin{center}
-  \includegraphics[scale=0.3]{CFG1.jpg}
-  \end{center}
-  \caption{Control flow graph for Listing~\ref{cfg1}}
-\end{figure}
+%\begin{figure}
+%  \begin{center}
+%  \includegraphics[scale=0.3]{CFG1.jpg}
+%  \end{center}
+%  \caption{Control flow graph for Listing~\ref{cfg1}}
+%\end{figure}
 
 \begin{listing}
   \begin{verbatim}
@@ -273,12 +278,97 @@ function test() {
   \label{cfg2}
 \end{listing}
 
-\begin{figure}
-  \begin{center}
-  \includegraphics[scale=0.3]{CFG2.jpg}
-  \end{center}
-  \caption{Control flow graph for Listing~\ref{cfg2}, showing unreachable branches}
-\end{figure}
+%\begin{figure}
+%  \begin{center}
+%  \includegraphics[scale=0.3]{CFG2.jpg}
+%  \end{center}
+%  \caption{Control flow graph for Listing~\ref{cfg2}, showing unreachable branches}
+%\end{figure}
+
+\subsection{PHP overview}
+Before trying to see how to analyse PHP code, it is important to understand how PHP works,
+this is a small overview of the features PHP provides that are relevant to this analysis.
+\subsubsection{Types}
+In PHP, we have the following types:
+\begin{itemize}
+  \item \textbf{Booleans}
+  \item \textbf{Integers}
+  \item \textbf{Floating point numbers}
+  \item \textbf{Strings}
+  \item \textbf{Arrays}: Arrays in PHP are ordered hashmaps, allowing either strings or
+    integers as keys.  They can contain values of any type that may be mixed.
+  \item \textbf{Objects}
+  \item \textbf{Resources}: Resources represent special data types such as
+    file handle, database conection links. They can be of different types. PHP
+    extensions that define resource types are responsible of handling them
+    appropriately.
+  \item \textbf{Null}: This is the default type to any undefined or
+    uninitialized variable.
+\end{itemize}
+
+Because PHP is loosely typed, it will do implicit type conversions\footnote{PHP
+Type Juggling: php.net/language.types.type-juggling} with expressions invloving
+mixed types. For example, \verb&2 + ``42''& is a valid expression that will
+evaluate to $44$. Also, the type of any variable may change during the
+execution.  For example, \verb&$a = 2; $a = new Foo();& is perfectly valid.
+
+\subsubsection{Object Oriented Programing}
+PHP supports OOP as of PHP4, but many features have later been added into PHP5.
+The OO model as well as the syntax used is closely related to a subset of what
+Java offers: public/protected/private visibility, single inheritance, with the
+support of interfaces. PHP provides object properties, object methods, static
+properties, static methods and class constants. You can dynamically define an
+object property in PHP, its visibility will default to public. However, you
+cannot dynamically define methods, static members, or constants.
+
+\subsubsection{Limitation on analysis}
+Due to its dynamicity, many PHP features will get in the way of a sound analysis.
+Here is a non-exaustive list of such features:
+\begin{itemize}
+  \item \textbf{autoload}\footnote{PHP Autoload: http://php.net/autoload}:
+    PHP allows you to trigger a function call in case an undefined class was
+    used.  This function call is usually used to subsequently load the
+    appropriate class at runtime. This feature allows programmers to only load
+    classes on demand.
+  \item \textbf{\_\_call}\footnote{PHP Overloading: http://php.net/\_\_call}:
+    If a method call is defined in an object, calling an undefined method of
+    that object will instead call the \verb&__call& method, with the name of
+    the original method, and the arguments used.
+  \item \textbf{\_\_callStatic}:
+    This is similar to \verb&__call& but works for undefined static method
+    calls.
+  \item \textbf{\_\_get}\footnote{PHP Overloading: http://php.net/\_\_set}:
+    This method will get called in case an access to an undefined object
+    property is done. The value returned by the method will correspond to the
+    property value.
+  \item \textbf{ArrayAccess}\footnote{ArrayAccess Interface: http://php.net/arrayaccess}:
+    The ArrayAccess interface allows an object to be used as an array. For example,
+    if we have \verb&class Foo implements ArrayAccess&, then
+    \verb&$foo = new Foo; echo $foo['index']& is accepted.
+  \item \textbf{Dynamic accesses}
+    PHP allows multiple ways to dynamically access variables, classes, members\ldots
+    Here are a couple of examples:
+    \begin{itemize}
+      \item \verb/$$n/:
+        Accesses the variable named by the value of \verb/$n/.
+      \item \verb/$$$n/:
+        Accesses the variable named by the value of \verb/$$n/.
+      \item \verb/new $n()/:
+        Constructs an object of the class named by the value of \verb/$n/.
+      \item \verb/$c::$n()/:
+        Call the static function named by the value of \verb/$n/ on the class
+        named by the value of \verb/$n/.
+      \item \verb/$n()/:
+        Call the function named by the value of \verb/$n/.
+    \end{itemize}
+  \item \textbf{eval}\footnote{PHP Eval: http://php.net/eval}:
+    The \verb&eval()& construct allows a developer to evaluate the code passed in as a string.
+\end{itemize}
+
+\subsection{Typeflow analysis}
+The main focus of this analysis tool is on types. Even though PHP is dynamically typed,
+and provide very few indications of types. It is still interresting to try to infer types
+and check for type safety.
 
 \subsection{Helpers}
 In order to check that parts of the tool was working as expected, some helpers were
