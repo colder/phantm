@@ -254,9 +254,10 @@ object TypeFlow {
                                     notice("Potentially undefined array index "+stringRepr(ind), ar)
                                     TNone
                             }
-                        case _ =>
-                            println("Woops?? invlid type returned from expect");
-                            TAny
+                        case TNone => TNone
+                        case t =>
+                            println("Woops?? invlid type returned from expect: "+t);
+                            TNone
                     }
 
                 case CFGObjectProperty(obj, p) =>
@@ -537,7 +538,25 @@ object TypeFlow {
                                     TUnion(u.types.filter(t => t != TTrue))
                                 }
                             case t =>
-                                t
+                                if (value) {
+                                    if (t != TFalse && t != TNull) {
+                                        t
+                                    } else {
+                                        // we had a single incompatible type
+                                        // The branch will never be taken!
+                                        notice("Redundant or incompatible check", v);
+                                        TNone
+                                    }
+                                } else {
+                                    if (t != TTrue) {
+                                        t
+                                    } else {
+                                        // we had a single incompatible type
+                                        // The branch will never be taken!
+                                        notice("Redundant or incompatible check", v);
+                                        TNone
+                                    }
+                                }
                         }
                     }
                     var t1 = v1;

@@ -371,9 +371,15 @@ object Types {
             t2
         }
         def apply(ts: List[Type]): Type = {
-            val t = new TUnion;
-            t.types = ts;
-            t
+            if (ts.size == 1) {
+                ts.head
+            } else if (ts.size > 1) {
+                val t = new TUnion;
+                t.types = ts;
+                t
+            } else {
+                TNone
+            }
         }
         def apply(t1: Type, t2: Type): Type = {
             if (t1 == t2) {
