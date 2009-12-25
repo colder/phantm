@@ -309,6 +309,13 @@ object Types {
     case object TBoolean extends Type {
         override def toText = "boolean"
     }
+    case object TTrue extends Type {
+        override def toText = "true"
+    }
+    case object TFalse extends Type {
+        override def toText = "false"
+    }
+
     case object TFloat extends Type {
         override def toText = "float"
     }
@@ -355,8 +362,19 @@ object Types {
     }
 
     object TUnion extends Type {
-        def apply(t1: TUnion, t2: Type): Unit = t1 add t2
-        def apply(t1: Type, t2: TUnion): Unit = t2 add t1
+        def apply(t1: TUnion, t2: Type): Type = {
+            t1 add t2
+            t1
+        }
+        def apply(t1: Type, t2: TUnion): Type = {
+            t2 add t1
+            t2
+        }
+        def apply(ts: List[Type]): Type = {
+            val t = new TUnion;
+            t.types = ts;
+            t
+        }
         def apply(t1: Type, t2: Type): Type = {
             if (t1 == t2) {
                 t1

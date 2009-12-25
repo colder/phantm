@@ -18,6 +18,10 @@ object TypeFlow {
             case (TNone, _) => true
             case (_, TAny) => true
             case (_, TBoolean) => true
+            case (TFalse, TTrue) => false
+            case (TNull, TTrue) => false
+            case (TNull, TFalse) => true
+            case (_, TTrue) => true
             case (t1: TObjectRef, TAnyObject) => true
             case (t1: TPreciseArray, TAnyArray) => true
             case (t1: TPreciseArray, t2: TPreciseArray) =>
@@ -151,8 +155,8 @@ object TypeFlow {
             def typeFromSimpleValue(sv: CFGSimpleValue): Type = sv match {
                 case CFGNumLit(value) => TInt
                 case CFGStringLit(value) => TString
-                case CFGTrue() => TBoolean
-                case CFGFalse() => TBoolean
+                case CFGTrue() => TTrue
+                case CFGFalse() => TFalse
                 case CFGNull() => TNull
                 case CFGThis() => getObject(node, env.scope)
                 case CFGEmptyArray() => new TPreciseArray()
@@ -517,9 +521,56 @@ object TypeFlow {
 
               case CFGAssume(v1, op, v2) => op match {
                   case LT | LEQ | GEQ | GT =>
-                    expect(v1, TInt); expect(v2, TInt); env
+                    expect(v1, TInt, TFloat); expect(v2, TInt, TFloat); env
                   case EQUALS | IDENTICAL | NOTEQUALS | NOTIDENTICAL =>
-                    expect(v2, expect(v1, TAny)); env
+                    /**
+                     * Type filtering:
+                     * if v1 is a variable that is compared against True/False
+                     * we can filter incompatible values out
+                     */
+                    def filter(v: CFGSimpleVariable, value: Boolean): Type = {
+                        typeFromSimpleValue(v) match {
+                            case u: TUnion =>
+                                if (value) {
+                                    TUnion(u.types.filter(t => t != TFalse && t != TNull))
+                                } else {
+                                    TUnion(u.types.filter(t => t != TTrue))
+                                }
+                            case t =>
+                                t
+                        }
+                    }
+                    var t1 = v1;
+                    var t2 = v2;
+                    (v1, typeFromSimpleValue(v1), v2, typeFromSimpleValue(v2)) match {
+                        case (v: CFGSimpleVariable, TTrue , w: CFGSimpleVariable, _) =>
+                            // we benefit from a switch:
+                            t1 = v2;
+                            t2 = v1;
+                        case (v: CFGSimpleVariable, TFalse , w: CFGSimpleVariable, _) =>
+                            // we benefit from a switch:
+                            t1 = v2;
+                            t2 = v1;
+                        case (v: CFGSimpleVariable, _, _, _) =>
+                            // no change
+                        case (_, _, v: CFGSimpleVariable, _) =>
+                            t1 = v2;
+                            t2 = v1;
+                        case _ =>
+                            // no change, will be ignored anyway
+                    }
+                    (t1, op, typeFromSimpleValue(t2)) match  {
+                        case (v: CFGSimpleVariable, EQUALS, TFalse)  =>
+                            env.inject(v, filter(v, false))
+                        case (v: CFGSimpleVariable, NOTEQUALS, TFalse)  =>
+                            env.inject(v, filter(v, true))
+                        case (v: CFGSimpleVariable, EQUALS, TTrue)  =>
+                            env.inject(v, filter(v, true))
+                        case (v: CFGSimpleVariable, NOTEQUALS, TTrue)  =>
+                            env.inject(v, filter(v, false))
+                        case _ =>
+                            expect(v2, expect(v1, TAny)); env
+                    }
 
               }
 

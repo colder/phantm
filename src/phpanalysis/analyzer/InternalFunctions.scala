@@ -16,11 +16,13 @@ object InternalFunctions {
         case "mixed" => TAny
         case "long" => TInt
         case "int" => TInt
+        case "false" => TFalse
+        case "true" => TTrue
         case "null" => TNull
         case "number" => TInt
         case "integer" => TInt
-        case "float" => TInt
-        case "double" => TInt
+        case "float" => TFloat
+        case "double" => TFloat
         case "array" =>
             if ((elem \ "type").length > 0) {
                 new TPreciseArray(elemsToType(elem \ "type"))
