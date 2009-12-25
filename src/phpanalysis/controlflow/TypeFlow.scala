@@ -341,6 +341,9 @@ object TypeFlow {
           }
 
           def complexAssign(v: CFGVariable, ex: CFGSimpleValue): TypeEnvironment = {
+                complexAssignT(v, typeFromSimpleValue(ex));
+          }
+          def complexAssignT(v: CFGVariable, ext: Type): TypeEnvironment = {
                 var elems: List[(CFGSimpleValue, Type, Type)] = Nil;
 
                 def linearize(sv: CFGSimpleValue, checkType: Type, resultType: Type, pass: Int): Unit = {
@@ -369,12 +372,9 @@ object TypeFlow {
                 }
 
                 // We lineraize the recursive structure
-                val ext = typeFromSimpleValue(ex);
                 linearize(v, ext, ext, 0)
-
                 var e = env
 
-                //println("Assign: "+v+" = "+ex);
                 // Let's traverse all up to the last elem (the outermost assign)
                 for ((elem, ct, rt) <- elems.init) {
                     //println(" Checking for "+elem +"(actualType: "+typeFromSimpleValue(elem)+", checkType: "+ct+", resultType: "+rt+")");
@@ -481,7 +481,7 @@ object TypeFlow {
             syms filter protoFilter match {
                 case Nil =>
                     if (syms.size > 1) {
-                        error("Unmatched function prototype '("+fcall.params.map(typeFromSimpleValue).mkString(", ")+")', candidates are: "+syms.mkString(", "), fcall)
+                        error("Unmatched function prototype '("+fcall.params.map(typeFromSimpleValue).mkString(", ")+")', candidates are:\n    "+syms.mkString(",\n    "), fcall)
                         TNone
                     } else {
                         syms.first match {
@@ -508,14 +508,15 @@ object TypeFlow {
 
           node match {
               case CFGAssign(vr: CFGSimpleVariable, v1) =>
-                val e = env.inject(vr, typeFromSimpleValue(v1));
-                e
+                env.inject(vr, typeFromSimpleValue(v1))
+
               case CFGAssignBinary(vr: CFGSimpleVariable, v1, op, v2) =>
                 // We want to typecheck v1/v2 according to OP
                 env.inject(vr, typeCheckBinOP(v1, op, v2));
-              case CFGAssignBinary(_, v1, op, v2) =>
+
+              case CFGAssignBinary(ca: CFGVariable, v1, op, v2) =>
                 // We want to typecheck v1/v2 according to OP
-                typeCheckBinOP(v1, op, v2); env // todo: pollute env
+                complexAssignT(ca, typeCheckBinOP(v1, op, v2))
 
               case CFGAssign(ca: CFGVariable, ex) =>
                 complexAssign(ca, ex)
