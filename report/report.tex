@@ -234,26 +234,25 @@ derived from ASTs.
 
 \subsection{Control flow graphs}
 Control flow graphs modelize the flow of values through the different control
-structures. It will be used here to detect unreachable branches of code, and to
-propagate types. Some basic type checks can be done, but since PHP does
-automatic type juggling, only few type errors can result in fatal errors.
-Even though the type error might be fatal, the purpose of this tool is to indicate
-any potential mistakes, since some valid PHP code may still contain programming
-mistakes.
-\begin{listing}
-  \begin{verbatim}
-<?php
-function test() {
-  $a = 0;
-  for($i = 0; $i < 10; $i++) {
-    $a += $i;
-  }
-}
-?>
-  \end{verbatim}
-  \caption{Control structure example}
-  \label{cfg1}
-\end{listing}
+structures. Because PHP is dynamically typed, and since variables cannot be
+declared, it is impossible to infer and check types solely based on the
+structural representation of the code. For such tasks, we require CFGs to
+be able to reproduce the flow of types that would happen in an execution
+of the code. The main focus of this analysis will be on analysing type flows.
+%\begin{listing}
+%  \begin{verbatim}
+%<?php
+%function test() {
+%  $a = 0;
+%  for($i = 0; $i < 10; $i++) {
+%    $a += $i;
+%  }
+%}
+%?>
+%  \end{verbatim}
+%  \caption{Control structure example}
+%  \label{cfg1}
+%\end{listing}
 
 %\begin{figure}
 %  \begin{center}
@@ -262,21 +261,21 @@ function test() {
 %  \caption{Control flow graph for Listing~\ref{cfg1}}
 %\end{figure}
 
-\begin{listing}
-  \begin{verbatim}
-<?php
-function test() {
-  $a = 0;
-  for($i = 0; $i < 10; $i++) {
-    break;
-    $a += $i;
-  }
-}
-?>
-  \end{verbatim}
-  \caption{Control structure with unreachable code}
-  \label{cfg2}
-\end{listing}
+%\begin{listing}
+%  \begin{verbatim}
+%<?php
+%function test() {
+%  $a = 0;
+%  for($i = 0; $i < 10; $i++) {
+%    break;
+%    $a += $i;
+%  }
+%}
+%?>
+%  \end{verbatim}
+%  \caption{Control structure with unreachable code}
+%  \label{cfg2}
+%\end{listing}
 
 %\begin{figure}
 %  \begin{center}
@@ -285,6 +284,7 @@ function test() {
 %  \caption{Control flow graph for Listing~\ref{cfg2}, showing unreachable branches}
 %\end{figure}
 
+\section{Analysis}
 \subsection{PHP overview}
 Before trying to see how to analyse PHP code, it is important to understand how PHP works,
 this is a small overview of the features PHP provides that are relevant to this analysis.
@@ -321,7 +321,7 @@ properties, static methods and class constants. You can dynamically define an
 object property in PHP, its visibility will default to public. However, you
 cannot dynamically define methods, static members, or constants.
 
-\subsubsection{Limitation on analysis}
+\subsubsection{Limitations on analysis}
 Due to its dynamicity, many PHP features will get in the way of a sound analysis.
 Here is a non-exaustive list of such features:
 \begin{itemize}
@@ -366,9 +366,51 @@ Here is a non-exaustive list of such features:
 \end{itemize}
 
 \subsection{Typeflow analysis}
-The main focus of this analysis tool is on types. Even though PHP is dynamically typed,
-and provide very few indications of types. It is still interresting to try to infer types
-and check for type safety.
+As said earlier, the main focus of this analysis tool is on types. Even though
+PHP is dynamically typed, and provides very few indications of types. It is
+still interresting to try to infer types and check for type safety.
+
+\subsubsection{Type lattice}
+We now provide a detailled description of every elements of our type lattice:
+\begin{itemize}
+  \item \verb=TAny= ($\top$): Top of our lattice, represents any type
+  \item \verb=TNone= ($\bot$): Bottom of our lattice, represents no type
+  \item \verb=TBoolean=: Any boolean type.
+  \item \verb=TFalse=, \verb=TTrue= : True/False types, used for conditional
+    type filtering.
+  \item \verb=TInt=: Integers
+  \item \verb=TFloat=: Floating point numbers
+  \item \verb=TResource=: Resources. We make no distinction between resources
+    of different types. This could be improved in the future.
+  \item \verb=TNull=: Null value.
+  \item \verb=TString=: Strings
+\end{itemize}
+
+We first introduce two types, \verb=TAny= representing any type and
+\verb=TNone= representing no type. First of all, the type \verb=Boolean= was
+split into \verb=TTrue= and \verb=TFalse=, this allows for a more precise type
+filtering on conditionals.  For simplicity reasons, both integers and floating
+point numbers were considered as being of type \verb=TInt=. This could be
+refined to provide more precise errors, but since integers and floats work very
+similarly in PHP, the distinction has not been shown to be useful yet. Arrays
+have a more sophisticated model. An array can be of three types:
+\begin{itemize}
+  \item \verb=TAnyArray=: we know nothing about the content of this array, any
+    lookup will return the type \verb=TAny=.
+  \item \verb=TPreciseArray=: we keep key-type associations for every entries
+    in that array. This array is completely determined. A lookup to a key not
+    defined will generate a notice.
+  \item Polluted \verb=TPreciseArray=: we still keep key-type associations for
+    every entries that we know of, but since this array has been ``polluted'',
+    we keep a so--called ``polluted type'' that represent the possible type for
+    any undefined key lookup. For example, the following code would induce a
+    polluted array: \verb%$a = array('a' => 'b'); $a[$n] = 2;%. The array type
+    would be $(a \rightarrow TInt|TString)$ with polluted type $TInt$
+
+\end{itemize}
+
+Object types follow the same model as arrays, only that a class can be provided
+for fully or partially defined objects.
 
 \subsection{Helpers}
 In order to check that parts of the tool was working as expected, some helpers were
@@ -385,7 +427,7 @@ Those helpers were used to generate the figures presented in this report.
 
 \section{Limitations and future work}
 As the timespan of this project was only one semester, only some limited
-analysis has been done, and some shortcuts were taken.  For example, PHP
+analysis has been done, and some shortcuts were taken. For example, PHP
 references were ignored as they add much more complexity to the process, while
 their usage is limited. Additionally, even though the code base for the syntax
 is PHP 5.3, some of its features such as namespaces or closures has been left
