@@ -23,8 +23,8 @@ object TypeFlow {
             case (TNull, TFalse) => true
             case (_, TTrue) => true
             case (t1: TObjectRef, TAnyObject) => true
-            case (t1: TPreciseArray, TAnyArray) => true
-            case (t1: TPreciseArray, t2: TPreciseArray) =>
+            case (t1: TArray, TAnyArray) => true
+            case (t1: TArray, t2: TArray) =>
                 // TODO: make it more precise
                 (t1.pollutedType, t2.pollutedType) match {
                     case (Some(pt1), Some(pt2)) =>
@@ -63,9 +63,9 @@ object TypeFlow {
                 }
 
             // Arrays
-            case (TAnyArray, t: TPreciseArray) => TAnyArray
-            case (t: TPreciseArray, TAnyArray) => TAnyArray
-            case (t1: TPreciseArray, t2: TPreciseArray) => t1 merge t2
+            case (TAnyArray, t: TArray) => TAnyArray
+            case (t: TArray, TAnyArray) => TAnyArray
+            case (t1: TArray, t2: TArray) => t1 merge t2
 
             // Unions
             case (t1, t2) => TUnion(t1, t2)
@@ -159,14 +159,14 @@ object TypeFlow {
                 case CFGFalse() => TFalse
                 case CFGNull() => TNull
                 case CFGThis() => getObject(node, env.scope)
-                case CFGEmptyArray() => new TPreciseArray()
+                case CFGEmptyArray() => new TArray()
                 case CFGInstanceof(lhs, cl) => TBoolean
                 case CFGArrayNext(ar) => typeFromSimpleValue(ar)
                 case CFGArrayCurElement(id: CFGSimpleVariable) =>
                     env.lookup(id) match {
                         case Some(TAnyArray) =>
                             TAny
-                        case Some(t: TPreciseArray) =>
+                        case Some(t: TArray) =>
                             t.pollutedType match {
                                 case Some(pt) =>
                                     pt
@@ -247,7 +247,7 @@ object TypeFlow {
                     expect(ind, TString, TInt)
 
                     expect(ar, TAnyArray) match {
-                        case t: TArray =>
+                        case t: ArrayType =>
                             t.lookup(ind) match {
                                 case Some(t) => t
                                 case None =>
@@ -354,14 +354,14 @@ object TypeFlow {
                             // The check type depends on the pass (i.e. deepness)
                             // pass == 0 means this is the most outer assign,
                             // which only needs to be checked against AnyArray
-                            val rt = new TPreciseArray().inject(index, resultType);
-                            val ct = if (pass > 0) new TPreciseArray().inject(index, checkType) else TAnyArray;
+                            val rt = new TArray().inject(index, resultType);
+                            val ct = if (pass > 0) new TArray().inject(index, checkType) else TAnyArray;
 
                             linearize(arr, ct, rt, pass+1)
                         case CFGNextArrayEntry(arr) =>
                             // ditto ArrayEntry
-                            val rt = new TPreciseArray().injectNext(resultType, arr);
-                            val ct = if (pass > 0) new TPreciseArray().injectNext(checkType, arr) else TAnyArray;
+                            val rt = new TArray().injectNext(resultType, arr);
+                            val ct = if (pass > 0) new TArray().injectNext(checkType, arr) else TAnyArray;
 
                             linearize(arr, ct, rt, pass+1)
                         case _ =>
@@ -381,7 +381,7 @@ object TypeFlow {
                     val resultingType = (rt, typeFromSimpleValue(elem)) match {
                         // If both the type resulting from the assign and the
                         // previous type are arrays: we merge
-                        case (a: TArray, b: TArray) =>
+                        case (a: ArrayType, b: ArrayType) =>
                             // assignMerge will recursively merge types of recursive arrays
                             // we cannot use Lattice.Join as we do not want unions.
                             // i.e. $a['foo']['bar'] = 2; $a['foo']['bar'] =
@@ -390,7 +390,7 @@ object TypeFlow {
                             // but
                             //    $a -> Array[foo => Array[bar => String]]
                             def assignMerge(from: Type, to: Type): Type = (from,to) match {
-                                case (from: TPreciseArray, to: TPreciseArray) =>
+                                case (from: TArray, to: TArray) =>
                                     import scala.collection.mutable.HashMap
                                     import Math.max
 
@@ -426,13 +426,13 @@ object TypeFlow {
                                         case None => None
                                     }
 
-                                    new TPreciseArray(newEntries, newPollutedType, max(from.nextFreeIndex, to.nextFreeIndex))
+                                    new TArray(newEntries, newPollutedType, max(from.nextFreeIndex, to.nextFreeIndex))
                                 // In case not both types are not arrays, we
                                 // always end up with the target type
                                 case (a, b) => b
                             }
                             assignMerge(b, a)
-                        case (a: TArray, b) =>
+                        case (a: ArrayType, b) =>
                             rt
                         case _ =>
                             println("Woooops?? Why is that type here, resulting type should be an Array !?")

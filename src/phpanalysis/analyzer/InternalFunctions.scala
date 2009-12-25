@@ -25,7 +25,7 @@ object InternalFunctions {
         case "double" => TFloat
         case "array" =>
             if ((elem \ "type").length > 0) {
-                new TPreciseArray(elemsToType(elem \ "type"))
+                new TArray(elemsToType(elem \ "type"))
             } else {
                 TAnyArray
             }
