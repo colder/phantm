@@ -6906,7 +6906,7 @@
  </function>
 
  <function name="mysql_fetch_array">
-  <return><type name="array"><type name="string" /></type></return>
+  <return><type name="array"><type name="string" /></type><type name="false" /></return>
   <args>
    <arg opt="0"><type name="resource"></type></arg>
    <arg opt="0"><type name="int"></type></arg>
@@ -6914,7 +6914,7 @@
  </function>
 
  <function name="mysql_fetch_assoc">
-  <return><type name="array"><type name="string" /></type></return>
+  <return><type name="array"><type name="string" /></type><type name="false" /></return>
   <args>
    <arg opt="0"><type name="resource"></type></arg>
   </args>
@@ -6945,7 +6945,7 @@
  </function>
 
  <function name="mysql_fetch_row">
-  <return><type name="array"><type name="string" /></type></return>
+  <return><type name="array"><type name="string" /></type><type name="false" /></return>
   <args>
    <arg opt="0"><type name="resource"></type></arg>
   </args>
