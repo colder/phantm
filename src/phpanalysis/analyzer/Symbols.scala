@@ -45,6 +45,17 @@ object Symbols {
       case None => variables += ((cs.name, cs))
       case Some(x) => /* no error */
     }
+
+    def registerPredefVariables = {
+        registerVariable(new VariableSymbol("_GET"))
+        registerVariable(new VariableSymbol("_POST"))
+        registerVariable(new VariableSymbol("_ENV"))
+        registerVariable(new VariableSymbol("_COOKIE"))
+        registerVariable(new VariableSymbol("_REQUEST"))
+        registerVariable(new VariableSymbol("_SESSION"))
+        registerVariable(new VariableSymbol("_SERVER"))
+    }
+
   }
 
   object GlobalSymbols extends Scope {
@@ -84,6 +95,8 @@ object Symbols {
     def getClasses: List[ClassSymbol] = classes map { x => x._2 } toList
     def getFunctions: List[FunctionSymbol] = functions map { x => x._2 } toList
     def getConstants: List[ConstantSymbol] = constants map { x => x._2 } toList
+
+    registerPredefVariables
   }
 
   class FunctionSymbol(val name: String) extends Symbol with Scope {
@@ -117,6 +130,8 @@ object Symbols {
     }
 
     def getArguments = argList map { x => x._2} toList
+
+    registerPredefVariables
   }
 
   abstract class MemberVisibility {
@@ -135,7 +150,13 @@ object Symbols {
     override def stricterThan(o: MemberVisibility) = o == MVPublic
   }
 
-  class MethodSymbol(val cs: ClassSymbol, name: String, val visibility: MemberVisibility) extends FunctionSymbol(name);
+  class MethodSymbol(val cs: ClassSymbol, name: String, val visibility: MemberVisibility) extends FunctionSymbol(name) {
+    override def registerPredefVariables = {
+        super.registerPredefVariables
+        registerVariable(new VariableSymbol("this"))
+    }
+
+  }
   class PropertySymbol(val cs: ClassSymbol, name: String, val visibility: MemberVisibility, val typ: Type) extends VariableSymbol(name);
   class ClassConstantSymbol(val cs: ClassSymbol,  name: String, val typ: Type) extends ConstantSymbol(name);
 

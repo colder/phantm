@@ -136,7 +136,7 @@ object ASTToCFG {
     def idFromId(id: Identifier): CFGIdentifier = {
         // should be enforced by type checking and by construction
         id.getSymbol match {
-            case vs: VariableSymbol => 
+            case vs: VariableSymbol =>
                 CFGIdentifier(vs).setPos(id)
             case _ => error("Woooot?");
         }

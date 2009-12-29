@@ -110,6 +110,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
         for (val m <- cd.methods) {
             val ms = new MethodSymbol(cs, m.name.value, getVisibility(m.flags)).setPos(m)
             cs.registerMethod(ms)
+            m.name.setSymbol(ms)
             for (a <- m.args) {
                 val vs = new VariableSymbol(a.v.name.value).setPos(a.v)
                 var t: Type = a.hint match {
@@ -230,7 +231,28 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
                 GlobalSymbols.lookupClass(id.value) match {
                     case Some(cs) =>
                         id.setSymbol(cs)
-                    case None => Reporter.error("Undefined class "+id.value, id);
+                    case None =>
+                        ctx.cl match {
+                            case Some(cs) =>
+                                if (id.value == "self") {
+                                    id.setSymbol(cs)
+                                } else if (id.value == "parent") {
+                                    cs.parent match {
+                                        case Some(pcs) =>
+                                            id.setSymbol(cs)
+                                        case None =>
+                                            Reporter.error("Class '"+cs.name+"' has no parent", id);
+                                    }
+                                } else if (id.value == "static") {
+                                    // can't do much with that, it's runtime dependant
+                                    // setting symbol of self..
+                                    id.setSymbol(cs)
+                                }
+                            case None =>
+                                if (id.value == "self" || id.value == "parent" || id.value == "static") {
+                                    Reporter.error(id.value+" cannot be used outside of a class definition", id);
+                                }
+                        }
                 }
 
             case _ =>

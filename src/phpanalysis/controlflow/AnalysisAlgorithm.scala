@@ -32,6 +32,8 @@ class AnalysisAlgorithm[E <: Environment[E],S]
       var toProcess = List(cfg.entry)
       var processed = HashSet[Vertex]();
 
+      facts(cfg.entry) = baseEnv
+
       while (toProcess != Nil) {
         val v = toProcess.head
         toProcess = toProcess.tail

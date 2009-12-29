@@ -225,7 +225,7 @@ object TypeFlow {
                                     // Check for magic __call ?
                                     if (or.lookupMethod("__call", env.scope) == None) {
                                         notice("Undefined method '" + mid.value + "' in object "+or, mid)
-                                        TNull
+                                        TNone
                                     } else {
                                         TAny
                                     }
@@ -241,7 +241,7 @@ object TypeFlow {
                     case None =>
                         notice("Potentially undefined variable "+stringRepr(id), id)
                         TNone
-                  }
+                }
 
                 case CFGArrayEntry(ar, ind) =>
                     expect(ind, TString, TInt)
@@ -270,8 +270,9 @@ object TypeFlow {
                                     notice("Potentially undefined object property '"+stringRepr(p)+"'", op)
                                     TNone
                             }
-                        case _ =>
-                            println("Woops?? invlid type returned from expect");
+                        case TNone => TNone
+                        case t =>
+                            println("Woops?? invlid type returned from expect: "+t);
                             TAny
                     }
 
@@ -353,10 +354,7 @@ object TypeFlow {
                 }
           }
 
-          def complexAssign(v: CFGVariable, ex: CFGSimpleValue): TypeEnvironment = {
-                complexAssignT(v, typeFromSimpleValue(ex));
-          }
-          def complexAssignT(v: CFGVariable, ext: Type): TypeEnvironment = {
+          def complexAssign(v: CFGVariable, ext: Type): TypeEnvironment = {
                 var elems: List[(CFGSimpleValue, Type, Type)] = Nil;
 
                 def linearize(sv: CFGSimpleValue, checkType: Type, resultType: Type, pass: Int): Unit = {
@@ -529,10 +527,10 @@ object TypeFlow {
 
               case CFGAssignBinary(ca: CFGVariable, v1, op, v2) =>
                 // We want to typecheck v1/v2 according to OP
-                complexAssignT(ca, typeCheckBinOP(v1, op, v2))
+                complexAssign(ca, typeCheckBinOP(v1, op, v2))
 
               case CFGAssign(ca: CFGVariable, ex) =>
-                complexAssign(ca, ex)
+                complexAssign(ca, typeFromSimpleValue(ex))
 
               case CFGAssume(v1, op, v2) => op match {
                   case LT | LEQ | GEQ | GT =>
@@ -630,12 +628,43 @@ object TypeFlow {
       }
     }
 
-    case class Analyzer(cfg: CFG, scope: Option[ClassSymbol]) {
+    case class Analyzer(cfg: CFG, scope: Scope) {
 
+        def setupEnvironment: TypeEnvironment = {
+            var baseEnv   = new TypeEnvironment;
+
+            // We now inject predefined variables
+            def injectPredef(name: String, typ: Type): Unit = {
+                scope.lookupVariable(name) match {
+                    case Some(vs) =>
+                        baseEnv = baseEnv.inject(CFGIdentifier(vs), typ)
+                    case None =>
+                        // ignore this var
+                        println("Woops, no such symbol found: "+name)
+                }
+            }
+
+            scope match {
+                case ms: MethodSymbol =>
+                    injectPredef("this", ObjectStore.getOrCreate(-1, Some(ms.cs)))
+                case _ =>
+            }
+
+            injectPredef("_GET",     new TArray(TNone))
+            injectPredef("_POST",    new TArray(TNone))
+            injectPredef("_REQUEST", new TArray(TNone))
+            injectPredef("_COOKIE",  new TArray(TNone))
+            injectPredef("_SERVER",  new TArray(TNone))
+            injectPredef("_ENV",     new TArray(TNone))
+            injectPredef("_SESSION", new TArray(TNone))
+
+            baseEnv
+        }
 
         def analyze = {
             val bottomEnv = BaseTypeEnvironment;
-            val baseEnv   = new TypeEnvironment;
+            val baseEnv   = setupEnvironment;
+
             val aa = new AnalysisAlgorithm[TypeEnvironment, CFGStatement](TypeTransferFunction(true), bottomEnv, baseEnv, cfg)
 
             aa.init
