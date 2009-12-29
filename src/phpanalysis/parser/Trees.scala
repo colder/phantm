@@ -16,30 +16,30 @@ object Trees {
     case class ConstantDecl(v: Identifier, value: Expression) extends Tree;
 
     abstract class ClassFlag extends Tree
-    object CFNormal extends ClassFlag
-    object CFAbstract extends ClassFlag
-    object CFFinal extends ClassFlag
+    case object CFNormal extends ClassFlag
+    case object CFAbstract extends ClassFlag
+    case object CFFinal extends ClassFlag
 
     abstract class TypeHint extends Tree
-    object THString extends TypeHint
-    object THInt extends TypeHint
-    object THBoolean extends TypeHint
-    object THFloat extends TypeHint
-    object THArray extends TypeHint
+    case object THString extends TypeHint
+    case object THInt extends TypeHint
+    case object THBoolean extends TypeHint
+    case object THFloat extends TypeHint
+    case object THArray extends TypeHint
     case class THObject(cl: ClassRef) extends TypeHint
 
     abstract class MemberFlag extends Tree
-    object MFAbstract extends MemberFlag
-    object MFPublic extends MemberFlag
-    object MFProtected extends MemberFlag
-    object MFPrivate extends MemberFlag
-    object MFFinal extends MemberFlag
-    object MFStatic extends MemberFlag
+    case object MFAbstract extends MemberFlag
+    case object MFPublic extends MemberFlag
+    case object MFProtected extends MemberFlag
+    case object MFPrivate extends MemberFlag
+    case object MFFinal extends MemberFlag
+    case object MFStatic extends MemberFlag
 
     abstract class NSRoot extends Tree
-    object NSNone extends NSRoot /* foo\Bar */
-    object NSGlobal extends NSRoot /* \foo\Bar */
-    object NSCurrent extends NSRoot /* namespace\foo\Bar */
+    case object NSNone extends NSRoot /* foo\Bar */
+    case object NSGlobal extends NSRoot /* \foo\Bar */
+    case object NSCurrent extends NSRoot /* namespace\foo\Bar */
 
     abstract class ClassRef extends Tree
     case class VarClassRef(v: Variable) extends ClassRef

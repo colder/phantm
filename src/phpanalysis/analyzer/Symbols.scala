@@ -60,17 +60,17 @@ object Symbols {
       case Some(x) => Reporter.error("Interface " + is.name + " already declared (previously declared in "+x.getPos+")", is)
     }
 
-    def lookupClass(n: String): Option[ClassSymbol] = classes.get(n)
+    def lookupClass(n: String): Option[ClassSymbol] = classes.get(n.toLowerCase)
 
-    def registerClass(cs: ClassSymbol) : Unit = classes.get(cs.name) match {
-      case None => classes += ((cs.name, cs))
+    def registerClass(cs: ClassSymbol) : Unit = classes.get(cs.name.toLowerCase) match {
+      case None => classes += ((cs.name.toLowerCase, cs))
       case Some(x) => Reporter.error("Class " + cs.name + " already declared (previously declared in "+x.getPos+")", cs)
     }
 
-    def lookupFunction(n: String): Option[FunctionSymbol] = functions.get(n)
+    def lookupFunction(n: String): Option[FunctionSymbol] = functions.get(n.toLowerCase)
 
-    def registerFunction(fs: FunctionSymbol) : Unit = functions.get(fs.name) match {
-      case None => functions += ((fs.name, fs))
+    def registerFunction(fs: FunctionSymbol) : Unit = functions.get(fs.name.toLowerCase) match {
+      case None => functions += ((fs.name.toLowerCase, fs))
       case Some(x) => Reporter.error("Function " + fs.name + " already declared (previously declared in "+x.getPos+")", fs)
     }
 

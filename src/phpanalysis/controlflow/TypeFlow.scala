@@ -181,18 +181,18 @@ object TypeFlow {
                 case CFGArrayCurIsValid(ar) => expect(ar, TAnyArray); TBoolean
                 case CFGNew(cr, params) => cr match {
                     case parser.Trees.StaticClassRef(_, _, id) =>
-                        id.getSymbol match {
-                            case cs: ClassSymbol =>
-                                getObject(node, Some(cs))
+                        GlobalSymbols.lookupClass(id.value) match {
+                            case a @ Some(cs) =>
+                                getObject(node, a)
                             case _ =>
-                                Predef.error("Incoherent symbol type for class name")
+                                Predef.error("Undefined class '"+id.value+"'")
                                 getObject(node, None)
                         }
                     case _ =>
                         getObject(node, None)
                 }
                 case fcall @ CFGFunctionCall(id, args) =>
-                    GlobalSymbols.lookupFunction(id.value.toLowerCase) match {
+                    GlobalSymbols.lookupFunction(id.value) match {
                         case Some(fs) =>
                                 checkFCalls(fcall, List(functionSymbolToFunctionType(fs)))
                         case None =>
@@ -256,9 +256,17 @@ object TypeFlow {
                     }
 
                 case CFGObjectProperty(obj, p) =>
-                    expect(obj, TAnyObject);
+                    expect(p, TString);
+                    expect(obj, TAnyObject) match {
+                        case t: TObject =>
+                            TAny
+                        case _ =>
+                            println("Woops?? invlid type returned from expect");
+                            TAny
+                    }
 
-                case _ =>
+                case u =>
+                  println("Unknown simple value: "+u)
                   TAny
             }
 
@@ -369,7 +377,6 @@ object TypeFlow {
 
                 var e = env
 
-                //println("Assign: "+v+" = "+ex);
                 // Let's traverse all up to the last elem (the outermost assign)
                 for ((elem, ct, rt) <- elems.init) {
                     //println(" Checking for "+elem +"(actualType: "+typeFromSimpleValue(elem)+", checkType: "+ct+", resultType: "+rt+")");
