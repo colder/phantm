@@ -183,7 +183,7 @@ object Types {
         }
     }
 
-    abstract class TArray(pollutedType: Option[Type]) extends Type {
+    abstract class ArrayType(pollutedType: Option[Type]) extends Type {
         self=>
         import controlflow.CFGTrees._
         def lookup(index: String): Option[Type];
@@ -200,10 +200,10 @@ object Types {
         }
         def injectNext(typ: Type, p: Positional): self.type;
         def pollute(typ: Type): self.type;
-        def duplicate: TArray;
+        def duplicate: ArrayType;
     }
 
-    case object TAnyArray extends TArray(Some(TAny)) {
+    case object TAnyArray extends ArrayType(Some(TAny)) {
         def lookup(index: String) = Some(TAny)
         def inject(index: String, typ: Type) = this
         def injectNext(typ: Type, p: Positional) = this
@@ -213,9 +213,9 @@ object Types {
         override def toText = "any array"
     }
 
-    class TPreciseArray(val entries: Map[String, Type],
-                        var pollutedType: Option[Type],
-                        var nextFreeIndex: Int) extends TArray(pollutedType) {
+    class TArray(val entries: Map[String, Type],
+                 var pollutedType: Option[Type],
+                 var nextFreeIndex: Int) extends ArrayType(pollutedType) {
         self =>
 
         var pushPositions = HashSet[String]()
@@ -266,7 +266,7 @@ object Types {
             }
         }
 
-        def merge(a2: TPreciseArray): TPreciseArray = {
+        def merge(a2: TArray): TArray = {
             import Math.max
 
             val newPollutedType = (pollutedType, a2.pollutedType) match {
@@ -285,17 +285,17 @@ object Types {
                 }
             }
 
-            new TPreciseArray(newEntries, newPollutedType, max(nextFreeIndex, a2.nextFreeIndex))
+            new TArray(newEntries, newPollutedType, max(nextFreeIndex, a2.nextFreeIndex))
         }
 
         override def equals(t: Any): Boolean = t match {
-            case ta: TPreciseArray =>
+            case ta: TArray =>
                 entries == ta.entries && pollutedType == ta.pollutedType
             case _ => false
         }
 
         def duplicate = {
-            new TPreciseArray(HashMap[String, Type]() ++ entries, pollutedType, nextFreeIndex)
+            new TArray(HashMap[String, Type]() ++ entries, pollutedType, nextFreeIndex)
         }
 
         override def toString =
@@ -309,6 +309,13 @@ object Types {
     case object TBoolean extends Type {
         override def toText = "boolean"
     }
+    case object TTrue extends Type {
+        override def toText = "true"
+    }
+    case object TFalse extends Type {
+        override def toText = "false"
+    }
+
     case object TFloat extends Type {
         override def toText = "float"
     }
@@ -355,8 +362,25 @@ object Types {
     }
 
     object TUnion extends Type {
-        def apply(t1: TUnion, t2: Type): Unit = t1 add t2
-        def apply(t1: Type, t2: TUnion): Unit = t2 add t1
+        def apply(t1: TUnion, t2: Type): Type = {
+            t1 add t2
+            t1
+        }
+        def apply(t1: Type, t2: TUnion): Type = {
+            t2 add t1
+            t2
+        }
+        def apply(ts: List[Type]): Type = {
+            if (ts.size == 1) {
+                ts.head
+            } else if (ts.size > 1) {
+                val t = new TUnion;
+                t.types = ts;
+                t
+            } else {
+                TNone
+            }
+        }
         def apply(t1: Type, t2: Type): Type = {
             if (t1 == t2) {
                 t1
