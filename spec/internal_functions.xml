@@ -1,3 +1,4 @@
+<!-- PHP Internal functions API -->
 <functions>
  <function name="display_disabled_function">
   <return><type name="void"></type></return>
