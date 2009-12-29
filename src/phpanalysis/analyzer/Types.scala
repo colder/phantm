@@ -50,6 +50,9 @@ object Types {
         def lookupField(index: String): Option[Type];
         def lookupMethod(index: String, from: Option[ClassSymbol]): Option[FunctionType];
         def injectField(index: String, typ: Type) : self.type;
+
+        def pollutedType: Option[Type];
+        def polluteFields(typ: Type): self.type;
     }
 
     // Objects related types
@@ -83,9 +86,45 @@ object Types {
     }
 
     // Object types exposed to symbols
-    abstract class ObjectType extends Type;
+    abstract class ObjectType extends Type {
+        self=>
+        import controlflow.CFGTrees._
+        def pollutedType: Option[Type];
+
+        def lookupField(index: String): Option[Type];
+        def lookupField(index: CFGSimpleValue): Option[Type] = index match {
+          case CFGNumLit(i)        => lookupField(i+"")
+          case CFGStringLit(index) => lookupField(index)
+          case _ => pollutedType
+        }
+
+        def injectField(index: String, typ: Type): self.type;
+        def injectField(index: CFGSimpleValue, typ: Type): self.type = index match {
+          case CFGNumLit(i)        => injectField(i+"", typ)
+          case CFGStringLit(index) => injectField(index, typ)
+          case _ => polluteFields(typ)
+        }
+
+        def lookupMethod(index: String, from: Option[ClassSymbol]): Option[FunctionType];
+        def lookupMethod(index: CFGSimpleValue, from: Option[ClassSymbol]): Option[FunctionType] = index match {
+          case CFGNumLit(i)        => lookupMethod(i+"", from)
+          case CFGStringLit(index) => lookupMethod(index, from)
+          case _ => Some(TFunctionAny)
+        }
+
+        def polluteFields(typ: Type): self.type;
+
+    }
     // Any object, should be only used to typecheck, no symbol should be infered to this type
-    case object TAnyObject extends ObjectType;
+    case object TAnyObject extends ObjectType {
+        def lookupField(index: String) = pollutedType
+        def injectField(index: String, typ: Type) = this
+
+        def lookupMethod(index: String, from: Option[ClassSymbol]) = Some(TFunctionAny)
+
+        def pollutedType = Some(TAny)
+        def polluteFields(typ: Type) = this
+    }
     // Reference to an object in the store
     case class TObjectRef(val id: ObjectId) extends ObjectType {
         def realObj = ObjectStore.lookup(id)
@@ -93,13 +132,22 @@ object Types {
         def lookupField(index: String) = {
             realObj.lookupField(index)
         }
-        def lookupMethod(index: String, from: Option[ClassSymbol]) = {
-            realObj.lookupMethod(index, from)
-        }
+
         def injectField(index: String, typ: Type) = {
             realObj.injectField(index, typ)
             this
         }
+
+        def lookupMethod(index: String, from: Option[ClassSymbol]) = {
+            realObj.lookupMethod(index, from)
+        }
+
+        def polluteFields(typ: Type) = {
+            realObj.polluteFields(typ)
+            this
+        }
+
+        def pollutedType = realObj.pollutedType
 
         override def toString = {
             "(#"+id+"->"+realObj+")"
@@ -114,6 +162,10 @@ object Types {
             Some(TFunctionAny);
         def injectField(index: String, typ: Type) =
             this
+
+        def polluteFields(typ: Type) = this
+
+        def pollutedType = Some(TAny)
     }
 
     // Real object type (in the store) representing a specific object
@@ -152,6 +204,21 @@ object Types {
             r
         }
 
+        def polluteFields(typ: Type) = {
+
+            // When the index is unknown, we have to pollute every entries
+            for ((i,t) <- fields) {
+                fields(i) = t union typ
+            }
+            // we flag the array to allow lookup to return Any instead of None
+            // since the key=>value relationship is not longer safe
+            pollutedType = pollutedType match { 
+                case Some(pt) => Some(pt union typ)
+                case None => Some(typ)
+            }
+
+            this
+        }
         def merge(a2: TRealObject): RealObjectType = {
             // Pick superclass class, and subclass methods
             val newCl = if (cl.isSubtypeOf(a2.cl)) {

@@ -251,7 +251,7 @@ object TypeFlow {
                             t.lookup(ind) match {
                                 case Some(t) => t
                                 case None =>
-                                    notice("Potentially undefined array index "+stringRepr(ind), ar)
+                                    notice("Potentially undefined array index '"+stringRepr(ind)+"'", ar)
                                     TNone
                             }
                         case TNone => TNone
@@ -260,11 +260,16 @@ object TypeFlow {
                             TNone
                     }
 
-                case CFGObjectProperty(obj, p) =>
+                case op @ CFGObjectProperty(obj, p) =>
                     expect(p, TString);
                     expect(obj, TAnyObject) match {
-                        case t: TObject =>
-                            TAny
+                        case t: ObjectType =>
+                            t.lookupField(p) match {
+                                case Some(t) => t
+                                case None =>
+                                    notice("Potentially undefined object property '"+stringRepr(p)+"'", op)
+                                    TNone
+                            }
                         case _ =>
                             println("Woops?? invlid type returned from expect");
                             TAny
