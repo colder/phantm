@@ -280,7 +280,7 @@ object TypeFlow {
                   TAny
             }
 
-            def getObject(node: CFGStatement, ocs: Option[ClassSymbol]): TObjectRef = {
+            def getObject(node: CFGStatement, ocs: Option[ClassSymbol]): ObjectType = {
                 ObjectStore.getOrCreate(node.uniqueID, ocs)
             }
 

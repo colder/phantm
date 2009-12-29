@@ -136,11 +136,11 @@ object Symbols {
   }
 
   class MethodSymbol(val cs: ClassSymbol, name: String, val visibility: MemberVisibility) extends FunctionSymbol(name);
-  class PropertySymbol(val cs: ClassSymbol, name: String, val visibility: MemberVisibility) extends VariableSymbol(name);
-  class ClassConstantSymbol(val cs: ClassSymbol,  name: String) extends ConstantSymbol(name);
+  class PropertySymbol(val cs: ClassSymbol, name: String, val visibility: MemberVisibility, val typ: Type) extends VariableSymbol(name);
+  class ClassConstantSymbol(val cs: ClassSymbol,  name: String, val typ: Type) extends ConstantSymbol(name);
 
   class IfaceMethodSymbol(val cs: IfaceSymbol, name: String, val visibility: MemberVisibility) extends FunctionSymbol(name);
-  class IfaceConstantSymbol(val cs: IfaceSymbol,  name: String) extends ConstantSymbol(name);
+  class IfaceConstantSymbol(val cs: IfaceSymbol,  name: String, val typ: Type) extends ConstantSymbol(name);
 
   case class LookupResult[T](ms: Option[T], visibError: Option[MemberVisibility], staticClash: Boolean) {
       def isError = ms == None || visibError != None
@@ -149,7 +149,6 @@ object Symbols {
   class IfaceSymbol(val name: String, val parents: List[IfaceSymbol]) extends Symbol {
     val methods = new HashMap[String, IfaceMethodSymbol]();
     val constants = new HashMap[String, IfaceConstantSymbol]();
-
   }
 
   class ClassSymbol(val name: String, val parent: Option[ClassSymbol], ifaces: List[IfaceSymbol]) extends Symbol {

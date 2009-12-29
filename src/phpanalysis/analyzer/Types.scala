@@ -74,7 +74,7 @@ object Types {
                 val rot = ocs match {
                     case Some(cs) =>
                         // construct a default object for this class
-                        TRealObject(TClass(cs), collection.mutable.HashMap[String,Type]() ++ cs.properties.mapElements[Type] { x => TAny }, None)
+                        TRealObject(TClass(cs), collection.mutable.HashMap[String,Type]() ++ cs.properties.mapElements[Type] { x => x.typ }, None)
                     case None =>
                         // No class => any object
                         TAnyRealObject
