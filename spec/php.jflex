@@ -1,23 +1,6 @@
-/*
- * JFlex specification file for PHP / generated Lexer
- * 
- * Copyright (C) 2005 Nenad Jovanovic
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License. See the file
- * COPYRIGHT for more information.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- *
- */
-
+/**
+ * PHP 5.3 JFlex specification file
+ * Based on a php4 version from Nenad Jovanovic */
 
 package phpanalysis.parser;
 
@@ -26,38 +9,10 @@ import java_cup.runtime.*;
 
 %%
 
-/*
-
-FROM FLEX -> JFLEX
-
-- a state stack has to be implemented:
-  yy_push_state(state) -> pushState(state)
-  yy_pop_state(state) -> popState(state)
-  yy_top_state() -> topState()
-- regular definitions need "=" between name and value
-- "^" inside character classes ("[...]") must be escaped
-- " inside character classes must be escaped
-- - inside character classes must be escaped if you mean the minus character,
-  and not a character range
-- INITIAL -> YYINITIAL
-- BEGIN(state) -> yybegin(state)
-- yyless(num) -> yypushback(num)
-  yyless(0) -> yypushback(yylength())
-- yymore() -> more()
-- yytext() -> text() (custom wrapper around yytext() so that yymore() can be simulated)
-- yylength() -> length()
-- yycharat() -> charat()
-
-*/
-
-
-// - state stack 
-// - PHP-specific: heredoc label
-
 %{
 
     private StringBuffer morePrefix;
-    private boolean clearMorePrefix;  
+    private boolean clearMorePrefix;
 
     // same functionality as Flex's yymore()
     public void cleanMore() {
@@ -65,7 +20,7 @@ FROM FLEX -> JFLEX
     }
     public void more() {
         this.morePrefix.append(this.yytext());
-        this.clearMorePrefix = false;        
+        this.clearMorePrefix = false;
     }
 
     // wrapper around yytext() allowing the usage of more()
