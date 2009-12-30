@@ -289,9 +289,9 @@ We now provide a detailled description of every elements of our type model:
     different values and still point to the same real object type. We thus have
     two different levels of types:
     \begin{itemize}
-          \item \verb=TObjectRef=: Object reference. This is the type to which
+          \item \textbf{Object references:} This is the type to which
             any well-defined object value is assigned.
-          \item \verb=RealObjectType=: Real object type pointed to by the
+          \item \textbf{Real objects:} The real object is pointed to by the
             object reference. This is the actual object type storing mapings to
             methods, properties and constants. It is stored in the ObjectStore
             and is not directly exposed as types of values.
@@ -314,31 +314,58 @@ We now provide a detailled description of every elements of our type model:
     \end{itemize}
 \end{itemize}
 
-We first introduce two types, \verb=TAny= representing any type and
-\verb=TNone= representing no type. First of all, the type \verb=Boolean= was
-split into \verb=TTrue= and \verb=TFalse=, this allows for a more precise type
-filtering on conditionals.  For simplicity reasons, both integers and floating
-point numbers were considered as being of type \verb=TInt=. This could be
-refined to provide more precise errors, but since integers and floats work very
-similarly in PHP, the distinction has not been shown to be useful yet. Arrays
-have a more sophisticated model. An array can be of three types:
-\begin{itemize}
-  \item \verb=TAnyArray=: we know nothing about the content of this array, any
-    lookup will return the type \verb=TAny=.
-  \item \verb=TPreciseArray=: we keep key-type associations for every entries
-    in that array. This array is completely determined. A lookup to a key not
-    defined will generate a notice.
-  \item Polluted \verb=TPreciseArray=: we still keep key-type associations for
-    every entries that we know of, but since this array has been ``polluted'',
-    we keep a so--called ``polluted type'' that represent the possible type for
-    any undefined key lookup. For example, the following code would induce a
-    polluted array: \verb%$a = array('a' => 'b'); $a[$n] = 2;%. The array type
-    would be $(a \rightarrow TInt|TString)$ with polluted type $TInt$
+\subsubsection{Assigns to com}
 
+\subsubsection{Conditional type filtering}
+In PHP, most functions will return \verb/false/  or \verb/null/ in case of error.
+For a function normally returning an integer, this means that any return value of this
+function should be typed $TInt|TBoolean$. However, this would lead to massive amount of
+false positives. Consider the following code which can be seen in most procedural code
+dealing with mysql queries:
+
+\begin{listing}
+  \begin{verbatim}
+<?php
+$result = mysql_query(..);
+if ($result) {
+    while($row = mysql_fetch_assoc($result)) {
+      ..
+    }
+}
+?>
+  \end{verbatim}
+  \caption{Fetching query results}
+\end{listing}
+
+\verb/mysql_query/ either return a result resource or false in case the query
+failed. \verb/mysql_fetch_assoc/ takes a resource, and return an array
+representing the row, unless it reached the end of the result set in which case
+it will return false. Naively checking types would give us many false positives:
+\begin{itemize}
+  \item \verb/mysql_fetch_assoc/'s argument would be of type
+    $TBoolean \cup TResource$, which would fail with a type mismatch saying that it
+    expects a $TResource$.
+  \item Inside the while body, \verb/$row/ would still be of type
+    $TBoolean \cup TArray$, generating a false positive for any usage of \verb/$row/
+    as an array.
 \end{itemize}
 
-Object types follow the same model as arrays, only that a class can be provided
-for fully or partially defined objects.
+The solution to this problem is in two parts. First of all, it was necessary to
+improve the precision of the boolean type and introduce $TTrue$ and $TFalse$. That
+was, a function can be described as returning $TResource \cup TFalse$. From those
+types, it becomes quite trivial to filter incompatible values when taking a branch.
+
+For instance, with \verb/if ($result)/ the cfg will create two branches, one
+for $\$result = true$ and one for $\$result \neq true$. In the first branch, we
+can filter out types of \verb/$result/ that represent strictly false values,
+which includes $TFalse$ and $TNull$. The same applies for the second branch,
+in which we filter out strictly true values, namely $TTrue$ and $TResource$. In
+our previous example, the type of \verb/$result/ inside the if body would thus
+be filtered to $TResource$ which is correct. Moreover, it will also filter
+assigns as conditionals, meaning that in 
+\verb/while($row = mysql_fetch_assoc($result))/, the while body will have
+$TResource$ for type of \verb/$row/. In summary, this simple filtering trick allows
+for precise prototyping with reduced false-positives!
 
 \subsection{Helpers}
 In order to check that parts of the tool was working as expected, some helpers were
