@@ -47,11 +47,12 @@ object Types {
 
     abstract class RealObjectType {
         self =>
+        var fields: Map[String, Type]
+        var pollutedType: Option[Type]
         def lookupField(index: String): Option[Type];
         def lookupMethod(index: String, from: Option[ClassSymbol]): Option[FunctionType];
         def injectField(index: String, typ: Type) : self.type;
 
-        def pollutedType: Option[Type];
         def polluteFields(typ: Type): self.type;
     }
 
@@ -60,11 +61,13 @@ object Types {
 
     // Stores the ref => Real Objects relashionship
     object ObjectStore {
-        val store = new HashMap[ObjectId, RealObjectType]();
+        private val store = new HashMap[ObjectId, RealObjectType]();
         def lookup(id: ObjectId): RealObjectType = store.get(id) match {
             case Some(o) => o
             case None => error("Woops incoherent store")
         }
+
+        def set(id: ObjectId, robj: RealObjectType) = store(id) = robj;
 
         def getOrCreate(id: ObjectId, ocs: Option[ClassSymbol]) : TObjectRef = store.get(id) match {
             case Some(_) =>
@@ -74,10 +77,10 @@ object Types {
                 val rot = ocs match {
                     case Some(cs) =>
                         // construct a default object for this class
-                        TRealObject(TClass(cs), collection.mutable.HashMap[String,Type]() ++ cs.properties.mapElements[Type] { x => x.typ }, None)
+                        TRealClassObject(TClass(cs), HashMap[String,Type]() ++ cs.properties.mapElements[Type] { x => x.typ }, None)
                     case None =>
                         // No class => any object
-                        TAnyRealObject
+                        TRealObject(HashMap[String,Type](), None)
                 }
 
                 store(id) = rot;
@@ -154,24 +157,9 @@ object Types {
         }
     }
 
-    // Real object type (in the store) representing any object
-    object TAnyRealObject extends RealObjectType {
-        def lookupField(index: String) =
-            Some(TAny)
-        def lookupMethod(index: String, from: Option[ClassSymbol]) =
-            Some(TFunctionAny);
-        def injectField(index: String, typ: Type) =
-            this
-
-        def polluteFields(typ: Type) = this
-
-        def pollutedType = Some(TAny)
-    }
-
-    // Real object type (in the store) representing a specific object
-    case class TRealObject(val cl: TClass,
-                         val fields: Map[String, Type],
-                         var pollutedType: Option[Type]) extends RealObjectType{
+    // Real object type (in the store) representing a specific object of any class
+    case class TRealObject(var fields: Map[String, Type],
+                           var pollutedType: Option[Type]) extends RealObjectType {
 
         def lookupField(index: String) =
             fields.get(index) match {
@@ -179,28 +167,17 @@ object Types {
                 case None => pollutedType
             }
 
-        def lookupMethod(index: String, from: Option[ClassSymbol]) =
-            cl.cs.lookupMethod(index, from) match {
-                case LookupResult(Some(ms), _, _) =>
-                    // found method, ignore visibility errors, for now
-                    // Type hints
-                    Some(msToTMethod(ms))
+        def lookupMethod(index: String, from: Option[ClassSymbol]): Option[FunctionType] =
+            None
 
-                case LookupResult(None, _, _) =>
-                    None
-            }
-
-        def msToTMethod(ms: MethodSymbol) = {
-            new TFunction(ms.argList.map{ x => (TAny, true)}.toList, TAny)
+        def injectField(index: String, typ: Type) = {
+            fields(index) = typ;
+            this
         }
 
-        def injectField(index: String, typ: Type) =
-            this
-
         override def toString = {
-            var r = "Object("+cl+")"
+            var r = "Object(?)"
             r = r+"["+(fields.map(x => x._1 +" => "+ x._2).mkString("; "))+(if(pollutedType != None) " ("+pollutedType.get+")" else "")+"]"
-            r = r+"["+(cl.cs.methods.map(x => x._1+": "+msToTMethod(x._2)).mkString("; "))+"]"
             r
         }
 
@@ -221,13 +198,21 @@ object Types {
         }
         def merge(a2: TRealObject): RealObjectType = {
             // Pick superclass class, and subclass methods
-            val newCl = if (cl.isSubtypeOf(a2.cl)) {
-                a2.cl
-            } else if (a2.cl.isSubtypeOf(cl)) {
-                cl
-            } else {
-                // Shortcut, incompatible objects
-                return TAnyRealObject
+            val newcl = (this, a2) match {
+                case (o1: TRealClassObject, o2: TRealClassObject) =>
+                    if (o1.cl.isSubtypeOf(o2.cl)) {
+                        Some(o2.cl)
+                    } else if (o2.cl.isSubtypeOf(o1.cl)) {
+                        Some(o1.cl)
+                    } else {
+                        None
+                    }
+                case (o1: TRealClassObject, o2 : TRealObject) =>
+                    Some(o1.cl)
+                case (o1: TRealObject, o2 : TRealClassObject) =>
+                    Some(o2.cl)
+                case _ =>
+                    None
             }
 
             val newPollutedType = (pollutedType, a2.pollutedType) match {
@@ -246,8 +231,41 @@ object Types {
                 }
             }
 
-            new TRealObject(newCl, newFields, newPollutedType)
+            newcl match {
+                case Some(cl) =>
+                    new TRealClassObject(cl, newFields, newPollutedType)
+                case None =>
+                    new TRealObject(newFields, newPollutedType)
+            }
         }
+    }
+
+    case class TRealClassObject(val cl: TClass,
+                                initFields: Map[String, Type],
+                                initPollutedType: Option[Type]) extends TRealObject(initFields, initPollutedType){
+
+        override def toString = {
+            var r = "Object("+cl+")"
+            r = r+"["+(fields.map(x => x._1 +" => "+ x._2).mkString("; "))+(if(pollutedType != None) " ("+pollutedType.get+")" else "")+"]"
+            r = r+"["+(cl.cs.methods.map(x => x._1+": "+msToTMethod(x._2)).mkString("; "))+"]"
+            r
+        }
+
+
+        def msToTMethod(ms: MethodSymbol) = {
+            new TFunction(ms.argList.map{ x => (TAny, true)}.toList, TAny)
+        }
+
+        override def lookupMethod(index: String, from: Option[ClassSymbol]) =
+            cl.cs.lookupMethod(index, from) match {
+                case LookupResult(Some(ms), _, _) =>
+                    // found method, ignore visibility errors, for now
+                    // Type hints
+                    Some(msToTMethod(ms))
+
+                case LookupResult(None, _, _) =>
+                    None
+            }
     }
 
     abstract class ArrayType(pollutedType: Option[Type]) extends Type {
