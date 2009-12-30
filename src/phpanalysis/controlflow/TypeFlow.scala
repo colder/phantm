@@ -488,7 +488,7 @@ object TypeFlow {
           }
 
           def functionSymbolToFunctionType(fs: FunctionSymbol): FunctionType = {
-            new TFunction(fs.argList.map { a => (a._4, a._5) }, fs.typ)
+            new TFunction(fs.argList.map { a => (a._2.typ, a._2.optional) }, fs.typ)
           }
 
           def checkFCalls(fcall: CFGFunctionCall, syms: List[FunctionType]) : Type =  {

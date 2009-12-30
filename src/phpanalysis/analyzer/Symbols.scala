@@ -100,12 +100,12 @@ object Symbols {
   }
 
   class FunctionSymbol(val name: String, val typ: Type) extends Symbol with Scope {
-    val args = new HashMap[String, (VariableSymbol, Boolean, Type, Boolean)]();
-    var argList: List[(String, VariableSymbol, Boolean, Type, Boolean)] = Nil;
+    val args = new HashMap[String, ArgumentSymbol]();
+    var argList: List[(String, ArgumentSymbol)] = Nil;
 
-    def registerArgument(vs: VariableSymbol, byref: Boolean, typ: Type, optional: Boolean) = args.get(vs.name) match {
-        case Some(x) => Reporter.error("Argument "+vs.name+" already defined (previously defined in "+x._1.getPos+")", vs)
-        case None => args += ((vs.name, (vs, byref, typ, optional))); argList = argList ::: List((vs.name, vs, byref, typ, optional));
+    def registerArgument(as: ArgumentSymbol) = args.get(as.name) match {
+        case Some(x) => Reporter.error("Argument "+as.name+" already defined (previously defined in "+x.getPos+")", as)
+        case None => args(as.name) = as; argList = argList ::: List((as.name, as));
 
     }
 
@@ -116,7 +116,7 @@ object Symbols {
     def getArgsVariables: List[VariableSymbol] = getArguments ::: super.getVariables
 
     override def lookupVariable(n: String): Option[VariableSymbol] = args.get(n) match {
-        case Some((vs, byref, typ, optional)) => Some(vs)
+        case Some(as) => Some(as)
         case None => variables.get(n)
     }
 
@@ -157,7 +157,7 @@ object Symbols {
     }
 
   }
-  class PropertySymbol(val cs: ClassSymbol, name: String, val visibility: MemberVisibility, typ: Type) extends VariableSymbol(name);
+  class PropertySymbol(val cs: ClassSymbol, name: String, val visibility: MemberVisibility, val typ: Type) extends VariableSymbol(name);
   class ClassConstantSymbol(val cs: ClassSymbol,  name: String, typ: Type) extends ConstantSymbol(name, typ);
 
   class IfaceMethodSymbol(val cs: IfaceSymbol, name: String, typ: Type, val visibility: MemberVisibility) extends FunctionSymbol(name, typ);
@@ -323,8 +323,9 @@ object Symbols {
 
   }
 
-  class ConstantSymbol(val name: String, typ: Type) extends Symbol
+  class ConstantSymbol(val name: String, val typ: Type) extends Symbol
   class VariableSymbol(val name: String) extends Symbol
+  class ArgumentSymbol(override val name: String, val byref: Boolean, val optional: Boolean, val typ: Type) extends VariableSymbol(name)
 
   def emitSummary = {
         def emitScope(s: Scope, p:String) = {

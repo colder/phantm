@@ -112,7 +112,6 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
             cs.registerMethod(ms)
             m.name.setSymbol(ms)
             for (a <- m.args) {
-                val vs = new VariableSymbol(a.v.name.value).setPos(a.v)
                 var t: Type = a.hint match {
                     case Some(THString) => TString
                     case Some(THInt) => TInt
@@ -130,7 +129,8 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
                      t = TUnion(t, TNull)
                 }
 
-                ms.registerArgument(vs, a.byref, t, a.default != None);
+                val as = new ArgumentSymbol(a.v.name.value, a.byref, a.default != None, t).setPos(a.v)
+                ms.registerArgument(as);
             }
         }
 
@@ -162,7 +162,6 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
             case FunctionDecl(name, args, retref, body) =>
                 val fs = new FunctionSymbol(name.value, TAny).setPos(name)
                 for (val a <- args) {
-                    val vs = new VariableSymbol(a.v.name.value).setPos(a.v)
                     var t: Type = a.hint match {
                         case Some(THString) => TString
                         case Some(THInt) => TInt
@@ -181,7 +180,9 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
                          t = TUnion(t, TNull)
                     }
 
-                    fs.registerArgument(vs, a.byref, t, a.default != None);
+                    val as = new ArgumentSymbol(a.v.name.value, a.byref, a.default != None, t).setPos(a.v)
+
+                    fs.registerArgument(as);
                 }
                 name.setSymbol(fs)
                 GlobalSymbols.registerFunction(fs)

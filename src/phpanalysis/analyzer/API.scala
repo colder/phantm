@@ -95,8 +95,8 @@ class API(file: String) {
 
                 val ms = new MethodSymbol(cs, name, visibility, elemsToType(m \ "return" \ "type")).setPos(APIPos(m))
                 for ((a, i) <- args.zipWithIndex) {
-                    val vs = new VariableSymbol("arg"+i)
-                    ms.registerArgument(vs, false, a._1, a._2)
+                    val as = new ArgumentSymbol("arg"+i, false, a._2, a._1)
+                    ms.registerArgument(as)
                 }
                 cs.registerMethod(ms)
             }
@@ -141,8 +141,8 @@ class API(file: String) {
 
             val fs = new FunctionSymbol(name, elemsToType(f \ "return" \ "type")).setPos(APIPos(f))
             for ((a, i) <- args.zipWithIndex) {
-                val vs = new VariableSymbol("arg"+i).setPos(APIPos(a._1))
-                fs.registerArgument(vs, false, a._2, a._3)
+                val as = new ArgumentSymbol("arg"+i, false, a._3, a._2).setPos(APIPos(a._1))
+                fs.registerArgument(as)
             }
             GlobalSymbols.lookupFunction(name) match {
                 case Some(fs) =>
