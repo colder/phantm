@@ -53,39 +53,48 @@ object Reporter {
         println(pos.file.getOrElse("?")+":"+pos.line+"  "+prefix+msg)
         pos.file match {
             case Some(file) =>
-                println(getFileLine(file, pos.line))
+                getFileLine(file, pos.line) match {
+                    case Some(s) =>
+                        println(s)
 
-                var indent: String = ""
-                for(i <- 0 until pos.col) indent = indent + " ";
+                        var indent: String = ""
+                        for(i <- 0 until pos.col) indent = indent + " ";
 
-                println(indent+"^")
+                        println(indent+"^")
+                    case None =>
+                }
             case None =>
         }
 
     }
 
 
-    def getFileLine(file: String, line: Int): String = {
+    def getFileLine(file: String, line: Int): Option[String] = {
         val l = line-1;
 
-        if (!files.contains(file)) {
-            import java.io.{BufferedReader, FileReader}
-            val input =  new BufferedReader(new FileReader(file));
-            var line = "";
-            var lines: List[String] = Nil;
-            line = input.readLine()
-            while (line != null){
-                lines = line.replaceAll("\t", " ").replaceAll("\r", "") :: lines;
+        try {
+            if (!files.contains(file)) {
+                import java.io.{BufferedReader, FileReader}
+                val input =  new BufferedReader(new FileReader(file));
+                var line = "";
+                var lines: List[String] = Nil;
                 line = input.readLine()
-            }
+                while (line != null){
+                    lines = line.replaceAll("\t", " ").replaceAll("\r", "") :: lines;
+                    line = input.readLine()
+                }
 
-            files += file -> lines.reverse
+                files += file -> lines.reverse
+            }
+            val lines = files(file)
+            if (l >= lines.size || l < 0) {
+                scala.Predef.error("Line out of range")
+            }
+            Some(lines(l))
+        } catch {
+            case _ =>
+                None
         }
-        val lines = files(file)
-        if (l >= lines.size || l < 0) {
-            scala.Predef.error("Line out of range")
-        }
-        lines(l)
     }
 
 }

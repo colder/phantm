@@ -464,15 +464,6 @@ object TypeFlow {
                                     TRealObject(newFields, o.pollutedType)
                             }
 
-                            /* // scala crashes at compilation with that:
-                            val o : RealObjectType = to.realObj match {
-                                case TRealClassObject(cl, _, pt) =>
-                                    TRealClassObject(cl, newFields, pt)
-                                case TRealObject(_, pt) =>
-                                    TRealObject(newFields, pt)
-                            }
-                           */
-
                             ObjectStore.set(to.id, o)
 
                             to

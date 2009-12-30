@@ -105,10 +105,10 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
             println("Woops, getting type from a non-scalar expression: "+e);
             TAny
     }
-    
+
     def secondClassPass(cd: ClassDecl, cs: ClassSymbol): Unit = {
         for (val m <- cd.methods) {
-            val ms = new MethodSymbol(cs, m.name.value, TAny, getVisibility(m.flags)).setPos(m)
+            val ms = new MethodSymbol(cs, m.name.value, getVisibility(m.flags), TAny).setPos(m)
             cs.registerMethod(ms)
             m.name.setSymbol(ms)
             for (a <- m.args) {

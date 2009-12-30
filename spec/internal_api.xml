@@ -3,9 +3,15 @@
  <!-- Classes definitions -->
  <classes>
   <class name="test">
+   <position file="plop.c" line="12" col="9" />
+
    <fields>
-    <field name="test2" visibility="public" type="normal"><type name="void"></type></field>
+    <field name="test2" visibility="public"><position file="plop.c" line="12" col="10" /><type name="void"></type></field>
    </fields>
+
+   <staticfields>
+    <field name="test2" visibility="public"><position file="plop.c" line="12" col="9" /><type name="void"></type></field>
+   </staticfields>
 
    <constants>
     <constant name="test2"><type name="void"></type></constant>
