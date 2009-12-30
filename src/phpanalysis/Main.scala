@@ -9,11 +9,12 @@ import Math.max;
 
 object Main {
     var files: List[String] = Nil;
-    var displaySymbols  = false;
-    var verbosity       = 1;
-    var displayDebug    = false;
-    var displayProgress = false;
-    var includePaths    = List(".");
+    var displaySymbols     = false;
+    var verbosity          = 1;
+    var displayDebug       = false;
+    var displayProgress    = false;
+    var includePaths       = List(".");
+    var apis: List[String] = Nil;
 
     def main(args: Array[String]): Unit = {
         if (args.length > 0) {
@@ -45,6 +46,9 @@ object Main {
             handleArgs(xs)
         case "--includepath" :: ip :: xs =>
             includePaths = ip.split(":").toList
+            handleArgs(xs)
+        case "--apis" :: aps :: xs =>
+            apis = aps.split(":").toList
             handleArgs(xs)
         case "--progress" :: xs =>
             displayProgress = true
@@ -80,6 +84,10 @@ object Main {
                 // Load internal classes and functions into the symbol tables
                 new API("spec/internal_api.xml").load
 
+                for (api <-apis) {
+                    new API(api).load
+                }
+
                 if (displayProgress) println("6/7 Symbolic checks...")
                 // Collect symbols and detect obvious types errors
                 CollectSymbols(ast) execute;
@@ -112,7 +120,8 @@ object Main {
         println("         --debug                Debug information");
         println("         --verbose              Be more strict");
         println("         --vverbose             Be nitpicking");
-        println("         --includepath <paths>  Define paths for compile time include resolution");
+        println("         --includepath <paths>  Define paths for compile time include resolution (.:a:bb:c:..)");
+        println("         --apis <paths>         Import APIs prior to the analysis (a.xml:b.xml:...)");
         println("         --progress             Display analysis progress");
     }
 }

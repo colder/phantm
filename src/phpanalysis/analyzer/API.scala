@@ -61,105 +61,105 @@ class API(file: String) {
 
     def load = {
         try {
-        val data = XML.loadFile(file)
-        for (c <- data \\ "class") {
-            val name = (c \ "@name").text
-            val parent = (c \ "@parent").text
+            val data = XML.loadFile(file)
+            for (c <- data \\ "class") {
+                val name = (c \ "@name").text
+                val parent = (c \ "@parent").text
 
-            val pcs = if (parent != "") {
-                GlobalSymbols.lookupClass(parent) match {
-                    case Some(ocs) =>
-                        Some(ocs)
-                    case None =>
-                        Reporter.error("Error loading class '"+name+"' from API: parent class '"+parent+"' not found")
-                        None
+                val pcs = if (parent != "") {
+                    GlobalSymbols.lookupClass(parent) match {
+                        case Some(ocs) =>
+                            Some(ocs)
+                        case None =>
+                            Reporter.error("Error loading class '"+name+"' from API: parent class '"+parent+"' not found")
+                            None
+                    }
+                } else {
+                    None
                 }
-            } else {
-                None
+
+                val cs = new ClassSymbol(name, pcs, Nil).setPos(APIPos(c))
+
+                // Register class methods
+                for (m <- c \\ "method") {
+                    val name = (m \ "@name").text
+
+                    val visibility = (m \ "@visibility").text match {
+                        case "protected" => MVProtected
+                        case "private" => MVPrivate
+                        case _ => MVPublic
+                    }
+
+
+                    val args: List[(Type, Boolean)] = ((m \ "args" \\ "arg") map { a => (elemsToType(a \ "type"), Integer.parseInt((a \ "@opt").text) > 0) }).toList
+
+                    val ms = new MethodSymbol(cs, name, visibility, elemsToType(m \ "return" \ "type")).setPos(APIPos(m))
+                    for ((a, i) <- args.zipWithIndex) {
+                        val as = new ArgumentSymbol("arg"+i, false, a._2, a._1)
+                        ms.registerArgument(as)
+                    }
+                    cs.registerMethod(ms)
+                }
+
+                // Register static fields
+                for (f <- c \ "staticfields" \\ "field") {
+                    val name = (f \ "@name").text;
+                    val visibility = (f \ "@visibility").text match {
+                        case "protected" => MVProtected
+                        case "private" => MVPrivate
+                        case _ => MVPublic
+                    }
+                    val ps = new PropertySymbol(cs, name, visibility, elemsToType(f \ "type")).setPos(APIPos(f))
+                    cs.registerStaticProperty(ps)
+                }
+
+                // Register fields
+                for (f <- c \ "fields" \\ "field") {
+                    val name = (f \ "@name").text;
+                    val visibility = (f \ "@visibility").text match {
+                        case "protected" => MVProtected
+                        case "private" => MVPrivate
+                        case _ => MVPublic
+                    }
+                    val ps = new PropertySymbol(cs, name, visibility, elemsToType(f \ "type")).setPos(APIPos(f))
+                    cs.registerProperty(ps)
+                }
+
+                // Register constants
+                for (cc <- c \ "constants" \\ "constant") {
+                    val name = (cc \ "@name").text;
+                    val ccs = new ClassConstantSymbol(cs, name, elemsToType(cc \ "type")).setPos(APIPos(cc))
+                    cs.registerConstant(ccs)
+                }
+
+                GlobalSymbols.registerClass(cs)
             }
 
-            val cs = new ClassSymbol(name, pcs, Nil).setPos(APIPos(c))
+            for (f <- data \\ "function") {
+                val name = (f \ "@name").text
+                val args: List[(Node, Type, Boolean)] = ((f \ "args" \\ "arg") map { a => (a, elemsToType(a \ "type"), Integer.parseInt((a \ "@opt").text) > 0) }).toList
 
-            // Register class methods
-            for (m <- c \\ "method") {
-                val name = (m \ "@name").text
-
-                val visibility = (m \ "@visibility").text match {
-                    case "protected" => MVProtected
-                    case "private" => MVPrivate
-                    case _ => MVPublic
-                }
-
-
-                val args: List[(Type, Boolean)] = ((m \ "args" \\ "arg") map { a => (elemsToType(a \ "type"), Integer.parseInt((a \ "@opt").text) > 0) }).toList
-
-                val ms = new MethodSymbol(cs, name, visibility, elemsToType(m \ "return" \ "type")).setPos(APIPos(m))
+                val fs = new FunctionSymbol(name, elemsToType(f \ "return" \ "type")).setPos(APIPos(f))
                 for ((a, i) <- args.zipWithIndex) {
-                    val as = new ArgumentSymbol("arg"+i, false, a._2, a._1)
-                    ms.registerArgument(as)
+                    val as = new ArgumentSymbol("arg"+i, false, a._3, a._2).setPos(APIPos(a._1))
+                    fs.registerArgument(as)
                 }
-                cs.registerMethod(ms)
+                GlobalSymbols.lookupFunction(name) match {
+                    case Some(fs) =>
+                        // TODO: Add prototype
+                    case None =>
+                        GlobalSymbols.registerFunction(fs)
+                }
             }
 
-            // Register static fields
-            for (f <- c \ "staticfields" \\ "field") {
-                val name = (f \ "@name").text;
-                val visibility = (f \ "@visibility").text match {
-                    case "protected" => MVProtected
-                    case "private" => MVPrivate
-                    case _ => MVPublic
-                }
-                val ps = new PropertySymbol(cs, name, visibility, elemsToType(f \ "type")).setPos(APIPos(f))
-                cs.registerStaticProperty(ps)
-            }
-
-            // Register fields
-            for (f <- c \ "fields" \\ "field") {
-                val name = (f \ "@name").text;
-                val visibility = (f \ "@visibility").text match {
-                    case "protected" => MVProtected
-                    case "private" => MVPrivate
-                    case _ => MVPublic
-                }
-                val ps = new PropertySymbol(cs, name, visibility, elemsToType(f \ "type")).setPos(APIPos(f))
-                cs.registerProperty(ps)
-            }
-
-            // Register constants
-            for (cc <- c \ "constants" \\ "constant") {
+            for (cc <- data \ "constants" \\ "constant") {
                 val name = (cc \ "@name").text;
-                val ccs = new ClassConstantSymbol(cs, name, elemsToType(cc \ "type")).setPos(APIPos(cc))
-                cs.registerConstant(ccs)
+                val ccs = new ConstantSymbol(name, elemsToType(cc \ "type")).setPos(APIPos(cc))
+                GlobalSymbols.registerConstant(ccs)
             }
-
-            GlobalSymbols.registerClass(cs)
-        }
-
-        for (f <- data \\ "function") {
-            val name = (f \ "@name").text
-            val args: List[(Node, Type, Boolean)] = ((f \ "args" \\ "arg") map { a => (a, elemsToType(a \ "type"), Integer.parseInt((a \ "@opt").text) > 0) }).toList
-
-            val fs = new FunctionSymbol(name, elemsToType(f \ "return" \ "type")).setPos(APIPos(f))
-            for ((a, i) <- args.zipWithIndex) {
-                val as = new ArgumentSymbol("arg"+i, false, a._3, a._2).setPos(APIPos(a._1))
-                fs.registerArgument(as)
-            }
-            GlobalSymbols.lookupFunction(name) match {
-                case Some(fs) =>
-                    // TODO: Add prototype
-                case None =>
-                    GlobalSymbols.registerFunction(fs)
-            }
-        }
-
-        for (cc <- data \ "constants" \\ "constant") {
-            val name = (cc \ "@name").text;
-            val ccs = new ConstantSymbol(name, elemsToType(cc \ "type")).setPos(APIPos(cc))
-            GlobalSymbols.registerConstant(ccs)
-        }
 
         } catch {
-            case e: org.xml.sax.SAXParseException => 
+            case e =>
                 Reporter.error("Parsing of the api file '"+file+"' failed: "+e.getMessage)
         }
     }
