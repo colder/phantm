@@ -99,13 +99,13 @@ object Symbols {
     registerPredefVariables
   }
 
-  class FunctionSymbol(val name: String) extends Symbol with Scope {
-    val args = new HashMap[String, (VariableSymbol, Boolean, Type, Boolean)]();
-    var argList: List[(String, VariableSymbol, Boolean, Type, Boolean)] = Nil;
+  class FunctionSymbol(val name: String, val typ: Type) extends Symbol with Scope {
+    val args = new HashMap[String, ArgumentSymbol]();
+    var argList: List[(String, ArgumentSymbol)] = Nil;
 
-    def registerArgument(vs: VariableSymbol, byref: Boolean, typ: Type, optional: Boolean) = args.get(vs.name) match {
-        case Some(x) => Reporter.error("Argument "+vs.name+" already defined (previously defined in "+x._1.getPos+")", vs)
-        case None => args += ((vs.name, (vs, byref, typ, optional))); argList = argList ::: List((vs.name, vs, byref, typ, optional));
+    def registerArgument(as: ArgumentSymbol) = args.get(as.name) match {
+        case Some(x) => Reporter.error("Argument "+as.name+" already defined (previously defined in "+x.getPos+")", as)
+        case None => args(as.name) = as; argList = argList ::: List((as.name, as));
 
     }
 
@@ -116,7 +116,7 @@ object Symbols {
     def getArgsVariables: List[VariableSymbol] = getArguments ::: super.getVariables
 
     override def lookupVariable(n: String): Option[VariableSymbol] = args.get(n) match {
-        case Some((vs, byref, typ, optional)) => Some(vs)
+        case Some(as) => Some(as)
         case None => variables.get(n)
     }
 
@@ -150,7 +150,7 @@ object Symbols {
     override def stricterThan(o: MemberVisibility) = o == MVPublic
   }
 
-  class MethodSymbol(val cs: ClassSymbol, name: String, val visibility: MemberVisibility) extends FunctionSymbol(name) {
+  class MethodSymbol(val cs: ClassSymbol, name: String, val visibility: MemberVisibility, typ: Type) extends FunctionSymbol(name, typ) {
     override def registerPredefVariables = {
         super.registerPredefVariables
         registerVariable(new VariableSymbol("this"))
@@ -158,10 +158,10 @@ object Symbols {
 
   }
   class PropertySymbol(val cs: ClassSymbol, name: String, val visibility: MemberVisibility, val typ: Type) extends VariableSymbol(name);
-  class ClassConstantSymbol(val cs: ClassSymbol,  name: String, val typ: Type) extends ConstantSymbol(name);
+  class ClassConstantSymbol(val cs: ClassSymbol,  name: String, typ: Type) extends ConstantSymbol(name, typ);
 
-  class IfaceMethodSymbol(val cs: IfaceSymbol, name: String, val visibility: MemberVisibility) extends FunctionSymbol(name);
-  class IfaceConstantSymbol(val cs: IfaceSymbol,  name: String, val typ: Type) extends ConstantSymbol(name);
+  class IfaceMethodSymbol(val cs: IfaceSymbol, name: String, typ: Type, val visibility: MemberVisibility) extends FunctionSymbol(name, typ);
+  class IfaceConstantSymbol(val cs: IfaceSymbol,  name: String, typ: Type) extends ConstantSymbol(name, typ);
 
   case class LookupResult[T](ms: Option[T], visibError: Option[MemberVisibility], staticClash: Boolean) {
       def isError = ms == None || visibError != None
@@ -323,8 +323,9 @@ object Symbols {
 
   }
 
-  class ConstantSymbol(val name: String) extends Symbol
+  class ConstantSymbol(val name: String, val typ: Type) extends Symbol
   class VariableSymbol(val name: String) extends Symbol
+  class ArgumentSymbol(override val name: String, val byref: Boolean, val optional: Boolean, val typ: Type) extends VariableSymbol(name)
 
   def emitSummary = {
         def emitScope(s: Scope, p:String) = {

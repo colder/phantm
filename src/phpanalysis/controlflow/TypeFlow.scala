@@ -5,7 +5,6 @@ import scala.collection.immutable.HashMap
 import scala.collection.immutable.HashSet
 import scala.collection.immutable.Map
 import analyzer.Symbols._
-import analyzer.InternalFunctions
 import analyzer.Types._
 
 object TypeFlow {
@@ -23,6 +22,16 @@ object TypeFlow {
             case (TNull, TFalse) => true
             case (_, TTrue) => true
             case (t1: TObjectRef, TAnyObject) => true
+            case (t1: TObjectRef, t2: TObjectRef) =>
+                (t1.realObj, t2.realObj) match {
+                    case (r1: TRealClassObject, r2: TRealClassObject) =>
+                        r1.cl isSubtypeOf r2.cl
+                    case (r1: RealObjectType, r2: TRealObject) =>
+                        r2.fields.forall(f => r1.fields.get(f._1) != None && leq(r1.fields(f._1), f._2))
+                    case _ =>
+                        false
+                }
+
             case (t1: TArray, TAnyArray) => true
             case (t1: TArray, t2: TArray) =>
                 // TODO: make it more precise
@@ -141,7 +150,7 @@ object TypeFlow {
         }
 
         override def toString = {
-            map.map(x => x._1+" => "+x._2).mkString("[ ", "; ", " ]");
+            map.filter(_._1.toString.toList.head != '_').map(x => x._1+" => "+x._2).mkString("[ ", "; ", " ]");
         }
     }
 
@@ -205,13 +214,8 @@ object TypeFlow {
                                 case "isset" | "empty" =>
                                     TBoolean // no need to check the args, this is a no-error function
                                 case _ =>
-                                    InternalFunctions.lookup(id) match {
-                                        case Some(fts) =>
-                                            checkFCalls(fcall, fts)
-                                        case None =>
-                                            notice("Function "+id.value+" appears to be undefined!", id)
-                                            TAny
-                                    }
+                                    notice("Function "+id.value+" appears to be undefined!", id)
+                                    TNone
                             }
                     }
                 case CFGMethodCall(r, mid, p) =>
@@ -372,6 +376,11 @@ object TypeFlow {
                             val ct = if (pass > 0) new TArray().inject(index, checkType) else TAnyArray;
 
                             linearize(arr, ct, rt, pass+1)
+                        case CFGObjectProperty(obj, index) =>
+                            val rt = ObjectStore.getOrCreate(sv.uniqueID, None).injectField(index, resultType);
+                            val ct = if (pass > 0) ObjectStore.getOrCreate(-sv.uniqueID, None).injectField(index, checkType) else TAnyObject;
+
+                            linearize(obj, ct, rt, pass+1)
                         case CFGNextArrayEntry(arr) =>
                             // ditto ArrayEntry
                             val rt = new TArray().injectNext(resultType, arr);
@@ -389,66 +398,81 @@ object TypeFlow {
                 // Let's traverse all up to the last elem (the outermost assign)
                 for ((elem, ct, rt) <- elems.init) {
                     //println(" Checking for "+elem +"(actualType: "+typeFromSimpleValue(elem)+", checkType: "+ct+", resultType: "+rt+")");
-                    val resultingType = (rt, typeFromSimpleValue(elem)) match {
-                        // If both the type resulting from the assign and the
-                        // previous type are arrays: we merge
-                        case (a: ArrayType, b: ArrayType) =>
-                            // assignMerge will recursively merge types of recursive arrays
-                            // we cannot use Lattice.Join as we do not want unions.
-                            // i.e. $a['foo']['bar'] = 2; $a['foo']['bar'] =
-                            // "str"; should not end with:
-                            //    $a -> Array[foo => Array[bar => {TInt, TString}]]
-                            // but
-                            //    $a -> Array[foo => Array[bar => String]]
-                            def assignMerge(from: Type, to: Type): Type = (from,to) match {
-                                case (from: TArray, to: TArray) =>
-                                    import scala.collection.mutable.HashMap
-                                    import Math.max
+                    // assignMerge will recursively merge types of recursive arrays
+                    // we cannot use Lattice.Join as we do not want unions.
+                    // i.e. $a['foo']['bar'] = 2; $a['foo']['bar'] =
+                    // "str"; should not end with:
+                    //    $a -> Array[foo => Array[bar => {TInt, TString}]]
+                    // but
+                    //    $a -> Array[foo => Array[bar => String]]
+                    def assignMerge(from: Type, to: Type): Type = (from,to) match {
+                        case (from: TArray, to: TArray) =>
+                            import scala.collection.mutable.HashMap
+                            import Math.max
 
-                                    // Shouldn't be needed as the resulting
-                                    // type should never be polluted, by
-                                    // construction
-                                    var newPollutedType = (from.pollutedType, to.pollutedType) match {
-                                        case (Some(pt1), Some(pt2)) => Some(TypeLattice.join(pt1, pt2))
-                                        case (Some(pt1), None) => Some(pt1)
-                                        case (None, Some(pt2)) => Some(pt2)
-                                        case (None, None) => None
-                                    }
-
-                                    val newEntries = HashMap[String, Type]() ++ from.entries;
-
-                                    for((index, typ)<- to.entries) {
-                                        newEntries(index) = newEntries.get(index) match {
-                                            case Some(t) => assignMerge(t, typ)
-                                            case None => typ
-                                        }
-                                    }
-
-                                    newPollutedType = newPollutedType match {
-                                        case Some(pt) =>
-                                            for ((index, typ) <- newEntries) {
-                                                newEntries(index) = TypeLattice.join(pt, typ)
-                                            }
-                                            if (newEntries.size > 0) {
-                                                Some(newEntries.values reduceLeft TypeLattice.join)
-                                            } else {
-                                                Some(pt)
-                                            }
-                                        case None => None
-                                    }
-
-                                    new TArray(newEntries, newPollutedType, max(from.nextFreeIndex, to.nextFreeIndex))
-                                // In case not both types are not arrays, we
-                                // always end up with the target type
-                                case (a, b) => b
+                            // Shouldn't be needed as the resulting
+                            // type should never be polluted, by
+                            // construction
+                            var newPollutedType = (from.pollutedType, to.pollutedType) match {
+                                case (Some(pt1), Some(pt2)) => Some(TypeLattice.join(pt1, pt2))
+                                case (Some(pt1), None) => Some(pt1)
+                                case (None, Some(pt2)) => Some(pt2)
+                                case (None, None) => None
                             }
-                            assignMerge(b, a)
-                        case (a: ArrayType, b) =>
-                            rt
-                        case _ =>
-                            println("Woooops?? Why is that type here, resulting type should be an Array !?")
-                            rt
+
+                            val newEntries = HashMap[String, Type]() ++ from.entries;
+
+                            for((index, typ)<- to.entries) {
+                                newEntries(index) = newEntries.get(index) match {
+                                    case Some(t) => assignMerge(t, typ)
+                                    case None => typ
+                                }
+                            }
+
+                            newPollutedType = newPollutedType match {
+                                case Some(pt) =>
+                                    for ((index, typ) <- newEntries) {
+                                        newEntries(index) = TypeLattice.join(pt, typ)
+                                    }
+                                    if (newEntries.size > 0) {
+                                        Some(newEntries.values reduceLeft TypeLattice.join)
+                                    } else {
+                                        Some(pt)
+                                    }
+                                case None => None
+                            }
+
+                            new TArray(newEntries, newPollutedType, max(from.nextFreeIndex, to.nextFreeIndex))
+
+                        case (from: TObjectRef, to: TObjectRef) =>
+                            import scala.collection.mutable.HashMap
+                            //println("Trying to assign-merge "+from+" and "+ to)
+
+                            val newFields = HashMap[String, Type]() ++ from.realObj.fields;
+
+                            for((index, typ)<- to.realObj.fields) {
+                                newFields(index) = newFields.get(index) match {
+                                    case Some(t) => assignMerge(t, typ)
+                                    case None => typ
+                                }
+                            }
+
+                            val o : RealObjectType = to.realObj match {
+                                case o: TRealClassObject =>
+                                    TRealClassObject(o.cl, newFields, o.pollutedType)
+                                case o: TRealObject =>
+                                    TRealObject(newFields, o.pollutedType)
+                            }
+
+                            ObjectStore.set(to.id, o)
+
+                            to
+                        // In case not both types are not arrays nor objects, we
+                        // always end up with the resulting type
+                        case (a, b) => a
                     }
+
+                    val resultingType = assignMerge(rt, typeFromSimpleValue(elem))
 
                     elem match {
                         case sv: CFGSimpleVariable =>
@@ -464,7 +488,7 @@ object TypeFlow {
           }
 
           def functionSymbolToFunctionType(fs: FunctionSymbol): FunctionType = {
-            new TFunction(fs.argList.map { a => (a._4, a._5) }, TAny)
+            new TFunction(fs.argList.map { a => (a._2.typ, a._2.optional) }, fs.typ)
           }
 
           def checkFCalls(fcall: CFGFunctionCall, syms: List[FunctionType]) : Type =  {
