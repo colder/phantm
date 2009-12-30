@@ -99,7 +99,7 @@ object Symbols {
     registerPredefVariables
   }
 
-  class FunctionSymbol(val name: String) extends Symbol with Scope {
+  class FunctionSymbol(val name: String, val typ: Type) extends Symbol with Scope {
     val args = new HashMap[String, (VariableSymbol, Boolean, Type, Boolean)]();
     var argList: List[(String, VariableSymbol, Boolean, Type, Boolean)] = Nil;
 
@@ -150,7 +150,7 @@ object Symbols {
     override def stricterThan(o: MemberVisibility) = o == MVPublic
   }
 
-  class MethodSymbol(val cs: ClassSymbol, name: String, val visibility: MemberVisibility) extends FunctionSymbol(name) {
+  class MethodSymbol(val cs: ClassSymbol, name: String, typ: Type, val visibility: MemberVisibility) extends FunctionSymbol(name, typ) {
     override def registerPredefVariables = {
         super.registerPredefVariables
         registerVariable(new VariableSymbol("this"))
@@ -160,7 +160,7 @@ object Symbols {
   class PropertySymbol(val cs: ClassSymbol, name: String, val visibility: MemberVisibility, val typ: Type) extends VariableSymbol(name);
   class ClassConstantSymbol(val cs: ClassSymbol,  name: String, val typ: Type) extends ConstantSymbol(name);
 
-  class IfaceMethodSymbol(val cs: IfaceSymbol, name: String, val visibility: MemberVisibility) extends FunctionSymbol(name);
+  class IfaceMethodSymbol(val cs: IfaceSymbol, name: String, typ: Type, val visibility: MemberVisibility) extends FunctionSymbol(name, typ);
   class IfaceConstantSymbol(val cs: IfaceSymbol,  name: String, val typ: Type) extends ConstantSymbol(name);
 
   case class LookupResult[T](ms: Option[T], visibError: Option[MemberVisibility], staticClash: Boolean) {

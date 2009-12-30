@@ -5,7 +5,6 @@ import scala.collection.immutable.HashMap
 import scala.collection.immutable.HashSet
 import scala.collection.immutable.Map
 import analyzer.Symbols._
-import analyzer.InternalFunctions
 import analyzer.Types._
 
 object TypeFlow {
@@ -215,13 +214,8 @@ object TypeFlow {
                                 case "isset" | "empty" =>
                                     TBoolean // no need to check the args, this is a no-error function
                                 case _ =>
-                                    InternalFunctions.lookup(id) match {
-                                        case Some(fts) =>
-                                            checkFCalls(fcall, fts)
-                                        case None =>
-                                            notice("Function "+id.value+" appears to be undefined!", id)
-                                            TAny
-                                    }
+                                    notice("Function "+id.value+" appears to be undefined!", id)
+                                    TNone
                             }
                     }
                 case CFGMethodCall(r, mid, p) =>
@@ -463,21 +457,21 @@ object TypeFlow {
                                 }
                             }
 
-                            
                             val o : RealObjectType = to.realObj match {
                                 case o: TRealClassObject =>
                                     TRealClassObject(o.cl, newFields, o.pollutedType)
                                 case o: TRealObject =>
                                     TRealObject(newFields, o.pollutedType)
                             }
-                            /* scala crashes at compilation with that:
+
+                            /* // scala crashes at compilation with that:
                             val o : RealObjectType = to.realObj match {
                                 case TRealClassObject(cl, _, pt) =>
                                     TRealClassObject(cl, newFields, pt)
                                 case TRealObject(_, pt) =>
                                     TRealObject(newFields, pt)
                             }
-                            */
+                           */
 
                             ObjectStore.set(to.id, o)
 
@@ -503,7 +497,7 @@ object TypeFlow {
           }
 
           def functionSymbolToFunctionType(fs: FunctionSymbol): FunctionType = {
-            new TFunction(fs.argList.map { a => (a._4, a._5) }, TAny)
+            new TFunction(fs.argList.map { a => (a._4, a._5) }, fs.typ)
           }
 
           def checkFCalls(fcall: CFGFunctionCall, syms: List[FunctionType]) : Type =  {

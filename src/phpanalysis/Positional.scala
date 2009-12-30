@@ -8,7 +8,7 @@ trait Positional {
     var col: Int = -1;
     var file: Option[String] = None;
 
-    def getPos =  file.getOrElse("<Unknown>")+" line "+line+" column "+col;
+    def getPos =  file.getOrElse("<unknown>")+" line "+line+" column "+col;
 
     def setPos(l: Int, c: Int, f: String): self.type = {
         line = l;
