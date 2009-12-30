@@ -75,45 +75,6 @@ project differs from the original one in two points:
     simple tree which could then be translated by a Scala class entirely.
 \end{enumerate}
 
-The Syntax Tree (ST) is then translated into an AST. This is done by visiting
-the tree and decomposing syntax elements:
-
-\begin{listing}
-\begin{verbatim}
-    // ...
-    def extends_from(n: ParseNode): Option[StaticClassRef] = {
-        childrenNames(n) match {
-            case List() =>
-                None
-            case List("T_EXTENDS", "fully_qualified_class_name") =>
-                Some(fully_qualified_class_name(child(n, 1)))
-        }
-    }
-    // ...
-\end{verbatim}
-  \caption{parser/STToAST.scala: Example of ST to AST decomposition}
-\end{listing}
-
-\begin{itemize}
-  \item \verb=chidldrenNames(node)= is used to return a list of strings,
-    representing the tokens or productions.
-  \item \verb=child(node, index)= is used to access the N'th child
-\end{itemize}
-
-%\begin{figure}
-%  \begin{center}
-%  \includegraphics[scale=0.3]{ST.jpg}
-%  \end{center}
-%  \caption{Syntax Tree for "\$a = 1 + \$b;"}
-%\end{figure}
-%
-%\begin{figure}
-%  \begin{center}
-%  \includegraphics[scale=0.3]{AST.jpg}
-%  \end{center}
-%  \caption{Abstract Syntax Tree for "\$a = 1 + \$b;"}
-%\end{figure}
-
 \subsection{Semantic Analysis}
 Some checks can be done direcly by looking at the AST. Indeed, PHP provides a
 wide range of features, some of them being considered nowadays as bad practice.
@@ -174,115 +135,28 @@ identifiers such as variables, functions or classes. The goal is to ensure that
 no obvious semantic errors such as inheritance cycles, or visibility
 inconsistances exist.
 
-\begin{listing}
-  \begin{verbatim}
-<?php
-class A extends D { } 
-class B extends A { }
-class C extends A { }
-?>
-  \end{verbatim}
-  \caption{Class inheritance cycle}
-\end{listing}
+\subsubsection{API importation}
+By default, PHP comes with a very dense library of functions and classes. In
+fact, the main extensions that are shipped with PHP consist of more than 2'500
+functions and classes. Being able to correctly represent this internal API is
+a key factor to obtain useful analysis results. This API is stored in an external
+XML file, allowing easy modifications and also do not require a re-compilation.
+Additionally, a \verb=--apis= command line option is available to specify a
+list of API files that can be imported into the symbol tables. This is especially
+useful for large projects as it allows focused analysis.
 
-\begin{listing}
-  \begin{verbatim}
-test.php:2  Error: Classes A -> B -> C form an inheritance cycle
-class A extends B {}
-^
-test.php:4  Error: Class C extends non-existent class A
-class C extends A {}
-                ^
-2 errors occured, abort
-  \end{verbatim}
-  \caption{Cycle detection error}
-\end{listing}
 
-\begin{listing}
-  \begin{verbatim}
-<?php
-class A {
-    public function test() {}
-}
-
-class B extends A {
-    protected function test() {}
-}
-?>
-  \end{verbatim}
-  \caption{Visibility inconsistance}
-\end{listing}
-
-\begin{listing}
-  \begin{verbatim}
-test.php:7  Error: Method B::test cannot overwrite A::test 
-                   with visibility protected (was public)
-    protected function test() {}
-                       ^
-1 error occured, abort
-  \end{verbatim}
-  \caption{Visibility error}
-\end{listing}
-
-Since PHP allows a developer to dynamically create and reference variables, it
-is close to impossible to detect undeclared or unused variables solely based on
-symbols collection. PHP is also loosely typed, which means type propagations
-and checks cannot sanely be done using the AST only. In fact, the AST is only the
-intermediate step that only let us do trivial checks. To analyse more complex
-aspects of a program, this tool will use control flow graphs (CFG) which are
-derived from ASTs.
 
 \subsection{Control flow graphs}
-Control flow graphs modelize the flow of values through the different control
-structures. Because PHP is dynamically typed, and since variables cannot be
-declared, it is impossible to infer and check types solely based on the
-structural representation of the code. For such tasks, we require CFGs to
-be able to reproduce the flow of types that would happen in an execution
-of the code. The main focus of this analysis will be on analysing type flows.
-%\begin{listing}
-%  \begin{verbatim}
-%<?php
-%function test() {
-%  $a = 0;
-%  for($i = 0; $i < 10; $i++) {
-%    $a += $i;
-%  }
-%}
-%?>
-%  \end{verbatim}
-%  \caption{Control structure example}
-%  \label{cfg1}
-%\end{listing}
-
-%\begin{figure}
-%  \begin{center}
-%  \includegraphics[scale=0.3]{CFG1.jpg}
-%  \end{center}
-%  \caption{Control flow graph for Listing~\ref{cfg1}}
-%\end{figure}
-
-%\begin{listing}
-%  \begin{verbatim}
-%<?php
-%function test() {
-%  $a = 0;
-%  for($i = 0; $i < 10; $i++) {
-%    break;
-%    $a += $i;
-%  }
-%}
-%?>
-%  \end{verbatim}
-%  \caption{Control structure with unreachable code}
-%  \label{cfg2}
-%\end{listing}
-
-%\begin{figure}
-%  \begin{center}
-%  \includegraphics[scale=0.3]{CFG2.jpg}
-%  \end{center}
-%  \caption{Control flow graph for Listing~\ref{cfg2}, showing unreachable branches}
-%\end{figure}
+In fact, the AST is only the intermediate step that only let us do trivial
+checks. To analyse more complex aspects of a program, this tool will use
+control flow graphs (CFG) which are derived from ASTs.  Control flow graphs
+modelize the flow of values through the different control structures. Because
+PHP is dynamically typed, and since variables are not declared, it is
+impossible to infer and check types solely based on the structural
+representation of the code. For such tasks, we require CFGs to be able to
+reproduce the flow of types that would happen in an execution of the code. The
+main focus of this analysis will be on analysing type flows.
 
 \section{Analysis}
 \subsection{PHP overview}
@@ -370,8 +244,8 @@ As said earlier, the main focus of this analysis tool is on types. Even though
 PHP is dynamically typed, and provides very few indications of types. It is
 still interresting to try to infer types and check for type safety.
 
-\subsubsection{Type lattice}
-We now provide a detailled description of every elements of our type lattice:
+\subsubsection{Type mode}l
+We now provide a detailled description of every elements of our type model:
 \begin{itemize}
   \item \verb=TAny= ($\top$): Top of our lattice, represents any type
   \item \verb=TNone= ($\bot$): Bottom of our lattice, represents no type
@@ -384,6 +258,60 @@ We now provide a detailled description of every elements of our type lattice:
     of different types. This could be improved in the future.
   \item \verb=TNull=: Null value.
   \item \verb=TString=: Strings
+  \item \verb=TAnyArray=: This represents an array on which nothing is known
+    appart from the fact that it's an array. Any lookup in this array will
+    result in a type of \verb=TAny=.
+  \item \verb=TArray=: This type represents an array on which a lot of information
+    may be known. It is structured as follows:
+    \begin{itemize}
+        \item A index-type dictionnary for every well-defined entries. The rationale
+          behind having such a precise representation is that PHP arrays are often
+          used as containers for multiple named values. It is thus important to keep
+          track of the types associated to each name.
+        \item An optional array-wise type. This type represents the possible 
+          contamination of an array via a dynamic access. This type is called
+          the ``polluted type''. For exemple, the code
+          \verb/$a[$foo] = 2/ will have the following effect on a well-defined
+          array: First, every entries will get affected to indicate that the type
+          might also be \verb=TInt=. Then, the polluted type is set (or expanded)
+          to include \verb=TInt=. Having a polluted type defined for an array will
+          shut down any notices of undefined array entries, as we are no longer sure
+          whether a specific entry is defined or not.
+    \end{itemize}
+  \item Objects: Objects are represented differently than other types. The reason
+    is that when passing, assigning or returning objects PHP will pass the 
+    object reference. For example, in \verb/$a = new Foo; $b = $a; $a->foo = 2/,
+    both \emph{\$a} and \emph{\$b} represent the same object, hence both
+    variables are affected by the object modification. We need to reproduce
+    that level of indirection as part of our type model for objects. This is
+    done by introducing object references as types, mapping the real object in
+    a an object store. That way the type can be copied around and propagated to
+    different values and still point to the same real object type. We thus have
+    two different levels of types:
+    \begin{itemize}
+          \item \verb=TObjectRef=: Object reference. This is the type to which
+            any well-defined object value is assigned.
+          \item \verb=RealObjectType=: Real object type pointed to by the
+            object reference. This is the actual object type storing mapings to
+            methods, properties and constants. It is stored in the ObjectStore
+            and is not directly exposed as types of values.
+    \end{itemize}
+
+    Real objects are decomposed into two object types:
+    \begin{itemize}
+          \item \verb=TRealClassObject=: Representing an object of a
+            defined class. This type will have, like arrays, a index-type
+            mapping for properties. Since object properties can be dynamically
+            defined, we also have a so-called polluted type for properties.
+          \item \verb=TRealObject=: This is very similar to
+            \verb=TRealClassObject=, the only difference is that this object
+            carries no class. It is mostly used for type constructions. For
+            instance, \verb/$a->b = 2/ will merge the type of \verb/$a/ with a
+            constructed TRealObject having as only entry $(a \rightarrow
+            TInt)$. This will result in a well defined object injected with $a
+            \rightarrow TInt$. This specific area of the typechecker will be
+            described in more details later.
+    \end{itemize}
 \end{itemize}
 
 We first introduce two types, \verb=TAny= representing any type and
