@@ -314,7 +314,7 @@ We now provide a detailled description of every elements of our type model:
     \end{itemize}
 \end{itemize}
 
-\subsubsection{Assigns to com}
+\subsubsection{Assigns to complex variables}
 
 \subsubsection{Conditional type filtering}
 In PHP, most functions will return \verb/false/  or \verb/null/ in case of error.
@@ -367,33 +367,32 @@ assigns as conditionals, meaning that in
 $TResource$ for type of \verb/$row/. In summary, this simple filtering trick allows
 for precise prototyping with reduced false-positives!
 
-\subsection{Helpers}
-In order to check that parts of the tool was working as expected, some helpers were
-developped to retrieve information about each steps. The main helpers are able to generate:
-\begin{itemize}
-  \item A list of tokens generated from the file
-  \item A dot file representing the Syntax Tree graph
-  \item A dot file representing the Abstract Syntax Tree
-  \item A dot file representing the Control Flow Graph, highlighting control structures
-    such as \verb=if=, \verb=for=, \verb=foreach=, \verb=while=, \verb=dowhile=
-\end{itemize}
-
-Those helpers were used to generate the figures presented in this report.
-
 \section{Limitations and future work}
-As the timespan of this project was only one semester, only some limited
-analysis has been done, and some shortcuts were taken. For example, PHP
-references were ignored as they add much more complexity to the process, while
-their usage is limited. Additionally, even though the code base for the syntax
-is PHP 5.3, some of its features such as namespaces or closures has been left
-out. The aim of this project being to provide something useful, some implementation
-details were ignored, which means that the current codebase contains several
-\emph{TODO} annotation, that would have to be looked over whenever some
-additional time on this project.
+Most serious PHP applications out there are often based on some heavy frameworks
+that may require a lot of ``magic`` features to work. Analysing such projects
+would currently yield a flood of false-positive, totally hiding any potential
+real problem.
 
-Much more analysis could be done, such as value ranges analysis, that can help
-guide the traversal of the CFG to gain precision. Also, the model used for
-arrays could be precised to allow more fine-grained analysis.
+Also, due to the modularity of most projects out there, it becomes critical to
+be able to correctly typecheck functions or methods arguments and return values.
+Due to the lack of scalar type hinting (PHP allows array and class type hints
+for arguments), annotations of some kind would be required. Even though the
+current version allows to plugin APIs in XML format, it would be a definite
+plus to allow the tool to parse block comments before declaration, to extract
+expected types. An idea would be to use a syntax very similar to what
+\emph{javadoc} parses, as it is a quite common way of self-documenting PHP
+code as well.
+
+This tool still fails at analysing one ``core'' feature of PHP, which is
+\emph{references}. As of PHP5, the usage of references is in most case obsolete
+or even harmful. However, it is still used by lots of projects, for different
+reasons.
+
+Another idea of possible improvement is about the way it registers symbols.
+Indeed, since it registers more than 2'500 functions, each of them having up to
+7 variables defined in every functions (\verb/$_GET/ \ldots \verb/$_SESSION/,
+and \verb/$this/ in case of a method). This means the analyser starts by
+creating more than 15'000 symbols even if the code analyzed is a single line.
 
 \section{Conclusions}
 This project was really interessant because it was based on a real language, used
@@ -408,6 +407,12 @@ real gap to fill regarding static analysis of PHP related programs and scripts.
 \begin{thebibliography}{99}
   \bibitem{tigerbook}A.W. Appel {\it Modern Compiler Implementation in Java}
     Cambridge University Press (2002)
+  \bibitem{tapl}Benjamin C. Pierce {\it Types and Programming Languages}
+    The MIT Press (2002)
+  \bibitem{aliasanal}N. Jovanovic, C. Kruegel, E. Kirda {\it Precise Alias Analysis for Static Detection of Web Application Vulnerabilities}
+    Technical University of Vienna
+  \bibitem{diminfer}S. Hangal, M.S. Lam {\it Automatic Dimension Inference and Checking for Object-Oriented Programs}
+    Standford University
   \bibitem{recdescent}\mbox{http://lara.epfl.ch/dokuwiki/compilation:} \mbox{example\_efficient\_code\_for\_conditionals}
 \end{thebibliography}
 
