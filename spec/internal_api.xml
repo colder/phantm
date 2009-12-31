@@ -1,6 +1,7 @@
 <!-- PHP Internal functions classes API -->
 <api>
  <!-- Classes definitions -->
+ <!--
  <classes>
   <class name="test">
    <position file="plop.c" line="12" col="9" />
@@ -28,6 +29,7 @@
   </class>
 
  </classes>
+ -->
 
  <!-- Functions definitions -->
  <functions>
