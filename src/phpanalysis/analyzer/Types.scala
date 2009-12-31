@@ -253,7 +253,7 @@ object Types {
 
 
         def msToTMethod(ms: MethodSymbol) = {
-            new TFunction(ms.argList.map{ x => (TAny, true)}.toList, TAny)
+            new TFunction(ms.argList.map{ x => (x._2.typ, x._2.optional)}.toList, ms.typ)
         }
 
         override def lookupMethod(index: String, from: Option[ClassSymbol]) =

@@ -207,7 +207,7 @@ object TypeFlow {
                 case fcall @ CFGFunctionCall(id, args) =>
                     GlobalSymbols.lookupFunction(id.value) match {
                         case Some(fs) =>
-                                checkFCalls(fcall, List(functionSymbolToFunctionType(fs)))
+                                checkFCalls(fcall.params, List(functionSymbolToFunctionType(fs)), fcall)
                         case None =>
                             // handle special functions
                             id.value.toLowerCase match {
@@ -218,24 +218,24 @@ object TypeFlow {
                                     TNone
                             }
                     }
-                case CFGMethodCall(r, mid, p) =>
+                case mcall @ CFGMethodCall(r, mid, args) =>
                     expect(r, TAnyObject) match {
                         case or: TObjectRef =>
                             or.lookupMethod(mid.value, env.scope) match {
                                 case Some(mt) =>
-                                    // TODO Check for opt args/type hints
-                                    mt.ret
+                                    checkFCalls(args, List(mt), mcall)
                                 case None =>
                                     // Check for magic __call ?
-                                    if (or.lookupMethod("__call", env.scope) == None) {
+                                    val cms = or.lookupMethod("__call", env.scope)
+                                    if (cms == None) {
                                         notice("Undefined method '" + mid.value + "' in object "+or, mid)
                                         TNone
                                     } else {
-                                        TAny
+                                        cms.get.ret
                                     }
                             }
                         case _ =>
-                            TNull
+                            TNone
                     }
 
                 case id: CFGSimpleVariable =>
@@ -491,16 +491,16 @@ object TypeFlow {
             new TFunction(fs.argList.map { a => (a._2.typ, a._2.optional) }, fs.typ)
           }
 
-          def checkFCalls(fcall: CFGFunctionCall, syms: List[FunctionType]) : Type =  {
+          def checkFCalls(fcall_params: List[CFGSimpleValue], syms: List[FunctionType], pos: Positional) : Type =  {
             def protoFilter(sym: FunctionType): Boolean = {
                 sym match {
                     case TFunction(args, ret) =>
                         var ret = true;
-                        for (i <- fcall.params.indices) {
+                        for (i <- fcall_params.indices) {
                             if (i >= args.length) {
                                 ret = false
                             } else {
-                                if (!TypeLattice.leq(typeFromSimpleValue(fcall.params(i)), args(i)._1)) {
+                                if (!TypeLattice.leq(typeFromSimpleValue(fcall_params(i)), args(i)._1)) {
                                     //notice("Prototype mismatch because "+fcall.params(i)+"("+typeFromSimpleValue(fcall.params(i))+") </: "+args(i)._1) 
 
                                     ret = false;
@@ -516,16 +516,16 @@ object TypeFlow {
             syms filter protoFilter match {
                 case Nil =>
                     if (syms.size > 1) {
-                        error("Unmatched function prototype '("+fcall.params.map(typeFromSimpleValue).mkString(", ")+")', candidates are:\n    "+syms.mkString(",\n    "), fcall)
+                        error("Unmatched function prototype '("+fcall_params.map(typeFromSimpleValue).mkString(", ")+")', candidates are:\n    "+syms.mkString(",\n    "), pos)
                         TNone
                     } else {
                         syms.first match {
                             case TFunction(args, ret) =>
-                                for (i <- fcall.params.indices) {
+                                for (i <- fcall_params.indices) {
                                     if (i >= args.length) {
-                                        error("Prototype error!", fcall)
+                                        error("Prototype error!", pos)
                                     } else {
-                                        expect(fcall.params(i), args(i)._1)
+                                        expect(fcall_params(i), args(i)._1)
                                     }
 
                                 }
