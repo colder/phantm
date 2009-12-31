@@ -571,7 +571,7 @@ object TypeFlow {
                                 if (value) {
                                     TUnion(u.types.filter(t => t != TFalse && t != TNull))
                                 } else {
-                                    TUnion(u.types.filter(t => t != TTrue))
+                                    TUnion(u.types.filter(t => t != TTrue  && t != TResource))
                                 }
                             case t =>
                                 if (value) {
@@ -584,7 +584,7 @@ object TypeFlow {
                                         TNone
                                     }
                                 } else {
-                                    if (t != TTrue) {
+                                    if (t != TTrue && t != TResource) {
                                         t
                                     } else {
                                         // we had a single incompatible type
