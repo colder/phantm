@@ -156,7 +156,9 @@ PHP is dynamically typed, and since variables are not declared, it is
 impossible to infer and check types solely based on the structural
 representation of the code. For such tasks, we require CFGs to be able to
 reproduce the flow of types that would happen in an execution of the code. The
-main focus of this analysis will be on analysing type flows.
+main focus of this analysis will be on analysing type flows. In the CFG, each
+vertex correspond to a program state between statements, and each directed edge
+represents the application of a statement.
 
 \section{Analysis}
 \subsection{PHP overview}
@@ -244,7 +246,7 @@ As said earlier, the main focus of this analysis tool is on types. Even though
 PHP is dynamically typed, and provides very few indications of types. It is
 still interresting to try to infer types and check for type safety.
 
-\subsubsection{Type mode}l
+\subsubsection{Type model}
 We now provide a detailled description of every elements of our type model:
 \begin{itemize}
   \item \verb=TAny= ($\top$): Top of our lattice, represents any type
@@ -257,37 +259,40 @@ We now provide a detailled description of every elements of our type model:
   \item \verb=TResource=: Resources. We make no distinction between resources
     of different types. This could be improved in the future.
   \item \verb=TNull=: Null value.
-  \item \verb=TString=: Strings
+  \item \verb=TString=: Strings.
+  \item \verb=TUnion=: Union of multiple distinct types, represented as the
+    infix $\cup$ operator. The result of this union of types depends on the operands,
+    it will be described into further details in its own section.
   \item \verb=TAnyArray=: This represents an array on which nothing is known
     appart from the fact that it's an array. Any lookup in this array will
     result in a type of \verb=TAny=.
   \item \verb=TArray=: This type represents an array on which a lot of information
     may be known. It is structured as follows:
     \begin{itemize}
-        \item A index-type dictionnary for every well-defined entries. The rationale
-          behind having such a precise representation is that PHP arrays are often
-          used as containers for multiple named values. It is thus important to keep
-          track of the types associated to each name.
+        \item A index-type dictionnary for every well-defined entries. The
+          rationale behind having such a precise representation is that PHP
+          arrays are often used as containers for multiple named values. It is
+          thus important to keep track of the types associated to each name.
         \item An optional array-wise type. This type represents the possible 
           contamination of an array via a dynamic access. This type is called
           the ``polluted type''. For exemple, the code
           \verb/$a[$foo] = 2/ will have the following effect on a well-defined
-          array: First, every entries will get affected to indicate that the type
-          might also be \verb=TInt=. Then, the polluted type is set (or expanded)
-          to include \verb=TInt=. Having a polluted type defined for an array will
-          shut down any notices of undefined array entries, as we are no longer sure
-          whether a specific entry is defined or not.
+          array: $\forall (e, t) \in entries: t = t \cup TInt$. Also, we have
+          $\emph{polluted type} = \emph{polluted type} \cup TInt$. A side
+          effect of having a non-empty polluted type will be to turn off any
+          notices related to undefined entries. Indeed, we can no longer ensure
+          that the type covers every entries.
     \end{itemize}
-  \item Objects: Objects are represented differently than other types. The reason
-    is that when passing, assigning or returning objects PHP will pass the 
-    object reference. For example, in \verb/$a = new Foo; $b = $a; $a->foo = 2/,
-    both \emph{\$a} and \emph{\$b} represent the same object, hence both
-    variables are affected by the object modification. We need to reproduce
-    that level of indirection as part of our type model for objects. This is
-    done by introducing object references as types, mapping the real object in
-    a an object store. That way the type can be copied around and propagated to
-    different values and still point to the same real object type. We thus have
-    two different levels of types:
+  \item Objects: Objects are represented differently than other types. The
+    reason is that when passing, assigning or returning objects PHP will pass
+    the object reference. For example, in 
+    \verb/$a = new Foo; $b = $a; $a->foo = 2/, both \emph{\$a} and \emph{\$b}
+    represent the same object, hence both variables are affected by the object
+    modification. We need to reproduce that level of indirection as part of our
+    type model for objects. This is done by introducing object references as
+    types, mapping the real object in a an object store. That way the type can
+    be copied around and propagated to different values and still point to the
+    same real object type. We thus have two different levels of types:
     \begin{itemize}
           \item \textbf{Object references:} This is the type to which
             any well-defined object value is assigned.
@@ -314,14 +319,80 @@ We now provide a detailled description of every elements of our type model:
     \end{itemize}
 \end{itemize}
 
+\subsubsection{Type lattice}
+A lattice is usually defined by three things: a partial order relation
+($\leq$), a join operation ($\cup$), and a meet operation ($\cap$). As noted
+earlier, the $\leq$ relation is the subtyping relation, we have that $A \leq B
+\Leftrightarrow A <: B$. The join operation $A \cup B$ returns the smallest
+type $C$ such that $A \leq C \wedge B \leq C$. As for the meet operation
+we can ignore it in our case since it is not necessary for top-down analysis.
+
+\subsection{Analysis mechanics}
+As we know, this analysis is based on pointwise lattices. A lattice is a
+structure providing a partial order between its elements. This is specially
+useful to represent types (the order relation being subtyping) which is what
+we use in our case.
+
+The role of a pointwise lattice is to keep track of a lattice value, or type in
+our case, for every values. We will denote those pointwise lattice elements as
+type environments. A type environment is basically a mapping between values and
+types.
+
+The analysis algorithm starts by assigning a base type envorinment to every CFG
+vertexes, or a global bottom ($\bot_g$) value, indicating whether such a vertex
+has been visited yet. Then, the algorithm starts with the entry of the CFG, and
+will visit the graph in order. For each edge $e = v_1 \rightarrow^s v_2$ where
+$s$ is the statement, we can calculate the environment at $v2$ comming from
+$e_i$ by applying a transfer function on $v_1$ with $s$. This will represent
+the type environment in which $v_2$ will be in case that edge $e$ was taken to
+get to $v_2$. Of course, one vertex may have multiple entry edges and so, to
+calculate the actual type environment of $v_2$ we will have to join every
+environment $env_i$ defined as $env_i = transferFunction(v_i, s_i)$ where $(v_i
+\rightarrow^{s_i} v_2) \in edges$. This type environemnt join operator
+($\cup_e$) is defined as follows:
+\begin{itemize}
+  \item $\bot_g \cup_e E_i = E_i$ and $E_i \cup_e \bot_g = E_i$
+  \item For $E_i \cup_e E_j$ where $E_i \neq \bot_g$ and $E_j \neq \bot_g$, we
+    construct $E_u = E_i \cup_e E_j$ using the following set of rules: First,
+    we define $E_i(v_j)$ as the type associated to the value $v_j$ in the
+    environment $E_i$.  We have that $ \forall v_k \in values(E_i) \cup
+    values(E_j):$
+    \begin{eqnarray*}
+      E_u(v_k) = \left \{ \begin{array}{l l}
+        E_i(v_k) \cup E_j(v_k) & v_k \in values(E_i)    \wedge v_k \in values(E_j) \\
+        E_i(v_k) \cup TNull    & v_k \in values(E_i)    \wedge v_k \notin values(E_j) \\
+        TNull    \cup E_j(v_k) & v_k \notin values(E_i) \wedge v_k \in values(E_j)
+      \end{array} \right \}
+    \end{eqnarray*}
+    Note that the join operator $\cup$ used with two types represents the
+    \emph{join} operation on our type lattice, as described earlier in the 
+    type lattice section.
+\end{itemize}
+
+We see that traversing the CFG only once will not be sufficient. For instance, in
+an loop, in the first vertex in the loop, the entry edge comming from the end
+of the loop is not known when we enter the loop the first time. Multiple passes
+are hence required! In order for this algorithm to terminate, we check whether
+we actually changed the environment. This so called ``fixpoint'' algorithm will
+stop whenever no change has been made to any environment during a complete
+traversal of the graph. By design, the type lattice join operation will not
+generate types that will always change, as it can only go ``up'' in our
+lattice. However, we need to take special care in the type transfer function that
+it doesn't generate differences that would jeopardize the termination. For instance
+\verb/$a = new MyClass/ cannot be made to create a new object reference for
+every traversal! To solve this case, we set the reference value to the program point.
+
 \subsubsection{Assigns to complex variables}
 
 \subsubsection{Conditional type filtering}
-In PHP, most functions will return \verb/false/  or \verb/null/ in case of error.
-For a function normally returning an integer, this means that any return value of this
-function should be typed $TInt|TBoolean$. However, this would lead to massive amount of
-false positives. Consider the following code which can be seen in most procedural code
-dealing with mysql queries:
+So far, the analysis features are quite common and could be applied to most
+languages. This is however insufficient to give a good analysis. The reason is
+that most internally defined PHPfunctions will return \verb/false/ or
+\verb/null/ in case of error. For a function normally returning an integer,
+this means that any return value of this function should be typed
+$TInt \cup TBoolean$. However, this would lead to massive amount of false
+positives. Consider the following code example which can be seen in most
+procedural scripts dealing with mysql queries:
 
 \begin{listing}
   \begin{verbatim}
@@ -340,32 +411,34 @@ if ($result) {
 \verb/mysql_query/ either return a result resource or false in case the query
 failed. \verb/mysql_fetch_assoc/ takes a resource, and return an array
 representing the row, unless it reached the end of the result set in which case
-it will return false. Naively checking types would give us many false positives:
+it will return false. Naively checking types would give us many false
+positives:
 \begin{itemize}
   \item \verb/mysql_fetch_assoc/'s argument would be of type
-    $TBoolean \cup TResource$, which would fail with a type mismatch saying that it
-    expects a $TResource$.
-  \item Inside the while body, \verb/$row/ would still be of type
-    $TBoolean \cup TArray$, generating a false positive for any usage of \verb/$row/
-    as an array.
+    $TBoolean \cup TResource$, which would fail with a type mismatch saying
+    that it expects a $TResource$.
+  \item Inside the while body, \verb/$row/ would still be of type $TBoolean
+    \cup TArray$, generating a false positive for any usage of \verb/$row/ as
+    an array.
 \end{itemize}
 
 The solution to this problem is in two parts. First of all, it was necessary to
-improve the precision of the boolean type and introduce $TTrue$ and $TFalse$. That
-was, a function can be described as returning $TResource \cup TFalse$. From those
-types, it becomes quite trivial to filter incompatible values when taking a branch.
+improve the precision of the boolean type and introduce $TTrue$ and $TFalse$.
+That was, a function can be described as returning $TResource \cup TFalse$.
+From those types, it becomes quite trivial to filter incompatible values when
+taking a branch.
 
 For instance, with \verb/if ($result)/ the cfg will create two branches, one
 for $\$result = true$ and one for $\$result \neq true$. In the first branch, we
 can filter out types of \verb/$result/ that represent strictly false values,
-which includes $TFalse$ and $TNull$. The same applies for the second branch,
-in which we filter out strictly true values, namely $TTrue$ and $TResource$. In
+which includes $TFalse$ and $TNull$. The same applies for the second branch, in
+which we filter out strictly true values, namely $TTrue$ and $TResource$. In
 our previous example, the type of \verb/$result/ inside the if body would thus
 be filtered to $TResource$ which is correct. Moreover, it will also filter
 assigns as conditionals, meaning that in 
 \verb/while($row = mysql_fetch_assoc($result))/, the while body will have
-$TResource$ for type of \verb/$row/. In summary, this simple filtering trick allows
-for precise prototyping with reduced false-positives!
+$TResource$ for type of \verb/$row/. In summary, this simple filtering trick
+allows for precise prototyping with reduced false-positives!
 
 \section{Limitations and future work}
 Most serious PHP applications out there are often based on some heavy frameworks
@@ -407,13 +480,15 @@ real gap to fill regarding static analysis of PHP related programs and scripts.
 \begin{thebibliography}{99}
   \bibitem{tigerbook}A.W. Appel {\it Modern Compiler Implementation in Java}
     Cambridge University Press (2002)
-  \bibitem{tapl}Benjamin C. Pierce {\it Types and Programming Languages}
-    The MIT Press (2002)
-  \bibitem{aliasanal}N. Jovanovic, C. Kruegel, E. Kirda {\it Precise Alias Analysis for Static Detection of Web Application Vulnerabilities}
-    Technical University of Vienna
-  \bibitem{diminfer}S. Hangal, M.S. Lam {\it Automatic Dimension Inference and Checking for Object-Oriented Programs}
-    Standford University
-  \bibitem{recdescent}\mbox{http://lara.epfl.ch/dokuwiki/compilation:} \mbox{example\_efficient\_code\_for\_conditionals}
+  \bibitem{tapl}Benjamin C. Pierce {\it Types and Programming Languages} The
+    MIT Press (2002)
+  \bibitem{aliasanal}N. Jovanovic, C. Kruegel, E. Kirda {\it Precise Alias
+    Analysis for Static Detection of Web Application Vulnerabilities} Technical
+    University of Vienna
+  \bibitem{diminfer}S. Hangal, M.S. Lam {\it Automatic Dimension Inference and
+    Checking for Object-Oriented Programs} Standford University
+  \bibitem{recdescent}\mbox{http://lara.epfl.ch/dokuwiki/compilation:}
+    \mbox{example\_efficient\_code\_for\_conditionals}
 \end{thebibliography}
 
 
