@@ -23,21 +23,22 @@ object Types {
     case object TClassAny extends ClassType {
         def isSubtypeOf(cl2: ClassType) = true;
     }
-    case class TClass(cs: ClassSymbol) extends ClassType {
+    class TClass(val cs: ClassSymbol) extends ClassType {
         override def toString = cs.name
         def isSubtypeOf(cl2: ClassType) = cl2 match {
             case TClassAny => false
-            case TClass(cs2) => cs.subclassOf(cs2)
+            case tc: TClass =>
+                cs.subclassOf(tc.cs)
         }
     }
 
     sealed abstract class FunctionType {
         val ret: Type;
     }
-    case object TFunctionAny extends FunctionType {
+    object TFunctionAny extends FunctionType {
         val ret = TAny
     }
-    case class TFunction(args: List[(Type, Boolean)], ret: Type) extends FunctionType {
+    class TFunction(val args: List[(Type, Boolean)], val ret: Type) extends FunctionType {
 
         override def toString = args.map{a => a match {
                 case (t, false) => t
@@ -72,20 +73,20 @@ object Types {
 
         def getOrCreate(id: ObjectId, ocs: Option[ClassSymbol]) : TObjectRef = store.get(id) match {
             case Some(_) =>
-                TObjectRef(id)
+                new TObjectRef(id)
             case None =>
                 // We create a new object and place it in the store
                 val rot = ocs match {
                     case Some(cs) =>
                         // construct a default object for this class
-                        TRealClassObject(TClass(cs), HashMap[String,Type]() ++ cs.properties.mapElements[Type] { x => x.typ }, None)
+                        new TRealClassObject(new TClass(cs), HashMap[String,Type]() ++ cs.properties.mapElements[Type] { x => x.typ }, None)
                     case None =>
                         // No class => any object
-                        TRealObject(HashMap[String,Type](), None)
+                        new TRealObject(HashMap[String,Type](), None)
                 }
 
                 store(id) = rot;
-                TObjectRef(id)
+                new TObjectRef(id)
         }
     }
 
@@ -130,7 +131,7 @@ object Types {
         def polluteFields(typ: Type) = this
     }
     // Reference to an object in the store
-    case class TObjectRef(val id: ObjectId) extends ObjectType {
+    class TObjectRef(val id: ObjectId) extends ObjectType {
         def realObj = ObjectStore.lookup(id)
 
         def lookupField(index: String) = {
@@ -159,8 +160,8 @@ object Types {
     }
 
     // Real object type (in the store) representing a specific object of any class
-    case class TRealObject(var fields: Map[String, Type],
-                           var pollutedType: Option[Type]) extends RealObjectType {
+    class TRealObject(var fields: Map[String, Type],
+                      var pollutedType: Option[Type]) extends RealObjectType {
 
         def lookupField(index: String) =
             fields.get(index) match {
@@ -241,9 +242,9 @@ object Types {
         }
     }
 
-    case class TRealClassObject(val cl: TClass,
-                                initFields: Map[String, Type],
-                                initPollutedType: Option[Type]) extends TRealObject(initFields, initPollutedType){
+    class TRealClassObject(val cl: TClass,
+                           initFields: Map[String, Type],
+                           initPollutedType: Option[Type]) extends TRealObject(initFields, initPollutedType){
 
         override def toString = {
             var r = "Object("+cl+")"

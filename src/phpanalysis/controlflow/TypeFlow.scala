@@ -470,9 +470,9 @@ object TypeFlow {
 
                             val o : RealObjectType = to.realObj match {
                                 case o: TRealClassObject =>
-                                    TRealClassObject(o.cl, newFields, o.pollutedType)
+                                    new TRealClassObject(o.cl, newFields, o.pollutedType)
                                 case o: TRealObject =>
-                                    TRealObject(newFields, o.pollutedType)
+                                    new TRealObject(newFields, o.pollutedType)
                             }
 
                             ObjectStore.set(to.id, o)
@@ -505,13 +505,13 @@ object TypeFlow {
           def checkFCalls(fcall_params: List[CFGSimpleValue], syms: List[FunctionType], pos: Positional) : Type =  {
             def protoFilter(sym: FunctionType): Boolean = {
                 sym match {
-                    case TFunction(args, ret) =>
+                    case tf: TFunction =>
                         var ret = true;
                         for (i <- fcall_params.indices) {
-                            if (i >= args.length) {
+                            if (i >= tf.args.length) {
                                 ret = false
                             } else {
-                                if (!TypeLattice.leq(typeFromSimpleValue(fcall_params(i)), args(i)._1)) {
+                                if (!TypeLattice.leq(typeFromSimpleValue(fcall_params(i)), tf.args(i)._1)) {
                                     //notice("Prototype mismatch because "+fcall.params(i)+"("+typeFromSimpleValue(fcall.params(i))+") </: "+args(i)._1) 
 
                                     ret = false;
@@ -531,16 +531,16 @@ object TypeFlow {
                         TNone
                     } else {
                         syms.first match {
-                            case TFunction(args, ret) =>
+                            case tf: TFunction =>
                                 for (i <- fcall_params.indices) {
-                                    if (i >= args.length) {
+                                    if (i >= tf.args.length) {
                                         error("Prototype error!", pos)
                                     } else {
-                                        expect(fcall_params(i), args(i)._1)
+                                        expect(fcall_params(i), tf.args(i)._1)
                                     }
 
                                 }
-                                ret
+                                tf.ret
                             case s =>
                                 s.ret
                         }
