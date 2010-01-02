@@ -364,12 +364,14 @@ Those are, in order, the rules that apply to determine the result of $t_1 \cup t
   \item $\forall t \in types : t \cup TNone = TNone \cup t = t$
   \item $\forall t \in types : t \cup t = t$
   \item $\forall (t: TObjectRef): t \cup TAnyObject = TAnyObject \cup t = TAnyObject$
-  \item $\forall (t_1,t_2: TObjectRef): t_1 \cup t_2 = TUnion(t_1, t_2)$. XXX TODO!
+  \item $\forall (t_1,t_2: TObjectRef): t_1 \cup t_2 = TUnion(t_1 t_2)$. As we
+    know that at this point, the types must be different, which means they
+    point to different objects.
   \item $\forall (t: TArray): t \cup TAnyArray = TAnyArray \cup t = TAnyArray$
-  \item $\forall (t_1,t_2: TArray): t_1 \cup t_2 = $ an array where the polluted type
-    is the join of both polluted types, and the entries is the union of both
-    entry sets. Note taht for an entry present in both arrays, the join of its
-    types is taken.
+  \item $\forall (t_1,t_2: TArray): t_1 \cup t_2 = $ an array where the
+    polluted type is the join of both polluted types, and the entries is the
+    union of both entry sets. Note taht for an entry present in both arrays,
+    the join of its types is taken.
 
   \item $\forall t_1,t_2 \in types: t_1 \cup t_2 = TUnion(t_1, t_2)$. The last
     resort is to build a union of those types.
