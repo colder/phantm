@@ -383,8 +383,8 @@ object TypeFlow {
                             linearize(obj, ct, rt, pass+1)
                         case CFGNextArrayEntry(arr) =>
                             // ditto ArrayEntry
-                            val rt = new TArray().injectNext(resultType, arr);
-                            val ct = if (pass > 0) new TArray().injectNext(checkType, arr) else TAnyArray;
+                            val rt = new TArray().injectNext(resultType, arr.uniqueID);
+                            val ct = if (pass > 0) new TArray().injectNext(checkType, arr.uniqueID) else TAnyArray;
 
                             linearize(arr, ct, rt, pass+1)
                         case _ =>
@@ -442,7 +442,7 @@ object TypeFlow {
                                 case None => None
                             }
 
-                            new TArray(newEntries, newPollutedType, max(from.nextFreeIndex, to.nextFreeIndex))
+                            new TArray(newEntries, newPollutedType)
 
                         case (from: TObjectRef, to: TObjectRef) =>
                             import scala.collection.mutable.HashMap

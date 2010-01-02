@@ -3,6 +3,7 @@ import Symbols._
 import scala.collection.mutable.{HashSet, HashMap, Map}
 
 import controlflow.TypeFlow._
+import controlflow.CFGTrees._
 
 
 object Types {
@@ -268,66 +269,58 @@ object Types {
             }
     }
 
-    abstract class ArrayType(pollutedType: Option[Type]) extends Type {
+    abstract class ArrayType extends Type {
         self=>
-        import controlflow.CFGTrees._
-        def lookup(index: String): Option[Type];
+
+        val entries: Map[String, Type]
+        var pollutedType: Option[Type]
+        var pushPositions = HashMap[Int, String]()
+        var nextFreeIndex = 0
+
+        def lookup(index: String): Option[Type] = {
+            entries.get(index) match {
+                case Some(t) => Some(t)
+                case None =>
+                    // If the array has been polluted, we return the best guess
+                    pollutedType
+            }
+        }
+
         def lookup(index: CFGSimpleValue): Option[Type] = index match {
           case CFGNumLit(i)        => lookup(i+"")
           case CFGStringLit(index) => lookup(index)
           case _ => pollutedType
         }
-        def inject(index: String, typ: Type): self.type;
-        def inject(index: CFGSimpleValue, typ: Type): self.type = index match {
-          case CFGNumLit(i)        => inject(i+"", typ)
-          case CFGStringLit(index) => inject(index, typ)
-          case _ => pollute(typ)
-        }
-        def injectNext(typ: Type, p: Positional): self.type;
-        def pollute(typ: Type): self.type;
-        def duplicate: ArrayType;
-    }
 
-    case object TAnyArray extends ArrayType(Some(TAny)) {
-        def lookup(index: String) = Some(TAny)
-        def inject(index: String, typ: Type) = this
-        def injectNext(typ: Type, p: Positional) = this
-        def pollute(typ: Type) = this
-        def duplicate = this
-        override def toString = "Array[?]"
-        override def toText = "any array"
-    }
-
-    class TArray(val entries: Map[String, Type],
-                 var pollutedType: Option[Type],
-                 var nextFreeIndex: Int) extends ArrayType(pollutedType) {
-        self =>
-
-        var pushPositions = HashSet[String]()
-
-        def this() = this(HashMap[String, Type](), None, 0)
-        def this(pollutedType: Type) = this(HashMap[String, Type](), Some(pollutedType), 0)
-
-
-        def inject(index: String, typ: Type) = {
+        def inject(index: String, typ: Type): self.type = {
             // Used to inject and specific entry=>type relationship
             entries += ((index, typ))
             this
         }
 
-        def injectNext(typ: Type, p: Positional) = {
-            if (!(pushPositions contains p.getPos)) {
-                // Used to inject and specific entry=>type relationship
-                while(entries.get(nextFreeIndex+"") != None) {
-                    nextFreeIndex += 1;
-                }
-                entries += ((nextFreeIndex+"", typ))
-                pushPositions += p.getPos
+        def inject(index: CFGSimpleValue, typ: Type): self.type = index match {
+          case CFGNumLit(i)        => inject(i+"", typ)
+          case CFGStringLit(index) => inject(index, typ)
+          case _ => pollute(typ)
+        }
+
+        def injectNext(typ: Type, uniqueID: Int) = {
+            pushPositions.get(uniqueID) match {
+                case Some(index) =>
+                    // Was already pushed
+                    entries(index) = typ
+                case None =>
+                    while(entries.get(nextFreeIndex+"") != None) {
+                        nextFreeIndex += 1;
+                    }
+
+                    entries(nextFreeIndex+"") = typ
+                    pushPositions(uniqueID) = nextFreeIndex+""
             }
             this
         }
 
-        def pollute(typ: Type) = {
+        def pollute(typ: Type): self.type = {
             // When the index is unknown, we have to pollute every entries
             for ((i,t) <- entries) {
                 entries(i) = t union typ
@@ -340,15 +333,6 @@ object Types {
             }
 
             this
-        }
-
-        def lookup(index: String): Option[Type] = {
-            entries.get(index) match {
-                case Some(t) => Some(t)
-                case None =>
-                    // If the array has been polluted, we return the best guess
-                    pollutedType
-            }
         }
 
         def merge(a2: TArray): TArray = {
@@ -370,7 +354,7 @@ object Types {
                 }
             }
 
-            new TArray(newEntries, newPollutedType, max(nextFreeIndex, a2.nextFreeIndex))
+            new TArray(newEntries, newPollutedType)
         }
 
         override def equals(t: Any): Boolean = t match {
@@ -379,12 +363,26 @@ object Types {
             case _ => false
         }
 
-        def duplicate = {
-            new TArray(HashMap[String, Type]() ++ entries, pollutedType, nextFreeIndex)
-        }
-
         override def toString =
             "Array["+(entries.map(x => x._1 +" => "+ x._2).mkString("; "))+(if(pollutedType != None) " ("+pollutedType.get+")" else "")+"]"
+    }
+
+    class TArray(val entries: Map[String, Type],
+                 var pollutedType: Option[Type]) extends ArrayType {
+        self =>
+
+        def this() = this(HashMap[String, Type](), None)
+        def this(pollutedType: Type) = this(HashMap[String, Type](), Some(pollutedType))
+
+        def duplicate = {
+            new TArray(HashMap[String, Type]() ++ entries, pollutedType)
+        }
+
+    }
+
+    object TAnyArray extends TArray(HashMap[String, Type](), Some(TAny)) {
+        override def toString = "Array[?]"
+        override def toText = "any array"
     }
 
 
