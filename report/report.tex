@@ -166,7 +166,13 @@ represents the application of a statement.
 Before trying to see how to analyse PHP code, it is important to understand how PHP works,
 this is a small overview of the features PHP provides that are relevant to this analysis.
 \subsubsection{Types}
-In PHP, we have the following types:
+PHP is a weakly, dynamically typed language, meaning that types are not specically associated to
+variables, but to values. A variable may hence hold values of different types
+in its lifetime. It is also weakly typed as it allows automatic--or implicit
+type conversions when performing an operation on values of different types.
+This is specified as part of PHP as ``type juggling''\footnote{PHP Type
+Juggling: http://php.net/language.types.type-juggling}.  In PHP, we have the following
+types:
 \begin{itemize}
   \item \textbf{Booleans}
   \item \textbf{Integers}
@@ -182,12 +188,6 @@ In PHP, we have the following types:
   \item \textbf{Null}: This is the default type to any undefined or
     uninitialized variable.
 \end{itemize}
-
-Because PHP is loosely typed, it will do implicit type conversions\footnote{PHP
-Type Juggling: php.net/language.types.type-juggling} with expressions invloving
-mixed types. For example, \verb&2 + ``42''& is a valid expression that will
-evaluate to $44$. Also, the type of any variable may change during the
-execution.  For example, \verb&$a = 2; $a = new Foo();& is perfectly valid.
 
 \subsubsection{Object Oriented Programing}
 PHP supports OOP as of PHP4, but many features have later been added into PHP5.
@@ -329,24 +329,51 @@ type $C$ such that $A \leq C \wedge B \leq C$. As for the meet operation
 we can ignore it in our case since it is not necessary for top-down analysis.
 
 \subsubsection{Definition of $\leq$}
-Those are, in order, the rule that applies for $A \leq B$:
-\begin{itemize}
-  \item $\forall t \in types : \emph{TNone} \leq t$
-  \item $\forall t \in types : t \leq \emph{TAny}$
-  \item $\forall t \in types : t \leq \emph{TBoolean}$: This is due to the fact that any type has a boolean value
-  \item $\forall t \in ObjectRefs: t \leq \emph{TAnyObject}$
-  \item $\forall t_1,t_2 \in ObjectRefs: t_1 \leq t_2 \Leftrightarrow$
-    \begin{itemize}
-        \item $o1.class <: o2.class$ if $o1,o2$ are real class objects
-        \item $\forall f \in o2.fields: f \in o1.fields \wedge o1.fields(f) \leq o2.fields(f)$
-    \end{itemize}
-  \item $\forall a \in Arrays : t \leq \emph{TAnyArray}$
-  \item $a_1,a_2 \in Arrays : a1.pollutedType \leq a2.pollutedType \wedge (\forall e \in a2.entries : e \in a1.entries \wedge a1.entries(e) \leq a2.entries(e))$
-  \item $t: \verb
-\end{itemize}
-
+Those are, in order, the rules that apply to determine whether $t_1 \leq t_2$:
+\begin{enumerate}
+  \item $\forall t_2 \in types : \emph{TNone} \leq t_2$
+  \item $\forall t_1 \in types : t_1 \leq \emph{TAny}$
+  \item $\forall t_1 \in types : t_1 \leq \emph{TBoolean}$: This is due to the fact
+    that any type has a boolean value. However, it renders the lattice
+    ill-formed but greatly reduce the number of wrong-positives.
+  \item $\forall (t_1:  TObjectRef): t_1 \leq \emph{TAnyObject}$
+  \item $\forall (t_1,t_2: TObjectRef): t_1 \leq t_2$
+    if all the following rules apply ($o_1 = store(t_1.ref), o_2 = store(t_2.ref)$):
+    \begin{enumerate}
+        \item $o_1.class <: o_2.class$ if $o_1$ and $o_2$ are real class objects
+        \item $o_1.pollutedType \leq o_2.pollutedType$ if any
+        \item $\forall f \in o_3.fields: f \in o_1.fields \wedge o_1.fields(f)
+          \leq o_2.fields(f)$
+    \end{enumerate}
+  \item $\forall (a: TArray) : a \leq \emph{TAnyArray}$
+  \item $\forall (a_1,a_2: TArray) : a_1 \leq a_2$
+    if all the following rules apply:
+    \begin{enumerate}
+        \item $a_1.pollutedType \leq a_2.pollutedType$ if any
+        \item $\forall e \in a_2.entries: e \in o_1.entries \wedge a_1.entries(e)
+          \leq a_2.entries(e)$
+    \end{enumerate}
+  \item $\forall (u_1,u_2: TUnion) : u_1 \leq u_2 \Leftrightarrow \forall t_2 \in u_2: \exists t_1 \in u_1: t_1 \leq t_2$
+  \item $\forall t_1 \in types, (u_2: TUnion) : t_1 \leq u_2 \Leftrightarrow \forall t_2 \in u_2: t_1 \leq t_2$
+  \item $\forall (u_1: TUnion), t_2 \in types : u_1 \leq t_2 \Leftrightarrow \forall t_1 \in u_1: t_1 \leq t_2$
+\end{enumerate}
 
 \subsubsection{Definition of join ($\cup$)}
+Those are, in order, the rules that apply to determine the result of $t_1 \cup t_2$:
+\begin{enumerate}
+  \item $\forall t \in types : t \cup TNone = TNone \cup t = t$
+  \item $\forall t \in types : t \cup t = t$
+  \item $\forall (t: TObjectRef): t \cup TAnyObject = TAnyObject \cup t = TAnyObject$
+  \item $\forall (t_1,t_2: TObjectRef): t_1 \cup t_2 = TUnion(t_1, t_2)$. XXX TODO!
+  \item $\forall (t: TArray): t \cup TAnyArray = TAnyArray \cup t = TAnyArray$
+  \item $\forall (t_1,t_2: TArray): t_1 \cup t_2 = $ an array where the polluted type
+    is the join of both polluted types, and the entries is the union of both
+    entry sets. Note taht for an entry present in both arrays, the join of its
+    types is taken.
+
+  \item $\forall t_1,t_2 \in types: t_1 \cup t_2 = TUnion(t_1, t_2)$. The last
+    resort is to build a union of those types.
+\end{enumerate}
 
 \subsection{Analysis mechanics}
 As we know, this analysis is based on pointwise lattices. A lattice is a
