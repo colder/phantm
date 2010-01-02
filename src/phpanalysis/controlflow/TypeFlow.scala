@@ -36,6 +36,8 @@ object TypeFlow {
                  val ptMatch = (t1.pollutedType, t2.pollutedType) match {
                     case (Some(pt1), Some(pt2)) =>
                         leq(pt1, pt2)
+                    case (None, _) =>
+                        true
                     case _ =>
                         false
                 }
@@ -46,6 +48,8 @@ object TypeFlow {
                  val ptMatch = (t1.pollutedType, t2.pollutedType) match {
                     case (Some(pt1), Some(pt2)) =>
                         leq(pt1, pt2)
+                    case (None, _) =>
+                        true
                     case _ =>
                         false
                 }
@@ -75,6 +79,8 @@ object TypeFlow {
             case (TAnyObject, t: TObjectRef) => TAnyObject
             case (t: TObjectRef, TAnyObject) => TAnyObject
             case (t1: TObjectRef, t2: TObjectRef) =>
+                // We have a TUnion here since we are dealing
+                // with objects of different refs
                 TUnion(t1, t2)
             // Arrays
             case (TAnyArray, t: TArray) => TAnyArray
@@ -260,7 +266,7 @@ object TypeFlow {
                             t.lookup(ind) match {
                                 case Some(t) => t
                                 case None =>
-                                    notice("Potentially undefined array index '"+stringRepr(ind)+"'", ar)
+                                    notice("Potentially undefined array index "+stringRepr(ind), ar)
                                     TNone
                             }
                         case TNone => TNone
@@ -276,10 +282,21 @@ object TypeFlow {
                             t.lookupField(p) match {
                                 case Some(t) => t
                                 case None =>
-                                    notice("Potentially undefined object property '"+stringRepr(p)+"'", op)
+                                    notice("Potentially undefined object property "+stringRepr(p), op)
                                     TNone
                             }
                         case TNone => TNone
+                        case u: TUnion =>
+                            TUnion(u.types.map { _ match {
+                                case t: ObjectType =>
+                                    t.lookupField(p) match {
+                                        case Some(t) => t
+                                        case None =>
+                                            notice("Potentially undefined object property "+stringRepr(p), op)
+                                            TNone
+                                    }
+                                case _ => TNone
+                            }})
                         case t =>
                             println("Woops?? invlid type returned from expect: "+t);
                             TAny
@@ -403,6 +420,30 @@ object TypeFlow {
                 // Let's traverse all up to the last elem (the outermost assign)
                 for ((elem, ct, rt) <- elems.init) {
                     //println(" Checking for "+elem +"(actualType: "+typeFromSimpleValue(elem)+", checkType: "+ct+", resultType: "+rt+")");
+                    def assignMergeObject(from: TObjectRef, to: TObjectRef): Type ={
+                            import scala.collection.mutable.HashMap
+                            //println("Trying to assign-merge "+from+" and "+ to)
+
+                            val newFields = HashMap[String, Type]() ++ from.realObj.fields;
+
+                            for((index, typ)<- to.realObj.fields) {
+                                newFields(index) = newFields.get(index) match {
+                                    case Some(t) => assignMerge(t, typ)
+                                    case None => typ
+                                }
+                            }
+
+                            val o : RealObjectType = to.realObj match {
+                                case o: TRealClassObject =>
+                                    new TRealClassObject(o.cl, newFields, o.pollutedType)
+                                case o: TRealObject =>
+                                    new TRealObject(newFields, o.pollutedType)
+                            }
+
+                            ObjectStore.set(to.id, o)
+
+                            to
+                    }
                     // assignMerge will recursively merge types of recursive arrays
                     // we cannot use Lattice.Join as we do not want unions.
                     // i.e. $a['foo']['bar'] = 2; $a['foo']['bar'] =
@@ -450,31 +491,20 @@ object TypeFlow {
                             new TArray(newEntries, newPollutedType)
 
                         case (from: TObjectRef, to: TObjectRef) =>
-                            import scala.collection.mutable.HashMap
-                            //println("Trying to assign-merge "+from+" and "+ to)
-
-                            val newFields = HashMap[String, Type]() ++ from.realObj.fields;
-
-                            for((index, typ)<- to.realObj.fields) {
-                                newFields(index) = newFields.get(index) match {
-                                    case Some(t) => assignMerge(t, typ)
-                                    case None => typ
-                                }
-                            }
-
-                            val o : RealObjectType = to.realObj match {
-                                case o: TRealClassObject =>
-                                    new TRealClassObject(o.cl, newFields, o.pollutedType)
-                                case o: TRealObject =>
-                                    new TRealObject(newFields, o.pollutedType)
-                            }
-
-                            ObjectStore.set(to.id, o)
-
-                            to
-                        // In case not both types are not arrays nor objects, we
-                        // always end up with the resulting type
-                        case (a, b) => a
+                            assignMergeObject(from, to)
+                        case (from: TObjectRef, to: TUnion) =>
+                            // We may have a union of objects here
+                            val u = new TUnion;
+                            u.types = to.types map { _ match {
+                                case t: TObjectRef =>
+                                    assignMergeObject(from, t)
+                                case o => o
+                            }}
+                            u
+                        case (a, b) =>
+                            // In case not both types are not arrays nor objects, we
+                            // always end up with the resulting type
+                            a
                     }
 
                     val resultingType = assignMerge(rt, typeFromSimpleValue(elem))

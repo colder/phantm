@@ -56,6 +56,7 @@ object Types {
         def injectField(index: String, typ: Type) : self.type;
 
         def polluteFields(typ: Type): self.type;
+        def merge(t2: RealObjectType): RealObjectType;
     }
 
     // Objects related types
@@ -121,7 +122,7 @@ object Types {
 
     }
     // Any object, should be only used to typecheck, no symbol should be infered to this type
-    case object TAnyObject extends ObjectType {
+    object TAnyObject extends ObjectType {
         def lookupField(index: String) = pollutedType
         def injectField(index: String, typ: Type) = this
 
@@ -156,6 +157,12 @@ object Types {
 
         override def toString = {
             "(#"+id+"->"+realObj+")"
+        }
+
+        override def equals(v: Any) = v match {
+            case ref: TObjectRef =>
+                ref.id == id
+            case _ => false
         }
     }
 
@@ -198,7 +205,7 @@ object Types {
 
             this
         }
-        def merge(a2: TRealObject): RealObjectType = {
+        def merge(a2: RealObjectType): RealObjectType = {
             // Pick superclass class, and subclass methods
             val newcl = (this, a2) match {
                 case (o1: TRealClassObject, o2: TRealClassObject) =>
@@ -209,10 +216,6 @@ object Types {
                     } else {
                         None
                     }
-                case (o1: TRealClassObject, o2 : TRealObject) =>
-                    Some(o1.cl)
-                case (o1: TRealObject, o2 : TRealClassObject) =>
-                    Some(o2.cl)
                 case _ =>
                     None
             }
@@ -437,7 +440,8 @@ object Types {
 
         override def equals(t: Any) = t match {
             case tu: TUnion =>
-                (new HashSet[Type]() ++ types)  == (new HashSet[Type]() ++ tu.types)
+                types == tu.types
+                //(new HashSet[Type]() ++ types)  == (new HashSet[Type]() ++ tu.types)
             case _ => false
         }
 
