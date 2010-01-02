@@ -23,24 +23,35 @@ object TypeFlow {
             case (_, TTrue) => true
             case (t1: TObjectRef, TAnyObject) => true
             case (t1: TObjectRef, t2: TObjectRef) =>
-                (t1.realObj, t2.realObj) match {
+                val r1 = t1.realObj
+                val r2 = t2.realObj
+
+                val classesMatch = (r1, r2) match {
                     case (r1: TRealClassObject, r2: TRealClassObject) =>
                         r1.cl isSubtypeOf r2.cl
-                    case (r1: RealObjectType, r2: TRealObject) =>
-                        r2.fields.forall(f => r1.fields.get(f._1) != None && leq(r1.fields(f._1), f._2))
                     case _ =>
-                        false
+                        true
                 }
 
-            case (t1: TArray, TAnyArray) => true
-            case (t1: TArray, t2: TArray) =>
-                // TODO: make it more precise
-                (t1.pollutedType, t2.pollutedType) match {
+                 val ptMatch = (t1.pollutedType, t2.pollutedType) match {
                     case (Some(pt1), Some(pt2)) =>
                         leq(pt1, pt2)
                     case _ =>
                         false
                 }
+
+                classesMatch && ptMatch && r2.fields.forall(f => r1.fields.get(f._1) != None && leq(r1.fields(f._1), f._2))
+
+            case (t1: ArrayType, t2: ArrayType) =>
+                 val ptMatch = (t1.pollutedType, t2.pollutedType) match {
+                    case (Some(pt1), Some(pt2)) =>
+                        leq(pt1, pt2)
+                    case _ =>
+                        false
+                }
+
+                ptMatch && t2.entries.forall(e => t1.entries.get(e._1) != None && leq(t1.entries(e._1), e._2))
+
             case (t1: TUnion, t2: TUnion) =>
                 (HashSet[Type]() ++ t1.types) subsetOf (HashSet[Type]() ++ t2.types)
             case (t1, t2: TUnion) =>
