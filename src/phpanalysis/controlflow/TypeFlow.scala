@@ -53,7 +53,7 @@ object TypeFlow {
                 ptMatch && t2.entries.forall(e => t1.entries.get(e._1) != None && leq(t1.entries(e._1), e._2))
 
             case (t1: TUnion, t2: TUnion) =>
-                (HashSet[Type]() ++ t1.types) subsetOf (HashSet[Type]() ++ t2.types)
+                t1.types forall { x => t2.types.exists { y => leq(x, y) } }
             case (t1, t2: TUnion) =>
                 t2.types exists { x => leq(t1, x) }
             case (t1: TUnion, t2) =>
@@ -75,13 +75,7 @@ object TypeFlow {
             case (TAnyObject, t: TObjectRef) => TAnyObject
             case (t: TObjectRef, TAnyObject) => TAnyObject
             case (t1: TObjectRef, t2: TObjectRef) =>
-                (t1.realObj, t2.realObj) match {
-                    case (tr1: TRealObject, tr2: TRealObject) =>
-                        TUnion(t1, t2)
-                    case _ =>
-                        TAnyObject
-                }
-
+                TUnion(t1, t2)
             // Arrays
             case (TAnyArray, t: TArray) => TAnyArray
             case (t: TArray, TAnyArray) => TAnyArray
