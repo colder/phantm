@@ -138,13 +138,13 @@ object TypeFlow {
                 case _ =>
                     var newmap = new scala.collection.mutable.HashMap[CFGSimpleVariable, Type]();
                     for ((v,t) <- map) {
-                        newmap(v) = TypeLattice.join(t, TNull)
+                        newmap(v) = t join TNull
                     }
                     for ((v,t) <- e.map) {
                         if (newmap contains v) {
-                            newmap(v) = TypeLattice.join(map(v), t)
+                            newmap(v) = map(v) join t
                         } else {
-                            newmap(v) = TypeLattice.join(t, TNull)
+                            newmap(v) = t join TNull
                         }
                     }
                     new TypeEnvironment(Map[CFGSimpleVariable, Type]()++newmap, scope)
@@ -426,23 +426,22 @@ object TypeFlow {
 
                             val newFields = HashMap[String, Type]() ++ from.realObj.fields;
 
+                            val pt = to.realObj.pollutedType.getOrElse(TNone) join from.realObj.pollutedType.getOrElse(TNone)
+
                             for((index, typ)<- to.realObj.fields) {
                                 newFields(index) = newFields.get(index) match {
-                                    case Some(t) => assignMerge(t, typ)
-                                    case None => typ
+                                    case Some(t) => pt join assignMerge(t, typ)
+                                    case None => pt join typ
                                 }
                             }
-                            val pt = (to.realObj.pollutedType, from.realObj.pollutedType) match  {
-                                case (Some(t1), Some(t2)) => Some(TypeLattice.join(t1,t2))
-                                case (a, None) => a
-                                case (None, a) => a
-                            }
+
+                            val opt = if (pt == TNone) None else Some(pt)
 
                             val o : RealObjectType = to.realObj match {
                                 case o: TRealClassObject =>
-                                    new TRealClassObject(o.cl, newFields, pt)
+                                    new TRealClassObject(o.cl, newFields, opt)
                                 case o: TRealObject =>
-                                    new TRealObject(newFields, pt)
+                                    new TRealObject(newFields, opt)
                             }
 
                             ObjectStore.set(to.id, o)
@@ -461,39 +460,20 @@ object TypeFlow {
                             import scala.collection.mutable.HashMap
                             import Math.max
 
-                            // Shouldn't be needed as the resulting
-                            // type should never be polluted, by
-                            // construction
-                            var newPollutedType = (from.pollutedType, to.pollutedType) match {
-                                case (Some(pt1), Some(pt2)) => Some(TypeLattice.join(pt1, pt2))
-                                case (Some(pt1), None) => Some(pt1)
-                                case (None, Some(pt2)) => Some(pt2)
-                                case (None, None) => None
-                            }
+                            val pt = to.pollutedType.getOrElse(TNone) join from.pollutedType.getOrElse(TNone)
 
                             val newEntries = HashMap[String, Type]() ++ from.entries;
 
                             for((index, typ)<- to.entries) {
                                 newEntries(index) = newEntries.get(index) match {
-                                    case Some(t) => assignMerge(t, typ)
-                                    case None => typ
+                                    case Some(t) => pt join assignMerge(t, typ)
+                                    case None => pt join typ
                                 }
                             }
 
-                            newPollutedType = newPollutedType match {
-                                case Some(pt) =>
-                                    for ((index, typ) <- newEntries) {
-                                        newEntries(index) = TypeLattice.join(pt, typ)
-                                    }
-                                    if (newEntries.size > 0) {
-                                        Some(newEntries.values reduceLeft TypeLattice.join)
-                                    } else {
-                                        Some(pt)
-                                    }
-                                case None => None
-                            }
+                            val opt = if (pt == TNone) None else Some(pt)
 
-                            new TArray(newEntries, newPollutedType)
+                            new TArray(newEntries, opt)
 
                         case (from: TObjectRef, to: TObjectRef) =>
                             assignMergeObject(from, to)

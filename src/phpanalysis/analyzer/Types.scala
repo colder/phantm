@@ -11,7 +11,7 @@ object Types {
         self=>
 
         def union(t: Type) = TypeLattice.join(this, t)
-        def u(t: Type) = union(t)
+        def join(t: Type) = union(t)
 
         def equals(t: Type) = t == self;
 
