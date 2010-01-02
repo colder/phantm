@@ -432,12 +432,17 @@ object TypeFlow {
                                     case None => typ
                                 }
                             }
+                            val pt = (to.realObj.pollutedType, from.realObj.pollutedType) match  {
+                                case (Some(t1), Some(t2)) => Some(TypeLattice.join(t1,t2))
+                                case (a, None) => a
+                                case (None, a) => a
+                            }
 
                             val o : RealObjectType = to.realObj match {
                                 case o: TRealClassObject =>
-                                    new TRealClassObject(o.cl, newFields, o.pollutedType)
+                                    new TRealClassObject(o.cl, newFields, pt)
                                 case o: TRealObject =>
-                                    new TRealObject(newFields, o.pollutedType)
+                                    new TRealObject(newFields, pt)
                             }
 
                             ObjectStore.set(to.id, o)
@@ -494,13 +499,11 @@ object TypeFlow {
                             assignMergeObject(from, to)
                         case (from: TObjectRef, to: TUnion) =>
                             // We may have a union of objects here
-                            val u = new TUnion;
-                            u.types = to.types map { _ match {
+                            TUnion(to.types map { _ match {
                                 case t: TObjectRef =>
                                     assignMergeObject(from, t)
                                 case o => o
-                            }}
-                            u
+                            }})
                         case (a, b) =>
                             // In case not both types are not arrays nor objects, we
                             // always end up with the resulting type

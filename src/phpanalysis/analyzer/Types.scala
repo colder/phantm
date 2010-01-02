@@ -10,7 +10,8 @@ object Types {
     sealed abstract class Type {
         self=>
 
-        def union(t: Type) = TUnion(this, t)
+        def union(t: Type) = TypeLattice.join(this, t)
+        def u(t: Type) = union(t)
 
         def equals(t: Type) = t == self;
 
