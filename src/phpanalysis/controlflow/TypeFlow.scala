@@ -192,7 +192,7 @@ object TypeFlow {
                                     pt
                                 case None =>
                                     if (t.entries.size > 0) {
-                                        t.entries.values.reduceLeft(TypeLattice.join)
+                                        t.entries.values.reduceLeft(_ join _)
                                     } else {
                                         TNull
                                     }
@@ -313,7 +313,7 @@ object TypeFlow {
 
             def expect(v1: CFGSimpleValue, typs: Type*): Type = {
                 val vtyp = typeFromSimpleValue(v1);
-                val etyp = typs reduceLeft TypeLattice.join
+                val etyp = typs reduceLeft (_ join _)
                 /*
                 for (t <- typs) {
                     if (TypeLattice.leq(vtyp, t)) {
