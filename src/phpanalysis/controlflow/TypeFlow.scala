@@ -23,24 +23,35 @@ object TypeFlow {
             case (_, TTrue) => true
             case (t1: TObjectRef, TAnyObject) => true
             case (t1: TObjectRef, t2: TObjectRef) =>
-                (t1.realObj, t2.realObj) match {
+                val r1 = t1.realObj
+                val r2 = t2.realObj
+
+                val classesMatch = (r1, r2) match {
                     case (r1: TRealClassObject, r2: TRealClassObject) =>
                         r1.cl isSubtypeOf r2.cl
-                    case (r1: RealObjectType, r2: TRealObject) =>
-                        r2.fields.forall(f => r1.fields.get(f._1) != None && leq(r1.fields(f._1), f._2))
                     case _ =>
-                        false
+                        true
                 }
 
-            case (t1: TArray, TAnyArray) => true
-            case (t1: TArray, t2: TArray) =>
-                // TODO: make it more precise
-                (t1.pollutedType, t2.pollutedType) match {
+                 val ptMatch = (t1.pollutedType, t2.pollutedType) match {
                     case (Some(pt1), Some(pt2)) =>
                         leq(pt1, pt2)
                     case _ =>
                         false
                 }
+
+                classesMatch && ptMatch && r2.fields.forall(f => r1.fields.get(f._1) != None && leq(r1.fields(f._1), f._2))
+
+            case (t1: ArrayType, t2: ArrayType) =>
+                 val ptMatch = (t1.pollutedType, t2.pollutedType) match {
+                    case (Some(pt1), Some(pt2)) =>
+                        leq(pt1, pt2)
+                    case _ =>
+                        false
+                }
+
+                ptMatch && t2.entries.forall(e => t1.entries.get(e._1) != None && leq(t1.entries(e._1), e._2))
+
             case (t1: TUnion, t2: TUnion) =>
                 (HashSet[Type]() ++ t1.types) subsetOf (HashSet[Type]() ++ t2.types)
             case (t1, t2: TUnion) =>
@@ -383,8 +394,8 @@ object TypeFlow {
                             linearize(obj, ct, rt, pass+1)
                         case CFGNextArrayEntry(arr) =>
                             // ditto ArrayEntry
-                            val rt = new TArray().injectNext(resultType, arr);
-                            val ct = if (pass > 0) new TArray().injectNext(checkType, arr) else TAnyArray;
+                            val rt = new TArray().injectNext(resultType, arr.uniqueID);
+                            val ct = if (pass > 0) new TArray().injectNext(checkType, arr.uniqueID) else TAnyArray;
 
                             linearize(arr, ct, rt, pass+1)
                         case _ =>
@@ -442,7 +453,7 @@ object TypeFlow {
                                 case None => None
                             }
 
-                            new TArray(newEntries, newPollutedType, max(from.nextFreeIndex, to.nextFreeIndex))
+                            new TArray(newEntries, newPollutedType)
 
                         case (from: TObjectRef, to: TObjectRef) =>
                             import scala.collection.mutable.HashMap
@@ -459,9 +470,9 @@ object TypeFlow {
 
                             val o : RealObjectType = to.realObj match {
                                 case o: TRealClassObject =>
-                                    TRealClassObject(o.cl, newFields, o.pollutedType)
+                                    new TRealClassObject(o.cl, newFields, o.pollutedType)
                                 case o: TRealObject =>
-                                    TRealObject(newFields, o.pollutedType)
+                                    new TRealObject(newFields, o.pollutedType)
                             }
 
                             ObjectStore.set(to.id, o)
@@ -494,13 +505,13 @@ object TypeFlow {
           def checkFCalls(fcall_params: List[CFGSimpleValue], syms: List[FunctionType], pos: Positional) : Type =  {
             def protoFilter(sym: FunctionType): Boolean = {
                 sym match {
-                    case TFunction(args, ret) =>
+                    case tf: TFunction =>
                         var ret = true;
                         for (i <- fcall_params.indices) {
-                            if (i >= args.length) {
+                            if (i >= tf.args.length) {
                                 ret = false
                             } else {
-                                if (!TypeLattice.leq(typeFromSimpleValue(fcall_params(i)), args(i)._1)) {
+                                if (!TypeLattice.leq(typeFromSimpleValue(fcall_params(i)), tf.args(i)._1)) {
                                     //notice("Prototype mismatch because "+fcall.params(i)+"("+typeFromSimpleValue(fcall.params(i))+") </: "+args(i)._1) 
 
                                     ret = false;
@@ -520,16 +531,16 @@ object TypeFlow {
                         TNone
                     } else {
                         syms.first match {
-                            case TFunction(args, ret) =>
+                            case tf: TFunction =>
                                 for (i <- fcall_params.indices) {
-                                    if (i >= args.length) {
+                                    if (i >= tf.args.length) {
                                         error("Prototype error!", pos)
                                     } else {
-                                        expect(fcall_params(i), args(i)._1)
+                                        expect(fcall_params(i), tf.args(i)._1)
                                     }
 
                                 }
-                                ret
+                                tf.ret
                             case s =>
                                 s.ret
                         }
