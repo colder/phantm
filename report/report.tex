@@ -21,31 +21,30 @@
 \maketitle
 \begin{abstract}
   This report presents the work that was done to implement a static analysis
-  tool for the PHP programming language. This tool aims at providing feedback
-  to a developer by checking for multiple mis-uses of the language and should
-  reduce the risk of encountering fatal errors at runtime after deployement of
-  PHP based application.
+  tool for the PHP programming language. The kind of analysis done by the
+  compiler or by the multiple development environments are very limited. This
+  tool aims at providing further feedback to a developer by checking for
+  multiple mis-uses of the language and should reduce the risk of encountering
+  fatal errors at runtime after deployment of PHP based application.
 \end{abstract}
 \section{Introduction}
 The PHP programming language is a compiled language. However, the compilation is
-done, by default, each time a certain php file is requested. This means that the
+done by default each time a certain PHP file is requested. This means that the
 compilation has to be fast and hence can't do much analysis and checks. Most of
 the checks are thus made at runtime. The purpose of this tool is to allow the
 developer to check its work for runtime-errors, without actually running its
-application. Those checks are mostly based on structural checks, coupled with
-a stricter type-system.
+application.
 \section{Design}
 This tool consists of a custom PHP compiler, translating the code
 into structures such as Abstract Syntax Trees (AST) and then Control Flow Graphs
-(CFG). Fixpoint analysis is then performed on the CFGs. This compiler is
-divided into six distinct parts:
+(CFG). Fixpoint analysis is then performed on the control flow graphs. This
+compiler is divided into five distinct parts:
 \begin{enumerate}
   \item Lexing
   \item Parsing and Abstract Syntax Trees
   \item Semantic Analysis
-  \item Crontrol Flow Graphs
+  \item Control Flow Graphs
   \item Type flow Analysis
-  \item Helpers
 \end{enumerate}
 
 \subsection{Lexing}
@@ -59,7 +58,7 @@ One notable difference is that we translated every single-char tokens to their
 respective name.
 
 \subsection{Parsing and Abstract Syntax Trees}
-The parser, as mentionned before, is based on a modified version of CUP. CUP is
+The parser, as mentioned before, is based on a modified version of CUP. CUP is
 a java based parser generator which uses a syntax similar to yacc, the parser
 generator used in the original PHP compiler. The version of CUP used for this
 project differs from the original one in two points:
@@ -68,23 +67,22 @@ project differs from the original one in two points:
     directly writes the parsing tables as properties of the generated class,
     the size of the class properties can become too large for \emph{javacc}. The
     PHP grammar being quite big, the resulting parser class couldn't be compiled.
-    To solve the problem, CUP was modified to provide an option specifying that the
-    the multiple tables should be written into files and loaded at runtime. This
-    modification was proposed to be included inside CUP.
+    To solve the problem, CUP was modified to provide an option specifying that
+    the multiple tables should be written into files and loaded at runtime.
   \item To avoid the troubles of referencing scala classes, the parser
     generator was modified to translate the application of the production into a
     simple tree which could then be translated by a Scala class entirely.
 \end{enumerate}
 
 \subsection{Semantic Analysis}
-Some checks can be done direcly by looking at the AST. Indeed, PHP provides a
+Some checks can be done directly by looking at the AST. Indeed, PHP provides a
 wide range of features, some of them being considered nowadays as bad practice.
 This tool emits notices for the following issues:
 
 \begin{itemize}
-  \item Non top-level declaration: PHP allows a developer to conditionnaly
+  \item Non top-level declaration: PHP allows a developer to conditionally
     declare functions or classes. This not only generates problems with the
-    following analysis, but also induces some performance hits on servers equipied
+    following analysis, but also induces some performance hits on servers equipped
     with so-called opcode cachers. Those opcode cachers are responsible for caching
     the intermediate--or compiled version of each file, function and class. The
     goal being to speed up the process by reducing the number of compilations
@@ -111,10 +109,14 @@ This tool emits notices for the following issues:
       \item class constants
       \item string
     \end{itemize}
-  \item Dynamic object properties: PHP allows dynamic references to an object property
-    using a variable or expression (e.g. \verb.$name = "a"; $obj->$name. instead of
-    \verb.$obj->a.). This is usually considered as bad practice since arrays are
-    usually prefered for such tasks.
+    With such trivial expressions, the analyzer will look for it in the
+    multiple include-paths entries and directly attach the corresponding AST to
+    the current one.
+  \item Dynamic object properties: PHP allows dynamic references to an object
+    property using a variable or expression (e.g. 
+    \verb.$name = "a"; $obj->$name. instead of \verb.$obj->a.). This is usually
+    considered as bad practice since arrays are usually preferred for such
+    tasks.
   \item Dynamic variables: PHP allows to reference a variable using either a
     variable, or an expression\footnote{PHP Variable variables:
     http://php.net/variables.variable}: (\verb=$$var= or
@@ -134,28 +136,28 @@ This tool emits notices for the following issues:
 Another part of the semantic analysis consists of validating the usage of
 identifiers such as variables, functions or classes. The goal is to ensure that
 no obvious semantic errors such as inheritance cycles, or visibility
-inconsistances exist.
+inconsistencies exist.
 
 \subsubsection{API importation}
 By default, PHP comes with a very dense library of functions and classes. In
 fact, the main extensions that are shipped with PHP consist of more than 2'500
-functions and classes. Being able to correctly represent this internal API is
-a key factor to obtain useful analysis results. This API is stored in an external
+functions and classes. Being able to correctly represent this internal API is a
+key factor to obtain useful analysis results. This API is stored in an external
 XML file, allowing easy modifications and also do not require a re-compilation.
 Additionally, a \verb=--apis= command line option is available to specify a
-list of API files that can be imported into the symbol tables. This is especially
-useful for large projects as it allows focused analysis.
+list of API files that can be imported into the symbol tables. This is
+especially useful for large projects as it allows focused analysis.
 
 
 
 \subsection{Control flow graphs}
 In fact, the AST is only the intermediate step that only let us do trivial
 checks. To analyse more complex aspects of a program, this tool will use
-control flow graphs (CFG) which are derived from ASTs.  Control flow graphs
-modelize the flow of values through the different control structures. Because
-PHP is dynamically typed, and since variables are not declared, it is
+control flow graphs (CFG) which are derived from AST's.  Control flow graphs
+provide a model of the flow of values through the different control structures.
+Because PHP is dynamically typed, and since variables are not declared, it is
 impossible to infer and check types solely based on the structural
-representation of the code. For such tasks, we require CFGs to be able to
+representation of the code. For such tasks, we require CFG's to be able to
 reproduce the flow of types that would happen in an execution of the code. The
 main focus of this analysis will be on analysing type flows. In the CFG, each
 vertex correspond to a program state between statements, and each directed edge
@@ -163,26 +165,29 @@ represents the application of a statement.
 
 \section{Analysis}
 \subsection{PHP overview}
-Before trying to see how to analyse PHP code, it is important to understand how PHP works,
-this is a small overview of the features PHP provides that are relevant to this analysis.
+Before trying to see how to analyse PHP code, it is important to understand how
+PHP works, this is a small overview of the features PHP provides that are
+relevant to this analysis.
 \subsubsection{Types}
-PHP is a weakly, dynamically typed language, meaning that types are not specically associated to
-variables, but to values. A variable may hence hold values of different types
-in its lifetime. It is also weakly typed as it allows automatic--or implicit
-type conversions when performing an operation on values of different types.
-This is specified as part of PHP as ``type juggling''\footnote{PHP Type
-Juggling: http://php.net/language.types.type-juggling}.  In PHP, we have the following
+PHP is a weakly, dynamically typed language, meaning that types are not
+specially associated to variables, but to values. A variable may hence hold
+values of different types in its lifetime. It is also weakly typed as it allows
+automatic--or implicit type conversions when performing an operation on values
+of different types.  This is specified as part of PHP as ``type
+juggling''\footnote{PHP Type Juggling:
+http://php.net/language.types.type-juggling}. In PHP, we have the following
 types:
 \begin{itemize}
   \item \textbf{Booleans}
   \item \textbf{Integers}
   \item \textbf{Floating point numbers}
   \item \textbf{Strings}
-  \item \textbf{Arrays}: Arrays in PHP are ordered hashmaps, allowing either strings or
-    integers as keys.  They can contain values of any type that may be mixed.
+  \item \textbf{Arrays}: Arrays in PHP are ordered hashmaps, allowing either
+    strings or integers as keys.  They can contain values of any type that may
+    be mixed.
   \item \textbf{Objects}
-  \item \textbf{Resources}: Resources represent special data types such as
-    file handle, database conection links. They can be of different types. PHP
+  \item \textbf{Resources}: Resources represent special data types such as file
+    handle, database connection links. They can be of different types. PHP
     extensions that define resource types are responsible of handling them
     appropriately.
   \item \textbf{Null}: This is the default type to any undefined or
@@ -199,8 +204,8 @@ object property in PHP, its visibility will default to public. However, you
 cannot dynamically define methods, static members, or constants.
 
 \subsubsection{Limitations on analysis}
-Due to its dynamicity, many PHP features will get in the way of a sound analysis.
-Here is a non-exaustive list of such features:
+Many of the dynamic features available in PHP will get in the way of a sound
+analysis.  Here is a non-exhaustive list of such features:
 \begin{itemize}
   \item \textbf{autoload}\footnote{PHP Autoload: http://php.net/autoload}:
     PHP allows you to trigger a function call in case an undefined class was
@@ -219,8 +224,8 @@ Here is a non-exaustive list of such features:
     property is done. The value returned by the method will correspond to the
     property value.
   \item \textbf{ArrayAccess}\footnote{ArrayAccess Interface: http://php.net/arrayaccess}:
-    The ArrayAccess interface allows an object to be used as an array. For example,
-    if we have \verb&class Foo implements ArrayAccess&, then
+    The ArrayAccess interface allows an object to be used as an array. For
+    example, if we have \verb&class Foo implements ArrayAccess&, then
     \verb&$foo = new Foo; echo $foo['index']& is accepted.
   \item \textbf{Dynamic accesses}
     PHP allows multiple ways to dynamically access variables, classes, members\ldots
@@ -239,50 +244,51 @@ Here is a non-exaustive list of such features:
         Call the function named by the value of \verb/$n/.
     \end{itemize}
   \item \textbf{eval}\footnote{PHP Eval: http://php.net/eval}:
-    The \verb&eval()& construct allows a developer to evaluate the code passed in as a string.
+    The \verb&eval()& construct allows a developer to evaluate the code passed
+    in as a string.
 \end{itemize}
 
 \subsection{Typeflow analysis}
 As said earlier, the main focus of this analysis tool is on types. Even though
 PHP is dynamically typed, and provides very few indications of types. It is
-still interresting to try to infer types and check for type safety.
+still interesting to try to infer types and check for type safety.
 
 \subsubsection{Type model}
-We now provide a detailled description of every elements of our type model:
+We now provide a detailed description of every elements of our type model:
 \begin{itemize}
-  \item \verb=TAny= ($\top$): Top of our lattice, represents any type
-  \item \verb=TNone= ($\bot$): Bottom of our lattice, represents no type
-  \item \verb=TBoolean=: Any boolean type.
-  \item \verb=TFalse=, \verb=TTrue= : True/False types, used for conditional
+  \item \emph{TAny} ($\top$): Top of our lattice, represents any type
+  \item \emph{TNone} ($\bot$): Bottom of our lattice, represents no type
+  \item \emph{TBoolean}: Any boolean type.
+  \item \emph{TFalse}, \emph{TTrue} : True/False types, used for conditional
     type filtering.
-  \item \verb=TInt=: Integers
-  \item \verb=TFloat=: Floating point numbers
-  \item \verb=TResource=: Resources. We make no distinction between resources
+  \item \emph{TInt}: Integers
+  \item \emph{TFloat}: Floating point numbers
+  \item \emph{TResource}: Resources. We make no distinction between resources
     of different types. This could be improved in the future.
-  \item \verb=TNull=: Null value.
-  \item \verb=TString=: Strings.
-  \item \verb=TUnion=: Union of multiple distinct types, represented as the
+  \item \emph{TNull}: Null value.
+  \item \emph{TString}: Strings.
+  \item \emph{TUnion}: Union of multiple distinct types, represented as the
     infix $\cup$ operator. The result of this union of types depends on the operands,
     it will be described into further details in its own section.
-  \item \verb=TAnyArray=: This represents an array on which nothing is known
-    appart from the fact that it's an array. Any lookup in this array will
-    result in a type of \verb=TAny=.
-  \item \verb=TArray=: This type represents an array on which a lot of information
+  \item \emph{TAnyArray}: This represents an array on which nothing is known
+    apart from the fact that it's an array. Any lookup in this array will
+    result in a type of \emph{TAny}.
+  \item \emph{TArray}: This type represents an array on which a lot of information
     may be known. It is structured as follows:
     \begin{itemize}
-        \item A index-type dictionnary for every well-defined entries. The
+        \item A index-type dictionary for every well-defined entries. The
           rationale behind having such a precise representation is that PHP
           arrays are often used as containers for multiple named values. It is
           thus important to keep track of the types associated to each name.
         \item An optional array-wise type. This type represents the possible 
           contamination of an array via a dynamic access. This type is called
-          the ``polluted type''. For exemple, the code
+          the ``polluted type''. For example, the code
           \verb/$a[$foo] = 2/ will have the following effect on a well-defined
-          array: $\forall (e, t) \in entries: t = t \cup TInt$. Also, we have
-          $\emph{polluted type} = \emph{polluted type} \cup TInt$. A side
-          effect of having a non-empty polluted type will be to turn off any
-          notices related to undefined entries. Indeed, we can no longer ensure
-          that the type covers every entries.
+          array: $\forall (e, t) \in entries: t = t \cup \emph{TInt}$. Also, we
+          have $\emph{polluted type} = \emph{polluted type} \cup \emph{TInt}$.
+          A side effect of having a non-empty polluted type will be to turn off
+          any notices related to undefined entries. Indeed, we can no longer
+          ensure that the type covers every entries.
     \end{itemize}
   \item Objects: Objects are represented differently than other types. The
     reason is that when passing, assigning or returning objects PHP will pass
@@ -291,32 +297,32 @@ We now provide a detailled description of every elements of our type model:
     represent the same object, hence both variables are affected by the object
     modification. We need to reproduce that level of indirection as part of our
     type model for objects. This is done by introducing object references as
-    types, mapping the real object in a an object store. That way the type can
+    types, mapping the real object in an object store. That way the type can
     be copied around and propagated to different values and still point to the
     same real object type. We thus have two different levels of types:
     \begin{itemize}
           \item \textbf{Object references:} This is the type to which
             any well-defined object value is assigned.
           \item \textbf{Real objects:} The real object is pointed to by the
-            object reference. This is the actual object type storing mapings to
-            methods, properties and constants. It is stored in the ObjectStore
+            object reference. This is the actual object type storing mappings to
+            methods, properties and constants. It is stored in the object store
             and is not directly exposed as types of values.
     \end{itemize}
 
     Real objects are decomposed into two object types:
     \begin{itemize}
-          \item \verb=TRealClassObject=: Representing an object of a
+          \item \emph{TRealClassObject}: Representing an object of a
             defined class. This type will have, like arrays, a index-type
             mapping for properties. Since object properties can be dynamically
             defined, we also have a so-called polluted type for properties.
-          \item \verb=TRealObject=: This is very similar to
-            \verb=TRealClassObject=, the only difference is that this object
+          \item \emph{TRealObject}: This is very similar to
+            \emph{TRealClassObject}, the only difference is that this object
             carries no class. It is mostly used for type constructions. For
             instance, \verb/$a->b = 2/ will merge the type of \verb/$a/ with a
-            constructed TRealObject having as only entry $(a \rightarrow
-            \emph{TInt})$. This will result in a well defined object injected with $a
-            \rightarrow \emph{TInt}$. This specific area of the typechecker will be
-            described in more details later.
+            constructed \emph{TRealObject} having as only entry $(a \rightarrow
+            \emph{TInt})$. This will result in a well defined object injected
+            with $a \rightarrow \emph{TInt}$. This specific area of the type
+            checker will be described in more details later.
     \end{itemize}
 \end{itemize}
 
@@ -345,60 +351,60 @@ Those are, in order, the rules that apply to determine whether $t_1 \leq t_2$:
         \item $\forall f \in o_3.fields: f \in o_1.fields \wedge o_1.fields(f)
           \leq o_2.fields(f)$
     \end{enumerate}
-  \item $\forall (a: TArray) : a \leq \emph{TAnyArray}$
-  \item $\forall (a_1,a_2: TArray) : a_1 \leq a_2$
+  \item $\forall (a: \emph{TArray}) : a \leq \emph{TAnyArray}$
+  \item $\forall (a_1,a_2: \emph{TArray}) : a_1 \leq a_2$
     if all the following rules apply:
     \begin{enumerate}
         \item $a_1.pollutedType \leq a_2.pollutedType$ if any
         \item $\forall e \in a_2.entries: e \in o_1.entries \wedge a_1.entries(e)
           \leq a_2.entries(e)$
     \end{enumerate}
-  \item $\forall (u_1,u_2: TUnion) : u_1 \leq u_2 \Leftrightarrow \forall t_2 \in u_2: \exists t_1 \in u_1: t_1 \leq t_2$
-  \item $\forall t_1 \in types, (u_2: TUnion) : t_1 \leq u_2 \Leftrightarrow \forall t_2 \in u_2: t_1 \leq t_2$
-  \item $\forall (u_1: TUnion), t_2 \in types : u_1 \leq t_2 \Leftrightarrow \forall t_1 \in u_1: t_1 \leq t_2$
+  \item $\forall (u_1,u_2: \emph{TUnion}) : u_1 \leq u_2 \Leftrightarrow \forall t_2 \in u_2: \exists t_1 \in u_1: t_1 \leq t_2$
+  \item $\forall t_1 \in types, (u_2: \emph{TUnion}) : t_1 \leq u_2 \Leftrightarrow \forall t_2 \in u_2: t_1 \leq t_2$
+  \item $\forall (u_1: \emph{TUnion}), t_2 \in types : u_1 \leq t_2 \Leftrightarrow \forall t_1 \in u_1: t_1 \leq t_2$
 \end{enumerate}
 
 \subsubsection{Definition of join ($\cup$)}
 Those are, in order, the rules that apply to determine the result of $t_1 \cup t_2$:
 \begin{enumerate}
-  \item $\forall t \in types : t \cup TNone = TNone \cup t = t$
+  \item $\forall t \in types : t \cup TNone = \emph{TNone} \cup t = t$
   \item $\forall t \in types : t \cup t = t$
-  \item $\forall (t: TObjectRef): t \cup TAnyObject = TAnyObject \cup t = TAnyObject$
-  \item $\forall (t_1,t_2: TObjectRef): t_1 \cup t_2 = TUnion(t_1 t_2)$. As we
+  \item $\forall (t: \emph{TObjectRef}): t \cup \emph{TAnyObject} = \emph{TAnyObject} \cup t = \emph{TAnyObject}$
+  \item $\forall (t_1,t_2: \emph{TObjectRef}): t_1 \cup t_2 = TUnion(t_1 t_2)$. As we
     know that at this point, the types must be different, which means they
     point to different objects.
-  \item $\forall (t: TArray): t \cup TAnyArray = TAnyArray \cup t = TAnyArray$
-  \item $\forall (t_1,t_2: TArray): t_1 \cup t_2 = $ an array where the
+  \item $\forall (t: \emph{TArray}): t \cup \emph{TAnyArray} = \emph{TAnyArray} \cup t = \emph{TAnyArray}$
+  \item $\forall (t_1,t_2: \emph{TArray}): t_1 \cup t_2 = $ an array where the
     polluted type is the join of both polluted types, and the entries is the
-    union of both entry sets. Note taht for an entry present in both arrays,
+    union of both entry sets. Note that for an entry present in both arrays,
     the join of its types is taken.
 
-  \item $\forall t_1,t_2 \in types: t_1 \cup t_2 = TUnion(t_1, t_2)$. The last
+  \item $\forall t_1,t_2 \in types: t_1 \cup t_2 = \emph{TUnion}(t_1, t_2)$. The last
     resort is to build a union of those types.
 \end{enumerate}
 
 \subsection{Analysis mechanics}
-As we know, this analysis is based on pointwise lattices. A lattice is a
+As we know, this analysis is based on point-wise lattices. A lattice is a
 structure providing a partial order between its elements. This is specially
 useful to represent types (the order relation being subtyping) which is what
 we use in our case.
 
-The role of a pointwise lattice is to keep track of a lattice value, or type in
-our case, for every values. We will denote those pointwise lattice elements as
+The role of a point-wise lattice is to keep track of a lattice value, or type in
+our case, for every values. We will denote those point-wise lattice elements as
 type environments. A type environment is basically a mapping between values and
 types.
 
-The analysis algorithm starts by assigning a base type envorinment to every CFG
+The analysis algorithm starts by assigning a base type environment to every CFG
 vertexes, or a global bottom ($\bot_g$) value, indicating whether such a vertex
 has been visited yet. Then, the algorithm starts with the entry of the CFG, and
 will visit the graph in order. For each edge $e = v_1 \rightarrow^s v_2$ where
-$s$ is the statement, we can calculate the environment at $v2$ comming from
+$s$ is the statement, we can calculate the environment at $v2$ coming from
 $e_i$ by applying a transfer function on $v_1$ with $s$. This will represent
 the type environment in which $v_2$ will be in case that edge $e$ was taken to
 get to $v_2$. Of course, one vertex may have multiple entry edges and so, to
 calculate the actual type environment of $v_2$ we will have to join every
 environment $env_i$ defined as $env_i = transferFunction(v_i, s_i)$ where $(v_i
-\rightarrow^{s_i} v_2) \in edges$. This type environemnt join operator
+\rightarrow^{s_i} v_2) \in edges$. This type environment join operator
 ($\cup_e$) is defined as follows:
 \begin{itemize}
   \item $\bot_g \cup_e E_i = E_i$ and $E_i \cup_e \bot_g = E_i$
@@ -420,10 +426,10 @@ environment $env_i$ defined as $env_i = transferFunction(v_i, s_i)$ where $(v_i
 \end{itemize}
 
 We see that traversing the CFG only once will not be sufficient. For instance, in
-an loop, in the first vertex in the loop, the entry edge comming from the end
+an loop, in the first vertex in the loop, the entry edge coming from the end
 of the loop is not known when we enter the loop the first time. Multiple passes
 are hence required! In order for this algorithm to terminate, we check whether
-we actually changed the environment. This so called ``fixpoint'' algorithm will
+we actually changed the environment. This so called ``fix-point'' algorithm will
 stop whenever no change has been made to any environment during a complete
 traversal of the graph. By design, the type lattice join operation will not
 generate types that will always change, as it can only go ``up'' in our
@@ -433,14 +439,23 @@ it doesn't generate differences that would jeopardize the termination. For insta
 every traversal! To solve this case, we set the reference value to the program point.
 
 \subsubsection{Assigns to complex variables}
+One important part of the analysis is about deep or ``complex'' assign statements
+such as \verb/$a['foo'][$bar]['foo'] = 2;/. Internally, such statement is represented
+in a recursive structure, looking like \verb/((($a)['foo'])[$bar])['foo']/. For each
+``step'', we can compute two types, a check-type, and a result-type. The check-type will
+be used to ensure that the operation is typesafe, and the result-type will be the type that
+each step of the assign generates. For instance, the outermost assign will first
+typecheck \verb/((($a)['foo'])[$bar])/ against \emph{TAnyArray}, and the resulting
+type will be an array with '\emph{foo}' entry. For the second step, we check that
+\verb/(($a)['foo'])/ 
 
 \subsubsection{Conditional type filtering}
 So far, the analysis features are quite common and could be applied to most
 languages. This is however insufficient to give a good analysis. The reason is
-that most internally defined PHPfunctions will return \verb/false/ or
+that most internally defined PHP functions will return \verb/false/ or
 \verb/null/ in case of error. For a function normally returning an integer,
 this means that any return value of this function should be typed
-$TInt \cup TBoolean$. However, this would lead to massive amount of false
+$\emph{TInt} \cup \emph{TBoolean}$. However, this would lead to massive amount of false
 positives. Consider the following code example which can be seen in most
 procedural scripts dealing with mysql queries:
 
@@ -465,30 +480,30 @@ it will return false. Naively checking types would give us many false
 positives:
 \begin{itemize}
   \item \verb/mysql_fetch_assoc/'s argument would be of type
-    $TBoolean \cup TResource$, which would fail with a type mismatch saying
-    that it expects a $TResource$.
-  \item Inside the while body, \verb/$row/ would still be of type $TBoolean
-    \cup TArray$, generating a false positive for any usage of \verb/$row/ as
+    $\emph{TBoolean} \cup \emph{TResource}$, which would fail with a type mismatch saying
+    that it expects a \emph{TResource}.
+  \item Inside the while body, \verb/$row/ would still be of type $\emph{TBoolean}
+    \cup \emph{TArray}$, generating a false positive for any usage of \verb/$row/ as
     an array.
 \end{itemize}
 
 The solution to this problem is in two parts. First of all, it was necessary to
-improve the precision of the boolean type and introduce $TTrue$ and $TFalse$.
-That was, a function can be described as returning $TResource \cup TFalse$.
-From those types, it becomes quite trivial to filter incompatible values when
-taking a branch.
+improve the precision of the boolean type and introduce \emph{TTrue} and
+\emph{TFalse}.  That was, a function can be described as returning
+$\emph{TResource} \cup \emph{TFalse}$.  From those types, it becomes quite
+trivial to filter incompatible values when taking a branch.
 
-For instance, with \verb/if ($result)/ the cfg will create two branches, one
+For instance, with \verb/if ($result)/ the CFG will create two branches, one
 for $\$result = true$ and one for $\$result \neq true$. In the first branch, we
 can filter out types of \verb/$result/ that represent strictly false values,
-which includes $TFalse$ and $TNull$. The same applies for the second branch, in
-which we filter out strictly true values, namely $TTrue$ and $TResource$. In
-our previous example, the type of \verb/$result/ inside the if body would thus
-be filtered to $TResource$ which is correct. Moreover, it will also filter
-assigns as conditionals, meaning that in 
+which includes \emph{TFalse} and \emph{TNull}. The same applies for the second
+branch, in which we filter out strictly true values, namely \emph{TTrue} and
+\emph{TResource}. In our previous example, the type of \verb/$result/ inside
+the if body would thus be filtered to \emph{TResource} which is correct.
+Moreover, it will also filter assigns as conditionals, meaning that in 
 \verb/while($row = mysql_fetch_assoc($result))/, the while body will have
-$TResource$ for type of \verb/$row/. In summary, this simple filtering trick
-allows for precise prototyping with reduced false-positives!
+\emph{TResource} for type of \verb/$row/. In summary, this simple filtering
+trick allows for precise prototyping with reduced false-positives!
 
 \section{Limitations and future work}
 Most serious PHP applications out there are often based on some heavy frameworks
@@ -500,7 +515,7 @@ Also, due to the modularity of most projects out there, it becomes critical to
 be able to correctly typecheck functions or methods arguments and return values.
 Due to the lack of scalar type hinting (PHP allows array and class type hints
 for arguments), annotations of some kind would be required. Even though the
-current version allows to plugin APIs in XML format, it would be a definite
+current version allows to plug in APIs in XML format, it would be a definite
 plus to allow the tool to parse block comments before declaration, to extract
 expected types. An idea would be to use a syntax very similar to what
 \emph{javadoc} parses, as it is a quite common way of self-documenting PHP
@@ -518,13 +533,7 @@ and \verb/$this/ in case of a method). This means the analyser starts by
 creating more than 15'000 symbols even if the code analyzed is a single line.
 
 \section{Conclusions}
-This project was really interessant because it was based on a real language, used
-every day by millions of users wolrdwide. Such a tool, once reaching stability
-and soundness to some extent can make a considerable impact. However, due to the
-number of lacks in the current implementation, the tool as-is wouldn't be of
-much help in most cases. I hope that I'll find more time to work on it, either
-on my free time or as a school-related project, because I feel that there is a
-real gap to fill regarding static analysis of PHP related programs and scripts.
+
 
 \addcontentsline{toc}{section}{References}
 \begin{thebibliography}{99}
