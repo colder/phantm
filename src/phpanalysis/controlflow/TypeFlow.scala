@@ -692,6 +692,7 @@ object TypeFlow {
                 case _ =>
             }
 
+            scope.registerPredefVariables
             injectPredef("_GET",     new TArray(TNone))
             injectPredef("_POST",    new TArray(TNone))
             injectPredef("_REQUEST", new TArray(TNone))

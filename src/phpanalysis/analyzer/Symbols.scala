@@ -95,8 +95,6 @@ object Symbols {
     def getClasses: List[ClassSymbol] = classes map { x => x._2 } toList
     def getFunctions: List[FunctionSymbol] = functions map { x => x._2 } toList
     def getConstants: List[ConstantSymbol] = constants map { x => x._2 } toList
-
-    registerPredefVariables
   }
 
   class FunctionSymbol(val name: String, val typ: Type) extends Symbol with Scope {
@@ -130,8 +128,6 @@ object Symbols {
     }
 
     def getArguments = argList map { x => x._2} toList
-
-    registerPredefVariables
   }
 
   abstract class MemberVisibility {
