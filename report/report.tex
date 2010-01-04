@@ -270,25 +270,43 @@ We now provide a detailed description of every elements of our type model:
   \item \emph{TUnion}: Union of multiple distinct types, represented as the
     infix $\cup$ operator. The result of this union of types depends on the operands,
     it will be described into further details in its own section.
-  \item \emph{TAnyArray}: This represents an array on which nothing is known
-    apart from the fact that it's an array. Any lookup in this array will
-    result in a type of \emph{TAny}.
-  \item \emph{TArray}: This type represents an array on which a lot of information
-    may be known. It is structured as follows:
+  \item Arrays: Arrays are represented using a quite precise model, it is
+    structured as follows:
     \begin{itemize}
-        \item A index-type dictionary for every well-defined entries. The
-          rationale behind having such a precise representation is that PHP
-          arrays are often used as containers for multiple named values. It is
-          thus important to keep track of the types associated to each name.
-        \item An optional array-wise type. This type represents the possible 
-          contamination of an array via a dynamic access. This type is called
-          the ``polluted type''. For example, the code
-          \verb/$a[$foo] = 2/ will have the following effect on a well-defined
-          array: $\forall (e, t) \in entries: t = t \cup \emph{TInt}$. Also, we
-          have $\emph{polluted type} = \emph{polluted type} \cup \emph{TInt}$.
-          A side effect of having a non-empty polluted type will be to turn off
-          any notices related to undefined entries. Indeed, we can no longer
-          ensure that the type covers every entries.
+      \item A set of $(\emph{index} \rightarrow \emph{type})$ associations for
+          every well-defined array entries. The rationale behind having such a precise
+          representation is that PHP arrays are often used as containers for
+          multiple named values. Unlike other languages like C, PHP allows values
+          in arrays to be of multiple types. Those values are then used
+          independently. It is thus important to keep track of the types
+          associated to each index.
+        \item An optional array-wise default type. This type represents the
+          possible contamination of an array via a dynamic access. This type is
+          called the ``polluted type''. For example, the code
+          \verb/$a[$foo] = 2;/ will have the following effect on a well-defined
+          array: $\forall (e \rightarrow t) \in entries: t = t \cup
+          \emph{TInt}$. Also, we have $\emph{polluted type} = \emph{polluted
+          type} \cup \emph{TInt}$. We can also represent this default type as
+          $(? \rightarrow \emph{type})$. A side effect of having a non-empty
+          polluted type will be to turn off any notices related to undefined
+          entries. In fact, any lookup for an undefined entry in an array will
+          default to the polluted type, if any, or issue a notice for a
+          potentially undefined index.
+    \end{itemize}
+    We note that, even though PHP are \emph{ordered} hashmaps, we totally
+    ignore to model the order as it is not something that people commonly rely
+    upon. Additionally, we argue that if somebody is traversing an array in
+    order, potentially all types of the array will get visited. Hence,
+    iterating over an array will yield values of type equal to the union of all
+    possible types of the array.
+
+    Two types are used internally to represent arrays:
+    \begin{itemize}
+      \item \emph{TArray}: The general type representing the model described
+        above.
+      \item \emph{TAnyArray}: This represents an array being the
+        supertype of all arrays. It is in fact an alias to an array whose
+        only entry is $(? \rightarrow \emph{TAny})$.
     \end{itemize}
   \item Objects: Objects are represented differently than other types. The
     reason is that when passing, assigning or returning objects PHP will pass
@@ -302,7 +320,7 @@ We now provide a detailed description of every elements of our type model:
     same real object type. We thus have two different levels of types:
     \begin{itemize}
           \item \textbf{Object references:} This is the type to which
-            any well-defined object value is assigned.
+            any object value is assigned.
           \item \textbf{Real objects:} The real object is pointed to by the
             object reference. This is the actual object type storing mappings to
             methods, properties and constants. It is stored in the object store
@@ -317,12 +335,14 @@ We now provide a detailed description of every elements of our type model:
             defined, we also have a so-called polluted type for properties.
           \item \emph{TRealObject}: This is very similar to
             \emph{TRealClassObject}, the only difference is that this object
-            carries no class. It is mostly used for type constructions. For
-            instance, \verb/$a->b = 2/ will merge the type of \verb/$a/ with a
-            constructed \emph{TRealObject} having as only entry $(a \rightarrow
-            \emph{TInt})$. This will result in a well defined object injected
-            with $a \rightarrow \emph{TInt}$. This specific area of the type
-            checker will be described in more details later.
+            carries no class information. It is mostly used for type
+            constructions. For instance, in the code
+            \verb/$a = new A;/ \verb/$a->b = 2;/ the statement 
+            \verb/$a->b = 2;/ will merge the type of \verb/$a/ which is
+            $\emph{TRealClassObject}(A)(\cdots)$ with a constructed
+            $\emph{TRealObject}(a \rightarrow \emph{TInt})$. This will result
+            in  $\emph{TRealClassObject}(A)(\cdots, a \rightarrow
+            \emph{TInt})$.
     \end{itemize}
 \end{itemize}
 
@@ -437,17 +457,6 @@ lattice. However, we need to take special care in the type transfer function tha
 it doesn't generate differences that would jeopardize the termination. For instance
 \verb/$a = new MyClass/ cannot be made to create a new object reference for
 every traversal! To solve this case, we set the reference value to the program point.
-
-\subsubsection{Assigns to complex variables}
-One important part of the analysis is about deep or ``complex'' assign statements
-such as \verb/$a['foo'][$bar]['foo'] = 2;/. Internally, such statement is represented
-in a recursive structure, looking like \verb/((($a)['foo'])[$bar])['foo']/. For each
-``step'', we can compute two types, a check-type, and a result-type. The check-type will
-be used to ensure that the operation is typesafe, and the result-type will be the type that
-each step of the assign generates. For instance, the outermost assign will first
-typecheck \verb/((($a)['foo'])[$bar])/ against \emph{TAnyArray}, and the resulting
-type will be an array with '\emph{foo}' entry. For the second step, we check that
-\verb/(($a)['foo'])/ 
 
 \subsubsection{Conditional type filtering}
 So far, the analysis features are quite common and could be applied to most
