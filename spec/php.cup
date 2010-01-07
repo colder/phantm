@@ -354,6 +354,7 @@ non terminal ParseNode variable_property;
 non terminal ParseNode variable_without_objects;
 non terminal ParseNode while_statement;
 
+precedence left T_COMMENT, T_DOC_COMMENT;
 precedence left T_INCLUDE, T_INCLUDE_ONCE, T_EVAL, T_REQUIRE, T_REQUIRE_ONCE;
 precedence left T_COMMA;
 precedence left T_LOGICAL_OR;
@@ -466,6 +467,8 @@ statement ::=
     | T_STATIC static_var_list T_SEMICOLON
     | T_ECHO echo_expr_list T_SEMICOLON
     | T_INLINE_HTML
+    | T_COMMENT
+    | T_DOC_COMMENT
     | expr T_SEMICOLON
     | T_UNSET T_OPEN_BRACES variable_list T_CLOSE_BRACES T_SEMICOLON
     | T_FOREACH T_OPEN_BRACES expr T_AS
@@ -969,6 +972,10 @@ expr ::=
     | T_PRINT expr
     | T_FUNCTION is_reference T_OPEN_BRACES 
 			parameter_list T_CLOSE_BRACES lexical_vars T_OPEN_CURLY_BRACES inner_statement_list T_CLOSE_CURLY_BRACES
+    | T_COMMENT expr
+    | expr T_COMMENT
+    | T_DOC_COMMENT expr
+    | expr T_DOC_COMMENT
 ;
 
 variable ::=
