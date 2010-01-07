@@ -42,7 +42,7 @@ case class CFGGraphs(node: Tree) extends ASTTraversal[CheckContext](node, CheckC
                 val cfg: CFG = ASTToCFG.convertAST(stmts)
                 cfg.writeDottyToFile("result.cfg-"+n, "Main");
                 n = n + 1;
-            case FunctionDecl(name, args, retref, body) =>
+            case FunctionDecl(name, args, retref, hint, body) =>
                 val cfg: CFG = ASTToCFG.convertAST(List(body))
                 cfg.writeDottyToFile("result.cfg-"+n, name.value);
                 n = n + 1;

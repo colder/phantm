@@ -11,7 +11,7 @@ object Trees {
         def combine(p2: Program): Program = Program(stmts ::: p2.stmts)
     }
     case class ArgumentDecl(v: SimpleVariable, hint: Option[TypeHint], default: Option[Expression], byref: Boolean) extends Tree;
-    case class MethodDecl(name: Identifier, flags: List[MemberFlag], args: List[ArgumentDecl], retref: Boolean, body: Option[Statement]) extends Tree
+    case class MethodDecl(name: Identifier, flags: List[MemberFlag], args: List[ArgumentDecl], retref: Boolean, hint: Option[TypeHint], body: Option[Statement]) extends Tree
     case class PropertyDecl(v: Identifier, flags: List[MemberFlag], default: Option[Expression]) extends Tree;
     case class ConstantDecl(v: Identifier, value: Expression) extends Tree;
 
@@ -87,7 +87,7 @@ object Trees {
 
     abstract class Statement extends Tree;
 
-    case class FunctionDecl(name: Identifier, args: List[ArgumentDecl], retref: Boolean, body: Statement) extends Statement
+    case class FunctionDecl(name: Identifier, args: List[ArgumentDecl], retref: Boolean, hint: Option[TypeHint], body: Statement) extends Statement
 
     case class ClassDecl(name: Identifier,
                          flags: ClassFlag,

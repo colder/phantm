@@ -88,6 +88,7 @@ case class STToAST(st: ParseNode) {
                                     method_modifiers(child(n, 0)),
                                     parameter_list(child(n, 5)),
                                     is_reference(child(n, 2)),
+                                    None,
                                     method_body(child(n, 7))).setPos(child(n,3));
                 (st._1:::List(md), st._2, st._3, st._4)
         }
@@ -650,7 +651,7 @@ case class STToAST(st: ParseNode) {
     def function_declaration_statement(n: ParseNode): FunctionDecl = {
         childrenNames(n) match {
             case List("T_FUNCTION", "is_reference", "T_STRING", "T_OPEN_BRACES", "parameter_list", "T_CLOSE_BRACES", "T_OPEN_CURLY_BRACES", "inner_statement_list", "T_CLOSE_CURLY_BRACES") =>
-                FunctionDecl(identifier(child(n, 2)), parameter_list(child(n, 4)), is_reference(child(n, 1)), inner_statement_list(child(n, 7))).setPos(child(n, 2))
+                FunctionDecl(identifier(child(n, 2)), parameter_list(child(n, 4)), is_reference(child(n, 1)), None, inner_statement_list(child(n, 7))).setPos(child(n, 2))
         }
     }
 
