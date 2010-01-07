@@ -3,11 +3,13 @@ package phpanalysis.parser;
 
 import phpanalysis.parser.Trees._;
 
-import phpanalysis._;
+import phpanalysis.analyzer.Annotations;
 
 case class STToAST(st: ParseNode) {
 
     def getAST = S(st);
+
+    var curClassComment: Option[String] = None;
 
     // Tree visitors functions
 
@@ -36,6 +38,7 @@ case class STToAST(st: ParseNode) {
         }).setPos(child(n))
     }
     def class_declaration_statement(n: ParseNode): Statement = {
+        curClassComment = None
         (childrenNames(n) match {
             case List("class_entry_type", "T_STRING", "extends_from", "implements_list", "T_OPEN_CURLY_BRACES", "class_statement_list", "T_CLOSE_CURLY_BRACES") =>
                 class_statement_list(child(n, 5)) match {
@@ -74,7 +77,9 @@ case class STToAST(st: ParseNode) {
         childrenNames(n) match {
             case List("variable_modifiers", "class_variable_declaration", "T_SEMICOLON") =>
                 val vm = variable_modifiers(child(n, 0))
-                val pd = class_variable_declaration(child(n, 1), vm)
+                var pd = class_variable_declaration(child(n, 1), vm)
+                if (curClassComment != None) pd = pd map (Annotations.importPropertiesAnnotations(_, curClassComment.get))
+                curClassComment = None
                 if (vm exists { _ == MFStatic }) {
                     (st._1, st._2:::pd, st._3, st._4)
                 } else {
@@ -82,15 +87,24 @@ case class STToAST(st: ParseNode) {
                 }
             case List("class_constant_declaration", "T_SEMICOLON") =>
                 val cd = class_constant_declaration(child(n, 0));
+                curClassComment = None
                 (st._1, st._2, st._3, st._4:::cd)
             case List("method_modifiers", "T_FUNCTION", "is_reference", "T_STRING", "T_OPEN_BRACES", "parameter_list", "T_CLOSE_BRACES", "method_body") =>
-                val md = MethodDecl(identifier(child(n, 3)),
+                var md = MethodDecl(identifier(child(n, 3)),
                                     method_modifiers(child(n, 0)),
                                     parameter_list(child(n, 5)),
                                     is_reference(child(n, 2)),
                                     None,
                                     method_body(child(n, 7))).setPos(child(n,3));
+                if (curClassComment != None) md = Annotations.importMethodsAnnotations(md, curClassComment.get)
+                curClassComment = None
                 (st._1:::List(md), st._2, st._3, st._4)
+            case List("T_COMMENT") =>
+                curClassComment = Some(child(n, 0).tokenContent)
+                st
+            case List("T_DOC_COMMENT") =>
+                curClassComment = Some(child(n, 0).tokenContent)
+                st
         }
     }
 

@@ -90,7 +90,7 @@ object Main {
 
                 if (displayProgress) println("6/8 Parsing annotations...")
                 // Inject type information from the annotations
-                ast = Annotations(ast).transform
+                ast = new Annotations(ast).transform
                 Reporter.errorMilestone
 
                 if (displayProgress) println("7/8 Symbolic checks...")
