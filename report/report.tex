@@ -24,8 +24,9 @@
   tool for the PHP programming language. The kind of analysis done by the
   compiler or by the multiple development environments are very limited. This
   tool aims at providing further feedback to a developer by checking for
-  multiple mis-uses of the language and should reduce the risk of encountering
-  fatal errors at runtime after deployment of PHP based application.
+  multiple bug conditions or mis-uses of the language and should reduce the
+  risk of encountering fatal errors at runtime after deployment of PHP based
+  application.
 \end{abstract}
 \section{Introduction}
 The PHP programming language is a compiled language. However, the compilation is
@@ -532,16 +533,18 @@ code as well.
 
 This tool still fails at analysing one ``core'' feature of PHP, which is
 \emph{references}. As of PHP5, the usage of references is in most case obsolete
-or even harmful. However, it is still used by lots of projects, for different
-reasons.
+or even harmful. However, it is still used by lots of projects, for reasons
+such backward compatibility or performance improvements.
 
-Another idea of possible improvement is about the way it registers symbols.
-Indeed, since it registers more than 2'500 functions, each of them having up to
-7 variables defined in every functions (\verb/$_GET/ \ldots \verb/$_SESSION/,
-and \verb/$this/ in case of a method). This means the analyser starts by
-creating more than 15'000 symbols even if the code analyzed is a single line.
-
-\section{Conclusions}
+\section{Conclusion}
+Doing precise analysis on PHP is hard, and that is because the language has never
+been developed with such concerns in mind. We can however see the potential
+applications of such tool, like direct integration as part of an IDE or
+plugged to a source repository as a quality assurance tool. The fact that only
+few developments are aimed at providing analysis for PHP can possibly be
+explained by its difficulty. As a consequence, the PHP world still has a lot
+of room for analysis tools such as the one described here, which  makes its
+development quite interesting and motivating.
 
 
 \addcontentsline{toc}{section}{References}
@@ -558,6 +561,4 @@ creating more than 15'000 symbols even if the code analyzed is a single line.
   \bibitem{recdescent}\mbox{http://lara.epfl.ch/dokuwiki/compilation:}
     \mbox{example\_efficient\_code\_for\_conditionals}
 \end{thebibliography}
-
-
 \end{document}
