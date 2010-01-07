@@ -297,6 +297,10 @@ case class STToAST(st: ParseNode) {
                 Html(child(n, 0).tokenContent)
             case List("expr", "T_SEMICOLON") =>
                 expr(child(n, 0))
+            case List("T_COMMENT") =>
+                Comment(child(n, 0).tokenContent)
+            case List("T_DOC_COMMENT") =>
+                DocComment(child(n, 0).tokenContent)
             case List("T_UNSET", "T_OPEN_BRACES", "variable_list", "T_CLOSE_BRACES", "T_SEMICOLON") =>
                 Unset(variable_list(child(n, 2)))
             case List("T_FOREACH", "T_OPEN_BRACES", "expr", "T_AS", "foreach_variable", "foreach_optional_arg", "T_CLOSE_BRACES", "foreach_statement") =>
@@ -792,6 +796,14 @@ case class STToAST(st: ParseNode) {
                 notyet(n)
             case List("base_variable_with_function_calls") =>
                 base_variable_with_function_calls(child(n))
+            case List("T_COMMENT", "expr") =>
+                expr(child(n, 1)) // ignore inline comments
+            case List("T_DOC_COMMENT", "expr") =>
+                expr(child(n, 1)) // ignore inline comments
+            case List("expr", "T_COMMENT") =>
+                expr(child(n, 0)) // ignore inline comments
+            case List("expr", "T_DOC_COMMENT") =>
+                expr(child(n, 0)) // ignore inline comments
             case _ => unspecified(n)
         }).setPos(child(n, 0))
     }

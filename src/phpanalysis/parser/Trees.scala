@@ -103,6 +103,8 @@ object Trees {
     case class Goto(to: Label) extends Statement
 
     case class LabelDecl(name: Identifier) extends Statement
+    case class Comment(comment: String) extends Statement
+    case class DocComment(comment: String) extends Statement
 
     case class Block(stmts: List[Statement]) extends Expression // Hack to allow include statments to be resolved
     case class If(cond: Expression, then: Statement, elze: Option[Statement]) extends Statement

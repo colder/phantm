@@ -388,6 +388,10 @@ object ASTToCFG {
             cfg.closeGroup(cont)
         case Throw(ex) =>
             Emit.goto(cont)
+        case Comment(comment) =>
+            Emit.goto(cont)
+        case DocComment(comment) =>
+            Emit.goto(cont)
         case Try(body, catches) =>
             Emit.goto(cont)
             /*
