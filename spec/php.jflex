@@ -16,6 +16,7 @@ import java_cup.runtime.*;
 
     // same functionality as Flex's yymore()
     public void cleanMore() {
+        this.morePrefix.setLength(0);
         this.clearMorePrefix = true;
     }
     public void more() {
@@ -421,45 +422,50 @@ NEWLINE = ("\r"|"\n"|"\r\n")
 
 <ST_IN_SCRIPTING>"#"|"//" {
 	yybegin(ST_ONE_LINE_COMMENT);
-//  more();
+    more();
 }
 
 <ST_ONE_LINE_COMMENT>"?"|"%"|">" {
-//	more();
+	more();
 }
 
 <ST_ONE_LINE_COMMENT>[^\n\r?%>]+ {
-//	more();
+	more();
 }
 
 <ST_ONE_LINE_COMMENT>{NEWLINE} {
+    Symbol sym = symbol(Symbols.T_COMMENT, "T_COMMENT", text());
     cleanMore();
 	yybegin(ST_IN_SCRIPTING);
+    return sym;
 }
 
 <ST_ONE_LINE_COMMENT>"?>"|"%>" {
-    // yypushback(length() - 2);
+    Symbol sym = symbol(Symbols.T_COMMENT, "T_COMMENT", text());
     cleanMore();
     yypushback(2);
     yybegin(ST_IN_SCRIPTING);
+    return sym;
 }
 
 <ST_IN_SCRIPTING>"/*" {
 	yybegin(ST_COMMENT);
-	//more();
+	more();
 }
 
 <ST_COMMENT>[^*]+ {
-//	more();
+	more();
 }
 
 <ST_COMMENT>"*/" {
-    cleanMore();
 	yybegin(ST_IN_SCRIPTING);
+    Symbol sym = symbol(Symbols.T_DOC_COMMENT, "T_DOC_COMMENT", text());
+    cleanMore();
+    return sym;
 }
 
 <ST_COMMENT>"*" {
-//	more();
+	more();
 }
 
 <ST_IN_SCRIPTING>("?>"|"</script"{WHITESPACE}*">"){NEWLINE}? {
