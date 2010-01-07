@@ -3,7 +3,12 @@ import parser.Trees._
 
 abstract class ASTTransform(p: Program) {
     def transform: Program = {
-        Program(p.stmts map trStmt)
+        Program(trStmts(p.stmts))
+    }
+
+    def trStmts(stmts: List[Statement]): List[Statement] = stmts match {
+        case st :: sts => trStmt(st) :: trStmts(sts)
+        case Nil => Nil
     }
 
     def trMethod(md: MethodDecl): MethodDecl = md.body match {
