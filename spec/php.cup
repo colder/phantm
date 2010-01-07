@@ -696,6 +696,8 @@ class_statement ::=
     | class_constant_declaration T_SEMICOLON
     | method_modifiers T_FUNCTION is_reference T_STRING  T_OPEN_BRACES
 			parameter_list T_CLOSE_BRACES method_body
+    | T_DOC_COMMENT
+    | T_COMMENT
 ;
 
 method_body ::=

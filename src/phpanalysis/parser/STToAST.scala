@@ -158,13 +158,13 @@ case class STToAST(st: ParseNode) {
     def class_variable_declaration(n: ParseNode, vm: List[MemberFlag]): List[PropertyDecl] = {
         childrenNames(n) match {
             case List("class_variable_declaration", "T_COMMA", "T_VARIABLE") =>
-                class_variable_declaration(child(n, 0), vm) ::: List(PropertyDecl(varIdentifier(child(n, 2)), vm, None).setPos(child(n, 2)))
+                class_variable_declaration(child(n, 0), vm) ::: List(PropertyDecl(varIdentifier(child(n, 2)), vm, None, None).setPos(child(n, 2)))
             case List("class_variable_declaration", "T_COMMA", "T_VARIABLE", "T_ASSIGN", "static_expr") =>
-                class_variable_declaration(child(n, 0), vm) ::: List(PropertyDecl(varIdentifier(child(n, 2)), vm, Some(static_expr(child(n, 4)))).setPos(child(n, 2)))
+                class_variable_declaration(child(n, 0), vm) ::: List(PropertyDecl(varIdentifier(child(n, 2)), vm, Some(static_expr(child(n, 4))), None).setPos(child(n, 2)))
             case List("T_VARIABLE") =>
-                List(PropertyDecl(varIdentifier(child(n, 0)), vm, None).setPos(child(n, 0)))
+                List(PropertyDecl(varIdentifier(child(n, 0)), vm, None, None).setPos(child(n, 0)))
             case List("T_VARIABLE", "T_ASSIGN", "static_expr") =>
-                List(PropertyDecl(varIdentifier(child(n, 0)), vm, Some(static_expr(child(n, 2)))).setPos(child(n, 0)))
+                List(PropertyDecl(varIdentifier(child(n, 0)), vm, Some(static_expr(child(n, 2))), None).setPos(child(n, 0)))
         }
     }
 

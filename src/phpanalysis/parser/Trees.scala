@@ -12,7 +12,7 @@ object Trees {
     }
     case class ArgumentDecl(v: SimpleVariable, hint: Option[TypeHint], default: Option[Expression], byref: Boolean) extends Tree;
     case class MethodDecl(name: Identifier, flags: List[MemberFlag], args: List[ArgumentDecl], retref: Boolean, hint: Option[TypeHint], body: Option[Statement]) extends Tree
-    case class PropertyDecl(v: Identifier, flags: List[MemberFlag], default: Option[Expression]) extends Tree;
+    case class PropertyDecl(v: Identifier, flags: List[MemberFlag], default: Option[Expression], hint: Option[TypeHint]) extends Tree;
     case class ConstantDecl(v: Identifier, value: Expression) extends Tree;
 
     abstract class ClassFlag extends Tree
