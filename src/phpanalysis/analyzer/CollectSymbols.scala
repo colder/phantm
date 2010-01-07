@@ -108,7 +108,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
 
     def secondClassPass(cd: ClassDecl, cs: ClassSymbol): Unit = {
         for (val m <- cd.methods) {
-            val ms = new MethodSymbol(cs, m.name.value, getVisibility(m.flags), TAny).setPos(m)
+            val ms = new MethodSymbol(cs, m.name.value, getVisibility(m.flags), typeHintToType(m.hint)).setPos(m)
             cs.registerMethod(ms)
             m.name.setSymbol(ms)
             for (a <- m.args) {
