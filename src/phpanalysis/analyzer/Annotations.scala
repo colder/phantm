@@ -14,6 +14,7 @@ case class Annotations(ast: Program) extends ASTTransform(ast) {
 
     def importAnnotations(fd: FunctionDecl, comment: String): FunctionDecl = {
         // Here we import the annotations as type hints
+        // TODO: Parse the comment and inject comments
         fd
     }
 }
