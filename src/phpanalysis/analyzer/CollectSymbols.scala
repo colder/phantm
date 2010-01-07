@@ -107,18 +107,29 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
     }
 
     def secondClassPass(cd: ClassDecl, cs: ClassSymbol): Unit = {
+        def typeHintToType(th: TypeHint): Type = th match {
+            case THString => TString
+            case THAny => TAny
+            case THFalse => TFalse
+            case THTrue => TTrue
+            case THResource => TResource
+            case THInt => TInt
+            case THBoolean => TBoolean
+            case THFloat => TFloat
+            case THNull => TNull
+            case THArray => TAnyArray
+            case o: THObject =>
+                TAnyObject // TODO: Make it more precise
+            case u: THUnion =>
+                TUnion(typeHintToType(u.a), typeHintToType(u.b))
+        }
         for (val m <- cd.methods) {
             val ms = new MethodSymbol(cs, m.name.value, getVisibility(m.flags), TAny).setPos(m)
             cs.registerMethod(ms)
             m.name.setSymbol(ms)
             for (a <- m.args) {
                 var t: Type = a.hint match {
-                    case Some(THString) => TString
-                    case Some(THInt) => TInt
-                    case Some(THBoolean) => TBoolean
-                    case Some(THFloat) => TInt // TODO: Differientate numeric types
-                    case Some(THArray) => TAnyArray
-                    case Some(o: THObject) => TAnyObject // TODO: Make it more precise
+                    case Some(a) => typeHintToType(a)
                     case None => TAny;
                 }
                 if (a.default == Some(PHPNull)) {

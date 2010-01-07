@@ -21,11 +21,17 @@ object Trees {
     case object CFFinal extends ClassFlag
 
     abstract class TypeHint extends Tree
-    case object THString extends TypeHint
-    case object THInt extends TypeHint
-    case object THBoolean extends TypeHint
-    case object THFloat extends TypeHint
-    case object THArray extends TypeHint
+    case object THString   extends TypeHint
+    case object THInt      extends TypeHint
+    case object THBoolean  extends TypeHint
+    case object THFloat    extends TypeHint
+    case object THArray    extends TypeHint
+    case object THFalse    extends TypeHint
+    case object THTrue     extends TypeHint
+    case object THNull     extends TypeHint
+    case object THAny      extends TypeHint
+    case object THResource extends TypeHint
+    case class THUnion(a: TypeHint, b: TypeHint) extends TypeHint
     case class THObject(cl: ClassRef) extends TypeHint
 
     abstract class MemberFlag extends Tree
