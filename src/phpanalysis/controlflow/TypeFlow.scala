@@ -16,11 +16,8 @@ object TypeFlow {
 
             case (TNone, _) => true
             case (_, TAny) => true
-            case (_, TBoolean) => true
-            case (TFalse, TTrue) => false
-            case (TNull, TTrue) => false
-            case (TNull, TFalse) => true
-            case (_, TTrue) => true
+            case (TTrue, TBoolean) => true
+            case (TFalse, TBoolean) => true
             case (t1: TObjectRef, TAnyObject) => true
             case (t1: TObjectRef, t2: TObjectRef) =>
                 val r1 = t1.realObj
