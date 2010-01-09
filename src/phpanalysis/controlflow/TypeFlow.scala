@@ -246,6 +246,15 @@ object TypeFlow {
                             TNone
                     }
 
+                case const @ CFGClassConstant(cl, id) =>
+                    TAny // TODO
+
+                case mcall @ CFGStaticMethodCall(cl, id, args) =>
+                    TAny // TODO
+
+                case tern @ CFGTernary(iff, then, elze) =>
+                    typeFromSimpleValue(then) union typeFromSimpleValue(elze)
+
                 case id: CFGSimpleVariable =>
                   env.lookup(id) match {
                     case Some(t) =>
@@ -296,6 +305,14 @@ object TypeFlow {
                             }})
                         case t =>
                             println("Woops?? invlid type returned from expect: "+t);
+                            TAny
+                    }
+                case CFGNextArrayEntry(arr) =>
+                    typeFromSimpleValue(arr) match {
+                        case t: ArrayType =>
+                            t.getPushedType(arr.uniqueID)
+                        case _ =>
+                            println("woot! this is inconsistent!")
                             TAny
                     }
 

@@ -349,6 +349,15 @@ object Types {
           case _ => pollute(typ)
         }
 
+        def getPushedType(uniqueID: Int) = {
+            pushPositions.get(uniqueID) match {
+                case Some(index) =>
+                    entries(index)
+                case None =>
+                    TAny
+            }
+        }
+
         def injectNext(typ: Type, uniqueID: Int) = {
             pushPositions.get(uniqueID) match {
                 case Some(index) =>

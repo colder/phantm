@@ -73,12 +73,18 @@ object CFGTrees {
   case class CFGArrayCurKey(ar: CFGSimpleValue) extends CFGSimpleValue
   case class CFGArrayCurIsValid(ar: CFGSimpleValue) extends CFGSimpleValue
 
+  case class CFGClassConstant(cl: parser.Trees.ClassRef, name: parser.Trees.Identifier) extends CFGSimpleValue
+
   case class CFGTernary(cond: CFGSimpleValue,
                          then: CFGSimpleValue,
                          elze: CFGSimpleValue) extends CFGSimpleValue
 
   case class CFGFunctionCall(id: parser.Trees.Identifier,
                              params: List[CFGSimpleValue]) extends CFGSimpleValue
+
+  case class CFGStaticMethodCall(cl: parser.Trees.ClassRef,
+                                 id: parser.Trees.Identifier,
+                                 params: List[CFGSimpleValue]) extends CFGSimpleValue
 
   case class CFGMethodCall(receiver: CFGSimpleValue,
                                  id: parser.Trees.Identifier,
@@ -135,8 +141,10 @@ object CFGTrees {
     tree match {
       case CFGAssignUnary(v, u, e) => v + assOp + u + e
       case CFGAssignBinary(v, l, b, r) => v + assOp + l + " " + b + " " + r
+      case CFGStaticMethodCall(r, mid, p) => r + "::" + mid.value + p.mkString("(", ", ", ")")
       case CFGMethodCall(r, mid, p) => r + "->" + mid.value + p.mkString("(", ", ", ")")
       case CFGFunctionCall(fid, p) => fid.value + p.mkString("(", ", ", ")")
+      case CFGClassConstant(cl, cid) => cl + "::" + cid.value
       case CFGTernary(i, then, elze) => i + " ? " + then + " : " + elze
       case CFGAssign(v, e) => v + assOp + e
       case CFGSkip => "..."

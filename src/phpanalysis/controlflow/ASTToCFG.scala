@@ -91,6 +91,11 @@ object ASTToCFG {
             val e2 = expr(rhs)
             Emit.statementCont(CFGAssume(e1, EQUALS, e2).setPos(ex), trueCont)
             Emit.statementCont(CFGAssume(e1, NOTEQUALS, e2).setPos(ex), falseCont)
+          case Identical(lhs, rhs) =>
+            val e1 = expr(lhs)
+            val e2 = expr(rhs)
+            Emit.statementCont(CFGAssume(e1, IDENTICAL, e2).setPos(ex), trueCont)
+            Emit.statementCont(CFGAssume(e1, NOTIDENTICAL, e2).setPos(ex), falseCont)
           case Smaller(lhs, rhs) =>
             val e1 = expr(lhs)
             val e2 = expr(rhs)
@@ -222,6 +227,8 @@ object ASTToCFG {
                     Some(CFGAssign(v, CFGFunctionCall(name, args map { a => expr(a.value) }).setPos(ex)))
                 case MethodCall(obj, StaticMethodRef(id), args) => 
                     Some(CFGAssign(v, CFGMethodCall(expr(obj), id, args.map {a => expr(a.value) }).setPos(ex)))
+                case StaticMethodCall(cl, StaticMethodRef(id), args) => 
+                    Some(CFGAssign(v, CFGStaticMethodCall(cl, id, args.map {a => expr(a.value) }).setPos(ex)))
                 case Array(Nil) =>
                     Some(CFGAssign(v, CFGEmptyArray()))
                 case New(cr, args) =>
@@ -291,17 +298,15 @@ object ASTToCFG {
                         case Require(path, once) =>
                             notyet(ex); // TODO
                         case Array(values) =>
-                            Emit.statement(CFGAssign(v, CFGEmptyArray()).setPos(ex))
+                            Emit.statement(CFGAssign(v, CFGEmptyArray().setPos(ex)).setPos(ex))
                             for (av <- values) av match {
                                 case (Some(x), va, byref) =>
                                     Emit.statement(CFGAssign(CFGArrayEntry(v, expr(x)), expr(va)).setPos(ex))
                                 case (None, va, byref) =>
                                     Emit.statement(CFGAssign(CFGNextArrayEntry(v).setPos(va), expr(va)).setPos(ex))
                             }
-                        case StaticMethodCall(cl, id, args) =>
-                            notyet(ex); // TODO
                         case ClassConstant(cl, id) =>
-                            notyet(ex); // TODO
+                            Emit.statement(CFGAssign(v, CFGClassConstant(cl, id).setPos(ex)).setPos(ex))
 
                         case Block(sts) =>
                             val endblock = cfg.newVertex
