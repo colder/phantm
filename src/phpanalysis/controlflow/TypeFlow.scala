@@ -660,7 +660,9 @@ object TypeFlow {
                         case (v: CFGSimpleVariable, NOTEQUALS, TTrue)  =>
                             env.inject(v, filter(v, false))
                         case _ =>
-                            expect(v2, expect(v1, TAny)); env
+                            expect(v1, TAny)
+                            expect(v2, TAny)
+                            env
                     }
 
               }
