@@ -4,9 +4,13 @@ import scala.collection.mutable.{HashSet, HashMap, Map}
 
 import controlflow.TypeFlow._
 import controlflow.CFGTrees._
-
+import parser.Trees._
 
 object Types {
+    object RecProtection {
+        var objectToStringDeep = 0;
+    }
+
     sealed abstract class Type {
         self=>
 
@@ -58,6 +62,8 @@ object Types {
 
         def polluteFields(typ: Type): self.type;
         def merge(t2: RealObjectType): RealObjectType;
+
+        def toText = toString;
     }
 
     // Objects related types
@@ -66,12 +72,24 @@ object Types {
     // Stores the ref => Real Objects relashionship
     object ObjectStore {
         private val store = new HashMap[ObjectId, RealObjectType]();
+        private var tmpNum = 0;
+        def clean = {
+            store.clear
+            tmpNum = 0;
+        }
+
         def lookup(id: ObjectId): RealObjectType = store.get(id) match {
             case Some(o) => o
             case None => error("Woops incoherent store")
         }
 
         def set(id: ObjectId, robj: RealObjectType) = store(id) = robj;
+
+        def getOrCreateTMPId(id: ObjectId, ocs: Option[ClassSymbol]) : TObjectRef = getOrCreate(-id-tmpNum, ocs)
+        def getOrCreateTMP(ocs: Option[ClassSymbol]) : TObjectRef = {
+            tmpNum = tmpNum + 1;
+            getOrCreate(-tmpNum, ocs)
+        }
 
         def getOrCreate(id: ObjectId, ocs: Option[ClassSymbol]) : TObjectRef = store.get(id) match {
             case Some(_) =>
@@ -131,6 +149,9 @@ object Types {
 
         def pollutedType = Some(TAny)
         def polluteFields(typ: Type) = this
+
+        override def toString = "TAnyObject"
+        override def toText   = "any object"
     }
     // Reference to an object in the store
     class TObjectRef(val id: ObjectId) extends ObjectType {
@@ -160,6 +181,10 @@ object Types {
             "(#"+id+"->"+realObj+")"
         }
 
+        override def toText = {
+            realObj.toText
+        }
+
         override def equals(v: Any) = v match {
             case ref: TObjectRef =>
                 ref.id == id
@@ -186,10 +211,18 @@ object Types {
         }
 
         override def toString = {
+            RecProtection.objectToStringDeep += 1;
             var r = "Object(?)"
-            r = r+"["+(fields.map(x => x._1 +" => "+ x._2).mkString("; "))+(if(pollutedType != None) " ("+pollutedType.get+")" else "")+"]"
+            if (RecProtection.objectToStringDeep < 2) {
+                r = r+"["+(fields.map(x => x._1 +" => "+ x._2).mkString("; "))+(if(pollutedType != None) " ("+pollutedType.get+")" else "")+"]"
+            } else {
+                r = r+"[...]"
+            }
+            RecProtection.objectToStringDeep -= 1;
             r
         }
+
+        override def toText =  "Object(?)"
 
         def polluteFields(typ: Type) = {
 
@@ -251,12 +284,19 @@ object Types {
                            initPollutedType: Option[Type]) extends TRealObject(initFields, initPollutedType){
 
         override def toString = {
+            RecProtection.objectToStringDeep += 1;
             var r = "Object("+cl+")"
-            r = r+"["+(fields.map(x => x._1 +" => "+ x._2).mkString("; "))+(if(pollutedType != None) " ("+pollutedType.get+")" else "")+"]"
-            r = r+"["+(cl.cs.methods.map(x => x._1+": "+msToTMethod(x._2)).mkString("; "))+"]"
+            if (RecProtection.objectToStringDeep < 2) {
+                r = r+"["+(fields.map(x => x._1 +" => "+ x._2).mkString("; "))+(if(pollutedType != None) " ("+pollutedType.get+")" else "")+"]"
+                r = r+"["+(cl.cs.methods.map(x => x._1+": "+msToTMethod(x._2)).mkString("; "))+"]"
+            } else {
+                r = r+"[...]"
+            }
+            RecProtection.objectToStringDeep -= 1;
             r
         }
 
+        override def toText =  "Object("+cl+")"
 
         def msToTMethod(ms: MethodSymbol) = {
             new TFunction(ms.argList.map{ x => (x._2.typ, x._2.optional)}.toList, ms.typ)
@@ -493,4 +533,33 @@ object Types {
         def getType: Type = _tpe
     }
 
+
+    def typeHintToType(oth: Option[TypeHint]): Type = oth match {
+        case Some(a) => typeHintToType(a)
+        case None => TAny;
+    }
+
+    def typeHintToType(th: TypeHint): Type = th match {
+        case THString => TString
+        case THAny => TAny
+        case THFalse => TFalse
+        case THTrue => TTrue
+        case THResource => TResource
+        case THInt => TInt
+        case THBoolean => TBoolean
+        case THFloat => TFloat
+        case THNull => TNull
+        case THArray => TAnyArray
+        case THAnyObject => TAnyObject
+        case THObject(StaticClassRef(_, _, id)) =>
+            GlobalSymbols.lookupClass(id.value) match {
+                case Some(cs) =>
+                    ObjectStore.getOrCreateTMP(Some(cs))
+                case None =>
+                    println("Woops, undefined class "+id.value)
+                    TAnyObject
+            }
+        case u: THUnion =>
+            TUnion(typeHintToType(u.a), typeHintToType(u.b))
+    }
 }

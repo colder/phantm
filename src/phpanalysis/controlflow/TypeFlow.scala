@@ -400,7 +400,11 @@ object TypeFlow {
                             linearize(arr, ct, rt, pass+1)
                         case CFGObjectProperty(obj, index) =>
                             val rt = ObjectStore.getOrCreate(sv.uniqueID, None).injectField(index, resultType);
-                            val ct = if (pass > 0) ObjectStore.getOrCreate(-sv.uniqueID, None).injectField(index, checkType) else TAnyObject;
+                            // the check type is a different object, we create
+                            // a tmp object with negative id, and shift it by
+                            // the number of potentially used tmp objects used
+                            // for params
+                            val ct = if (pass > 0) ObjectStore.getOrCreateTMPId(sv.uniqueID, None).injectField(index, checkType) else TAnyObject;
 
                             linearize(obj, ct, rt, pass+1)
                         case CFGNextArrayEntry(arr) =>
@@ -686,12 +690,6 @@ object TypeFlow {
                 }
             }
 
-            scope match {
-                case ms: MethodSymbol =>
-                    injectPredef("this", ObjectStore.getOrCreate(-1, Some(ms.cs)))
-                case _ =>
-            }
-
             scope.registerPredefVariables
             injectPredef("_GET",     new TArray(TNone))
             injectPredef("_POST",    new TArray(TNone))
@@ -700,6 +698,23 @@ object TypeFlow {
             injectPredef("_SERVER",  new TArray(TNone))
             injectPredef("_ENV",     new TArray(TNone))
             injectPredef("_SESSION", new TArray(TNone))
+
+            // for methods, we inject $this as its always defined
+            scope match {
+                case ms: MethodSymbol =>
+                    injectPredef("this", ObjectStore.getOrCreate(-1, Some(ms.cs)))
+                case _ =>
+            }
+
+            // in case we have a function or method symbol, we also inject arguments
+            scope match {
+                case fs: FunctionSymbol =>
+                    for ((name, sym) <- fs.argList) {
+                        baseEnv = baseEnv.inject(CFGIdentifier(sym), sym.typ)
+                    }
+                case _ =>
+
+            }
 
             baseEnv
         }

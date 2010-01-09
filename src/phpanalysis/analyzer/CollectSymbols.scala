@@ -266,26 +266,4 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
         traverse(visit)
     }
 
-
-    def typeHintToType(oth: Option[TypeHint]): Type = oth match {
-        case Some(a) => typeHintToType(a)
-        case None => TAny;
-    }
-
-    def typeHintToType(th: TypeHint): Type = th match {
-        case THString => TString
-        case THAny => TAny
-        case THFalse => TFalse
-        case THTrue => TTrue
-        case THResource => TResource
-        case THInt => TInt
-        case THBoolean => TBoolean
-        case THFloat => TFloat
-        case THNull => TNull
-        case THArray => TAnyArray
-        case o: THObject =>
-            TAnyObject // TODO: Make it more precise
-        case u: THUnion =>
-            TUnion(typeHintToType(u.a), typeHintToType(u.b))
-    }
 }
