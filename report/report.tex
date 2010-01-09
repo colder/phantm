@@ -149,7 +149,43 @@ Additionally, a \verb=--apis= command line option is available to specify a
 list of API files that can be imported into the symbol tables. This is
 especially useful for large projects as it allows focused analysis.
 
+\subsubsection{Annotations}
+One of the language aspect that is limiting the analysis is that PHP does
+not support type specifications--or type hinting for everything. In fact, it
+is only accepted in function arguments, and the type specification is limited
+to \emph{arrays} and \emph{objects}. As a result, the type of the return value
+cannot be specified, and arguments that take scalar values such as
+\emph{booleans} or \emph{integers} cannot be specified as such.
 
+However, lots of project out there uses formatted comments that they can then
+render into an API documentation using some tools, such as php
+documentor\footnote{phpDocumentor: http://www.phpdoc.org}:
+
+\begin{listing}
+  \begin{verbatim}
+<?php
+class A {
+  /**
+   * @var int
+   */
+  public $plop;
+
+  /**
+   * @param string $str
+   * @return int
+   */
+  public function length($str) { return strlen($str); }
+}
+
+?>
+\end{verbatim}
+  \caption{Block comments as annotations}
+\end{listing}
+
+The analyser will look in the AST for comments directly preceding functions,
+methods or properties declarations. It will then try to extract such type
+informations and inject it as type hints in the AST. The analyzer will then
+simply use them like normal type hints during the type checking phase.
 
 \subsection{Control flow graphs}
 In fact, the AST is only the intermediate step that only let us do trivial
@@ -261,7 +297,7 @@ We now provide a detailed description of every elements of our type model:
   \item \emph{TNone} ($\bot$): Bottom of our lattice, represents no type
   \item \emph{TBoolean}: Any boolean type.
   \item \emph{TFalse}, \emph{TTrue} : True/False types, used for conditional
-    type filtering.
+    type filtering (See \ref{cond-type-filtr}).
   \item \emph{TInt}: Integers
   \item \emph{TFloat}: Floating point numbers
   \item \emph{TResource}: Resources. We make no distinction between resources
@@ -360,9 +396,8 @@ Those are, in order, the rules that apply to determine whether $t_1 \leq t_2$:
 \begin{enumerate}
   \item $\forall t_2 \in types : \emph{TNone} \leq t_2$
   \item $\forall t_1 \in types : t_1 \leq \emph{TAny}$
-  \item $\forall t_1 \in types : t_1 \leq \emph{TBoolean}$: This is due to the fact
-    that any type has a boolean value. However, it renders the lattice
-    ill-formed but greatly reduce the number of wrong-positives.
+  \item $\emph{TFalse} \leq \emph{TBoolean}$
+  \item $\emph{TTrue} \leq \emph{TBoolean}$
   \item $\forall (t_1:  TObjectRef): t_1 \leq \emph{TAnyObject}$
   \item $\forall (t_1,t_2: TObjectRef): t_1 \leq t_2$
     if all the following rules apply ($o_1 = store(t_1.ref), o_2 = store(t_2.ref)$):
@@ -383,6 +418,7 @@ Those are, in order, the rules that apply to determine whether $t_1 \leq t_2$:
   \item $\forall (u_1,u_2: \emph{TUnion}) : u_1 \leq u_2 \Leftrightarrow \forall t_2 \in u_2: \exists t_1 \in u_1: t_1 \leq t_2$
   \item $\forall t_1 \in types, (u_2: \emph{TUnion}) : t_1 \leq u_2 \Leftrightarrow \forall t_2 \in u_2: t_1 \leq t_2$
   \item $\forall (u_1: \emph{TUnion}), t_2 \in types : u_1 \leq t_2 \Leftrightarrow \forall t_1 \in u_1: t_1 \leq t_2$
+  \item $\forall t_1,t_2 \in types : t_1 \nleq t_2$ If none of the rules above applies
 \end{enumerate}
 
 \subsubsection{Definition of join ($\cup$)}
@@ -400,8 +436,7 @@ Those are, in order, the rules that apply to determine the result of $t_1 \cup t
     union of both entry sets. Note that for an entry present in both arrays,
     the join of its types is taken.
 
-  \item $\forall t_1,t_2 \in types: t_1 \cup t_2 = \emph{TUnion}(t_1, t_2)$. The last
-    resort is to build a union of those types.
+  \item $\forall t_1,t_2 \in types: t_1 \cup t_2 = \emph{TUnion}(t_1, t_2)$. If none of the above applies, we get a union of types.
 \end{enumerate}
 
 \subsection{Analysis mechanics}
@@ -460,6 +495,7 @@ it doesn't generate differences that would jeopardize the termination. For insta
 every traversal! To solve this case, we set the reference value to the program point.
 
 \subsubsection{Conditional type filtering}
+\label{cond-type-filtr}
 So far, the analysis features are quite common and could be applied to most
 languages. This is however insufficient to give a good analysis. The reason is
 that most internally defined PHP functions will return \verb/false/ or
@@ -490,11 +526,11 @@ it will return false. Naively checking types would give us many false
 positives:
 \begin{itemize}
   \item \verb/mysql_fetch_assoc/'s argument would be of type
-    $\emph{TBoolean} \cup \emph{TResource}$, which would fail with a type mismatch saying
-    that it expects a \emph{TResource}.
+    $\emph{TBoolean} \cup \emph{TResource}$, which would fail with a type
+    mismatch saying that it expects a \emph{TResource}.
   \item Inside the while body, \verb/$row/ would still be of type $\emph{TBoolean}
-    \cup \emph{TArray}$, generating a false positive for any usage of \verb/$row/ as
-    an array.
+    \cup \emph{TArray}$, generating a false positive for any usage of
+    \verb/$row/ as an array.
 \end{itemize}
 
 The solution to this problem is in two parts. First of all, it was necessary to
@@ -521,15 +557,10 @@ that may require a lot of ``magic`` features to work. Analysing such projects
 would currently yield a flood of false-positive, totally hiding any potential
 real problem.
 
-Also, due to the modularity of most projects out there, it becomes critical to
-be able to correctly typecheck functions or methods arguments and return values.
-Due to the lack of scalar type hinting (PHP allows array and class type hints
-for arguments), annotations of some kind would be required. Even though the
-current version allows to plug in APIs in XML format, it would be a definite
-plus to allow the tool to parse block comments before declaration, to extract
-expected types. An idea would be to use a syntax very similar to what
-\emph{javadoc} parses, as it is a quite common way of self-documenting PHP
-code as well.
+Lots of features are not completely checked or integrated in the analysis,
+such as exceptions, namespaces, or closures. In general, there are still
+lot of areas of the language for which the analysis is not done or hasn't
+been properly tested.
 
 This tool still fails at analysing one ``core'' feature of PHP, which is
 \emph{references}. As of PHP5, the usage of references is in most case obsolete
