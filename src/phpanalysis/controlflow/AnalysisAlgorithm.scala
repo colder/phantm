@@ -25,8 +25,10 @@ class AnalysisAlgorithm[E <: Environment[E],S]
   }
 
   def computeFixpoint : Unit = {
+    var pass = 0;
     var change = true
     while (change) {
+      pass += 1
       change = false
       // We should traverse the graph in order
       var toProcess = List(cfg.entry)

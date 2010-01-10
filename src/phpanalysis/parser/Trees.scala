@@ -64,13 +64,13 @@ object Trees {
     case class StaticMethodRef(id: Identifier) extends MethodRef
 
     abstract class CastType extends Tree
-    object CastInt extends CastType
-    object CastString extends CastType
-    object CastDouble extends CastType
-    object CastArray extends CastType
-    object CastBool extends CastType
-    object CastObject extends CastType
-    object CastUnset extends CastType
+    case object CastInt extends CastType
+    case object CastString extends CastType
+    case object CastDouble extends CastType
+    case object CastArray extends CastType
+    case object CastBool extends CastType
+    case object CastObject extends CastType
+    case object CastUnset extends CastType
 
     case class InitVariable(v: Variable, init: Option[Expression]) extends Tree
 

@@ -134,7 +134,7 @@ object ASTToCFG {
         case NextArrayEntry(array) => CFGNextArrayEntry(expr(array)).setPos(v)
         case ObjectProperty(obj, property) => CFGObjectProperty(expr(obj), CFGStringLit(property.value)).setPos(v)
         case DynamicObjectProperty(obj, property) => CFGObjectProperty(expr(obj), expr(property)).setPos(v)
-        case ClassProperty(cl, property) => notyet(v)
+        case ClassProperty(cl, property) => CFGClassProperty(cl, expr(property)).setPos(v)
     }
 
     /** Transforms an identifier from the AST to one for the CFG. */
@@ -295,8 +295,6 @@ object ASTToCFG {
                             } else {
                                 Emit.statement(CFGAssign(v, CFGFunctionCall(internalFunction("isset"), List(expr(vs.first))).setPos(ex)).setPos(ex))
                             }
-                        case Require(path, once) =>
-                            notyet(ex); // TODO
                         case Array(values) =>
                             Emit.statement(CFGAssign(v, CFGEmptyArray().setPos(ex)).setPos(ex))
                             for (av <- values) av match {
@@ -307,6 +305,9 @@ object ASTToCFG {
                             }
                         case ClassConstant(cl, id) =>
                             Emit.statement(CFGAssign(v, CFGClassConstant(cl, id).setPos(ex)).setPos(ex))
+
+                        case Cast(typ, e) =>
+                            Emit.statement(CFGAssign(v, CFGCast(typ, expr(e)).setPos(ex)).setPos(ex))
 
                         case Block(sts) =>
                             val endblock = cfg.newVertex

@@ -67,6 +67,10 @@ object TypeFlow {
 
         def join(x : Type, y : Type) = {
             val res = (x,y) match {
+            case (TAny, _) => TAny
+            case (_, TAny) => TAny
+            case (TTrue, TFalse) => TBoolean
+            case (TFalse, TTrue) => TBoolean
             case (TNone, _) => y
             case (_, TNone) => x
 
@@ -153,12 +157,12 @@ object TypeFlow {
                 case BaseTypeEnvironment =>
                     true
                 case e: TypeEnvironment =>
-                    !(scope equals e.scope) || !(map equals e.map)
+                    scope != e.scope || map !=  e.map
             }
         }
 
         override def toString = {
-            map.filter(_._1.toString.toList.head != '_').map(x => x._1+" => "+x._2).mkString("[ ", "; ", " ]");
+            map.toList.filter(_._1.toString.toList.head != '_').sort{(x,y) => x._1.uniqueID < x._1.uniqueID}.map(x => x._1+"("+x._1.uniqueID+") => "+x._2).mkString("\n") //("[ ", "; ", " ]");
         }
     }
 
@@ -249,11 +253,28 @@ object TypeFlow {
                 case const @ CFGClassConstant(cl, id) =>
                     TAny // TODO
 
+                case const @ CFGClassProperty(cl, index) =>
+                    TAny // TODO
+
                 case mcall @ CFGStaticMethodCall(cl, id, args) =>
                     TAny // TODO
 
                 case tern @ CFGTernary(iff, then, elze) =>
                     typeFromSimpleValue(then) union typeFromSimpleValue(elze)
+
+                case CFGCast(typ, v) =>
+                    // TODO: not all cast from-to types are accepted, we could
+                    // check for those!
+                    import parser.Trees._
+                    typ match {
+                        case CastUnset => TNull
+                        case CastInt => TInt
+                        case CastString => TString
+                        case CastDouble => TFloat
+                        case CastArray => TAnyArray
+                        case CastBool => TBoolean
+                        case CastObject => TAnyObject
+                    }
 
                 case id: CFGSimpleVariable =>
                   env.lookup(id) match {

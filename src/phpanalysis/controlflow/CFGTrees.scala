@@ -2,6 +2,7 @@ package phpanalysis.controlflow
 
 object CFGTrees {
   import analyzer.Symbols._
+  import parser.Trees._
 
   sealed abstract class CFGTree extends Positional {
     override def toString = stringRepr(this)
@@ -15,7 +16,7 @@ object CFGTrees {
   }
 
   sealed abstract class CFGStatement extends CFGTree {
-    self => 
+    self =>
     var uniqueID: Int = nextStatementID
   }
 
@@ -43,7 +44,7 @@ object CFGTrees {
 
   sealed abstract class CFGExpression extends CFGStatement
   sealed abstract class CFGSimpleValue extends CFGExpression
-  sealed abstract class CFGVariable extends CFGSimpleValue 
+  sealed abstract class CFGVariable extends CFGSimpleValue
   sealed abstract class CFGSimpleVariable extends CFGVariable
 
   /** Used to represent the identifiers from the original program. */
@@ -59,6 +60,7 @@ object CFGTrees {
   case class CFGArrayEntry(arr: CFGSimpleValue, index: CFGSimpleValue) extends CFGVariable
   case class CFGNextArrayEntry(arr: CFGSimpleValue) extends CFGVariable
   case class CFGObjectProperty(obj: CFGSimpleValue, index: CFGSimpleValue) extends CFGVariable
+  case class CFGClassProperty(cl: ClassRef, index: CFGSimpleValue) extends CFGVariable
 
   case class CFGNumLit(value: Int) extends CFGSimpleValue
   case class CFGStringLit(value: String) extends CFGSimpleValue
@@ -67,30 +69,31 @@ object CFGTrees {
   case class CFGNull() extends CFGSimpleValue
   case class CFGThis() extends CFGSimpleValue
   case class CFGEmptyArray() extends CFGSimpleValue
-  case class CFGInstanceof(lhs: CFGSimpleValue, cl: parser.Trees.ClassRef) extends CFGSimpleValue
+  case class CFGInstanceof(lhs: CFGSimpleValue, cl: ClassRef) extends CFGSimpleValue
+  case class CFGCast(to: CastType, e: CFGSimpleValue) extends CFGSimpleValue
   case class CFGArrayNext(ar: CFGSimpleValue) extends CFGSimpleValue
   case class CFGArrayCurElement(ar: CFGSimpleValue) extends CFGSimpleValue
   case class CFGArrayCurKey(ar: CFGSimpleValue) extends CFGSimpleValue
   case class CFGArrayCurIsValid(ar: CFGSimpleValue) extends CFGSimpleValue
 
-  case class CFGClassConstant(cl: parser.Trees.ClassRef, name: parser.Trees.Identifier) extends CFGSimpleValue
+  case class CFGClassConstant(cl: ClassRef, name: Identifier) extends CFGSimpleValue
 
   case class CFGTernary(cond: CFGSimpleValue,
                          then: CFGSimpleValue,
                          elze: CFGSimpleValue) extends CFGSimpleValue
 
-  case class CFGFunctionCall(id: parser.Trees.Identifier,
+  case class CFGFunctionCall(id: Identifier,
                              params: List[CFGSimpleValue]) extends CFGSimpleValue
 
-  case class CFGStaticMethodCall(cl: parser.Trees.ClassRef,
-                                 id: parser.Trees.Identifier,
+  case class CFGStaticMethodCall(cl: ClassRef,
+                                 id: Identifier,
                                  params: List[CFGSimpleValue]) extends CFGSimpleValue
 
   case class CFGMethodCall(receiver: CFGSimpleValue,
-                                 id: parser.Trees.Identifier,
+                                 id: Identifier,
                                  params: List[CFGSimpleValue]) extends CFGSimpleValue
 
-  case class CFGNew(cl: parser.Trees.ClassRef, params: List[CFGSimpleValue]) extends CFGSimpleValue
+  case class CFGNew(cl: ClassRef, params: List[CFGSimpleValue]) extends CFGSimpleValue
 
   sealed abstract class CFGBinaryOperator
   sealed trait CFGRelationalOperator
@@ -147,6 +150,7 @@ object CFGTrees {
       case CFGClassConstant(cl, cid) => cl + "::" + cid.value
       case CFGTernary(i, then, elze) => i + " ? " + then + " : " + elze
       case CFGAssign(v, e) => v + assOp + e
+      case CFGCast(to, e) => "("+to+")" + e
       case CFGSkip => "..."
       case CFGAssume(l, o, r) => "[" + l + o + r + "]"
       case CFGPrint(v) => "print("+v+")"
@@ -164,7 +168,7 @@ object CFGTrees {
       case CFGArrayCurKey(a) => a + ".key"
       case CFGArrayCurElement(a) => a + ".current"
       case CFGArrayCurIsValid(a) => a + ".valid"
-      case CFGInstanceof(obj, parser.Trees.StaticClassRef(_, _, id)) => obj + " instanceof "+id.value
+      case CFGInstanceof(obj, StaticClassRef(_, _, id)) => obj + " instanceof "+id.value
       case CFGInstanceof(obj, _) => obj + " instanceof ?"
       case CFGIdentifier(sym) => sym.name
       case CFGTempID(value) => value
@@ -172,6 +176,7 @@ object CFGTrees {
       case CFGArrayEntry(arr, index) => arr+"["+index+"]"
       case CFGNextArrayEntry(arr) => arr+"[]"
       case CFGObjectProperty(obj, prop) => obj+"->"+prop;
+      case CFGClassProperty(cl, prop) => cl+"::"+prop;
     }
   }
 }
