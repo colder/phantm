@@ -136,7 +136,6 @@ object CFGTrees {
   case object PREDEC extends CFGUnaryOperator { override def toString = "-- (pre)" }
   case object POSTDEC extends CFGUnaryOperator { override def toString = "-- (post)" }
   case object SILENCE extends CFGUnaryOperator { override def toString = "@" }
-  case object PRINT extends CFGUnaryOperator { override def toString = "print" }
 
   def stringRepr(tree: CFGTree): String = {
     val assOp = " := "

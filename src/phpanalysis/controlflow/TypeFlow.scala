@@ -364,6 +364,26 @@ object TypeFlow {
                 }
             }
 
+            def typeCheckUnOP(op: CFGUnaryOperator, v1: CFGSimpleValue): Type = {
+                op match {
+                    case BOOLEANNOT =>
+                        expect(v1, TAny); TBoolean
+                    case BITSIWENOT =>
+                        expect(v1, TInt)
+                    case CLONE =>
+                        expect(v1, TAnyObject); // TODO clone the object
+                    case PREINC =>
+                        expect(v1, TInt)
+                    case POSTINC =>
+                        expect(v1, TInt)
+                    case PREDEC =>
+                        expect(v1, TInt)
+                    case POSTDEC =>
+                        expect(v1, TInt)
+                    case SILENCE =>
+                        expect(v1, TAny)
+                }
+            }
             def typeCheckBinOP(v1: CFGSimpleValue, op: CFGBinaryOperator, v2: CFGSimpleValue): Type = {
                 op match {
                     case PLUS =>
@@ -381,11 +401,11 @@ object TypeFlow {
                     case INSTANCEOF =>
                         expect(v1, TAnyObject); expect(v2, TString); TBoolean
                     case BOOLEANAND =>
-                        expect(v1, TBoolean); expect(v2, TBoolean)
+                        expect(v1, TAny); expect(v2, TAny); TBoolean
                     case BOOLEANOR =>
-                        expect(v1, TBoolean); expect(v2, TBoolean)
+                        expect(v1, TAny); expect(v2, TAny); TBoolean
                     case BOOLEANXOR =>
-                        expect(v1, TBoolean); expect(v2, TBoolean)
+                        expect(v1, TAny); expect(v2, TAny); TBoolean
                     case BITWISEAND =>
                         expect(v1, TInt); expect(v2, TInt)
                     case BITWISEOR =>
@@ -601,6 +621,14 @@ object TypeFlow {
           node match {
               case CFGAssign(vr: CFGSimpleVariable, v1) =>
                 env.inject(vr, typeFromSimpleValue(v1))
+
+              case CFGAssignUnary(vr: CFGSimpleVariable, op, v1) =>
+                // We want to typecheck v1 according to OP
+                env.inject(vr, typeCheckUnOP(op, v1));
+
+              case CFGAssignUnary(ca: CFGVariable, op, v1) =>
+                // We want to typecheck v1 according to OP
+                complexAssign(ca, typeCheckUnOP(op, v1))
 
               case CFGAssignBinary(vr: CFGSimpleVariable, v1, op, v2) =>
                 // We want to typecheck v1/v2 according to OP
