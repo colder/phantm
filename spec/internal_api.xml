@@ -6054,7 +6054,7 @@
   </function>
 
   <function name="mysql_connect">
-   <return><type name="resource"></type></return>
+   <return><type name="false"></type><type name="resource"></type></return>
    <args>
     <arg opt="0"><type name="string"></type></arg>
     <arg opt="0"><type name="string"></type></arg>
@@ -14339,7 +14339,7 @@
   </function>
 
   <function name="strpos">
-   <return><type name="int"></type></return>
+   <return><type name="false"></type><type name="int"></type></return>
    <args>
     <arg opt="0"><type name="string"></type></arg>
     <arg opt="0"><type name="string"></type></arg>

@@ -162,7 +162,7 @@ object TypeFlow {
         }
 
         override def toString = {
-            map.toList.filter(_._1.toString.toList.head != '_').sort{(x,y) => x._1.uniqueID < x._1.uniqueID}.map(x => x._1+"("+x._1.uniqueID+") => "+x._2).mkString("[ ", "; ", " ]");
+            map.toList.filter(_._1.toString.toList.head != '_').sort{(x,y) => x._1.uniqueID < x._1.uniqueID}.map(x => x._1+" => "+x._2).mkString("[ ", "; ", " ]");
         }
     }
 
@@ -315,7 +315,7 @@ object TypeFlow {
                     expect(obj, TAnyObject) match {
                         case t: ObjectType =>
                             t.lookupField(p) match {
-                                case Some(t2) => println("in "+node+": lookup of "+p+" on "+t+" => "+t2); t2
+                                case Some(t2) => t2
                                 case None =>
                                     notice("Potentially undefined object property "+stringRepr(p), op)
                                     TNone
@@ -723,7 +723,7 @@ object TypeFlow {
               }
 
               case CFGPrint(v) =>
-                expect(v, TInt, TString, TAnyObject);
+                expect(v, TInt, TString, TAnyObject, TBoolean);
                 env
               case CFGUnset(id) =>
                 id match {
