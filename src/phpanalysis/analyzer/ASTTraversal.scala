@@ -4,7 +4,7 @@ import phpanalysis.parser.Trees.Tree;
 
 abstract class ASTTraversal[ContextType](root: Tree, initCtx: ContextType) {
 
-    def elements(p:Product) = (0 until p.productArity).map(p.productElement(_))
+    def elements(p: Product) = (0 until p.productArity).map(p.productElement(_))
 
     /* Reduces from different structures to Trees */
     def addRec(el: Any, ctx: ContextType): List[(Tree, ContextType)] = {
@@ -16,12 +16,9 @@ abstract class ASTTraversal[ContextType](root: Tree, initCtx: ContextType) {
             case node: Tree =>
                 List((node, ctx))
             case (t1, t2) =>
-                addRec(t1, ctx)
-                addRec(t2, ctx)
+                addRec(t1, ctx) ::: addRec(t2, ctx)
             case (t1, t2, t3) =>
-                addRec(t1, ctx)
-                addRec(t2, ctx)
-                addRec(t3, ctx)
+                addRec(t1, ctx) ::: addRec(t2, ctx) ::: addRec(t3, ctx)
             case ns2: List[_] =>
                 ns2 flatMap {n => addRec(n, ctx)}
             case _ =>
@@ -41,8 +38,9 @@ abstract class ASTTraversal[ContextType](root: Tree, initCtx: ContextType) {
                         if (continue) {
                             /* DFS */
                             node match {
-                                case p: Product => nodes = (elements(p) flatMap { el: Any => addRec(el, newCtx) } toList) ::: nodes
-                                case t: Tree => /* ignore */
+                                case p: Product =>
+                                    nodes = (elements(p) flatMap { el: Any => addRec(el, newCtx) } toList) ::: nodes
+                                case t: Tree =>/* ignore */
                             }
                         }
 

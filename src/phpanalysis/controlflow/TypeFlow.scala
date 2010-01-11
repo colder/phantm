@@ -67,6 +67,10 @@ object TypeFlow {
 
         def join(x : Type, y : Type) = {
             val res = (x,y) match {
+            case (TAny, _) => TAny
+            case (_, TAny) => TAny
+            case (TTrue, TFalse) => TBoolean
+            case (TFalse, TTrue) => TBoolean
             case (TNone, _) => y
             case (_, TNone) => x
 
@@ -153,12 +157,12 @@ object TypeFlow {
                 case BaseTypeEnvironment =>
                     true
                 case e: TypeEnvironment =>
-                    !(scope equals e.scope) || !(map equals e.map)
+                    scope != e.scope || map !=  e.map
             }
         }
 
         override def toString = {
-            map.filter(_._1.toString.toList.head != '_').map(x => x._1+" => "+x._2).mkString("[ ", "; ", " ]");
+            map.toList.filter(_._1.toString.toList.head != '_').sort{(x,y) => x._1.uniqueID < x._1.uniqueID}.map(x => x._1+" => "+x._2).mkString("[ ", "; ", " ]");
         }
     }
 
@@ -212,6 +216,14 @@ object TypeFlow {
                     case _ =>
                         getObject(node, None)
                 }
+                case cl @ CFGClone(obj) =>
+                    expect(obj, TAnyObject) match {
+                        case ref: TObjectRef =>
+                            ObjectStore.set(cl.uniqueID, ref.realObj merge ref.realObj)
+                            new TObjectRef(cl.uniqueID)
+                        case _ =>
+                            TAnyObject
+                    }
                 case fcall @ CFGFunctionCall(id, args) =>
                     GlobalSymbols.lookupFunction(id.value) match {
                         case Some(fs) =>
@@ -246,6 +258,32 @@ object TypeFlow {
                             TNone
                     }
 
+                case const @ CFGClassConstant(cl, id) =>
+                    TAny // TODO
+
+                case const @ CFGClassProperty(cl, index) =>
+                    TAny // TODO
+
+                case mcall @ CFGStaticMethodCall(cl, id, args) =>
+                    TAny // TODO
+
+                case tern @ CFGTernary(iff, then, elze) =>
+                    typeFromSimpleValue(then) union typeFromSimpleValue(elze)
+
+                case CFGCast(typ, v) =>
+                    // TODO: not all cast from-to types are accepted, we could
+                    // check for those!
+                    import parser.Trees._
+                    typ match {
+                        case CastUnset => TNull
+                        case CastInt => TInt
+                        case CastString => TString
+                        case CastDouble => TFloat
+                        case CastArray => TAnyArray
+                        case CastBool => TBoolean
+                        case CastObject => TAnyObject
+                    }
+
                 case id: CFGSimpleVariable =>
                   env.lookup(id) match {
                     case Some(t) =>
@@ -277,7 +315,7 @@ object TypeFlow {
                     expect(obj, TAnyObject) match {
                         case t: ObjectType =>
                             t.lookupField(p) match {
-                                case Some(t) => t
+                                case Some(t2) => t2
                                 case None =>
                                     notice("Potentially undefined object property "+stringRepr(p), op)
                                     TNone
@@ -296,6 +334,14 @@ object TypeFlow {
                             }})
                         case t =>
                             println("Woops?? invlid type returned from expect: "+t);
+                            TAny
+                    }
+                case CFGNextArrayEntry(arr) =>
+                    typeFromSimpleValue(arr) match {
+                        case t: ArrayType =>
+                            t.getPushedType(arr.uniqueID)
+                        case _ =>
+                            println("woot! this is inconsistent!")
                             TAny
                     }
 
@@ -326,6 +372,24 @@ object TypeFlow {
                 }
             }
 
+            def typeCheckUnOP(op: CFGUnaryOperator, v1: CFGSimpleValue): Type = {
+                op match {
+                    case BOOLEANNOT =>
+                        expect(v1, TAny); TBoolean
+                    case BITSIWENOT =>
+                        expect(v1, TInt)
+                    case PREINC =>
+                        expect(v1, TInt)
+                    case POSTINC =>
+                        expect(v1, TInt)
+                    case PREDEC =>
+                        expect(v1, TInt)
+                    case POSTDEC =>
+                        expect(v1, TInt)
+                    case SILENCE =>
+                        expect(v1, TAny)
+                }
+            }
             def typeCheckBinOP(v1: CFGSimpleValue, op: CFGBinaryOperator, v2: CFGSimpleValue): Type = {
                 op match {
                     case PLUS =>
@@ -343,11 +407,11 @@ object TypeFlow {
                     case INSTANCEOF =>
                         expect(v1, TAnyObject); expect(v2, TString); TBoolean
                     case BOOLEANAND =>
-                        expect(v1, TBoolean); expect(v2, TBoolean)
+                        expect(v1, TAny); expect(v2, TAny); TBoolean
                     case BOOLEANOR =>
-                        expect(v1, TBoolean); expect(v2, TBoolean)
+                        expect(v1, TAny); expect(v2, TAny); TBoolean
                     case BOOLEANXOR =>
-                        expect(v1, TBoolean); expect(v2, TBoolean)
+                        expect(v1, TAny); expect(v2, TAny); TBoolean
                     case BITWISEAND =>
                         expect(v1, TInt); expect(v2, TInt)
                     case BITWISEOR =>
@@ -564,6 +628,14 @@ object TypeFlow {
               case CFGAssign(vr: CFGSimpleVariable, v1) =>
                 env.inject(vr, typeFromSimpleValue(v1))
 
+              case CFGAssignUnary(vr: CFGSimpleVariable, op, v1) =>
+                // We want to typecheck v1 according to OP
+                env.inject(vr, typeCheckUnOP(op, v1));
+
+              case CFGAssignUnary(ca: CFGVariable, op, v1) =>
+                // We want to typecheck v1 according to OP
+                complexAssign(ca, typeCheckUnOP(op, v1))
+
               case CFGAssignBinary(vr: CFGSimpleVariable, v1, op, v2) =>
                 // We want to typecheck v1/v2 according to OP
                 env.inject(vr, typeCheckBinOP(v1, op, v2));
@@ -643,13 +715,15 @@ object TypeFlow {
                         case (v: CFGSimpleVariable, NOTEQUALS, TTrue)  =>
                             env.inject(v, filter(v, false))
                         case _ =>
-                            expect(v2, expect(v1, TAny)); env
+                            expect(v1, TAny)
+                            expect(v2, TAny)
+                            env
                     }
 
               }
 
               case CFGPrint(v) =>
-                expect(v, TInt, TString, TAnyObject);
+                expect(v, TInt, TString, TAnyObject, TBoolean);
                 env
               case CFGUnset(id) =>
                 id match {

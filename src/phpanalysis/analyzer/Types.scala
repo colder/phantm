@@ -1,6 +1,6 @@
 package phpanalysis.analyzer;
 import Symbols._
-import scala.collection.mutable.{HashSet, HashMap, Map}
+import scala.collection.mutable.{HashSet, HashMap, Map, Set}
 
 import controlflow.TypeFlow._
 import controlflow.CFGTrees._
@@ -62,6 +62,7 @@ object Types {
 
         def polluteFields(typ: Type): self.type;
         def merge(t2: RealObjectType): RealObjectType;
+        def duplicate: RealObjectType;
 
         def toText = toString;
     }
@@ -277,6 +278,9 @@ object Types {
                     new TRealObject(newFields, newPollutedType)
             }
         }
+
+        def duplicate =
+            new TRealObject(HashMap[String, Type]() ++ fields, pollutedType)
     }
 
     class TRealClassObject(val cl: TClass,
@@ -312,6 +316,9 @@ object Types {
                 case LookupResult(None, _, _) =>
                     None
             }
+
+        override def duplicate =
+            new TRealClassObject(cl, HashMap[String, Type]() ++ fields, pollutedType)
     }
 
     abstract class ArrayType extends Type {
@@ -347,6 +354,15 @@ object Types {
           case CFGNumLit(i)        => inject(i+"", typ)
           case CFGStringLit(index) => inject(index, typ)
           case _ => pollute(typ)
+        }
+
+        def getPushedType(uniqueID: Int) = {
+            pushPositions.get(uniqueID) match {
+                case Some(index) =>
+                    entries(index)
+                case None =>
+                    TAny
+            }
         }
 
         def injectNext(typ: Type, uniqueID: Int) = {
@@ -464,25 +480,24 @@ object Types {
     }
 
     class TUnion extends Type {
-        var types: List[Type] = Nil
+        var types: Set[Type] = HashSet[Type]()
 
         def add(t: Type) = t match {
             case t1: TUnion =>
                 for (t2 <- t1.types) {
                     if (!(types contains t2)) {
-                        types = t2 :: types
+                        types += t2
                     }
                 }
             case _ =>
                 if (!(types contains t)) {
-                    types = t :: types
+                    types += t
                 }
         }
 
         override def equals(t: Any) = t match {
             case tu: TUnion =>
                 types == tu.types
-                //(new HashSet[Type]() ++ types)  == (new HashSet[Type]() ++ tu.types)
             case _ => false
         }
 
@@ -499,15 +514,17 @@ object Types {
             t2 add t1
             t2
         }
-        def apply(ts: List[Type]): Type = {
-            if (ts.size == 1) {
-                ts.head
-            } else if (ts.size > 1) {
-                val t = new TUnion;
-                t.types = ts;
-                t
-            } else {
+        def apply(ts: Iterable[Type]): Type = {
+            val t = new TUnion;
+
+            for (ta <- ts) t add ta
+
+            if (t.types.size == 1) {
+                t.types.toList.head
+            } else if(t.types.size == 0) {
                 TNone
+            } else {
+                t
             }
         }
         def apply(t1: Type, t2: Type): Type = {
