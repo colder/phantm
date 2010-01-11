@@ -94,6 +94,7 @@ object CFGTrees {
                                  params: List[CFGSimpleValue]) extends CFGSimpleValue
 
   case class CFGNew(cl: ClassRef, params: List[CFGSimpleValue]) extends CFGSimpleValue
+  case class CFGClone(obj: CFGSimpleValue) extends CFGSimpleValue
 
   sealed abstract class CFGBinaryOperator
   sealed trait CFGRelationalOperator
@@ -130,7 +131,6 @@ object CFGTrees {
   sealed abstract class CFGUnaryOperator
   case object BOOLEANNOT extends CFGUnaryOperator { override def toString = "!" }
   case object BITSIWENOT extends CFGUnaryOperator { override def toString = "~" }
-  case object CLONE extends CFGUnaryOperator { override def toString = "clone" }
   case object PREINC extends CFGUnaryOperator { override def toString = "++ (pre)" }
   case object POSTINC extends CFGUnaryOperator { override def toString = "++ (post)" }
   case object PREDEC extends CFGUnaryOperator { override def toString = "-- (pre)" }
@@ -157,6 +157,7 @@ object CFGTrees {
       case CFGStringLit(value) => "\"" + value + "\""
       case CFGNumLit(value) => value.toString
       case CFGNew(tpe, params) => "new " + tpe + params.mkString("(", ", ", ")")
+      case CFGClone(obj) => "clone " + obj
       case CFGTrue() => "true"
       case CFGNull() => "null"
       case CFGEmptyArray() => "array()"

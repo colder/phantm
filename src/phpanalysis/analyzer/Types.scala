@@ -62,6 +62,7 @@ object Types {
 
         def polluteFields(typ: Type): self.type;
         def merge(t2: RealObjectType): RealObjectType;
+        def duplicate: RealObjectType;
 
         def toText = toString;
     }
@@ -277,6 +278,9 @@ object Types {
                     new TRealObject(newFields, newPollutedType)
             }
         }
+
+        def duplicate =
+            new TRealObject(HashMap[String, Type]() ++ fields, pollutedType)
     }
 
     class TRealClassObject(val cl: TClass,
@@ -312,6 +316,9 @@ object Types {
                 case LookupResult(None, _, _) =>
                     None
             }
+
+        override def duplicate =
+            new TRealClassObject(cl, HashMap[String, Type]() ++ fields, pollutedType)
     }
 
     abstract class ArrayType extends Type {

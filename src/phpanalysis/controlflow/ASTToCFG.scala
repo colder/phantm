@@ -178,7 +178,7 @@ object ASTToCFG {
         case None =>
             ex match {
                 case Clone(obj) =>
-                    Some(CFGAssignUnary(v, CLONE, expr(obj)))
+                    Some(CFGAssign(v, CFGClone(expr(obj)).setPos(ex)))
                 case Plus(lhs, rhs) =>
                     Some(CFGAssignBinary(v, expr(lhs), PLUS, expr(rhs)))
                 case Minus(lhs, rhs) =>
@@ -208,11 +208,11 @@ object ASTToCFG {
                 case BitwiseNot(rhs) =>
                     Some(CFGAssignUnary(v, BITSIWENOT, expr(rhs)))
                 case InstanceOf(lhs, cr) =>
-                    Some(CFGAssign(v, CFGInstanceof(expr(lhs), cr)))
+                    Some(CFGAssign(v, CFGInstanceof(expr(lhs), cr).setPos(ex)))
                 case Ternary(cond, Some(then), elze) =>
                     Some(CFGAssign(v, CFGTernary(expr(cond), expr(then), expr(elze)).setPos(ex)))
                 case Ternary(cond, None, elze) =>
-                    Some(CFGAssign(v, CFGTernary( expr(cond), v, expr(elze)).setPos(ex)))
+                    Some(CFGAssign(v, CFGTernary(expr(cond), v, expr(elze)).setPos(ex)))
                 case Silence(value) =>
                     Some(CFGAssign(v, expr(value)))
                 case Execute(value) =>

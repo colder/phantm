@@ -162,7 +162,7 @@ object TypeFlow {
         }
 
         override def toString = {
-            map.toList.filter(_._1.toString.toList.head != '_').sort{(x,y) => x._1.uniqueID < x._1.uniqueID}.map(x => x._1+"("+x._1.uniqueID+") => "+x._2).mkString("\n") //("[ ", "; ", " ]");
+            map.toList.filter(_._1.toString.toList.head != '_').sort{(x,y) => x._1.uniqueID < x._1.uniqueID}.map(x => x._1+"("+x._1.uniqueID+") => "+x._2).mkString("[ ", "; ", " ]");
         }
     }
 
@@ -216,6 +216,14 @@ object TypeFlow {
                     case _ =>
                         getObject(node, None)
                 }
+                case cl @ CFGClone(obj) =>
+                    expect(obj, TAnyObject) match {
+                        case ref: TObjectRef =>
+                            ObjectStore.set(cl.uniqueID, ref.realObj merge ref.realObj)
+                            new TObjectRef(cl.uniqueID)
+                        case _ =>
+                            TAnyObject
+                    }
                 case fcall @ CFGFunctionCall(id, args) =>
                     GlobalSymbols.lookupFunction(id.value) match {
                         case Some(fs) =>
@@ -307,7 +315,7 @@ object TypeFlow {
                     expect(obj, TAnyObject) match {
                         case t: ObjectType =>
                             t.lookupField(p) match {
-                                case Some(t) => t
+                                case Some(t2) => println("in "+node+": lookup of "+p+" on "+t+" => "+t2); t2
                                 case None =>
                                     notice("Potentially undefined object property "+stringRepr(p), op)
                                     TNone
@@ -370,8 +378,6 @@ object TypeFlow {
                         expect(v1, TAny); TBoolean
                     case BITSIWENOT =>
                         expect(v1, TInt)
-                    case CLONE =>
-                        expect(v1, TAnyObject); // TODO clone the object
                     case PREINC =>
                         expect(v1, TInt)
                     case POSTINC =>
