@@ -15,7 +15,7 @@
 \author{Etienne Kneuss\\
 \texttt{etienne.kneuss@epfl.ch}
 }
-\title{Static analysis for the PHP language}
+\title{Static Analysis for the PHP Language}
 \bibliographystyle{unsrt}
 \begin{document}
 \maketitle
@@ -66,7 +66,7 @@ project differs from the original one in two points:
 \begin{enumerate}
   \item The original CUP cannot handle large syntax files. Indeed, since CUP
     directly writes the parsing tables as properties of the generated class,
-    the size of the class properties can become too large for \emph{javacc}. The
+    the size of the class properties can become too large for \emph{javac}. The
     PHP grammar being quite big, the resulting parser class couldn't be compiled.
     To solve the problem, CUP was modified to provide an option specifying that
     the multiple tables should be written into files and loaded at runtime.
@@ -139,7 +139,7 @@ identifiers such as variables, functions or classes. The goal is to ensure that
 no obvious semantic errors such as inheritance cycles, or visibility
 inconsistencies exist.
 
-\subsubsection{API importation}
+\subsubsection{API Importation}
 By default, PHP comes with a very dense library of functions and classes. In
 fact, the main extensions that are shipped with PHP consist of more than 2'500
 functions and classes. Being able to correctly represent this internal API is a
@@ -157,7 +157,7 @@ to \emph{arrays} and \emph{objects}. As a result, the type of the return value
 cannot be specified, and arguments that take scalar values such as
 \emph{booleans} or \emph{integers} cannot be specified as such.
 
-However, lots of project out there uses formatted comments that they can then
+However, many project use formatted comments that they can then
 render into an API documentation using some tools, such as php
 documentor\footnote{phpDocumentor: http://www.phpdoc.org}:
 
@@ -187,7 +187,7 @@ methods or properties declarations. It will then try to extract such type
 informations and inject it as type hints in the AST. The analyzer will then
 simply use them like normal type hints during the type checking phase.
 
-\subsection{Control flow graphs}
+\subsection{Control Flow Graphs}
 In fact, the AST is only the intermediate step that only let us do trivial
 checks. To analyse more complex aspects of a program, this tool will use
 control flow graphs (CFG) which are derived from AST's.  Control flow graphs
@@ -201,7 +201,7 @@ vertex correspond to a program state between statements, and each directed edge
 represents the application of a statement.
 
 \section{Analysis}
-\subsection{PHP overview}
+\subsection{PHP Overview}
 Before trying to see how to analyse PHP code, it is important to understand how
 PHP works, this is a small overview of the features PHP provides that are
 relevant to this analysis.
@@ -240,7 +240,7 @@ properties, static methods and class constants. You can dynamically define an
 object property in PHP, its visibility will default to public. However, you
 cannot dynamically define methods, static members, or constants.
 
-\subsubsection{Limitations on analysis}
+\subsubsection{Limitations on Analysis}
 Many of the dynamic features available in PHP will get in the way of a sound
 analysis.  Here is a non-exhaustive list of such features:
 \begin{itemize}
@@ -285,7 +285,7 @@ analysis.  Here is a non-exhaustive list of such features:
     in as a string.
 \end{itemize}
 
-\subsection{Typeflow analysis}
+\subsection{Typeflow Analysis}
 As said earlier, the main focus of this analysis tool is on types. Even though
 PHP is dynamically typed, and provides very few indications of types. It is
 still interesting to try to infer types and check for type safety.
@@ -321,9 +321,9 @@ We now provide a detailed description of every elements of our type model:
           possible contamination of an array via a dynamic access. This type is
           called the ``polluted type''. For example, the code
           \verb/$a[$foo] = 2;/ will have the following effect on a well-defined
-          array: $\forall (e \rightarrow t) \in entries: t = t \cup
+          array: $\forall (e \rightarrow t) \in entries: t = t \sqcup
           \emph{TInt}$. Also, we have $\emph{polluted type} = \emph{polluted
-          type} \cup \emph{TInt}$. We can also represent this default type as
+          type} \sqcup \emph{TInt}$. We can also represent this default type as
           $(? \rightarrow \emph{type})$. A side effect of having a non-empty
           polluted type will be to turn off any notices related to undefined
           entries. In fact, any lookup for an undefined entry in an array will
@@ -383,63 +383,63 @@ We now provide a detailed description of every elements of our type model:
     \end{itemize}
 \end{itemize}
 
-\subsection{Type lattice}
+\subsection{Type Lattice}
 A lattice is usually defined by three things: a partial order relation
-($\leq$), a join operation ($\cup$), and a meet operation ($\cap$). As noted
-earlier, the $\leq$ relation is the subtyping relation, we have that $A \leq B
-\Leftrightarrow A <: B$. The join operation $A \cup B$ returns the smallest
-type $C$ such that $A \leq C \wedge B \leq C$. As for the meet operation
+($\sqsubseteq$), a join operation ($\sqcup$), and a meet operation ($\sqcap$). As noted
+earlier, the $\sqsubseteq$ relation is the subtyping relation, we have that $A \sqsubseteq B
+\Leftrightarrow A <: B$. The join operation $A \sqcup B$ returns the smallest
+type $C$ such that $A \sqsubseteq C \wedge B \sqsubseteq C$. As for the meet operation
 we can ignore it in our case since it is not necessary for top-down analysis.
 
-\subsubsection{Definition of $\leq$}
-Those are, in order, the rules that apply to determine whether $t_1 \leq t_2$:
+\subsubsection{Definition of $\sqsubseteq$}
+Those are, in order, the rules that apply to determine whether $t_1 \sqsubseteq t_2$:
 \begin{enumerate}
-  \item $\forall t_2 \in types : \emph{TNone} \leq t_2$
-  \item $\forall t_1 \in types : t_1 \leq \emph{TAny}$
-  \item $\emph{TFalse} \leq \emph{TBoolean}$
-  \item $\emph{TTrue} \leq \emph{TBoolean}$
-  \item $\forall (t_1:  TObjectRef): t_1 \leq \emph{TAnyObject}$
-  \item $\forall (t_1,t_2: TObjectRef): t_1 \leq t_2$
+  \item $\forall t_2 \in types : \emph{TNone} \sqsubseteq t_2$
+  \item $\forall t_1 \in types : t_1 \sqsubseteq \emph{TAny}$
+  \item $\emph{TFalse} \sqsubseteq \emph{TBoolean}$
+  \item $\emph{TTrue} \sqsubseteq \emph{TBoolean}$
+  \item $\forall (t_1:  TObjectRef): t_1 \sqsubseteq \emph{TAnyObject}$
+  \item $\forall (t_1,t_2: TObjectRef): t_1 \sqsubseteq t_2$
     if all the following rules apply ($o_1 = store(t_1.ref), o_2 = store(t_2.ref)$):
     \begin{enumerate}
         \item $o_1.class <: o_2.class$ if $o_1$ and $o_2$ are real class objects
-        \item $o_1.pollutedType \leq o_2.pollutedType$ if any
+        \item $o_1.pollutedType \sqsubseteq o_2.pollutedType$ if any
         \item $\forall f \in o_3.fields: f \in o_1.fields \wedge o_1.fields(f)
-          \leq o_2.fields(f)$
+          \sqsubseteq o_2.fields(f)$
     \end{enumerate}
-  \item $\forall (a: \emph{TArray}) : a \leq \emph{TAnyArray}$
-  \item $\forall (a_1,a_2: \emph{TArray}) : a_1 \leq a_2$
+  \item $\forall (a: \emph{TArray}) : a \sqsubseteq \emph{TAnyArray}$
+  \item $\forall (a_1,a_2: \emph{TArray}) : a_1 \sqsubseteq a_2$
     if all the following rules apply:
     \begin{enumerate}
-        \item $a_1.pollutedType \leq a_2.pollutedType$ if any
+        \item $a_1.pollutedType \sqsubseteq a_2.pollutedType$ if any
         \item $\forall e \in a_2.entries: e \in o_1.entries \wedge a_1.entries(e)
-          \leq a_2.entries(e)$
+          \sqsubseteq a_2.entries(e)$
     \end{enumerate}
-  \item $\forall (u_1,u_2: \emph{TUnion}) : u_1 \leq u_2 \Leftrightarrow \forall t_2 \in u_2: \exists t_1 \in u_1: t_1 \leq t_2$
-  \item $\forall t_1 \in types, (u_2: \emph{TUnion}) : t_1 \leq u_2 \Leftrightarrow \forall t_2 \in u_2: t_1 \leq t_2$
-  \item $\forall (u_1: \emph{TUnion}), t_2 \in types : u_1 \leq t_2 \Leftrightarrow \forall t_1 \in u_1: t_1 \leq t_2$
+  \item $\forall (u_1,u_2: \emph{TUnion}) : u_1 \sqsubseteq u_2 \Leftrightarrow \forall t_2 \in u_2: \exists t_1 \in u_1: t_1 \sqsubseteq t_2$
+  \item $\forall t_1 \in types, (u_2: \emph{TUnion}) : t_1 \sqsubseteq u_2 \Leftrightarrow \forall t_2 \in u_2: t_1 \sqsubseteq t_2$
+  \item $\forall (u_1: \emph{TUnion}), t_2 \in types : u_1 \sqsubseteq t_2 \Leftrightarrow \forall t_1 \in u_1: t_1 \sqsubseteq t_2$
   \item $\forall t_1,t_2 \in types : t_1 \nleq t_2$ If none of the rules above applies
 \end{enumerate}
 
-\subsubsection{Definition of join ($\cup$)}
-Those are, in order, the rules that apply to determine the result of $t_1 \cup t_2$:
+\subsubsection{Definition of Join ($\sqcup$)}
+Those are, in order, the rules that apply to determine the result of $t_1 \sqcup t_2$:
 \begin{enumerate}
-  \item $\forall t \in types : t \cup TNone = \emph{TNone} \cup t = t$
-  \item $\forall t \in types : t \cup t = t$
-  \item $\forall (t: \emph{TObjectRef}): t \cup \emph{TAnyObject} = \emph{TAnyObject} \cup t = \emph{TAnyObject}$
-  \item $\forall (t_1,t_2: \emph{TObjectRef}): t_1 \cup t_2 = TUnion(t_1 t_2)$. As we
+  \item $\forall t \in types : t \sqcup TNone = \emph{TNone} \sqcup t = t$
+  \item $\forall t \in types : t \sqcup t = t$
+  \item $\forall (t: \emph{TObjectRef}): t \sqcup \emph{TAnyObject} = \emph{TAnyObject} \sqcup t = \emph{TAnyObject}$
+  \item $\forall (t_1,t_2: \emph{TObjectRef}): t_1 \sqcup t_2 = TUnion(t_1 t_2)$. As we
     know that at this point, the types must be different, which means they
     point to different objects.
-  \item $\forall (t: \emph{TArray}): t \cup \emph{TAnyArray} = \emph{TAnyArray} \cup t = \emph{TAnyArray}$
-  \item $\forall (t_1,t_2: \emph{TArray}): t_1 \cup t_2 = $ an array where the
+  \item $\forall (t: \emph{TArray}): t \sqcup \emph{TAnyArray} = \emph{TAnyArray} \sqcup t = \emph{TAnyArray}$
+  \item $\forall (t_1,t_2: \emph{TArray}): t_1 \sqcup t_2 = $ an array where the
     polluted type is the join of both polluted types, and the entries is the
     union of both entry sets. Note that for an entry present in both arrays,
     the join of its types is taken.
 
-  \item $\forall t_1,t_2 \in types: t_1 \cup t_2 = \emph{TUnion}(t_1, t_2)$. If none of the above applies, we get a union of types.
+  \item $\forall t_1,t_2 \in types: t_1 \sqcup t_2 = \emph{TUnion}(t_1, t_2)$. If none of the above applies, we get a union of types.
 \end{enumerate}
 
-\subsection{Analysis mechanics}
+\subsection{Analysis Mechanics}
 As we know, this analysis is based on point-wise lattices. A lattice is a
 structure providing a partial order between its elements. This is specially
 useful to represent types (the order relation being subtyping) which is what
@@ -471,12 +471,12 @@ environment $env_i$ defined as $env_i = transferFunction(v_i, s_i)$ where $(v_i
     values(E_j):$
     \begin{eqnarray*}
       E_u(v_k) = \left \{ \begin{array}{l l}
-        E_i(v_k) \cup E_j(v_k) & v_k \in values(E_i)    \wedge v_k \in values(E_j) \\
-        E_i(v_k) \cup TNull    & v_k \in values(E_i)    \wedge v_k \notin values(E_j) \\
-        TNull    \cup E_j(v_k) & v_k \notin values(E_i) \wedge v_k \in values(E_j)
+        E_i(v_k) \sqcup E_j(v_k) & v_k \in values(E_i)    \wedge v_k \in values(E_j) \\
+        E_i(v_k) \sqcup TNull    & v_k \in values(E_i)    \wedge v_k \notin values(E_j) \\
+        TNull    \sqcup E_j(v_k) & v_k \notin values(E_i) \wedge v_k \in values(E_j)
       \end{array} \right \}
     \end{eqnarray*}
-    Note that the join operator $\cup$ used with two types represents the
+    Note that the join operator $\sqcup$ used with two types represents the
     \emph{join} operation on our type lattice, as described earlier in the 
     type lattice section.
 \end{itemize}
@@ -494,7 +494,7 @@ it doesn't generate differences that would jeopardize the termination. For insta
 \verb/$a = new MyClass/ cannot be made to create a new object reference for
 every traversal! To solve this case, we set the reference value to the program point.
 
-\subsubsection{Conditional type filtering}
+\subsubsection{Conditional Type Filtering}
 \label{cond-type-filtr}
 So far, the analysis features are quite common and could be applied to most
 languages. This is however insufficient to give a good analysis. The reason is
@@ -551,7 +551,7 @@ Moreover, it will also filter assigns as conditionals, meaning that in
 \emph{TResource} for type of \verb/$row/. In summary, this simple filtering
 trick allows for precise prototyping with reduced false-positives!
 
-\section{Limitations and future work}
+\section{Limitations and Future Work}
 Most serious PHP applications out there are often based on some heavy frameworks
 that may require a lot of ``magic`` features to work. Analysing such projects
 would currently yield a flood of false-positive, totally hiding any potential
