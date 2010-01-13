@@ -89,7 +89,7 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
 
         def notfound(p: String): Expression = {
             Reporter.notice("Cannot preprocess \""+p+"\": file not found", inc)
-            inc
+            PHPFalse()
         }
 
         unrollPath(path) match {
