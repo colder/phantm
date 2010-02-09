@@ -434,18 +434,16 @@ NEWLINE = ("\r"|"\n"|"\r\n")
 }
 
 <ST_ONE_LINE_COMMENT>{NEWLINE} {
-    Symbol sym = symbol(Symbols.T_COMMENT, "T_COMMENT", text());
+    //Symbol sym = symbol(Symbols.T_COMMENT, "T_COMMENT", text());
     cleanMore();
 	yybegin(ST_IN_SCRIPTING);
-    return sym;
 }
 
 <ST_ONE_LINE_COMMENT>"?>"|"%>" {
-    Symbol sym = symbol(Symbols.T_COMMENT, "T_COMMENT", text());
+    //Symbol sym = symbol(Symbols.T_COMMENT, "T_COMMENT", text());
     cleanMore();
     yypushback(2);
     yybegin(ST_IN_SCRIPTING);
-    return sym;
 }
 
 <ST_IN_SCRIPTING>"/*" {
@@ -459,9 +457,8 @@ NEWLINE = ("\r"|"\n"|"\r\n")
 
 <ST_COMMENT>"*/" {
 	yybegin(ST_IN_SCRIPTING);
-    Symbol sym = symbol(Symbols.T_DOC_COMMENT, "T_DOC_COMMENT", text());
+    //Symbol sym = symbol(Symbols.T_DOC_COMMENT, "T_DOC_COMMENT", text());
     cleanMore();
-    return sym;
 }
 
 <ST_COMMENT>"*" {

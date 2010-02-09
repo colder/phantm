@@ -9,8 +9,6 @@ case class STToAST(st: ParseNode) {
 
     def getAST = S(st);
 
-    var curClassComment: Option[String] = None;
-
     // Tree visitors functions
 
     def S(n: ParseNode): Program = new Program(top_statement_list(child(n, 0)))
@@ -38,7 +36,6 @@ case class STToAST(st: ParseNode) {
         }).setPos(child(n))
     }
     def class_declaration_statement(n: ParseNode): Statement = {
-        curClassComment = None
         (childrenNames(n) match {
             case List("class_entry_type", "T_STRING", "extends_from", "implements_list", "T_OPEN_CURLY_BRACES", "class_statement_list", "T_CLOSE_CURLY_BRACES") =>
                 class_statement_list(child(n, 5)) match {
@@ -78,8 +75,7 @@ case class STToAST(st: ParseNode) {
             case List("variable_modifiers", "class_variable_declaration", "T_SEMICOLON") =>
                 val vm = variable_modifiers(child(n, 0))
                 var pd = class_variable_declaration(child(n, 1), vm)
-                if (curClassComment != None) pd = pd map (Annotations.importPropertiesAnnotations(_, curClassComment.get))
-                curClassComment = None
+
                 if (vm exists { _ == MFStatic }) {
                     (st._1, st._2:::pd, st._3, st._4)
                 } else {
@@ -87,7 +83,6 @@ case class STToAST(st: ParseNode) {
                 }
             case List("class_constant_declaration", "T_SEMICOLON") =>
                 val cd = class_constant_declaration(child(n, 0));
-                curClassComment = None
                 (st._1, st._2, st._3, st._4:::cd)
             case List("method_modifiers", "T_FUNCTION", "is_reference", "T_STRING", "T_OPEN_BRACES", "parameter_list", "T_CLOSE_BRACES", "method_body") =>
                 var md = MethodDecl(identifier(child(n, 3)),
@@ -96,15 +91,7 @@ case class STToAST(st: ParseNode) {
                                     is_reference(child(n, 2)),
                                     None,
                                     method_body(child(n, 7))).setPos(child(n,3));
-                if (curClassComment != None) md = Annotations.importMethodsAnnotations(md, curClassComment.get)
-                curClassComment = None
                 (st._1:::List(md), st._2, st._3, st._4)
-            case List("T_COMMENT") =>
-                curClassComment = Some(child(n, 0).tokenContent)
-                st
-            case List("T_DOC_COMMENT") =>
-                curClassComment = Some(child(n, 0).tokenContent)
-                st
         }
     }
 
@@ -312,10 +299,6 @@ case class STToAST(st: ParseNode) {
                 Html(child(n, 0).tokenContent)
             case List("expr", "T_SEMICOLON") =>
                 expr(child(n, 0))
-            case List("T_COMMENT") =>
-                Comment(child(n, 0).tokenContent)
-            case List("T_DOC_COMMENT") =>
-                DocComment(child(n, 0).tokenContent)
             case List("T_UNSET", "T_OPEN_BRACES", "variable_list", "T_CLOSE_BRACES", "T_SEMICOLON") =>
                 Unset(variable_list(child(n, 2)))
             case List("T_FOREACH", "T_OPEN_BRACES", "expr", "T_AS", "foreach_variable", "foreach_optional_arg", "T_CLOSE_BRACES", "foreach_statement") =>
@@ -811,14 +794,6 @@ case class STToAST(st: ParseNode) {
                 notyet(n)
             case List("base_variable_with_function_calls") =>
                 base_variable_with_function_calls(child(n))
-            case List("T_COMMENT", "expr") =>
-                expr(child(n, 1)) // ignore inline comments
-            case List("T_DOC_COMMENT", "expr") =>
-                expr(child(n, 1)) // ignore inline comments
-            case List("expr", "T_COMMENT") =>
-                expr(child(n, 0)) // ignore inline comments
-            case List("expr", "T_DOC_COMMENT") =>
-                expr(child(n, 0)) // ignore inline comments
             case _ => unspecified(n)
         }).setPos(child(n, 0))
     }
