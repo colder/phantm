@@ -16,6 +16,8 @@ In order to use this tool, you need
 * Java 1.6 or higher
 * Scala 2.7.7 or higher
 
+Also, make sure you've the $SCALA_HOME environment variable poiting to your scala distribution.
+
 Installation
 ------------
 Simply run:
