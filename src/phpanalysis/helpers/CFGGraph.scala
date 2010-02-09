@@ -8,9 +8,10 @@ import phpanalysis.parser.STToAST;
 class CFGGraph extends Helper {
 
     def generate(input: String, printStream: java.io.PrintStream): Unit = {
-            new Compiler(input) compile match {
+            val c = new Compiler(input)
+            c compile match {
                 case Some(node) =>
-                    val ast = IncludeResolver(STToAST(node).getAST).transform;
+                    val ast = IncludeResolver(STToAST(c, node).getAST).transform;
                     
                     CollectSymbols(ast) execute;
                     Reporter.errorMilestone

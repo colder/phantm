@@ -7,9 +7,10 @@ import java.io._;
 class ASTGraph extends Helper {
 
     def generate(input: String, printStream: java.io.PrintStream): Unit = {
-            new Compiler(input) compile match {
+            val c = new Compiler(input)
+            c compile match {
                 case Some(node) =>
-                    generateDotGraph(IncludeResolver(STToAST(node).getAST).transform, printStream)
+                    generateDotGraph(IncludeResolver(STToAST(c, node).getAST).transform, printStream)
                     printStream.close
                 case None =>
                     throw new Exception("Compilation failed");

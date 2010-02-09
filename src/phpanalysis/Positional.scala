@@ -1,12 +1,18 @@
 package phpanalysis;
 import phpanalysis.parser.ParseNode;
 
+class Position extends Positional;
+
 trait Positional {
     self =>
 
     var line: Int = -1;
     var col: Int = -1;
     var file: Option[String] = None;
+
+    def < (p: Positional) = {
+        line < p.line || (line == p.line && col < p.col)
+    }
 
     def getPos =  file.getOrElse("<unknown>")+" line "+line+" column "+col;
 

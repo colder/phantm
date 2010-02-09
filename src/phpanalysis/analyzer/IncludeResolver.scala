@@ -77,9 +77,10 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
 
         def getAST(path: String): Expression = {
             import parser.STToAST
-            new Compiler(path) compile match {
+            val c = new Compiler(path)
+            c compile match {
                 case Some(node) =>
-                    var ast: Program = new STToAST(node) getAST;
+                    var ast: Program = new STToAST(c, node) getAST;
                     Block(ast.stmts)
                 case None =>
                     Reporter.notice("Cannot preprocess \""+path+"\": sub-compilation failed", inc)

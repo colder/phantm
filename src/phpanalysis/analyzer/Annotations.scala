@@ -2,18 +2,6 @@ package phpanalysis.analyzer
 import parser.Trees._
 import scala.collection.mutable.{Map,HashMap}
 
-class Annotations(ast: Program) extends ASTTransform(ast) {
-    override def trStmts(stmts: List[Statement]): List[Statement] = stmts match {
-        case DocComment(comment) :: (fd: FunctionDecl) :: sts =>
-            trStmt(Annotations.importFunctionsAnnotations(fd, comment)) :: trStmts(sts)
-        case ts :: sts =>
-            trStmt(ts) :: trStmts(sts)
-        case Nil =>
-            Nil
-
-    }
-}
-
 object Annotations {
     def extractType(str: String): (String, TypeHint) = {
         val parts = str.split("[^a-zA-Z0-9_\\|\\$]", 2).toList
@@ -88,21 +76,33 @@ object Annotations {
     def injectArgsHints(args: List[ArgumentDecl], hints: Map[String, TypeHint]): List[ArgumentDecl] =
         args.map { a => ArgumentDecl(a.v, hints.get(a.v.name.value), a.default, a.byref).setPos(a) }
 
-    def importFunctionsAnnotations(fd: FunctionDecl, comment: String): FunctionDecl = {
+    def importFunctionAnnotations(fd: FunctionDecl, comment: Option[String]): FunctionDecl = {
         // Here we import the annotations as type hints for functions
-        val lines = comment.split("\n").toList
-        FunctionDecl(fd.name, injectArgsHints(fd.args, paramsTH(lines)), fd.retref, returnTH(lines), fd.body).setPos(fd)
+        if (comment != None) {
+            val lines = comment.get.split("\n").toList
+            FunctionDecl(fd.name, injectArgsHints(fd.args, paramsTH(lines)), fd.retref, returnTH(lines), fd.body).setPos(fd)
+        } else {
+            FunctionDecl(fd.name, fd.args, fd.retref, None, fd.body).setPos(fd)
+        }
     }
 
-    def importMethodsAnnotations(md: MethodDecl, comment: String): MethodDecl = {
+    def importMethodAnnotations(md: MethodDecl, comment: Option[String]): MethodDecl = {
         // Here we import the annotations as type hints for methods
-        val lines = comment.split("\n").toList
-        MethodDecl(md.name, md.flags, injectArgsHints(md.args, paramsTH(lines)), md.retref, returnTH(lines), md.body).setPos(md)
+        if (comment != None) {
+            val lines = comment.get.split("\n").toList
+            MethodDecl(md.name, md.flags, injectArgsHints(md.args, paramsTH(lines)), md.retref, returnTH(lines), md.body).setPos(md)
+        } else {
+            MethodDecl(md.name, md.flags, md.args, md.retref, None, md.body).setPos(md)
+        }
     }
 
-    def importPropertiesAnnotations(pd: PropertyDecl, comment: String): PropertyDecl = {
+    def importPropertyAnnotations(pd: PropertyDecl, comment: Option[String]): PropertyDecl = {
         // Here we import the annotations as type hints for properties
-        val lines = comment.split("\n").toList
-        PropertyDecl(pd.v, pd.flags, pd.default, varTH(lines)).setPos(pd)
+        if (comment != None) {
+            val lines = comment.get.split("\n").toList
+            PropertyDecl(pd.v, pd.flags, pd.default, varTH(lines)).setPos(pd)
+        } else {
+            PropertyDecl(pd.v, pd.flags, pd.default, None).setPos(pd)
+        }
     }
 }

@@ -12,7 +12,28 @@ class Compiler(filename: String) {
         file = Some(_file);
     }
 
-    var comments = HashMap[Positional, String]();
+    private var comments = List[(Positional, String)]();
+
+    def clearPreviousComment(pos: Positional): Option[String] =
+        getPreviousComment(pos)
+
+    def getPreviousComment(pos: Positional): Option[String] = {
+        var comm: Option[String] = None
+        var continue = true;
+
+        while(continue) {
+            if (comments == Nil) {
+                continue = false
+            } else if (comments.head._1 < pos) {
+                comm = Some(comments.head._2)
+                comments = comments.tail
+            } else if (pos < comments.head._1) {
+                continue = false;
+            }
+        }
+
+        comm
+    }
 
     def compile: Option[ParseNode] = {
          var l: Lexer = null;
@@ -24,8 +45,10 @@ class Compiler(filename: String) {
             val r: ParseNode = p.parse().value.asInstanceOf[ParseNode];
 
             for (c <- JavaListIteratorWrapper[LexerComment](l.comments.iterator)) {
-                comments(Position(c.line, c.col, c.filename)) = c.content;
+                comments = (Position(c.line, c.col, c.filename), c.content) :: comments;
             }
+
+            comments.reverse
 
             Some(r)
 

@@ -3,9 +3,9 @@ package phpanalysis.parser;
 
 import phpanalysis.parser.Trees._;
 
-import phpanalysis.analyzer.Annotations;
+import phpanalysis.analyzer.Annotations.{importFunctionAnnotations, importMethodAnnotations, importPropertyAnnotations}
 
-case class STToAST(st: ParseNode) {
+case class STToAST(comp: Compiler, st: ParseNode) {
 
     def getAST = S(st);
 
@@ -83,14 +83,22 @@ case class STToAST(st: ParseNode) {
                 }
             case List("class_constant_declaration", "T_SEMICOLON") =>
                 val cd = class_constant_declaration(child(n, 0));
+                comp.clearPreviousComment(cd.last)
                 (st._1, st._2, st._3, st._4:::cd)
             case List("method_modifiers", "T_FUNCTION", "is_reference", "T_STRING", "T_OPEN_BRACES", "parameter_list", "T_CLOSE_BRACES", "method_body") =>
+                val pos = new Position().setPos(child(n,3));
+                
+                val com = comp.getPreviousComment(pos);
+
                 var md = MethodDecl(identifier(child(n, 3)),
                                     method_modifiers(child(n, 0)),
                                     parameter_list(child(n, 5)),
                                     is_reference(child(n, 2)),
                                     None,
-                                    method_body(child(n, 7))).setPos(child(n,3));
+                                    method_body(child(n, 7))).setPos(pos);
+
+                md = importMethodAnnotations(md, com)
+
                 (st._1:::List(md), st._2, st._3, st._4)
         }
     }
@@ -159,13 +167,28 @@ case class STToAST(st: ParseNode) {
     def class_variable_declaration(n: ParseNode, vm: List[MemberFlag]): List[PropertyDecl] = {
         childrenNames(n) match {
             case List("class_variable_declaration", "T_COMMA", "T_VARIABLE") =>
-                class_variable_declaration(child(n, 0), vm) ::: List(PropertyDecl(varIdentifier(child(n, 2)), vm, None, None).setPos(child(n, 2)))
+                val pos = new Position().setPos(child(n, 2))
+                val com = comp.getPreviousComment(pos);
+                val pd = PropertyDecl(varIdentifier(child(n, 2)), vm, None, None).setPos(pos)
+                class_variable_declaration(child(n, 0), vm) ::: List(importPropertyAnnotations(pd, com))
+
             case List("class_variable_declaration", "T_COMMA", "T_VARIABLE", "T_ASSIGN", "static_expr") =>
-                class_variable_declaration(child(n, 0), vm) ::: List(PropertyDecl(varIdentifier(child(n, 2)), vm, Some(static_expr(child(n, 4))), None).setPos(child(n, 2)))
+                val pos = new Position().setPos(child(n, 2))
+                val com = comp.getPreviousComment(pos);
+                val pd = PropertyDecl(varIdentifier(child(n, 2)), vm, Some(static_expr(child(n, 4))), None).setPos(pos)
+                class_variable_declaration(child(n, 0), vm) ::: List(importPropertyAnnotations(pd, com))
+
             case List("T_VARIABLE") =>
-                List(PropertyDecl(varIdentifier(child(n, 0)), vm, None, None).setPos(child(n, 0)))
+                val pos = new Position().setPos(child(n, 0))
+                val com = comp.getPreviousComment(pos);
+                val pd = PropertyDecl(varIdentifier(child(n, 0)), vm, None, None).setPos(pos)
+                List(importPropertyAnnotations(pd, com))
+
             case List("T_VARIABLE", "T_ASSIGN", "static_expr") =>
-                List(PropertyDecl(varIdentifier(child(n, 0)), vm, Some(static_expr(child(n, 2))), None).setPos(child(n, 0)))
+                val pos = new Position().setPos(child(n, 0))
+                val com = comp.getPreviousComment(pos);
+                val pd = PropertyDecl(varIdentifier(child(n, 0)), vm, Some(static_expr(child(n, 2))), None).setPos(pos);
+                List(importPropertyAnnotations(pd, com))
         }
     }
 
@@ -261,7 +284,7 @@ case class STToAST(st: ParseNode) {
     }
 
     def statement(n: ParseNode): Statement = {
-        (childrenNames(n) match {
+        val st = (childrenNames(n) match {
             case List("T_OPEN_CURLY_BRACES", "inner_statement_list", "T_CLOSE_CURLY_BRACES") => inner_statement_list(child(n,1))
             case List("T_IF", "T_OPEN_BRACES", "expr", "T_CLOSE_BRACES", "statement", "elseif_list", "else_single") =>
                 If(expr(child(n, 2)), statement(child(n, 4)), elseif_else(elseif_list(child(n, 5)), else_single(child(n, 6))))
@@ -328,6 +351,10 @@ case class STToAST(st: ParseNode) {
             case List("T_STRING", "T_COLON") =>
                 LabelDecl(Identifier(child(n,0).tokenContent).setPos(child(n, 0)))
         }).setPos(child(n));
+
+        comp.clearPreviousComment(st)
+
+        st
     }
 
     def static_var_list(n: ParseNode): List[InitVariable] = {
@@ -648,7 +675,12 @@ case class STToAST(st: ParseNode) {
     def function_declaration_statement(n: ParseNode): FunctionDecl = {
         childrenNames(n) match {
             case List("T_FUNCTION", "is_reference", "T_STRING", "T_OPEN_BRACES", "parameter_list", "T_CLOSE_BRACES", "T_OPEN_CURLY_BRACES", "inner_statement_list", "T_CLOSE_CURLY_BRACES") =>
-                FunctionDecl(identifier(child(n, 2)), parameter_list(child(n, 4)), is_reference(child(n, 1)), None, inner_statement_list(child(n, 7))).setPos(child(n, 2))
+                val pos = new Position().setPos(child(n, 2));
+
+                val com = comp.getPreviousComment(pos);
+                val fd = FunctionDecl(identifier(child(n, 2)), parameter_list(child(n, 4)), is_reference(child(n, 1)), None, inner_statement_list(child(n, 7))).setPos(pos)
+
+                importFunctionAnnotations(fd, com)
         }
     }
 
