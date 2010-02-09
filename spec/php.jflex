@@ -14,6 +14,26 @@ import java_cup.runtime.*;
     private StringBuffer morePrefix;
     private boolean clearMorePrefix;
 
+    public ArrayList<Comment> comments;
+
+    public class Comment {
+        public int line;
+        public int col;
+        public String filename;
+        public String content;
+        public Comment(int _line, int _col, String _filename, String _content) {
+            line = _line;
+            col = _col;
+            filename = _filename;
+            content = _content;
+        }
+    }
+
+    public void registerComment() {
+        Comment c = new Comment(yyline + 1, yycolumn, getFileName(), text());
+
+        comments.add(c);
+    }
     // same functionality as Flex's yymore()
     public void cleanMore() {
         this.morePrefix.setLength(0);
@@ -110,6 +130,7 @@ import java_cup.runtime.*;
 %init{
 
     this.stateStack = new LinkedList();
+    this.comments   = new ArrayList<Comment>();
     this.morePrefix = new StringBuffer();
     this.clearMorePrefix = true;
 
@@ -434,13 +455,13 @@ NEWLINE = ("\r"|"\n"|"\r\n")
 }
 
 <ST_ONE_LINE_COMMENT>{NEWLINE} {
-    //Symbol sym = symbol(Symbols.T_COMMENT, "T_COMMENT", text());
+    registerComment();
     cleanMore();
 	yybegin(ST_IN_SCRIPTING);
 }
 
 <ST_ONE_LINE_COMMENT>"?>"|"%>" {
-    //Symbol sym = symbol(Symbols.T_COMMENT, "T_COMMENT", text());
+    registerComment();
     cleanMore();
     yypushback(2);
     yybegin(ST_IN_SCRIPTING);
@@ -457,7 +478,7 @@ NEWLINE = ("\r"|"\n"|"\r\n")
 
 <ST_COMMENT>"*/" {
 	yybegin(ST_IN_SCRIPTING);
-    //Symbol sym = symbol(Symbols.T_DOC_COMMENT, "T_DOC_COMMENT", text());
+    registerComment();
     cleanMore();
 }
 

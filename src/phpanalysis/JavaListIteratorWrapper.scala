@@ -1,6 +1,6 @@
 package phpanalysis;
 
-class JavaListIteratorWrapper[A](iter:java.util.Iterator[A])
+case class JavaListIteratorWrapper[A](iter:java.util.Iterator[A])
 {
     def foreach(f: A => Unit): Unit = {
         while(iter.hasNext){
