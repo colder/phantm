@@ -69,52 +69,52 @@ object Main {
             val sts = files map { f => val c = new Compiler(f); (c, c compile) }
             if (sts exists { _._2 == None} ) {
                 println("Compilation failed.")
-            } else if(!onlyLint) {
+            } else {
                 if (displayProgress) println("2/7 Simplifying...")
                 val asts = sts map { c => new STToAST(c._1, c._2.get) getAST }
                 Reporter.errorMilestone
                 var ast: Program = asts.reduceLeft {(a,b) => a combine b}
                 Reporter.errorMilestone
 
-                if (displayProgress) println("3/7 Resolving and expanding...")
-                // Run AST transformers
-                ast = IncludeResolver(ast).transform
-                if (displayProgress) println("4/7 Structural checks...")
-                // Traverse the ast to look for ovious mistakes.
-                new ASTChecks(ast) execute;
-                Reporter.errorMilestone
+                if (!onlyLint) {
+                    if (displayProgress) println("3/7 Resolving and expanding...")
+                    // Run AST transformers
+                    ast = IncludeResolver(ast).transform
+                    if (displayProgress) println("4/7 Structural checks...")
+                    // Traverse the ast to look for ovious mistakes.
+                    new ASTChecks(ast) execute;
+                    Reporter.errorMilestone
 
-                if (displayProgress) println("5/7 Importing APIs...")
-                // Load internal classes and functions into the symbol tables
-                new API("spec/internal_api.xml").load
+                    if (displayProgress) println("5/7 Importing APIs...")
+                    // Load internal classes and functions into the symbol tables
+                    new API("spec/internal_api.xml").load
 
-                for (api <-apis) {
-                    new API(api).load
+                    for (api <-apis) {
+                        new API(api).load
+                    }
+
+                    Reporter.errorMilestone
+
+                    if (displayProgress) println("6/7 Symbolic checks...")
+                    // Collect symbols and detect obvious types errors
+                    CollectSymbols(ast) execute;
+                    Reporter.errorMilestone
+
+                    if (displaySymbols) {
+                        // Emit summary of all symbols
+                        analyzer.Symbols.emitSummary
+                    }
+
+                    if (displayProgress) println("7/7 Type flow analysis...")
+                    // Build CFGs and analyzes them
+                    CFGChecks(ast) execute;
+                    Reporter.errorMilestone
+
+                    val n = Reporter.getNoticesCount
+                    if (n > 0) {
+                        println(n+" notice"+(if (n>1) "s" else "")+" occured.")
+                    }
                 }
-
-                Reporter.errorMilestone
-
-                if (displayProgress) println("6/7 Symbolic checks...")
-                // Collect symbols and detect obvious types errors
-                CollectSymbols(ast) execute;
-                Reporter.errorMilestone
-
-                if (displaySymbols) {
-                    // Emit summary of all symbols
-                    analyzer.Symbols.emitSummary
-                }
-
-                if (displayProgress) println("7/7 Type flow analysis...")
-                // Build CFGs and analyzes them
-                CFGChecks(ast) execute;
-                Reporter.errorMilestone
-
-                val n = Reporter.getNoticesCount
-                if (n > 0) {
-                    println(n+" notice"+(if (n>1) "s" else "")+" occured.")
-                }
-            } else {
-                println("Compilation succeeded.")
             }
         } catch {
             case Reporter.ErrorException(en, nn) =>
