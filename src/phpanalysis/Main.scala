@@ -13,6 +13,7 @@ object Main {
     var verbosity          = 1;
     var displayDebug       = false;
     var displayProgress    = false;
+    var onlyLint           = false;
     var includePaths       = List(".");
     var apis: List[String] = Nil;
 
@@ -53,6 +54,9 @@ object Main {
         case "--progress" :: xs =>
             displayProgress = true
             handleArgs(xs)
+        case "--lint" ::  xs =>
+            onlyLint = true
+            handleArgs(xs)
         case x :: xs =>
             files = files ::: x :: Nil
             handleArgs(xs)
@@ -65,7 +69,7 @@ object Main {
             val sts = files map { f => val c = new Compiler(f); (c, c compile) }
             if (sts exists { _._2 == None} ) {
                 println("Compilation failed.")
-            } else {
+            } else if(!onlyLint) {
                 if (displayProgress) println("2/7 Simplifying...")
                 val asts = sts map { c => new STToAST(c._1, c._2.get) getAST }
                 Reporter.errorMilestone
@@ -109,6 +113,8 @@ object Main {
                 if (n > 0) {
                     println(n+" notice"+(if (n>1) "s" else "")+" occured.")
                 }
+            } else {
+                println("Compilation succeeded.")
             }
         } catch {
             case Reporter.ErrorException(en, nn) =>
