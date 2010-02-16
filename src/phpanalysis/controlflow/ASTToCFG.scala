@@ -264,8 +264,12 @@ object ASTToCFG {
                         case Exit(None) =>
                             val retV = FreshVariable("exit").setPos(ex)
                             Emit.statementCont(CFGAssign(retV, CFGNumLit(0)).setPos(ex), cfg.exit)
-                        case ExpandArray(vars, expr) =>
-                            notyet(ex)
+                        case ExpandArray(vars, e) =>
+                            var arr = FreshVariable("array").setPos(ex);
+                            Emit.statement(CFGAssign(arr, expr(e)).setPos(ex));
+                            for((v, i) <- vars.zipWithIndex) {
+                                Emit.statement(CFGAssign(varFromVar(v), CFGArrayEntry(arr, CFGNumLit(i).setPos(v)).setPos(v)).setPos(ex))
+                            }
                         case Assign(va, value, byref) =>
                             v = varFromVar(va);
                             Emit.statement(exprStore(v, value));

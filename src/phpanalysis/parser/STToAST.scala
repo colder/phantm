@@ -843,7 +843,7 @@ case class STToAST(comp: Compiler, st: ParseNode) {
             case List("T_ARRAY", "T_OPEN_BRACES", "array_pair_list", "T_CLOSE_BRACES") =>
                 Array(array_pair_list(child(n, 2)))
             case List("T_LIST", "T_OPEN_BRACES", "assignment_list", "T_CLOSE_BRACES", "T_ASSIGN", "expr") =>
-                // TODO: Assign array items to vars
+                // TODO: ExpandArray
                 expr(child(n, 5))
             case List("T_BACKTICK", "backticks_expr", "T_BACKTICK") =>
                 // TODO: backticks_expr
