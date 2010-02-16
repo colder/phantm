@@ -178,6 +178,7 @@ object TypeFlow {
                 case CFGStringLit(value) => TString
                 case CFGTrue() => TTrue
                 case CFGFalse() => TFalse
+                case CFGAny() => TAny
                 case CFGNull() => TNull
                 case CFGThis() => getObject(node, env.scope)
                 case CFGEmptyArray() => new TArray()
