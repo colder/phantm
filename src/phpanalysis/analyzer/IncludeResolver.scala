@@ -2,6 +2,18 @@ package phpanalysis.analyzer
 import parser.Trees._
 import java.io.File
 
+object IncludeResolver {
+    var deepNess = 0;
+
+    def begin = {
+        deepNess += 1;
+    }
+
+    def end = {
+        deepNess -= 1;
+    }
+}
+
 case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
 
     override def trExpr(ex: Expression): Expression = ex match {
@@ -81,6 +93,9 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
             c compile match {
                 case Some(node) =>
                     var ast: Program = new STToAST(c, node) getAST;
+                    // We include-resolve this file too
+                    ast = IncludeResolver(ast).transform
+
                     Block(ast.stmts)
                 case None =>
                     Reporter.notice("Cannot preprocess \""+path+"\": sub-compilation failed", inc)
@@ -93,34 +108,47 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
             PHPFalse()
         }
 
-        unrollPath(path) match {
-            case Some(p) =>
-                if (p(0) == '/') {
-                    if (pathExists(p)) {
-                        getAST(p)
-                    } else {
-                        notfound(p)
-                    }
-                } else {
-                    var foundPath: Option[String] = None;
+        IncludeResolver.begin
 
-                    for (prefix <- Main.includePaths if foundPath == None) {
-                        val fullpath = prefix+"/"+p;
-                        if (pathExists(fullpath)) {
-                            foundPath = Some(fullpath)
+        val result = if (IncludeResolver.deepNess < 20) {
+            unrollPath(path) match {
+                case Some(p) =>
+                    if (p(0) == '/') {
+                        if (pathExists(p)) {
+                            getAST(p)
+                        } else {
+                            notfound(p)
+                        }
+                    } else {
+                        var foundPath: Option[String] = None;
+
+                        for (prefix <- Main.includePaths if foundPath == None) {
+                            val fullpath = prefix+"/"+p;
+                            if (pathExists(fullpath)) {
+                                foundPath = Some(fullpath)
+                            }
+                        }
+
+                        foundPath match {
+                            case Some(path) =>
+                                getAST(path)
+                            case None =>
+                                notfound(p)
                         }
                     }
-
-                    foundPath match {
-                        case Some(path) =>
-                            getAST(path)
-                        case None =>
-                            notfound(p)
-                    }
-                }
-            case None =>
-                Reporter.notice("Include with non trivial argument will be ignored", path)
-                PHPFalse()
+                case None =>
+                    Reporter.notice("Include with non trivial argument will be ignored", path)
+                    PHPFalse()
+            }
+        } else {
+            Reporter.error("Include nesting level too deep: "+IncludeResolver.deepNess, path)
+            PHPFalse()
         }
+
+        Reporter.errorMilestone
+
+        IncludeResolver.end
+
+        result
     }
 }
