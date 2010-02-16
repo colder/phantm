@@ -65,6 +65,7 @@ object CFGTrees {
   case class CFGNumLit(value: Int) extends CFGSimpleValue
   case class CFGStringLit(value: String) extends CFGSimpleValue
   case class CFGTrue() extends CFGSimpleValue
+  case class CFGAny() extends CFGSimpleValue
   case class CFGFalse() extends CFGSimpleValue
   case class CFGNull() extends CFGSimpleValue
   case class CFGThis() extends CFGSimpleValue
@@ -162,6 +163,7 @@ object CFGTrees {
       case CFGNull() => "null"
       case CFGEmptyArray() => "array()"
       case CFGFalse() => "false"
+      case CFGAny() => "any"
       case CFGError() => "error"
       case CFGThis() => "this"
       case CFGArrayNext(a) => a + ".next"

@@ -64,6 +64,7 @@ object ASTToCFG {
       }
     }
 
+
     /** Generates the part of the graph corresponding to the branching on a conditional expression */
     def condExpr(ex: Expression, falseCont: Vertex, trueCont: Vertex): Unit = {
       // should have been enforced by type checking.
@@ -225,6 +226,9 @@ object ASTToCFG {
                     Some(CFGAssign(v, CFGFunctionCall(internalFunction("empty").setPos(ex), List(expr(va))).setPos(ex)))
                 case FunctionCall(StaticFunctionRef(_, _, name), args) =>
                     Some(CFGAssign(v, CFGFunctionCall(name, args map { a => expr(a.value) }).setPos(ex)))
+                case fc @ FunctionCall(_, args) =>
+                    Reporter.notice("Dynamic function call ignored", fc)
+                    Some(CFGAssign(v, CFGAny().setPos(fc)))
                 case MethodCall(obj, StaticMethodRef(id), args) => 
                     Some(CFGAssign(v, CFGMethodCall(expr(obj), id, args.map {a => expr(a.value) }).setPos(ex)))
                 case StaticMethodCall(cl, StaticMethodRef(id), args) => 
@@ -341,6 +345,7 @@ object ASTToCFG {
       s match {
         case LabelDecl(name) =>
             // GOTO
+            Emit.goto(cont)
         case Block(sts) =>
             stmts(sts, cont)
         case If(cond, then, elze) =>
@@ -395,9 +400,9 @@ object ASTToCFG {
         case Throw(ex) =>
             Emit.goto(cont)
         case Try(body, catches) =>
-            Emit.goto(cont)
+            // For now, we execute the body and ignore the catches
+            stmt(body, cont)
             /*
-            val beginTrV = Emit.getPC
             val dispatchExceptionV = cfg.newVertex
             val ex = FreshVariable("exception")
             dispatchers = (dispatchExceptionV, ex) :: dispatchers
