@@ -65,27 +65,27 @@ object Main {
 
     def compile(files: List[String]) = {
         try {
-            if (displayProgress) println("1/7 Compiling...")
+            if (displayProgress) println("1/8 Compiling...")
             val sts = files map { f => val c = new Compiler(f); (c, c compile) }
             if (sts exists { _._2 == None} ) {
                 println("Compilation failed.")
             } else {
-                if (displayProgress) println("2/7 Simplifying...")
+                if (displayProgress) println("2/8 Simplifying...")
                 val asts = sts map { c => new STToAST(c._1, c._2.get) getAST }
                 Reporter.errorMilestone
                 var ast: Program = asts.reduceLeft {(a,b) => a combine b}
                 Reporter.errorMilestone
 
                 if (!onlyLint) {
-                    if (displayProgress) println("3/7 Resolving and expanding...")
+                    if (displayProgress) println("3/8 Resolving and expanding...")
                     // Run AST transformers
                     ast = IncludeResolver(ast).transform
-                    if (displayProgress) println("4/7 Structural checks...")
+                    if (displayProgress) println("4/8 Structural checks...")
                     // Traverse the ast to look for ovious mistakes.
                     new ASTChecks(ast) execute;
                     Reporter.errorMilestone
 
-                    if (displayProgress) println("5/7 Importing APIs...")
+                    if (displayProgress) println("5/8 Importing APIs...")
                     // Load internal classes and functions into the symbol tables
                     new API("spec/internal_api.xml").load
 
@@ -95,7 +95,13 @@ object Main {
 
                     Reporter.errorMilestone
 
-                    if (displayProgress) println("6/7 Symbolic checks...")
+                    if (displayProgress) println("6/8 Parsing annotations...")
+                    // Inject type information from the annotations
+                    ast = new Annotations(ast).transform
+
+                    Reporter.errorMilestone
+
+                    if (displayProgress) println("7/8 Symbolic checks...")
                     // Collect symbols and detect obvious types errors
                     CollectSymbols(ast) execute;
                     Reporter.errorMilestone
@@ -105,7 +111,7 @@ object Main {
                         analyzer.Symbols.emitSummary
                     }
 
-                    if (displayProgress) println("7/7 Type flow analysis...")
+                    if (displayProgress) println("8/8 Type flow analysis...")
                     // Build CFGs and analyzes them
                     CFGChecks(ast) execute;
                     Reporter.errorMilestone

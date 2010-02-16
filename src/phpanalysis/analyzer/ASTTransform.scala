@@ -13,9 +13,15 @@ abstract class ASTTransform(p: Program) {
 
     def trMethod(md: MethodDecl): MethodDecl = md.body match {
         case Some(b) => 
-            MethodDecl(md.name, md.flags, md.args, md.retref, md.hint, Some(trStmt(b))).setPos(md)
+            MethodDecl(md.name, md.flags, md.args, md.retref, md.hint, Some(trStmt(b))).setPos(md).attachComment(md)
         case None =>
             md
+    }
+    def trProperty(pd: PropertyDecl): PropertyDecl = pd match {
+        case PropertyDecl(v, flags, Some(default), hint) =>
+            PropertyDecl(v, flags, Some(trExpr(default)), hint).setPos(pd).attachComment(pd)
+        case PropertyDecl(v, flags, None, hint) =>
+            PropertyDecl(v, flags, None, hint).setPos(pd).attachComment(pd)
     }
 
     def trExpr(ex: Expression): Expression = {
@@ -98,7 +104,7 @@ abstract class ASTTransform(p: Program) {
             case ex => ex
         }
 
-        r.setPos(ex)
+        r.setPos(ex).attachComment(ex)
     }
 
     def trStmt(st: Statement): Statement = {
@@ -145,6 +151,6 @@ abstract class ASTTransform(p: Program) {
                 st
         }
 
-        r.setPos(st)
+        r.setPos(st).attachComment(st)
     }
 }

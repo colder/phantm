@@ -2,6 +2,21 @@ package phpanalysis.analyzer
 import parser.Trees._
 import scala.collection.mutable.{Map,HashMap}
 
+class Annotations(ast: Program) extends ASTTransform(ast) {
+    override def trMethod(md: MethodDecl): MethodDecl =
+        Annotations.importMethodAnnotations(super.trMethod(md), md.comment)
+
+    override def trProperty(pd: PropertyDecl): PropertyDecl =
+        Annotations.importPropertyAnnotations(super.trProperty(pd), pd.comment)
+
+    override def trStmts(stmts: List[Statement]): List[Statement] = stmts match {
+        case (fd: FunctionDecl) :: stmts =>
+            Annotations.importFunctionAnnotations(fd, fd.comment) :: trStmts(stmts)
+        case x =>
+            super.trStmts(x)
+    }
+}
+
 object Annotations {
     def extractType(str: String): (String, TypeHint) = {
         val parts = str.split("[^a-zA-Z0-9_\\|\\$]", 2).toList
