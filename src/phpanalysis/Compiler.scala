@@ -48,8 +48,7 @@ class Compiler(filename: String) {
                 comments = (Position(c.line, c.col, c.filename), c.content) :: comments;
             }
 
-            comments.reverse
-
+            comments = comments.reverse
             Some(r)
 
          } catch {
