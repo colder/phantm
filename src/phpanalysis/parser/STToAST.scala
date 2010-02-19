@@ -843,10 +843,8 @@ case class STToAST(comp: Compiler, st: ParseNode) {
             case List("T_ARRAY", "T_OPEN_BRACES", "array_pair_list", "T_CLOSE_BRACES") =>
                 Array(array_pair_list(child(n, 2)))
             case List("T_LIST", "T_OPEN_BRACES", "assignment_list", "T_CLOSE_BRACES", "T_ASSIGN", "expr") =>
-                // TODO: ExpandArray
-                expr(child(n, 5))
+                ExpandArray(assignment_list(child(n, 2)), expr(child(n, 5)))
             case List("T_BACKTICK", "backticks_expr", "T_BACKTICK") =>
-                // TODO: backticks_expr
                 Execute("...");
             case List("T_PRINT", "expr") =>
                 Print(expr(child(n, 1)))
@@ -856,6 +854,27 @@ case class STToAST(comp: Compiler, st: ParseNode) {
                 base_variable_with_function_calls(child(n))
             case _ => unspecified(n)
         }).setPos(pos).attachComment(com)
+    }
+
+    def assignment_list(n: ParseNode): List[Option[Variable]] = {
+        childrenNames(n) match {
+            case List("assignment_list", "T_COMMA", "assignment_list_element") =>
+                assignment_list(child(n, 0)) ::: List(assignment_list_element(child(n, 2)))
+            case List("assignment_list_element") =>
+                List(assignment_list_element(child(n, 0)))
+        }
+    }
+
+    def assignment_list_element(n: ParseNode): Option[Variable] = {
+        childrenNames(n) match {
+            case List("variable") =>
+                Some(variable_w(child(n)))
+            case List("T_LIST", "T_OPEN_BRACES",  "assignment_list", "T_CLOSE_BRACES") =>
+                println("TODO: Nested list statements are not supported yet");
+                None
+            case List() =>
+                None
+        }
     }
 
     def ctor_arguments(n: ParseNode): List[CallArg] = {

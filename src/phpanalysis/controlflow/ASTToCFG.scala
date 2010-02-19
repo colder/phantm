@@ -265,10 +265,14 @@ object ASTToCFG {
                             val retV = FreshVariable("exit").setPos(ex)
                             Emit.statementCont(CFGAssign(retV, CFGNumLit(0)).setPos(ex), cfg.exit)
                         case ExpandArray(vars, e) =>
-                            var arr = FreshVariable("array").setPos(ex);
-                            Emit.statement(CFGAssign(arr, expr(e)).setPos(ex));
-                            for((v, i) <- vars.zipWithIndex) {
-                                Emit.statement(CFGAssign(varFromVar(v), CFGArrayEntry(arr, CFGNumLit(i).setPos(v)).setPos(v)).setPos(ex))
+                            v = FreshVariable("array").setPos(ex);
+                            Emit.statement(CFGAssign(v, expr(e)).setPos(ex));
+                            for((vv, i) <- vars.zipWithIndex) {
+                                vv match {
+                                    case Some(vv) =>
+                                        Emit.statement(CFGAssign(varFromVar(vv), CFGArrayEntry(v, CFGNumLit(i).setPos(vv)).setPos(vv)).setPos(ex))
+                                    case None =>
+                                }
                             }
                         case Assign(va, value, byref) =>
                             v = varFromVar(va);
@@ -305,11 +309,13 @@ object ASTToCFG {
                             }
                         case Array(values) =>
                             Emit.statement(CFGAssign(v, CFGEmptyArray().setPos(ex)).setPos(ex))
+                            var i = 0;
                             for (av <- values) av match {
                                 case (Some(x), va, byref) =>
                                     Emit.statement(CFGAssign(CFGArrayEntry(v, expr(x)), expr(va)).setPos(ex))
                                 case (None, va, byref) =>
-                                    Emit.statement(CFGAssign(CFGNextArrayEntry(v).setPos(va), expr(va)).setPos(ex))
+                                    Emit.statement(CFGAssign(CFGArrayEntry(v, CFGNumLit(i).setPos(v)).setPos(va), expr(va)).setPos(ex))
+                                    i += 1
                             }
                         case ClassConstant(cl, id) =>
                             Emit.statement(CFGAssign(v, CFGClassConstant(cl, id).setPos(ex)).setPos(ex))
