@@ -121,17 +121,20 @@ object TypeFlow {
         def this(scope: Option[ClassSymbol]) = {
             this(new HashMap[CFGSimpleVariable, Type], scope, new ObjectStore);
         }
+
         def this() = {
             this(new HashMap[CFGSimpleVariable, Type], None, new ObjectStore);
         }
 
         def lookup(v: CFGSimpleVariable): Option[Type] = map.get(v)
 
-        def inject(v: CFGSimpleVariable, typ: Type): TypeEnvironment = {
+        def inject(v: CFGSimpleVariable, typ: Type): TypeEnvironment =
             new TypeEnvironment(map + ((v, typ)), scope, store)
-        }
 
-        def union(e: TypeEnvironment) = {
+        def injectStore(st: ObjectStore): TypeEnvironment =
+            new TypeEnvironment(map, scope, st)
+
+        def union(e: TypeEnvironment): TypeEnvironment = {
             e match {
                 case BaseTypeEnvironment =>
                     this
@@ -164,7 +167,7 @@ object TypeFlow {
         override def toString = {
             def typeToString(t: Type): String = t match {
                 case or: TObjectRef =>
-                    store.lookup(or).toString
+                    "(#"+or.id.pos+","+or.id.offset+")"+store.lookup(or).toString
                 case _ => t.toString
             }
             
@@ -179,6 +182,8 @@ object TypeFlow {
         def error(msg: String, pos: Positional) = if (!silent) Reporter.error(msg, pos)
 
         def apply(node : CFGStatement, env : TypeEnvironment) : TypeEnvironment = {
+            var store = env.store
+
             def typeFromSimpleValue(sv: CFGSimpleValue): Type = sv match {
                 case CFGNumLit(value) => TInt
                 case CFGStringLit(value) => TString
@@ -226,8 +231,8 @@ object TypeFlow {
                 case cl @ CFGClone(obj) =>
                     expect(obj, TAnyObject) match {
                         case ref: TObjectRef =>
-                            val ro = env.store.lookup(ref)
-                            env.store.set(ObjectId(cl.uniqueID, 0), ro.duplicate)
+                            val ro = store.lookup(ref)
+                            store = store.set(ObjectId(cl.uniqueID, 0), ro.duplicate)
                             new TObjectRef(ObjectId(cl.uniqueID, 0))
                         case _ =>
                             TAnyObject
@@ -249,7 +254,7 @@ object TypeFlow {
                 case mcall @ CFGMethodCall(r, mid, args) =>
                     expect(r, TAnyObject) match {
                         case or: TObjectRef =>
-                            val ro = env.store.lookup(or);
+                            val ro = store.lookup(or);
                             ro.lookupMethod(mid.value, env.scope) match {
                                 case Some(mt) =>
                                     checkFCalls(args, List(mt), mcall)
@@ -325,7 +330,7 @@ object TypeFlow {
                         case TAnyObject =>
                             TAny
                         case or: TObjectRef =>
-                            val ro = env.store.lookup(or)
+                            val ro = store.lookup(or)
                             ro.lookupField(p) match {
                                 case Some(t2) => t2
                                 case None =>
@@ -338,7 +343,7 @@ object TypeFlow {
                                 case TAnyObject =>
                                     TAny
                                 case or: TObjectRef =>
-                                    val ro = env.store.lookup(or)
+                                    val ro = store.lookup(or)
                                     ro.lookupField(p) match {
                                         case Some(t) => t
                                         case None =>
@@ -366,7 +371,9 @@ object TypeFlow {
             }
 
             def getObject(node: CFGStatement, ocs: Option[ClassSymbol]): ObjectType = {
-                env.store.getOrCreate(ObjectId(node.uniqueID, 0), ocs)
+                val id = ObjectId(node.uniqueID, 0);
+                store = store.initIfNotExist(id, ocs)
+                new TObjectRef(id)
             }
 
             def expect(v1: CFGSimpleValue, typs: Type*): Type = {
@@ -405,6 +412,7 @@ object TypeFlow {
                         expect(v1, TAny)
                 }
             }
+
             def typeCheckBinOP(v1: CFGSimpleValue, op: CFGBinaryOperator, v2: CFGSimpleValue): Type = {
                 op match {
                     case PLUS =>
@@ -454,320 +462,323 @@ object TypeFlow {
                     case NOTIDENTICAL =>
                         expect(v2, expect(v1, TAny)); TBoolean
                 }
-          }
-
-          def complexAssign(v: CFGVariable, ext: Type): TypeEnvironment = {
-                var elems: List[(CFGSimpleValue, Type, Type)] = Nil;
-
-                def linearize(sv: CFGSimpleValue, checkType: Type, resultType: Type, pass: Int): Unit = {
-                    // Recursive function that pushes each array parts and compute types
-                    elems = (sv, checkType, resultType) :: elems;
-                    sv match {
-                        case CFGVariableVar(v) =>
-                            linearize(v, TString, TString, pass+1)
-                        case CFGArrayEntry(arr, index) =>
-                            // We always will end up with a precise array
-                            // The check type depends on the pass (i.e. deepness)
-                            // pass == 0 means this is the most outer assign,
-                            // which only needs to be checked against AnyArray
-                            val rt = new TArray().inject(index, resultType);
-                            val ct = if (pass > 0) new TArray().inject(index, checkType) else TAnyArray;
-
-                            linearize(arr, ct, rt, pass+1)
-                        case CFGObjectProperty(obj, index) =>
-                            val rt = env.store.getOrCreate(ObjectId(sv.uniqueID, 0), None)
-                            env.store.lookup(rt).injectField(index, resultType);
-                            // the check type is a different object, we create
-                            // a tmp object with negative id, and shift it by
-                            // the number of potentially used tmp objects used
-                            // for params
-                            val ct = if (pass > 0) {
-                                val c = env.store.getOrCreate(ObjectId(sv.uniqueID, 1), None);
-                                env.store.lookup(c).injectField(index, checkType)
-                                c
-                            } else {
-                                TAnyObject;
-                            }
-
-                            linearize(obj, ct, rt, pass+1)
-                        case CFGNextArrayEntry(arr) =>
-                            // ditto ArrayEntry
-                            val rt = new TArray().injectNext(resultType, arr.uniqueID);
-                            val ct = if (pass > 0) new TArray().injectNext(checkType, arr.uniqueID) else TAnyArray;
-
-                            linearize(arr, ct, rt, pass+1)
-                        case _ =>
-                    }
-                }
-
-                // We lineraize the recursive structure
-                linearize(v, ext, ext, 0)
-                var e = env
-
-                // Let's traverse all up to the last elem (the outermost assign)
-                for ((elem, ct, rt) <- elems.init) {
-                    //println(" Checking for "+elem +"(actualType: "+typeFromSimpleValue(elem)+", checkType: "+ct+", resultType: "+rt+")");
-                    def assignMergeObject(from: TObjectRef, to: TObjectRef): Type ={
-                            import scala.collection.mutable.HashMap
-                            //println("Trying to assign-merge "+from+" and "+ to)
-
-                            val fromRO = env.store.lookup(from)
-                            val toRO   = env.store.lookup(to)
-
-                            val newFields = HashMap[String, Type]() ++ fromRO.fields;
-
-                            val pt = toRO.pollutedType.getOrElse(TNone) join fromRO.pollutedType.getOrElse(TNone)
-
-                            for((index, typ)<- toRO.fields) {
-                                newFields(index) = newFields.get(index) match {
-                                    case Some(t) => pt join assignMerge(t, typ)
-                                    case None => pt join typ
-                                }
-                            }
-
-                            val opt = if (pt == TNone) None else Some(pt)
-
-                            val o : RealObjectType = toRO match {
-                                case o: TRealClassObject =>
-                                    new TRealClassObject(o.cl, newFields, opt)
-                                case o: TRealObject =>
-                                    new TRealObject(newFields, opt)
-                            }
-
-                            env.store.set(to.id, o)
-
-                            to
-                    }
-                    // assignMerge will recursively merge types of recursive arrays
-                    // we cannot use Lattice.Join as we do not want unions.
-                    // i.e. $a['foo']['bar'] = 2; $a['foo']['bar'] =
-                    // "str"; should not end with:
-                    //    $a -> Array[foo => Array[bar => {TInt, TString}]]
-                    // but
-                    //    $a -> Array[foo => Array[bar => String]]
-                    def assignMerge(from: Type, to: Type): Type = (from,to) match {
-                        case (from: TArray, to: TArray) =>
-                            import scala.collection.mutable.HashMap
-                            import Math.max
-
-                            val pt = to.pollutedType.getOrElse(TNone) join from.pollutedType.getOrElse(TNone)
-
-                            val newEntries = HashMap[String, Type]() ++ from.entries;
-
-                            for((index, typ)<- to.entries) {
-                                newEntries(index) = newEntries.get(index) match {
-                                    case Some(t) => pt join assignMerge(t, typ)
-                                    case None => pt join typ
-                                }
-                            }
-
-                            val opt = if (pt == TNone) None else Some(pt)
-
-                            new TArray(newEntries, opt)
-
-                        case (from: TObjectRef, to: TObjectRef) =>
-                            assignMergeObject(from, to)
-                        case (from: TObjectRef, to: TUnion) =>
-                            // We may have a union of objects here
-                            TUnion(to.types map { _ match {
-                                case t: TObjectRef =>
-                                    assignMergeObject(from, t)
-                                case o => o
-                            }})
-                        case (a, b) =>
-                            // In case not both types are not arrays nor objects, we
-                            // always end up with the resulting type
-                            a
-                    }
-
-                    val resultingType = assignMerge(rt, typeFromSimpleValue(elem))
-
-                    elem match {
-                        case sv: CFGSimpleVariable =>
-                            // Due to our deep type system, checking
-                            // the base variable should be enough
-                            expect(elem, ct)
-                            e = e.inject(sv, resultingType);
-                        case _ =>
-                    }
-                }
-
-                e
-          }
-
-          def functionSymbolToFunctionType(fs: FunctionSymbol): FunctionType = {
-            new TFunction(fs.argList.map { a => (a._2.typ, a._2.optional) }, fs.typ)
-          }
-
-          def checkFCalls(fcall_params: List[CFGSimpleValue], syms: List[FunctionType], pos: Positional) : Type =  {
-            def protoFilter(sym: FunctionType): Boolean = {
-                sym match {
-                    case tf: TFunction =>
-                        var ret = true;
-                        for (i <- fcall_params.indices) {
-                            if (i >= tf.args.length) {
-                                ret = false
-                            } else {
-                                if (!TypeLattice.leq(env, typeFromSimpleValue(fcall_params(i)), tf.args(i)._1)) {
-                                    //notice("Prototype mismatch because "+fcall.params(i)+"("+typeFromSimpleValue(fcall.params(i))+") </: "+args(i)._1) 
-
-                                    ret = false;
-                                }
-                            }
-                        }
-                        ret
-                    case TFunctionAny =>
-                        true
-                }
             }
 
-            syms filter protoFilter match {
-                case Nil =>
-                    if (syms.size > 1) {
-                        error("Unmatched function prototype '("+fcall_params.map(typeFromSimpleValue).mkString(", ")+")', candidates are:\n    "+syms.mkString(",\n    "), pos)
-                        TNone
-                    } else {
-                        syms.first match {
-                            case tf: TFunction =>
-                                for (i <- fcall_params.indices) {
-                                    if (i >= tf.args.length) {
-                                        error("Prototype error!", pos)
-                                    } else {
-                                        expect(fcall_params(i), tf.args(i)._1)
+            def complexAssign(v: CFGVariable, ext: Type): TypeEnvironment = {
+                    var elems: List[(CFGSimpleValue, Type, Type)] = Nil;
+
+                    def linearize(sv: CFGSimpleValue, checkType: Type, resultType: Type, pass: Int): Unit = {
+                        // Recursive function that pushes each array parts and compute types
+                        elems = (sv, checkType, resultType) :: elems;
+                        sv match {
+                            case CFGVariableVar(v) =>
+                                linearize(v, TString, TString, pass+1)
+                            case CFGArrayEntry(arr, index) =>
+                                // We always will end up with a precise array
+                                // The check type depends on the pass (i.e. deepness)
+                                // pass == 0 means this is the most outer assign,
+                                // which only needs to be checked against AnyArray
+                                val rt = new TArray().inject(index, resultType);
+                                val ct = if (pass > 0) new TArray().inject(index, checkType) else TAnyArray;
+
+                                linearize(arr, ct, rt, pass+1)
+                            case CFGObjectProperty(obj, index) =>
+                                val rt = new TObjectRef(ObjectId(sv.uniqueID, 0));
+                                store = store.initIfNotExist(rt.id, None)
+                                store.lookup(rt).injectField(index, resultType);
+                                // the check type is a different object, we create
+                                // a tmp object with negative id, and shift it by
+                                // the number of potentially used tmp objects used
+                                // for params
+                                val ct = if (pass > 0) {
+                                    store = store.initIfNotExist(ObjectId(sv.uniqueID, 1), None);
+                                    store.lookup(ObjectId(sv.uniqueID, 1)).injectField(index, checkType)
+                                    new TObjectRef(ObjectId(sv.uniqueID, 1))
+                                } else {
+                                    TAnyObject;
+                                }
+
+                                linearize(obj, ct, rt, pass+1)
+                            case CFGNextArrayEntry(arr) =>
+                                // ditto ArrayEntry
+                                val rt = new TArray().injectNext(resultType, arr.uniqueID);
+                                val ct = if (pass > 0) new TArray().injectNext(checkType, arr.uniqueID) else TAnyArray;
+
+                                linearize(arr, ct, rt, pass+1)
+                            case _ =>
+                        }
+                    }
+
+                    // We lineraize the recursive structure
+                    linearize(v, ext, ext, 0)
+                    var e = env
+
+                    // Let's traverse all up to the last elem (the outermost assign)
+                    for ((elem, ct, rt) <- elems.init) {
+                        //println(" Checking for "+elem +"(actualType: "+typeFromSimpleValue(elem)+", checkType: "+ct+", resultType: "+rt+")");
+                        def assignMergeObject(from: TObjectRef, to: TObjectRef): Type ={
+                                import scala.collection.mutable.HashMap
+                                //println("Trying to assign-merge "+from+" and "+ to)
+
+                                val fromRO = store.lookup(from)
+                                val toRO   = store.lookup(to)
+
+                                val newFields = HashMap[String, Type]() ++ fromRO.fields;
+
+                                val pt = toRO.pollutedType.getOrElse(TNone) join fromRO.pollutedType.getOrElse(TNone)
+
+                                for((index, typ)<- toRO.fields) {
+                                    newFields(index) = newFields.get(index) match {
+                                        case Some(t) => pt join assignMerge(t, typ)
+                                        case None => pt join typ
                                     }
-
                                 }
-                                tf.ret
-                            case s =>
-                                s.ret
+
+                                val opt = if (pt == TNone) None else Some(pt)
+
+                                val o : RealObjectType = toRO match {
+                                    case o: TRealClassObject =>
+                                        new TRealClassObject(o.cl, newFields, opt)
+                                    case o: TRealObject =>
+                                        new TRealObject(newFields, opt)
+                                }
+
+                                store = store.set(to.id, o)
+
+                                to
+                        }
+                        // assignMerge will recursively merge types of recursive arrays
+                        // we cannot use Lattice.Join as we do not want unions.
+                        // i.e. $a['foo']['bar'] = 2; $a['foo']['bar'] =
+                        // "str"; should not end with:
+                        //    $a -> Array[foo => Array[bar => {TInt, TString}]]
+                        // but
+                        //    $a -> Array[foo => Array[bar => String]]
+                        def assignMerge(from: Type, to: Type): Type = (from,to) match {
+                            case (from: TArray, to: TArray) =>
+                                import scala.collection.mutable.HashMap
+                                import Math.max
+
+                                val pt = to.pollutedType.getOrElse(TNone) join from.pollutedType.getOrElse(TNone)
+
+                                val newEntries = HashMap[String, Type]() ++ from.entries;
+
+                                for((index, typ)<- to.entries) {
+                                    newEntries(index) = newEntries.get(index) match {
+                                        case Some(t) => pt join assignMerge(t, typ)
+                                        case None => pt join typ
+                                    }
+                                }
+
+                                val opt = if (pt == TNone) None else Some(pt)
+
+                                new TArray(newEntries, opt)
+
+                            case (from: TObjectRef, to: TObjectRef) =>
+                                assignMergeObject(from, to)
+                            case (from: TObjectRef, to: TUnion) =>
+                                // We may have a union of objects here
+                                TUnion(to.types map { _ match {
+                                    case t: TObjectRef =>
+                                        assignMergeObject(from, t)
+                                    case o => o
+                                }})
+                            case (a, b) =>
+                                // In case not both types are not arrays nor objects, we
+                                // always end up with the resulting type
+                                a
+                        }
+
+                        val resultingType = assignMerge(rt, typeFromSimpleValue(elem))
+
+                        elem match {
+                            case sv: CFGSimpleVariable =>
+                                // Due to our deep type system, checking
+                                // the base variable should be enough
+                                expect(elem, ct)
+                                e = e.inject(sv, resultingType);
+                            case _ =>
                         }
                     }
 
-                case f :: xs =>
-                    f.ret
+                  e
             }
+
+            def functionSymbolToFunctionType(fs: FunctionSymbol): FunctionType = {
+                new TFunction(fs.argList.map { a => (a._2.typ, a._2.optional) }, fs.typ)
+            }
+
+            def checkFCalls(fcall_params: List[CFGSimpleValue], syms: List[FunctionType], pos: Positional) : Type =  {
+                def protoFilter(sym: FunctionType): Boolean = {
+                    sym match {
+                        case tf: TFunction =>
+                            var ret = true;
+                            for (i <- fcall_params.indices) {
+                                if (i >= tf.args.length) {
+                                    ret = false
+                                } else {
+                                    if (!TypeLattice.leq(env, typeFromSimpleValue(fcall_params(i)), tf.args(i)._1)) {
+                                        //notice("Prototype mismatch because "+fcall.params(i)+"("+typeFromSimpleValue(fcall.params(i))+") </: "+args(i)._1) 
+
+                                        ret = false;
+                                    }
+                                }
+                            }
+                            ret
+                        case TFunctionAny =>
+                            true
+                    }
+                }
+
+                syms filter protoFilter match {
+                    case Nil =>
+                        if (syms.size > 1) {
+                            error("Unmatched function prototype '("+fcall_params.map(typeFromSimpleValue).mkString(", ")+")', candidates are:\n    "+syms.mkString(",\n    "), pos)
+                            TNone
+                        } else {
+                            syms.first match {
+                                case tf: TFunction =>
+                                    for (i <- fcall_params.indices) {
+                                        if (i >= tf.args.length) {
+                                            error("Prototype error!", pos)
+                                        } else {
+                                            expect(fcall_params(i), tf.args(i)._1)
+                                        }
+
+                                    }
+                                    tf.ret
+                                case s =>
+                                    s.ret
+                            }
+                        }
+
+                    case f :: xs =>
+                        f.ret
+                }
+            }
+
+
+            val newEnv = node match {
+                case CFGAssign(vr: CFGSimpleVariable, v1) =>
+                    env.inject(vr, typeFromSimpleValue(v1))
+
+                case CFGAssignUnary(vr: CFGSimpleVariable, op, v1) =>
+                    // We want to typecheck v1 according to OP
+                    env.inject(vr, typeCheckUnOP(op, v1));
+
+                case CFGAssignUnary(ca: CFGVariable, op, v1) =>
+                    // We want to typecheck v1 according to OP
+                    complexAssign(ca, typeCheckUnOP(op, v1))
+
+                case CFGAssignBinary(vr: CFGSimpleVariable, v1, op, v2) =>
+                    // We want to typecheck v1/v2 according to OP
+                    env.inject(vr, typeCheckBinOP(v1, op, v2));
+
+                case CFGAssignBinary(ca: CFGVariable, v1, op, v2) =>
+                    // We want to typecheck v1/v2 according to OP
+                    complexAssign(ca, typeCheckBinOP(v1, op, v2))
+
+                case CFGAssign(ca: CFGVariable, ex) =>
+                    complexAssign(ca, typeFromSimpleValue(ex))
+
+                case CFGAssume(v1, op, v2) => op match {
+                    case LT | LEQ | GEQ | GT =>
+                        expect(v1, TInt, TFloat); expect(v2, TInt, TFloat); env
+                    case EQUALS | IDENTICAL | NOTEQUALS | NOTIDENTICAL =>
+                        /**
+                         * Type filtering:
+                         * if v1 is a variable that is compared against True/False
+                         * we can filter incompatible values out
+                         */
+                        def filter(v: CFGSimpleVariable, value: Boolean): Type = {
+                            typeFromSimpleValue(v) match {
+                                case u: TUnion =>
+                                    if (value) {
+                                        TUnion(u.types.filter(t => t != TFalse && t != TNull))
+                                    } else {
+                                        TUnion(u.types.filter(t => t != TTrue  && t != TResource))
+                                    }
+                                case t =>
+                                    if (value) {
+                                        if (t != TFalse && t != TNull) {
+                                            t
+                                        } else {
+                                            // we had a single incompatible type
+                                            // The branch will never be taken!
+                                            notice("Redundant or incompatible check", v);
+                                            TNone
+                                        }
+                                    } else {
+                                        if (t != TTrue && t != TResource) {
+                                            t
+                                        } else {
+                                            // we had a single incompatible type
+                                            // The branch will never be taken!
+                                            notice("Redundant or incompatible check", v);
+                                            TNone
+                                        }
+                                    }
+                            }
+                        }
+                        var t1 = v1;
+                        var t2 = v2;
+                        (v1, typeFromSimpleValue(v1), v2, typeFromSimpleValue(v2)) match {
+                            case (v: CFGSimpleVariable, TTrue , w: CFGSimpleVariable, _) =>
+                                // we benefit from a switch:
+                                t1 = v2;
+                                t2 = v1;
+                            case (v: CFGSimpleVariable, TFalse , w: CFGSimpleVariable, _) =>
+                                // we benefit from a switch:
+                                t1 = v2;
+                                t2 = v1;
+                            case (v: CFGSimpleVariable, _, _, _) =>
+                                // no change
+                            case (_, _, v: CFGSimpleVariable, _) =>
+                                t1 = v2;
+                                t2 = v1;
+                            case _ =>
+                                // no change, will be ignored anyway
+                        }
+                        (t1, op, typeFromSimpleValue(t2)) match  {
+                            case (v: CFGSimpleVariable, EQUALS, TFalse)  =>
+                                env.inject(v, filter(v, false))
+                            case (v: CFGSimpleVariable, NOTEQUALS, TFalse)  =>
+                                env.inject(v, filter(v, true))
+                            case (v: CFGSimpleVariable, EQUALS, TTrue)  =>
+                                env.inject(v, filter(v, true))
+                            case (v: CFGSimpleVariable, NOTEQUALS, TTrue)  =>
+                                env.inject(v, filter(v, false))
+                            case _ =>
+                                expect(v1, TAny)
+                                expect(v2, TAny)
+                                env
+                        }
+
+                  }
+
+                case CFGPrint(v) =>
+                    expect(v, TInt, TString, TAnyObject, TBoolean);
+                    env
+                case CFGUnset(id) =>
+                    id match {
+                        case v: CFGSimpleVariable =>
+                            env.inject(v, TNull)
+                        case _ =>
+                            env // TODO
+
+                    }
+
+                case CFGSkip =>
+                    env
+
+                case ex: CFGSimpleValue =>
+                    expect(ex, TAny);
+                    env
+                case _ => notice(node+" not yet handled", node); env
+            }
+
+            newEnv.injectStore(store)
         }
-
-
-          node match {
-              case CFGAssign(vr: CFGSimpleVariable, v1) =>
-                env.inject(vr, typeFromSimpleValue(v1))
-
-              case CFGAssignUnary(vr: CFGSimpleVariable, op, v1) =>
-                // We want to typecheck v1 according to OP
-                env.inject(vr, typeCheckUnOP(op, v1));
-
-              case CFGAssignUnary(ca: CFGVariable, op, v1) =>
-                // We want to typecheck v1 according to OP
-                complexAssign(ca, typeCheckUnOP(op, v1))
-
-              case CFGAssignBinary(vr: CFGSimpleVariable, v1, op, v2) =>
-                // We want to typecheck v1/v2 according to OP
-                env.inject(vr, typeCheckBinOP(v1, op, v2));
-
-              case CFGAssignBinary(ca: CFGVariable, v1, op, v2) =>
-                // We want to typecheck v1/v2 according to OP
-                complexAssign(ca, typeCheckBinOP(v1, op, v2))
-
-              case CFGAssign(ca: CFGVariable, ex) =>
-                complexAssign(ca, typeFromSimpleValue(ex))
-
-              case CFGAssume(v1, op, v2) => op match {
-                  case LT | LEQ | GEQ | GT =>
-                    expect(v1, TInt, TFloat); expect(v2, TInt, TFloat); env
-                  case EQUALS | IDENTICAL | NOTEQUALS | NOTIDENTICAL =>
-                    /**
-                     * Type filtering:
-                     * if v1 is a variable that is compared against True/False
-                     * we can filter incompatible values out
-                     */
-                    def filter(v: CFGSimpleVariable, value: Boolean): Type = {
-                        typeFromSimpleValue(v) match {
-                            case u: TUnion =>
-                                if (value) {
-                                    TUnion(u.types.filter(t => t != TFalse && t != TNull))
-                                } else {
-                                    TUnion(u.types.filter(t => t != TTrue  && t != TResource))
-                                }
-                            case t =>
-                                if (value) {
-                                    if (t != TFalse && t != TNull) {
-                                        t
-                                    } else {
-                                        // we had a single incompatible type
-                                        // The branch will never be taken!
-                                        notice("Redundant or incompatible check", v);
-                                        TNone
-                                    }
-                                } else {
-                                    if (t != TTrue && t != TResource) {
-                                        t
-                                    } else {
-                                        // we had a single incompatible type
-                                        // The branch will never be taken!
-                                        notice("Redundant or incompatible check", v);
-                                        TNone
-                                    }
-                                }
-                        }
-                    }
-                    var t1 = v1;
-                    var t2 = v2;
-                    (v1, typeFromSimpleValue(v1), v2, typeFromSimpleValue(v2)) match {
-                        case (v: CFGSimpleVariable, TTrue , w: CFGSimpleVariable, _) =>
-                            // we benefit from a switch:
-                            t1 = v2;
-                            t2 = v1;
-                        case (v: CFGSimpleVariable, TFalse , w: CFGSimpleVariable, _) =>
-                            // we benefit from a switch:
-                            t1 = v2;
-                            t2 = v1;
-                        case (v: CFGSimpleVariable, _, _, _) =>
-                            // no change
-                        case (_, _, v: CFGSimpleVariable, _) =>
-                            t1 = v2;
-                            t2 = v1;
-                        case _ =>
-                            // no change, will be ignored anyway
-                    }
-                    (t1, op, typeFromSimpleValue(t2)) match  {
-                        case (v: CFGSimpleVariable, EQUALS, TFalse)  =>
-                            env.inject(v, filter(v, false))
-                        case (v: CFGSimpleVariable, NOTEQUALS, TFalse)  =>
-                            env.inject(v, filter(v, true))
-                        case (v: CFGSimpleVariable, EQUALS, TTrue)  =>
-                            env.inject(v, filter(v, true))
-                        case (v: CFGSimpleVariable, NOTEQUALS, TTrue)  =>
-                            env.inject(v, filter(v, false))
-                        case _ =>
-                            expect(v1, TAny)
-                            expect(v2, TAny)
-                            env
-                    }
-
-              }
-
-              case CFGPrint(v) =>
-                expect(v, TInt, TString, TAnyObject, TBoolean);
-                env
-              case CFGUnset(id) =>
-                id match {
-                    case v: CFGSimpleVariable =>
-                        env.inject(v, TNull)
-                    case _ =>
-                        env // TODO
-
-                }
-
-              case CFGSkip =>
-                env
-
-              case ex: CFGSimpleValue =>
-                expect(ex, TAny);
-                env
-              case _ => notice(node+" not yet handled", node); env
-          }
-      }
     }
 
     case class Analyzer(cfg: CFG, scope: Scope) {
@@ -798,7 +809,8 @@ object TypeFlow {
             // for methods, we inject $this as its always defined
             scope match {
                 case ms: MethodSymbol =>
-                    injectPredef("this", baseEnv.store.getOrCreate(ObjectId(-1, 0), Some(ms.cs)))
+                    baseEnv.injectStore(baseEnv.store.initIfNotExist(ObjectId(-1, 0), Some(ms.cs)))
+                    injectPredef("this", new TObjectRef(ObjectId(-1, 0)))
                 case _ =>
             }
 

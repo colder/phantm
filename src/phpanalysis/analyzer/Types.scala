@@ -95,15 +95,28 @@ object Types {
     case class ObjectId(val pos: Int, val offset: Int)
 
     // Stores the ref => Real Objects relashionship
-    class ObjectStore {
-        private val store = new HashMap[ObjectId, RealObjectType]();
-        private var tmpNum = 0;
+    class ObjectStore(val store: collection.immutable.Map[ObjectId, RealObjectType]) {
 
-        def union(os: ObjectStore) : ObjectStore = this // TODO
+        def this() = this(new collection.immutable.HashMap[ObjectId, RealObjectType]())
 
-        def clean = {
-            store.clear
-            tmpNum = 0;
+        def union(os: ObjectStore) : ObjectStore = {
+            val res = new ObjectStore;
+
+            for (id <- this.store.keySet ++ os.store.keySet) {
+                val c1 = this.store.contains(id);
+                val c2 =   os.store.contains(id);
+
+                if (c1 && c2) {
+                    res.store(id) = this.store(id) merge os.store(id)
+                } else if (c1) {
+                    res.store(id) = this.store(id).duplicate
+                } else {
+                    res.store(id) = os.store(id).duplicate
+                }
+            }
+
+            res
+
         }
 
         def lookup(id: TObjectRef): RealObjectType = lookup(id.id);
@@ -113,11 +126,11 @@ object Types {
             case None => error("Woops incoherent store")
         }
 
-        def set(id: ObjectId, robj: RealObjectType) = store(id) = robj;
+        def set(id: ObjectId, robj: RealObjectType): ObjectStore = new ObjectStore(store.update(id, robj));
 
-        def getOrCreate(id: ObjectId, ocs: Option[ClassSymbol]) : TObjectRef = store.get(id) match {
+        def initIfNotExist(id: ObjectId, ocs: Option[ClassSymbol]) : ObjectStore = store.get(id) match {
             case Some(_) =>
-                new TObjectRef(id)
+                this
             case None =>
                 // We create a new object and place it in the store
                 val rot = ocs match {
@@ -129,8 +142,7 @@ object Types {
                         new TRealObject(HashMap[String,Type](), None)
                 }
 
-                store(id) = rot;
-                new TObjectRef(id)
+                set(id, rot);
         }
     }
 
