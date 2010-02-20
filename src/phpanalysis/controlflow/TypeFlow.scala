@@ -8,10 +8,10 @@ import analyzer.Symbols._
 import analyzer.Types._
 
 object TypeFlow {
-    case object TypeLattice extends Lattice {
+    case object TypeLattice extends Lattice[TypeEnvironment] {
         type E = Type
 
-        def leq(x : Type, y : Type) = (x,y) match {
+        def leq(te: TypeEnvironment, x : Type, y : Type): Boolean = (x,y) match {
             case (x, y) if x == y => true
 
             case (TNone, _) => true
@@ -20,8 +20,8 @@ object TypeFlow {
             case (TFalse, TBoolean) => true
             case (t1: TObjectRef, TAnyObject) => true
             case (t1: TObjectRef, t2: TObjectRef) =>
-                val r1 = t1.realObj
-                val r2 = t2.realObj
+                val r1 = te.store.lookup(t1)
+                val r2 = te.store.lookup(t2)
 
                 val classesMatch = (r1, r2) match {
                     case (r1: TRealClassObject, r2: TRealClassObject) =>
@@ -30,35 +30,35 @@ object TypeFlow {
                         true
                 }
 
-                 val ptMatch = (t1.pollutedType, t2.pollutedType) match {
+                 val ptMatch = (r1.pollutedType, r2.pollutedType) match {
                     case (Some(pt1), Some(pt2)) =>
-                        leq(pt1, pt2)
+                        leq(te, pt1, pt2)
                     case (None, _) =>
                         true
                     case _ =>
                         false
                 }
 
-                classesMatch && ptMatch && r2.fields.forall(f => r1.fields.get(f._1) != None && leq(r1.fields(f._1), f._2))
+                classesMatch && ptMatch && r2.fields.forall(f => r1.fields.get(f._1) != None && leq(te, r1.fields(f._1), f._2))
 
             case (t1: ArrayType, t2: ArrayType) =>
                  val ptMatch = (t1.pollutedType, t2.pollutedType) match {
                     case (Some(pt1), Some(pt2)) =>
-                        leq(pt1, pt2)
+                        leq(te, pt1, pt2)
                     case (None, _) =>
                         true
                     case _ =>
                         false
                 }
 
-                ptMatch && t2.entries.forall(e => t1.entries.get(e._1) != None && leq(t1.entries(e._1), e._2))
+                ptMatch && t2.entries.forall(e => t1.entries.get(e._1) != None && leq(te, t1.entries(e._1), e._2))
 
             case (t1: TUnion, t2: TUnion) =>
-                t1.types forall { x => t2.types.exists { y => leq(x, y) } }
+                t1.types forall { x => t2.types.exists { y => leq(te, x, y) } }
             case (t1, t2: TUnion) =>
-                t2.types exists { x => leq(t1, x) }
+                t2.types exists { x => leq(te, t1, x) }
             case (t1: TUnion, t2) =>
-                t1.types forall { x => leq(x, t2) }
+                t1.types forall { x => leq(te, x, t2) }
             case _ => false
         }
 
@@ -99,7 +99,7 @@ object TypeFlow {
         def meet(x : Type, y : Type) = x
     }
 
-    object BaseTypeEnvironment extends TypeEnvironment(HashMap[CFGSimpleVariable, Type](), None) {
+    object BaseTypeEnvironment extends TypeEnvironment(HashMap[CFGSimpleVariable, Type](), None, new ObjectStore) {
         override def union(e: TypeEnvironment) = {
             e
         }
@@ -117,18 +117,18 @@ object TypeFlow {
         }
 
     }
-    class TypeEnvironment(val map: Map[CFGSimpleVariable, Type], val scope: Option[ClassSymbol]) extends Environment[TypeEnvironment] {
+    class TypeEnvironment(val map: Map[CFGSimpleVariable, Type], val scope: Option[ClassSymbol], val store: ObjectStore) extends Environment[TypeEnvironment] {
         def this(scope: Option[ClassSymbol]) = {
-            this(new HashMap[CFGSimpleVariable, Type], scope);
+            this(new HashMap[CFGSimpleVariable, Type], scope, new ObjectStore);
         }
         def this() = {
-            this(new HashMap[CFGSimpleVariable, Type], None);
+            this(new HashMap[CFGSimpleVariable, Type], None, new ObjectStore);
         }
 
         def lookup(v: CFGSimpleVariable): Option[Type] = map.get(v)
 
         def inject(v: CFGSimpleVariable, typ: Type): TypeEnvironment = {
-            new TypeEnvironment(map + ((v, typ)), scope)
+            new TypeEnvironment(map + ((v, typ)), scope, store)
         }
 
         def union(e: TypeEnvironment) = {
@@ -136,7 +136,7 @@ object TypeFlow {
                 case BaseTypeEnvironment =>
                     this
 
-                case _ =>
+                case te: TypeEnvironment =>
                     var newmap = new scala.collection.mutable.HashMap[CFGSimpleVariable, Type]();
                     for ((v,t) <- map) {
                         newmap(v) = t join TNull
@@ -148,7 +148,7 @@ object TypeFlow {
                             newmap(v) = t join TNull
                         }
                     }
-                    new TypeEnvironment(Map[CFGSimpleVariable, Type]()++newmap, scope)
+                    new TypeEnvironment(Map[CFGSimpleVariable, Type]()++newmap, scope, te.store union store)
             }
         }
 
@@ -220,8 +220,9 @@ object TypeFlow {
                 case cl @ CFGClone(obj) =>
                     expect(obj, TAnyObject) match {
                         case ref: TObjectRef =>
-                            ObjectStore.set(cl.uniqueID, ref.realObj merge ref.realObj)
-                            new TObjectRef(cl.uniqueID)
+                            val ro = env.store.lookup(ref)
+                            env.store.set(ObjectId(cl.uniqueID, 0), ro.duplicate)
+                            new TObjectRef(ObjectId(cl.uniqueID, 0))
                         case _ =>
                             TAnyObject
                     }
@@ -242,14 +243,15 @@ object TypeFlow {
                 case mcall @ CFGMethodCall(r, mid, args) =>
                     expect(r, TAnyObject) match {
                         case or: TObjectRef =>
-                            or.lookupMethod(mid.value, env.scope) match {
+                            val ro = env.store.lookup(or);
+                            ro.lookupMethod(mid.value, env.scope) match {
                                 case Some(mt) =>
                                     checkFCalls(args, List(mt), mcall)
                                 case None =>
                                     // Check for magic __call ?
-                                    val cms = or.lookupMethod("__call", env.scope)
+                                    val cms = ro.lookupMethod("__call", env.scope)
                                     if (cms == None) {
-                                        notice("Undefined method '" + mid.value + "' in object "+or, mid)
+                                        notice("Undefined method '" + mid.value + "' in object "+ro, mid)
                                         TNone
                                     } else {
                                         cms.get.ret
@@ -314,8 +316,11 @@ object TypeFlow {
                 case op @ CFGObjectProperty(obj, p) =>
                     expect(p, TString);
                     expect(obj, TAnyObject) match {
-                        case t: ObjectType =>
-                            t.lookupField(p) match {
+                        case TAnyObject =>
+                            TAny
+                        case or: TObjectRef =>
+                            val ro = env.store.lookup(or)
+                            ro.lookupField(p) match {
                                 case Some(t2) => t2
                                 case None =>
                                     notice("Potentially undefined object property "+stringRepr(p), op)
@@ -324,8 +329,11 @@ object TypeFlow {
                         case TNone => TNone
                         case u: TUnion =>
                             TUnion(u.types.map { _ match {
-                                case t: ObjectType =>
-                                    t.lookupField(p) match {
+                                case TAnyObject =>
+                                    TAny
+                                case or: TObjectRef =>
+                                    val ro = env.store.lookup(or)
+                                    ro.lookupField(p) match {
                                         case Some(t) => t
                                         case None =>
                                             notice("Potentially undefined object property "+stringRepr(p), op)
@@ -352,7 +360,7 @@ object TypeFlow {
             }
 
             def getObject(node: CFGStatement, ocs: Option[ClassSymbol]): ObjectType = {
-                ObjectStore.getOrCreate(node.uniqueID, ocs)
+                env.store.getOrCreate(ObjectId(node.uniqueID, 0), ocs)
             }
 
             def expect(v1: CFGSimpleValue, typs: Type*): Type = {
@@ -365,7 +373,7 @@ object TypeFlow {
                     }
                 }
                 */
-                if (TypeLattice.leq(vtyp, etyp)) {
+                if (TypeLattice.leq(env, vtyp, etyp)) {
                     vtyp
                 } else {
                     notice("Potential type mismatch: expected: "+typs.toList.map{x => x.toText}.mkString(" or ")+", found: "+vtyp.toText, v1)
@@ -461,12 +469,19 @@ object TypeFlow {
 
                             linearize(arr, ct, rt, pass+1)
                         case CFGObjectProperty(obj, index) =>
-                            val rt = ObjectStore.getOrCreate(sv.uniqueID, None).injectField(index, resultType);
+                            val rt = env.store.getOrCreate(ObjectId(sv.uniqueID, 0), None)
+                            env.store.lookup(rt).injectField(index, resultType);
                             // the check type is a different object, we create
                             // a tmp object with negative id, and shift it by
                             // the number of potentially used tmp objects used
                             // for params
-                            val ct = if (pass > 0) ObjectStore.getOrCreateTMPId(sv.uniqueID, None).injectField(index, checkType) else TAnyObject;
+                            val ct = if (pass > 0) {
+                                val c = env.store.getOrCreate(ObjectId(sv.uniqueID, 1), None);
+                                env.store.lookup(c).injectField(index, checkType)
+                                c
+                            } else {
+                                TAnyObject;
+                            }
 
                             linearize(obj, ct, rt, pass+1)
                         case CFGNextArrayEntry(arr) =>
@@ -490,11 +505,14 @@ object TypeFlow {
                             import scala.collection.mutable.HashMap
                             //println("Trying to assign-merge "+from+" and "+ to)
 
-                            val newFields = HashMap[String, Type]() ++ from.realObj.fields;
+                            val fromRO = env.store.lookup(from)
+                            val toRO   = env.store.lookup(to)
 
-                            val pt = to.realObj.pollutedType.getOrElse(TNone) join from.realObj.pollutedType.getOrElse(TNone)
+                            val newFields = HashMap[String, Type]() ++ fromRO.fields;
 
-                            for((index, typ)<- to.realObj.fields) {
+                            val pt = toRO.pollutedType.getOrElse(TNone) join fromRO.pollutedType.getOrElse(TNone)
+
+                            for((index, typ)<- toRO.fields) {
                                 newFields(index) = newFields.get(index) match {
                                     case Some(t) => pt join assignMerge(t, typ)
                                     case None => pt join typ
@@ -503,14 +521,14 @@ object TypeFlow {
 
                             val opt = if (pt == TNone) None else Some(pt)
 
-                            val o : RealObjectType = to.realObj match {
+                            val o : RealObjectType = toRO match {
                                 case o: TRealClassObject =>
                                     new TRealClassObject(o.cl, newFields, opt)
                                 case o: TRealObject =>
                                     new TRealObject(newFields, opt)
                             }
 
-                            ObjectStore.set(to.id, o)
+                            env.store.set(to.id, o)
 
                             to
                     }
@@ -584,7 +602,7 @@ object TypeFlow {
                             if (i >= tf.args.length) {
                                 ret = false
                             } else {
-                                if (!TypeLattice.leq(typeFromSimpleValue(fcall_params(i)), tf.args(i)._1)) {
+                                if (!TypeLattice.leq(env, typeFromSimpleValue(fcall_params(i)), tf.args(i)._1)) {
                                     //notice("Prototype mismatch because "+fcall.params(i)+"("+typeFromSimpleValue(fcall.params(i))+") </: "+args(i)._1) 
 
                                     ret = false;
@@ -774,7 +792,7 @@ object TypeFlow {
             // for methods, we inject $this as its always defined
             scope match {
                 case ms: MethodSymbol =>
-                    injectPredef("this", ObjectStore.getOrCreate(-1, Some(ms.cs)))
+                    injectPredef("this", baseEnv.store.getOrCreate(ObjectId(-1, 0), Some(ms.cs)))
                 case _ =>
             }
 

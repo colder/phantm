@@ -54,11 +54,35 @@ object Types {
 
     abstract class RealObjectType {
         self =>
+
+        import controlflow.CFGTrees._
+
         var fields: Map[String, Type]
         var pollutedType: Option[Type]
+
         def lookupField(index: String): Option[Type];
+
+        def lookupField(index: CFGSimpleValue): Option[Type] = index match {
+          case CFGNumLit(i)        => lookupField(i+"")
+          case CFGStringLit(index) => lookupField(index)
+          case _ => pollutedType
+        }
+
         def lookupMethod(index: String, from: Option[ClassSymbol]): Option[FunctionType];
+
+        def lookupMethod(index: CFGSimpleValue, from: Option[ClassSymbol]): Option[FunctionType] = index match {
+            case CFGNumLit(i)        => lookupMethod(i+"", from)
+            case CFGStringLit(index) => lookupMethod(index, from)
+            case _ => None
+        }
+
         def injectField(index: String, typ: Type) : self.type;
+
+        def injectField(index: CFGSimpleValue, typ: Type): this.type = index match {
+          case CFGNumLit(i)        => injectField(i+"", typ)
+          case CFGStringLit(index) => injectField(index, typ)
+          case _ => polluteFields(typ)
+        }
 
         def polluteFields(typ: Type): self.type;
         def merge(t2: RealObjectType): RealObjectType;
@@ -68,16 +92,21 @@ object Types {
     }
 
     // Objects related types
-    type ObjectId = Int
+    case class ObjectId(val pos: Int, val offset: Int)
 
     // Stores the ref => Real Objects relashionship
-    object ObjectStore {
+    class ObjectStore {
         private val store = new HashMap[ObjectId, RealObjectType]();
         private var tmpNum = 0;
+
+        def union(os: ObjectStore) : ObjectStore = this // TODO
+
         def clean = {
             store.clear
             tmpNum = 0;
         }
+
+        def lookup(id: TObjectRef): RealObjectType = lookup(id.id);
 
         def lookup(id: ObjectId): RealObjectType = store.get(id) match {
             case Some(o) => o
@@ -85,12 +114,6 @@ object Types {
         }
 
         def set(id: ObjectId, robj: RealObjectType) = store(id) = robj;
-
-        def getOrCreateTMPId(id: ObjectId, ocs: Option[ClassSymbol]) : TObjectRef = getOrCreate(-id-tmpNum, ocs)
-        def getOrCreateTMP(ocs: Option[ClassSymbol]) : TObjectRef = {
-            tmpNum = tmpNum + 1;
-            getOrCreate(-tmpNum, ocs)
-        }
 
         def getOrCreate(id: ObjectId, ocs: Option[ClassSymbol]) : TObjectRef = store.get(id) match {
             case Some(_) =>
@@ -112,78 +135,21 @@ object Types {
     }
 
     // Object types exposed to symbols
-    abstract class ObjectType extends Type {
-        self=>
-        import controlflow.CFGTrees._
-        def pollutedType: Option[Type];
+    abstract class ObjectType extends Type
 
-        def lookupField(index: String): Option[Type];
-        def lookupField(index: CFGSimpleValue): Option[Type] = index match {
-          case CFGNumLit(i)        => lookupField(i+"")
-          case CFGStringLit(index) => lookupField(index)
-          case _ => pollutedType
-        }
-
-        def injectField(index: String, typ: Type): self.type;
-        def injectField(index: CFGSimpleValue, typ: Type): self.type = index match {
-          case CFGNumLit(i)        => injectField(i+"", typ)
-          case CFGStringLit(index) => injectField(index, typ)
-          case _ => polluteFields(typ)
-        }
-
-        def lookupMethod(index: String, from: Option[ClassSymbol]): Option[FunctionType];
-        def lookupMethod(index: CFGSimpleValue, from: Option[ClassSymbol]): Option[FunctionType] = index match {
-          case CFGNumLit(i)        => lookupMethod(i+"", from)
-          case CFGStringLit(index) => lookupMethod(index, from)
-          case _ => Some(TFunctionAny)
-        }
-
-        def polluteFields(typ: Type): self.type;
-
-    }
     // Any object, should be only used to typecheck, no symbol should be infered to this type
     object TAnyObject extends ObjectType {
-        def lookupField(index: String) = pollutedType
-        def injectField(index: String, typ: Type) = this
-
-        def lookupMethod(index: String, from: Option[ClassSymbol]) = Some(TFunctionAny)
-
-        def pollutedType = Some(TAny)
-        def polluteFields(typ: Type) = this
-
         override def toString = "TAnyObject"
         override def toText   = "any object"
     }
     // Reference to an object in the store
     class TObjectRef(val id: ObjectId) extends ObjectType {
-        def realObj = ObjectStore.lookup(id)
-
-        def lookupField(index: String) = {
-            realObj.lookupField(index)
-        }
-
-        def injectField(index: String, typ: Type) = {
-            realObj.injectField(index, typ)
-            this
-        }
-
-        def lookupMethod(index: String, from: Option[ClassSymbol]) = {
-            realObj.lookupMethod(index, from)
-        }
-
-        def polluteFields(typ: Type) = {
-            realObj.polluteFields(typ)
-            this
-        }
-
-        def pollutedType = realObj.pollutedType
-
         override def toString = {
-            "(#"+id+"->"+realObj+")"
+            "TObjectRef#"+id+""
         }
 
         override def toText = {
-            realObj.toText
+            "Object #"+id+""
         }
 
         override def equals(v: Any) = v match {
@@ -206,7 +172,7 @@ object Types {
         def lookupMethod(index: String, from: Option[ClassSymbol]): Option[FunctionType] =
             None
 
-        def injectField(index: String, typ: Type) = {
+        def injectField(index: String, typ: Type): this.type = {
             fields(index) = typ;
             this
         }
@@ -240,6 +206,7 @@ object Types {
 
             this
         }
+
         def merge(a2: RealObjectType): RealObjectType = {
             // Pick superclass class, and subclass methods
             val newcl = (this, a2) match {
@@ -571,7 +538,8 @@ object Types {
         case THObject(StaticClassRef(_, _, id)) =>
             GlobalSymbols.lookupClass(id.value) match {
                 case Some(cs) =>
-                    ObjectStore.getOrCreateTMP(Some(cs))
+    //                ObjectStore.getOrCreateTMP(Some(cs))
+                    TAnyObject
                 case None =>
                     println("Woops, undefined class "+id.value)
                     TAnyObject
