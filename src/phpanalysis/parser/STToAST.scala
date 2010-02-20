@@ -849,11 +849,32 @@ case class STToAST(comp: Compiler, st: ParseNode) {
             case List("T_PRINT", "expr") =>
                 Print(expr(child(n, 1)))
             case List("T_FUNCTION", "is_reference", "T_OPEN_BRACES", "parameter_list", "T_CLOSE_BRACES", "lexical_vars", "T_OPEN_CURLY_BRACES", "inner_statement_list", "T_CLOSE_CURLY_BRACES") =>
-                notyet(n)
+                val pos = new Position().setPos(child(n, 2));
+                val com = comp.getPreviousComment(pos);
+
+                Closure(parameter_list(child(n, 3)), lexical_vars(child(n, 5)), is_reference(child(n, 1)), None, inner_statement_list(child(n, 7))).setPos(pos).attachComment(com)
             case List("base_variable_with_function_calls") =>
                 base_variable_with_function_calls(child(n))
             case _ => unspecified(n)
         }).setPos(pos).attachComment(com)
+    }
+
+    def lexical_vars(n: ParseNode): List[ArgumentDecl] = childrenNames(n) match {
+        case List() =>
+            List()
+        case List("T_USE", "T_OPEN_BRACES", "lexical_var_list", "T_CLOSE_BRACES") =>
+            lexical_var_list(child(n, 2))
+    }
+
+    def lexical_var_list(n: ParseNode): List[ArgumentDecl] = childrenNames(n) match {
+        case List("lexical_var_list", "T_COMMA", "T_VARIABLE") =>
+            lexical_var_list(child(n)) ::: List(ArgumentDecl(t_variable(child(n, 2)), None, None, false))
+        case List("lexical_var_list", "T_COMMA", "T_BITWISE_AND", "T_VARIABLE") =>
+            lexical_var_list(child(n)) ::: List(ArgumentDecl(t_variable(child(n, 3)), None, None, true))
+        case List("T_VARIABLE") =>
+            List(ArgumentDecl(t_variable(child(n, 0)), None, None, false))
+        case List("T_BITWISE_AND", "T_VARIABLE") =>
+            List(ArgumentDecl(t_variable(child(n, 1)), None, None, true))
     }
 
     def assignment_list(n: ParseNode): List[Option[Variable]] = {

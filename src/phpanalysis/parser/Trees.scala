@@ -174,7 +174,7 @@ object Trees {
     case class Execute(value: String) extends Expression
     case class Print(value: Expression) extends Expression
     case class Eval(value: Expression) extends Expression
-    case class Closure(args: List[ArgumentDecl], retref: Boolean, body: Statement) extends Expression
+    case class Closure(args: List[ArgumentDecl], imports: List[ArgumentDecl], retref: Boolean, hint: Option[TypeHint], body: Statement) extends Expression
     case class Isset(vs: List[Variable]) extends Expression
     case class Empty(v: Variable) extends Expression
     case class Include(path: Expression, once: Boolean) extends Expression
