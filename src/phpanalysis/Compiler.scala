@@ -22,13 +22,11 @@ class Compiler(filename: String) {
         var continue = true;
 
         while(continue) {
-            if (comments == Nil) {
+            if (comments == Nil || comments.head._1 < pos) {
                 continue = false
-            } else if (comments.head._1 < pos) {
+            } else {
                 comm = Some(comments.head._2)
                 comments = comments.tail
-            } else if (pos < comments.head._1) {
-                continue = false;
             }
         }
 

@@ -1,7 +1,9 @@
 package phpanalysis;
 import phpanalysis.parser.ParseNode;
 
-class Position extends Positional;
+class Position extends Positional {
+    override def toString = getPos
+}
 
 trait Positional {
     self =>

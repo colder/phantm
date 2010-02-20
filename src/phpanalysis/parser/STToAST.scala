@@ -341,7 +341,7 @@ case class STToAST(comp: Compiler, st: ParseNode) {
                 }
             case List("T_DECLARE", "T_OPEN_BRACES", "declare_list", "T_CLOSE_BRACES", "declare_statement") =>
                 Void() /* ignored */
-            case List("T_SEMICOLON") => 
+            case List("T_SEMICOLON") =>
                 Void()
             case List("T_TRY", "T_OPEN_CURLY_BRACES", "inner_statement_list", "T_CLOSE_CURLY_BRACES", "T_CATCH", "T_OPEN_BRACES", "fully_qualified_class_name", "T_VARIABLE", "T_CLOSE_BRACES", "T_OPEN_CURLY_BRACES", "inner_statement_list", "T_CLOSE_CURLY_BRACES", "additional_catches") =>
                 Try(inner_statement_list(child(n, 2)),

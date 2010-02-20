@@ -95,23 +95,23 @@ object Types {
     case class ObjectId(val pos: Int, val offset: Int)
 
     // Stores the ref => Real Objects relashionship
-    class ObjectStore(val store: collection.immutable.Map[ObjectId, RealObjectType]) {
+    case class ObjectStore(val store: collection.immutable.Map[ObjectId, RealObjectType]) {
 
         def this() = this(new collection.immutable.HashMap[ObjectId, RealObjectType]())
 
         def union(os: ObjectStore) : ObjectStore = {
-            val res = new ObjectStore;
+            var res = new ObjectStore()
 
             for (id <- this.store.keySet ++ os.store.keySet) {
                 val c1 = this.store.contains(id);
                 val c2 =   os.store.contains(id);
 
                 if (c1 && c2) {
-                    res.store(id) = this.store(id) merge os.store(id)
+                    res = res.set(id, this.store(id) merge os.store(id))
                 } else if (c1) {
-                    res.store(id) = this.store(id).duplicate
+                    res = res.set(id, this.store(id).duplicate)
                 } else {
-                    res.store(id) = os.store(id).duplicate
+                    res = res.set(id, os.store(id).duplicate)
                 }
             }
 
@@ -143,6 +143,10 @@ object Types {
                 }
 
                 set(id, rot);
+        }
+
+        override def toString = {
+            store.toList.sort{(x,y) => x._1.pos < x._1.pos}.map(x => "("+x._1.pos+","+x._1.offset+") => "+x._2).mkString("{ ", "; ", " }");
         }
     }
 
