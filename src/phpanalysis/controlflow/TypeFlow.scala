@@ -162,7 +162,13 @@ object TypeFlow {
         }
 
         override def toString = {
-            map.toList.filter(_._1.toString.toList.head != '_').sort{(x,y) => x._1.uniqueID < x._1.uniqueID}.map(x => x._1+" => "+x._2).mkString("[ ", "; ", " ]");
+            def typeToString(t: Type): String = t match {
+                case or: TObjectRef =>
+                    store.lookup(or).toString
+                case _ => t.toString
+            }
+            
+            map.toList.filter(_._1.toString.toList.head != '_').sort{(x,y) => x._1.uniqueID < x._1.uniqueID}.map(x => x._1+" => "+typeToString(x._2)).mkString("[ ", "; ", " ]");
         }
     }
 
