@@ -155,6 +155,8 @@ object ASTToCFG {
         Some(varFromVar(v))
       case PHPInteger(v) =>
         Some(CFGLong(v).setPos(ex))
+      case PHPFloat(v) =>
+        Some(CFGFloat(v).setPos(ex))
       case PHPString(v) =>
         Some(CFGString(v).setPos(ex))
       case PHPTrue() =>

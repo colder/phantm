@@ -442,7 +442,18 @@ case class STToAST(comp: Compiler, st: ParseNode) {
 
         (childrenNames(n) match {
             case List("T_LNUMBER") =>
-                PHPInteger(child(n).tokenContent.toLong)
+                // dispatch based on the type
+                val str = child(n).tokenContent;
+
+                val l = if (str.startsWith("0x")) {
+                    java.lang.Long.parseLong(str.substring(2), 16)
+                } else if (str.startsWith("0")) {
+                    java.lang.Long.parseLong(str.substring(1), 8)
+                } else {
+                    java.lang.Long.parseLong(str, 10)
+                }
+
+                PHPInteger(l)
             case List("T_DNUMBER") =>
                 PHPFloat(child(n).tokenContent.toFloat)
             case List("T_CONSTANT_ENCAPSED_STRING") =>
