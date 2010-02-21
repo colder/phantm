@@ -14,22 +14,30 @@ object Reporter {
         println("Error: "+ msg);
     }
     def error(msg: String, pos: Positional) = {
-        errorsCount += 1;
+        val error = ("Error: ", msg, pos, pos.getPos);
+
         if (errors.get(pos.file) == None) {
             errors(pos.file) = HashSet[(String, String, Positional, String)]()
         }
 
-        errors(pos.file) += (("Error: ", msg, pos, pos.getPos));
+        if (!errors(pos.file).contains(error)) {
+            errorsCount += 1;
+            errors(pos.file) += error;
+        }
     }
 
     def getNoticesCount = noticesCount
     def notice(msg: String, pos: Positional) = {
-        noticesCount += 1;
+        val notice = ("Notice: ", msg, pos, pos.getPos);
 
         if (errors.get(pos.file) == None) {
             errors(pos.file) = HashSet[(String, String, Positional, String)]()
         }
-        errors(pos.file) += (("Notice: ", msg, pos, pos.getPos));
+
+        if (!errors(pos.file).contains(notice)) {
+            noticesCount += 1;
+            errors(pos.file) += notice;
+        }
     }
 
     case class ErrorException(en: Int, nn: Int) extends RuntimeException;
