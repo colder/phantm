@@ -62,8 +62,9 @@ object CFGTrees {
   case class CFGObjectProperty(obj: CFGSimpleValue, index: CFGSimpleValue) extends CFGVariable
   case class CFGClassProperty(cl: ClassRef, index: CFGSimpleValue) extends CFGVariable
 
-  case class CFGNumLit(value: Int) extends CFGSimpleValue
-  case class CFGStringLit(value: String) extends CFGSimpleValue
+  case class CFGLong(value: Long) extends CFGSimpleValue
+  case class CFGFloat(value: Float) extends CFGSimpleValue
+  case class CFGString(value: String) extends CFGSimpleValue
   case class CFGTrue() extends CFGSimpleValue
   case class CFGAny() extends CFGSimpleValue
   case class CFGFalse() extends CFGSimpleValue
@@ -155,8 +156,9 @@ object CFGTrees {
       case CFGAssume(l, o, r) => "[" + l + o + r + "]"
       case CFGPrint(v) => "print("+v+")"
       case CFGUnset(v) => "unset("+v+")"
-      case CFGStringLit(value) => "\"" + value + "\""
-      case CFGNumLit(value) => value.toString
+      case CFGString(value) => "\"" + value + "\""
+      case CFGLong(value) => value.toString
+      case CFGFloat(value) => value.toString
       case CFGNew(tpe, params) => "new " + tpe + params.mkString("(", ", ", ")")
       case CFGClone(obj) => "clone " + obj
       case CFGTrue() => "true"

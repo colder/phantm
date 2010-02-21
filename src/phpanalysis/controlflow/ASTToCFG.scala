@@ -76,7 +76,7 @@ object ASTToCFG {
             Emit.statementCont(exprStore(retV, value), cfg.exit)
           case Exit(None) =>
             val retV = FreshVariable("exit").setPos(ex)
-            Emit.statementCont(CFGAssign(retV, CFGNumLit(0)).setPos(ex), cfg.exit)
+            Emit.statementCont(CFGAssign(retV, CFGLong(0)).setPos(ex), cfg.exit)
           case BooleanAnd(lhs, rhs) =>
             val soFarTrueV = cfg.newVertex
             condExpr(lhs, falseCont, soFarTrueV)
@@ -133,7 +133,7 @@ object ASTToCFG {
         case VariableVariable(ex) => CFGVariableVar(expr(ex)).setPos(v)
         case ArrayEntry(array, index) => CFGArrayEntry(expr(array), expr(index)).setPos(v)
         case NextArrayEntry(array) => CFGNextArrayEntry(expr(array)).setPos(v)
-        case ObjectProperty(obj, property) => CFGObjectProperty(expr(obj), CFGStringLit(property.value)).setPos(v)
+        case ObjectProperty(obj, property) => CFGObjectProperty(expr(obj), CFGString(property.value)).setPos(v)
         case DynamicObjectProperty(obj, property) => CFGObjectProperty(expr(obj), expr(property)).setPos(v)
         case ClassProperty(cl, property) => CFGClassProperty(cl, expr(property)).setPos(v)
     }
@@ -154,9 +154,9 @@ object ASTToCFG {
       case v: Variable =>
         Some(varFromVar(v))
       case PHPInteger(v) =>
-        Some(CFGNumLit(v).setPos(ex))
+        Some(CFGLong(v).setPos(ex))
       case PHPString(v) =>
-        Some(CFGStringLit(v).setPos(ex))
+        Some(CFGString(v).setPos(ex))
       case PHPTrue() =>
         Some(CFGTrue().setPos(ex))
       case PHPFalse() =>
@@ -217,7 +217,7 @@ object ASTToCFG {
                 case Silence(value) =>
                     Some(CFGAssign(v, expr(value)))
                 case Execute(value) =>
-                    Some(CFGAssign(v, CFGFunctionCall(internalFunction("shell_exec").setPos(ex), List(CFGStringLit(value).setPos(ex))).setPos(ex)))
+                    Some(CFGAssign(v, CFGFunctionCall(internalFunction("shell_exec").setPos(ex), List(CFGString(value).setPos(ex))).setPos(ex)))
                 case Print(value) =>
                     Some(CFGAssign(v, CFGFunctionCall(internalFunction("print").setPos(ex), List(expr(value))).setPos(ex)))
                 case Eval(value) =>
@@ -263,14 +263,14 @@ object ASTToCFG {
                             Emit.statementCont(exprStore(retV, value), cfg.exit)
                         case Exit(None) =>
                             val retV = FreshVariable("exit").setPos(ex)
-                            Emit.statementCont(CFGAssign(retV, CFGNumLit(0)).setPos(ex), cfg.exit)
+                            Emit.statementCont(CFGAssign(retV, CFGLong(0)).setPos(ex), cfg.exit)
                         case ExpandArray(vars, e) =>
                             v = FreshVariable("array").setPos(ex);
                             Emit.statement(CFGAssign(v, expr(e)).setPos(ex));
                             for((vv, i) <- vars.zipWithIndex) {
                                 vv match {
                                     case Some(vv) =>
-                                        Emit.statement(CFGAssign(varFromVar(vv), CFGArrayEntry(v, CFGNumLit(i).setPos(vv)).setPos(vv)).setPos(ex))
+                                        Emit.statement(CFGAssign(varFromVar(vv), CFGArrayEntry(v, CFGLong(i).setPos(vv)).setPos(vv)).setPos(ex))
                                     case None =>
                                 }
                             }
@@ -279,20 +279,20 @@ object ASTToCFG {
                             Emit.statement(exprStore(v, value));
                         case PreInc(vAST) =>
                             val vCFG = varFromVar(vAST)
-                            Emit.statement(CFGAssignBinary(vCFG, vCFG, PLUS, CFGNumLit(1)).setPos(ex))
+                            Emit.statement(CFGAssignBinary(vCFG, vCFG, PLUS, CFGLong(1)).setPos(ex))
                             v = vCFG;
                         case PreDec(vAST) =>
                             val vCFG = varFromVar(vAST)
-                            Emit.statement(CFGAssignBinary(vCFG, vCFG, MINUS, CFGNumLit(1)).setPos(ex))
+                            Emit.statement(CFGAssignBinary(vCFG, vCFG, MINUS, CFGLong(1)).setPos(ex))
                             v = vCFG;
                         case PostInc(vAST) =>
                             val vCFG = varFromVar(vAST)
-                            Emit.statement(CFGAssignBinary(v, vCFG, PLUS, CFGNumLit(1)).setPos(ex))
-                            Emit.statement(CFGAssignBinary(vCFG, vCFG, PLUS, CFGNumLit(1)).setPos(ex))
+                            Emit.statement(CFGAssignBinary(v, vCFG, PLUS, CFGLong(1)).setPos(ex))
+                            Emit.statement(CFGAssignBinary(vCFG, vCFG, PLUS, CFGLong(1)).setPos(ex))
                         case PostDec(vAST) =>
                             val vCFG = varFromVar(vAST)
-                            Emit.statement(CFGAssignBinary(v, vCFG, MINUS, CFGNumLit(1)).setPos(ex))
-                            Emit.statement(CFGAssignBinary(vCFG, vCFG, MINUS, CFGNumLit(1)).setPos(ex))
+                            Emit.statement(CFGAssignBinary(v, vCFG, MINUS, CFGLong(1)).setPos(ex))
+                            Emit.statement(CFGAssignBinary(vCFG, vCFG, MINUS, CFGLong(1)).setPos(ex))
                         case _: BooleanAnd | _: BooleanOr | _: Equal | _: Identical | _: Smaller  | _: SmallerEqual =>
                             val trueV = cfg.newVertex
                             val falseV = cfg.newVertex
@@ -314,7 +314,7 @@ object ASTToCFG {
                                 case (Some(x), va, byref) =>
                                     Emit.statement(CFGAssign(CFGArrayEntry(v, expr(x)), expr(va)).setPos(ex))
                                 case (None, va, byref) =>
-                                    Emit.statement(CFGAssign(CFGArrayEntry(v, CFGNumLit(i).setPos(v)).setPos(va), expr(va)).setPos(ex))
+                                    Emit.statement(CFGAssign(CFGArrayEntry(v, CFGLong(i).setPos(v)).setPos(va), expr(va)).setPos(ex))
                                     i += 1
                             }
                         case ClassConstant(cl, id) =>
@@ -503,7 +503,7 @@ object ASTToCFG {
             if (level > controlStack.length) {
                 Reporter.error("Continue level exceeding control structure deepness.", s);
             } else {
-                Emit.statementCont(CFGSkip.setPos(s), controlStack(level-1)._1)
+                Emit.statementCont(CFGSkip.setPos(s), controlStack((level-1).toInt)._1)
             }
         case Continue(_) =>
             Reporter.notice("Dynamic continue statement ignored", s);
@@ -511,7 +511,7 @@ object ASTToCFG {
             if (level > controlStack.length) {
                 Reporter.error("Break level exceeding control structure deepness.", s);
             } else {
-                Emit.statementCont(CFGSkip.setPos(s), controlStack(level-1)._2)
+                Emit.statementCont(CFGSkip.setPos(s), controlStack((level-1).toInt)._2)
             }
         case Break(_) =>
             Reporter.notice("Dynamic break statement ignored", s);
@@ -541,7 +541,7 @@ object ASTToCFG {
             Emit.setPC(lastValidNext)
             Emit.goto(cont)
         case Html(content) =>
-            Emit.statementCont(CFGPrint(CFGStringLit(content).setPos(s)).setPos(s), cont)
+            Emit.statementCont(CFGPrint(CFGString(content).setPos(s)).setPos(s), cont)
         case Void() =>
             Emit.goto(cont)
         case Unset(vars) =>

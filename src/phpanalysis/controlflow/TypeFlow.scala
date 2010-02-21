@@ -185,8 +185,9 @@ object TypeFlow {
             var store = env.store
 
             def typeFromSimpleValue(sv: CFGSimpleValue): Type = sv match {
-                case CFGNumLit(value) => TInt
-                case CFGStringLit(value) => TString
+                case CFGLong(value) => TInt
+                case CFGFloat(value) => TFloat
+                case CFGString(value) => TString
                 case CFGTrue() => TTrue
                 case CFGFalse() => TFalse
                 case CFGAny() => TAny

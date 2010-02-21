@@ -442,7 +442,7 @@ case class STToAST(comp: Compiler, st: ParseNode) {
 
         (childrenNames(n) match {
             case List("T_LNUMBER") =>
-                PHPInteger(child(n).tokenContent.toInt)
+                PHPInteger(child(n).tokenContent.toLong)
             case List("T_DNUMBER") =>
                 PHPFloat(child(n).tokenContent.toFloat)
             case List("T_CONSTANT_ENCAPSED_STRING") =>

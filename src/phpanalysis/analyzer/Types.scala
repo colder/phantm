@@ -63,24 +63,24 @@ object Types {
         def lookupField(index: String): Option[Type];
 
         def lookupField(index: CFGSimpleValue): Option[Type] = index match {
-          case CFGNumLit(i)        => lookupField(i+"")
-          case CFGStringLit(index) => lookupField(index)
+          case CFGLong(i)        => lookupField(i+"")
+          case CFGString(index) => lookupField(index)
           case _ => pollutedType
         }
 
         def lookupMethod(index: String, from: Option[ClassSymbol]): Option[FunctionType];
 
         def lookupMethod(index: CFGSimpleValue, from: Option[ClassSymbol]): Option[FunctionType] = index match {
-            case CFGNumLit(i)        => lookupMethod(i+"", from)
-            case CFGStringLit(index) => lookupMethod(index, from)
+            case CFGLong(i)        => lookupMethod(i+"", from)
+            case CFGString(index) => lookupMethod(index, from)
             case _ => None
         }
 
         def injectField(index: String, typ: Type) : self.type;
 
         def injectField(index: CFGSimpleValue, typ: Type): this.type = index match {
-          case CFGNumLit(i)        => injectField(i+"", typ)
-          case CFGStringLit(index) => injectField(index, typ)
+          case CFGLong(i)        => injectField(i+"", typ)
+          case CFGString(index) => injectField(index, typ)
           case _ => polluteFields(typ)
         }
 
@@ -322,8 +322,8 @@ object Types {
         }
 
         def lookup(index: CFGSimpleValue): Option[Type] = index match {
-          case CFGNumLit(i)        => lookup(i+"")
-          case CFGStringLit(index) => lookup(index)
+          case CFGLong(i)       => lookup(i+"")
+          case CFGString(index) => lookup(index)
           case _ => pollutedType
         }
 
@@ -334,8 +334,8 @@ object Types {
         }
 
         def inject(index: CFGSimpleValue, typ: Type): self.type = index match {
-          case CFGNumLit(i)        => inject(i+"", typ)
-          case CFGStringLit(index) => inject(index, typ)
+          case CFGLong(i)       => inject(i+"", typ)
+          case CFGString(index) => inject(index, typ)
           case _ => pollute(typ)
         }
 

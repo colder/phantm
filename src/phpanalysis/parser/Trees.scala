@@ -190,7 +190,7 @@ object Trees {
     abstract class Scalar extends Expression
     case class PHPTrue() extends Scalar
     case class PHPFalse() extends Scalar
-    case class PHPInteger(value: Int) extends Scalar
+    case class PHPInteger(value: Long) extends Scalar
     case class PHPFloat(value: Float) extends Scalar
     case class PHPString(value: String) extends Scalar
     case class PHPNull() extends Scalar
