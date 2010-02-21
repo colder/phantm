@@ -390,7 +390,15 @@ object TypeFlow {
                 if (TypeLattice.leq(env, vtyp, etyp)) {
                     vtyp
                 } else {
-                    notice("Potential type mismatch: expected: "+typs.toList.map{x => x.toText}.mkString(" or ")+", found: "+vtyp.toText, v1)
+                    def typeAsString(t: Type): String = t match {
+                        case tu: TUnion =>
+                            tu.types.map(typeAsString).mkString(" or ")
+                        case or: TObjectRef =>
+                            store.lookup(or).toText
+                        case t =>
+                            t.toText
+                    }
+                    notice("Potential type mismatch: expected: "+typs.toList.map{x => typeAsString(x)}.mkString(" or ")+", found: "+typeAsString(vtyp), v1)
                     typs.toList.head
                 }
             }
