@@ -497,20 +497,20 @@ NEWLINE = ("\r"|"\n"|"\r\n")
     return symbol(Symbols.T_SEMICOLON, "T_SEMICOLON");
 }
 
-<ST_IN_SCRIPTING>([\"]([^$\"\\]|("\\".))*[\"]) {
+<ST_IN_SCRIPTING>b?([\"]([^$\"\\]|("\\".))*[\"]) {
     return symbol(Symbols.T_CONSTANT_ENCAPSED_STRING, "T_CONSTANT_ENCAPSED_STRING", text().substring(1, text().length()-1));
 }
 
-<ST_IN_SCRIPTING>([']([^'\\]|("\\".))*[']) {
+<ST_IN_SCRIPTING>b?([']([^'\\]|("\\".))*[']) {
     return symbol(Symbols.T_CONSTANT_ENCAPSED_STRING, "T_CONSTANT_ENCAPSED_STRING", text().substring(1, text().length()-1));
 }
 
-<ST_IN_SCRIPTING>[\"] {
+<ST_IN_SCRIPTING>b?[\"] {
     yybegin(ST_DOUBLE_QUOTES);
     return symbol(Symbols.T_DOUBLE_QUOTE, "T_DOUBLE_QUOTE");
 }
 
-<ST_IN_SCRIPTING>"<<<"{TABS_AND_SPACES}{LABEL}{NEWLINE} {
+<ST_IN_SCRIPTING>b?"<<<"{TABS_AND_SPACES}{LABEL}{NEWLINE} {
     // start of heredoc
 
     // determine heredoc label and save it for later use
@@ -526,7 +526,7 @@ NEWLINE = ("\r"|"\n"|"\r\n")
 }
 
 
-<ST_IN_SCRIPTING>['] {
+<ST_IN_SCRIPTING>b?['] {
 	yybegin(ST_SINGLE_QUOTE);
 }
 
