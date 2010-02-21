@@ -11,6 +11,7 @@ object Main {
     var files: List[String] = Nil;
     var displaySymbols     = false;
     var verbosity          = 1;
+    var resolveIncludes    = true;
     var displayDebug       = false;
     var displayProgress    = false;
     var onlyLint           = false;
@@ -35,6 +36,9 @@ object Main {
     def handleArgs(args: List[String]): Unit = args match {
         case "--symbols" :: xs =>
             displaySymbols = true
+            handleArgs(xs)
+        case "--noincludes" :: xs =>
+            resolveIncludes = false
             handleArgs(xs)
         case "--debug" :: xs =>
             displayDebug = true
@@ -77,9 +81,13 @@ object Main {
                 Reporter.errorMilestone
 
                 if (!onlyLint) {
-                    if (displayProgress) println("3/8 Resolving and expanding...")
-                    // Run AST transformers
-                    ast = IncludeResolver(ast).transform
+                    if (resolveIncludes) {
+                        if (displayProgress) println("3/8 Resolving and expanding...")
+                        // Run AST transformers
+                        ast = IncludeResolver(ast).transform
+                    } else {
+                        if (displayProgress) println("3/8 Resolving and expanding (skipped)")
+                    }
                     if (displayProgress) println("4/8 Structural checks...")
                     // Traverse the ast to look for ovious mistakes.
                     new ASTChecks(ast) execute;

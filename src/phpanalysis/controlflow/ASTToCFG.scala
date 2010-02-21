@@ -330,6 +330,12 @@ object ASTToCFG {
                             stmts(sts, endblock)
                             Emit.setPC(endblock)
                             Emit.statement(CFGAssign(v, CFGTrue()).setPos(ex))
+                        case i: Include =>
+                            // ignore
+                            retval = Some(CFGFalse().setPos(i))
+                        case r: Require =>
+                            // ignore
+                            retval = Some(CFGFalse().setPos(r))
 
                         case _ => error("expr() not handling correctly: "+ ex)
                     }
