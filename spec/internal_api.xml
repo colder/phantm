@@ -1,9 +1,24 @@
 <!-- PHP Internal functions classes API -->
 <api>
  <!-- Classes definitions -->
- <!--
  <classes>
-  <class name="test">
+  <class name="stdClass">
+   <!--<position file="plop.c" line="12" col="9" />-->
+
+   <fields>
+   </fields>
+
+   <staticfields>
+   </staticfields>
+
+   <constants>
+   </constants>
+
+   <methods>
+   </methods>
+  </class>
+
+  <!--<class name="test">
    <position file="plop.c" line="12" col="9" />
 
    <fields>
@@ -26,7 +41,7 @@
      </args>
     </method>
    </methods>
-  </class>
+  </class>-->
 
  </classes>
  -->
