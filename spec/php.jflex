@@ -542,6 +542,8 @@ NEWLINE = ("\r"|"\n"|"\r\n")
     // determine heredoc label and save it for later use
     this.heredocLabel = text().substring(3).trim();
 
+    System.err.println("Starting HEREDOC!");
+
     yybegin(ST_HEREDOC);
     return symbol(Symbols.T_START_HEREDOC, "T_START_HEREDOC");
 }
@@ -554,38 +556,63 @@ NEWLINE = ("\r"|"\n"|"\r\n")
 
 <ST_IN_SCRIPTING>b?['] {
 	yybegin(ST_SINGLE_QUOTE);
+    return symbol(Symbols.T_DOUBLE_QUOTE, "T_DOUBLE_QUOTE");
 }
 
-<ST_HEREDOC>^{LABEL}(";")?{NEWLINE} {
-    // possible end of heredoc (depending on label)
+<ST_HEREDOC>{ANY_CHAR} {
+    int newline = 0;
 
-    // determine supposed end label (and if there is a semicolon or not)
-    String supposedLabel = text().trim();
-    boolean semicolon = false;
-    if (supposedLabel.charAt(supposedLabel.length() - 1) == ';') {
-        semicolon = true;
-        supposedLabel = supposedLabel.substring(0, supposedLabel.length() - 1);
+    if (zzMarkedPos > zzEndRead) {
+        return null;
     }
 
-    if (supposedLabel.equals(this.heredocLabel)) {
-        // the end label matches the start label
+    zzMarkedPos--;
 
-        if (semicolon) {
-            yypushback(length() - supposedLabel.length());
+    scanner:
+    while(zzMarkedPos < zzEndRead) {
+        switch(zzBuffer[zzMarkedPos++]) {
+            case '\r':
+                if (zzBuffer[zzMarkedPos] == '\n') {
+                    zzMarkedPos++;
+                }
+                /* fall through */
+            case '\n':
+                /* Check for ending label on the next line */
+                String label = "";
+                while(zzMarkedPos < zzEndRead && isLabelStart(zzBuffer[zzMarkedPos])) {
+                    label = label + zzBuffer[zzMarkedPos];
+                    zzMarkedPos++;
+                }
+
+                if (label.equals(this.heredocLabel)) {
+                    yybegin(ST_IN_SCRIPTING);
+                    return symbol(Symbols.T_END_HEREDOC, "T_END_HEREDOC");
+                }
+
+                continue;
+            case '$':
+                if (isLabelStart(zzBuffer[zzMarkedPos]) || zzBuffer[zzMarkedPos] == '{') {
+                    break;
+                }
+                continue;
+            case '{':
+                if (zzBuffer[zzMarkedPos] == '$') {
+                    break;
+                }
+                continue;
+            case '\\':
+                if (zzMarkedPos < zzEndRead && zzBuffer[zzMarkedPos] != '\n' && zzBuffer[zzMarkedPos] != '\r') {
+                    zzMarkedPos++;
+                }
+                /* fall through */
+            default:
+                continue;
         }
-       
-		yybegin(ST_IN_SCRIPTING);
-        return symbol(Symbols.T_END_HEREDOC, "T_END_HEREDOC");
 
-    } else {
-        // the end label doesn't match the start label
-        return symbol(Symbols.T_ENCAPSED_AND_WHITESPACE, "T_ENCAPSED_AND_WHITESPACE");
+        zzMarkedPos--;
+        break;
     }
-
-}
-
-<ST_HEREDOC>^{ANY_CHAR}+{NEWLINE} {
-        return symbol(Symbols.T_ENCAPSED_AND_WHITESPACE, "T_ENCAPSED_AND_WHITESPACE");
+    return symbol(Symbols.T_ENCAPSED_AND_WHITESPACE, "T_ENCAPSED_AND_WHITESPACE");
 }
 
 <ST_SINGLE_QUOTE>([^'\\]|\\[^'\\])+ {
@@ -655,6 +682,7 @@ NEWLINE = ("\r"|"\n"|"\r\n")
     return symbol(Symbols.T_DOUBLE_QUOTE, "T_DOUBLE_QUOTE");
 }
 
+/*
 <ST_BACKQUOTE,YYINITIAL,ST_IN_SCRIPTING,ST_LOOKING_FOR_PROPERTY><<EOF>> {
     return null;
 }
@@ -663,6 +691,7 @@ NEWLINE = ("\r"|"\n"|"\r\n")
     cleanMore();
     return null;
 }
+*/
 
 <ST_IN_SCRIPTING,ST_DOUBLE_QUOTES,ST_SINGLE_QUOTE,ST_BACKQUOTE,ST_HEREDOC,ST_LOOKING_FOR_PROPERTY,ST_LOOKING_FOR_VARNAME,ST_VAR_OFFSET,ST_COMMENT,ST_ONE_LINE_COMMENT> {ANY_CHAR} {
     System.err.println("read ANY_CHAR at wrong place (state="+yystate()+"):");
