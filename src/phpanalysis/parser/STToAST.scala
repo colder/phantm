@@ -1213,6 +1213,8 @@ case class STToAST(comp: Compiler, st: ParseNode) {
                 encaps_list(child(n, 1))
             case List("T_DOUBLE_QUOTE", "T_ENCAPSED_AND_WHITESPACE", "T_DOUBLE_QUOTE") => 
                 PHPString(child(n, 1).tokenContent).setPos(child(n, 0))
+            case List("T_START_HEREDOC", "T_ENCAPSED_AND_WHITESPACE", "T_END_HEREDOC") =>
+                PHPString(child(n, 1).tokenContent).setPos(child(n, 0))
         }
     }
 

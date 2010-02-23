@@ -366,6 +366,11 @@ object TypeFlow {
                             TAny
                     }
 
+                case vv @ CFGVariableVar(v) =>
+                    expect(v, TString);
+                    notice("Dynamic variable ignored", vv)
+                    TAny
+
                 case u =>
                   println("Unknown simple value: "+u)
                   TAny

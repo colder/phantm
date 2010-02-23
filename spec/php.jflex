@@ -144,6 +144,7 @@ import java_cup.runtime.*;
 %x ST_HEREDOC
 %x ST_LOOKING_FOR_PROPERTY
 %x ST_LOOKING_FOR_VARNAME
+%x ST_VAR_OFFSET
 %x ST_COMMENT
 %x ST_ONE_LINE_COMMENT
 
@@ -154,6 +155,8 @@ HNUM = "0x"[0-9a-fA-F]+
 // a few special characters are not matched by LABEL in jflex although they
 // are matched by flex (e.g. in very few language files of PHPNuke 7.5); encoding problem?
 LABEL = [a-zA-Z_\x7f-\xbb\xbc-\xde\xdf-\xff][a-zA-Z0-9_\x7f-\xbb\xbc-\xde\xdf-\xff]*
+LABEL_FIRST = [a-zA-Z_\x7f-\xbb\xbc-\xde\xdf-\xff]
+
 WHITESPACE = [ \n\r\t]+
 TABS_AND_SPACES = [ \t]*
 // we don't need TOKENS and ENCAPSED_TOKENS any longer since we had to split up the
@@ -345,7 +348,32 @@ NEWLINE = ("\r"|"\n"|"\r\n")
     return symbol(Symbols.T_ENCAPSED_AND_WHITESPACE, "T_ENCAPSED_AND_WHITESPACE");
 }
 
-<ST_IN_SCRIPTING,ST_DOUBLE_QUOTES,ST_BACKQUOTE,ST_HEREDOC>"->" {
+<ST_DOUBLE_QUOTES,ST_BACKQUOTE,ST_HEREDOC> "$" {LABEL} "->" {LABEL_FIRST} {
+    yypushback(3);
+    pushState(ST_LOOKING_FOR_PROPERTY);
+    return symbol(Symbols.T_VARIABLE, "T_VARIABLE");
+}
+
+<ST_DOUBLE_QUOTES,ST_BACKQUOTE,ST_HEREDOC> "$" {LABEL} "["  {
+    yypushback(1);
+    pushState(ST_VAR_OFFSET);
+    return symbol(Symbols.T_VARIABLE, "T_VARIABLE");
+}
+
+<ST_IN_SCRIPTING,ST_DOUBLE_QUOTES,ST_HEREDOC,ST_BACKQUOTE,ST_VAR_OFFSET> "$" {LABEL} {
+    return symbol(Symbols.T_VARIABLE, "T_VARIABLE");
+}
+
+<ST_VAR_OFFSET>"[" {
+    return symbol(Symbols.T_OPEN_RECT_BRACES, "T_OPEN_RECT_BRACES");
+}
+
+<ST_VAR_OFFSET>"]" {
+    popState();
+    return symbol(Symbols.T_CLOSE_RECT_BRACES, "T_CLOSE_RECT_BRACES");
+}
+
+<ST_IN_SCRIPTING>"->" {
 	pushState(ST_LOOKING_FOR_PROPERTY);
     return symbol(Symbols.T_OBJECT_OPERATOR, "T_OBJECT_OPERATOR");
 }
@@ -393,7 +421,7 @@ NEWLINE = ("\r"|"\n"|"\r\n")
 	pushState(ST_IN_SCRIPTING);
 }
 
-<ST_DOUBLE_QUOTES,ST_BACKQUOTE,ST_HEREDOC>{LNUM}|{HNUM} {
+<ST_VAR_OFFSET>{LNUM}|{HNUM} {
     return symbol(Symbols.T_NUM_STRING, "T_NUM_STRING");
 }
 
@@ -424,12 +452,8 @@ NEWLINE = ("\r"|"\n"|"\r\n")
 //    return symbol(Symbols.T_OPEN_TAG, "T_OPEN_TAG");
 }
 
-<ST_IN_SCRIPTING,ST_DOUBLE_QUOTES,ST_HEREDOC,ST_BACKQUOTE>"$"{LABEL} {
-    return symbol(Symbols.T_VARIABLE, "T_VARIABLE");
-}
 
-
-<ST_IN_SCRIPTING>{LABEL} {
+<ST_IN_SCRIPTING,ST_VAR_OFFSET>{LABEL} {
     return symbol(Symbols.T_STRING, "T_STRING");
 }
 
@@ -553,9 +577,13 @@ NEWLINE = ("\r"|"\n"|"\r\n")
 
     } else {
         // the end label doesn't match the start label
-        return symbol(Symbols.T_STRING, "T_STRING");
+        return symbol(Symbols.T_ENCAPSED_AND_WHITESPACE, "T_ENCAPSED_AND_WHITESPACE");
     }
 
+}
+
+<ST_HEREDOC>^{ANY_CHAR}+{NEWLINE} {
+        return symbol(Symbols.T_ENCAPSED_AND_WHITESPACE, "T_ENCAPSED_AND_WHITESPACE");
 }
 
 <ST_SINGLE_QUOTE>([^'\\]|\\[^'\\])+ {
@@ -563,16 +591,16 @@ NEWLINE = ("\r"|"\n"|"\r\n")
 }
 
 
-<ST_DOUBLE_QUOTES>[`]+ {
-    return symbol(Symbols.T_ENCAPSED_AND_WHITESPACE, "T_ENCAPSED_AND_WHITESPACE");
-}
+//<ST_DOUBLE_QUOTES>[`]+ {
+//    return symbol(Symbols.T_ENCAPSED_AND_WHITESPACE, "T_ENCAPSED_AND_WHITESPACE");
+//}
 
 
 <ST_BACKQUOTE>[\"]+ {
     return symbol(Symbols.T_ENCAPSED_AND_WHITESPACE, "T_ENCAPSED_AND_WHITESPACE");
 }
 
-<ST_DOUBLE_QUOTES,ST_BACKQUOTE,ST_HEREDOC>"$"[^a-zA-Z_\x7f-\xbb\xbc-\xde\xdf-\xff{] {
+<ST_BACKQUOTE,ST_HEREDOC>"$"[^a-zA-Z_\x7f-\xbb\xbc-\xde\xdf-\xff{] {
 	if (length() == 2) {
 		yypushback(1);
 	}
@@ -580,7 +608,7 @@ NEWLINE = ("\r"|"\n"|"\r\n")
 }
 
 // NJ: split up rule for {ENCAPSED_TOKENS} since CUP doesn't support character tokens
-<ST_DOUBLE_QUOTES,ST_BACKQUOTE,ST_HEREDOC> {
+<ST_BACKQUOTE,ST_HEREDOC> {
 
     "[" { return symbol(Symbols.T_OPEN_RECT_BRACES, "T_OPEN_RECT_BRACES"); }
     "]" { return symbol(Symbols.T_CLOSE_RECT_BRACES, "T_CLOSE_RECT_BRACES"); }
@@ -602,11 +630,11 @@ NEWLINE = ("\r"|"\n"|"\r\n")
     return symbol(Symbols.T_STRING, "T_STRING");
 }
 
-<ST_DOUBLE_QUOTES,ST_BACKQUOTE,ST_HEREDOC>"\\"[0-7]{1,3} {
+<ST_BACKQUOTE,ST_HEREDOC>"\\"[0-7]{1,3} {
     return symbol(Symbols.T_STRING, "T_STRING");
 }
 
-<ST_DOUBLE_QUOTES,ST_BACKQUOTE,ST_HEREDOC>"\\x"[0-9A-Fa-f]{1,2} {
+<ST_BACKQUOTE,ST_HEREDOC>"\\x"[0-9A-Fa-f]{1,2} {
     return symbol(Symbols.T_STRING, "T_STRING");
 }
 
@@ -625,21 +653,18 @@ NEWLINE = ("\r"|"\n"|"\r\n")
     return symbol(Symbols.T_DOUBLE_QUOTE, "T_DOUBLE_QUOTE");
 }
 
-<ST_DOUBLE_QUOTES,ST_BACKQUOTE,YYINITIAL,ST_IN_SCRIPTING,ST_LOOKING_FOR_PROPERTY><<EOF>> {
+<ST_BACKQUOTE,YYINITIAL,ST_IN_SCRIPTING,ST_LOOKING_FOR_PROPERTY><<EOF>> {
     return null;
 }
 
 <ST_COMMENT><<EOF>> {
     cleanMore();
-    System.err.println("EOF inside comment!");
     return null;
 }
 
-<ST_IN_SCRIPTING,YYINITIAL,ST_DOUBLE_QUOTES,ST_BACKQUOTE,ST_SINGLE_QUOTE,ST_HEREDOC>{ANY_CHAR} {
+<ST_IN_SCRIPTING,ST_DOUBLE_QUOTES,ST_SINGLE_QUOTE,ST_BACKQUOTE,ST_HEREDOC,ST_LOOKING_FOR_PROPERTY,ST_LOOKING_FOR_VARNAME,ST_VAR_OFFSET,ST_COMMENT,ST_ONE_LINE_COMMENT> {ANY_CHAR} {
     System.err.println("read ANY_CHAR at wrong place (state="+yystate()+"):");
     System.err.println("line " + yyline + ", column " + yycolumn);
     System.err.println("character: " + text());
     return null;
 }
-
-

@@ -84,10 +84,6 @@ Translation of Bison character tokens to named tokens
 !   T_NOT
 ~   T_BITWISE_NOT
 @   T_AT
-[   T_OPEN_RECT_BRACES
-
-additional (not declared in Bison, implicit from Grammar):
-
 {   T_OPEN_CURLY_BRACES
 }   T_CLOSE_CURLY_BRACES
 (   T_OPEN_BRACES
@@ -97,9 +93,9 @@ $   T_DOLLAR
 `   T_BACKTICK
 "   T_DOUBLE_QUOTE
 '   T_SINGLE_QUOTE
+[   T_OPEN_RECT_BRACES
 ]   T_CLOSE_RECT_BRACES
 
-add a terminal for epsilon (needed for parse tree construction)
 */
 
 terminal ParseNode T_ABSTRACT;
@@ -874,6 +870,7 @@ scalar ::=
     | T_DOUBLE_QUOTE encaps_list T_DOUBLE_QUOTE
     | T_DOUBLE_QUOTE T_ENCAPSED_AND_WHITESPACE T_DOUBLE_QUOTE
     | T_START_HEREDOC encaps_list T_END_HEREDOC
+    | T_START_HEREDOC T_ENCAPSED_AND_WHITESPACE T_END_HEREDOC
 ;
 
 static_array_pair_list ::=
@@ -1085,7 +1082,7 @@ encaps_list ::=
 
 encaps_var ::=
       T_VARIABLE
-    | T_VARIABLE T_OPEN_RECT_BRACES  encaps_var_offset T_CLOSE_RECT_BRACES
+    | T_VARIABLE T_OPEN_RECT_BRACES encaps_var_offset T_CLOSE_RECT_BRACES
     | T_VARIABLE T_OBJECT_OPERATOR T_STRING
     | T_DOLLAR_OPEN_CURLY_BRACES expr T_CLOSE_CURLY_BRACES
     | T_DOLLAR_OPEN_CURLY_BRACES T_STRING_VARNAME T_OPEN_RECT_BRACES expr T_CLOSE_RECT_BRACES T_CLOSE_CURLY_BRACES
