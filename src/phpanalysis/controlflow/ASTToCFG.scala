@@ -338,6 +338,12 @@ object ASTToCFG {
                         case r: Require =>
                             // ignore
                             retval = Some(CFGFalse().setPos(r))
+                        case Exit(Some(value)) =>
+                            val retV = FreshVariable("exit").setPos(ex)
+                            Emit.statementCont(exprStore(retV, value), cfg.exit)
+                        case Exit(None) =>
+                            val retV = FreshVariable("exit").setPos(ex)
+                            Emit.statementCont(CFGAssign(retV, CFGLong(0)).setPos(ex), cfg.exit)
 
                         case _ => error("expr() not handling correctly: "+ ex +"("+ex.getPos+")")
                     }
