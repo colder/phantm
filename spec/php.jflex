@@ -290,10 +290,12 @@ NEWLINE = ("\r"|"\n"|"\r\n")
     ">" { return symbol(Symbols.T_IS_GREATER, "T_IS_GREATER"); }
     "?" { return symbol(Symbols.T_QUESTION, "T_QUESTION"); }
     "@" { return symbol(Symbols.T_AT, "T_AT"); }
+    "\\" { return symbol(Symbols.T_NS_SEPARATOR, "T_NS_SEPARATOR"); }
 
     "__METHOD__" { return symbol(Symbols.T_METHOD_C, "T_METHOD_C"); }
     "__CLASS__" { return symbol(Symbols.T_CLASS_C, "T_CLASS_C"); }
     "__FUNCTION__" { return symbol(Symbols.T_FUNC_C, "T_FUNC_C"); }
+    "__NAMESPACE__" { return symbol(Symbols.T_FUNC_C, "T_NS_C"); }
     "__LINE__" { return symbol(Symbols.T_LINE, "T_LINE"); }
     "__FILE__" { return symbol(Symbols.T_FILE, "T_FILE"); }
     {LNUM}|{HNUM} { return symbol(Symbols.T_LNUMBER, "T_LNUMBER"); }
