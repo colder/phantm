@@ -339,11 +339,11 @@ object ASTToCFG {
                             // ignore
                             retval = Some(CFGFalse().setPos(r))
                         case Exit(Some(value)) =>
-                            val retV = FreshVariable("exit").setPos(ex)
-                            Emit.statementCont(exprStore(retV, value), cfg.exit)
+                            v = FreshVariable("exit").setPos(ex);
+                            Emit.statementCont(exprStore(v, value), cfg.exit)
+                            Emit.setPC(cfg.newVertex)
                         case Exit(None) =>
-                            val retV = FreshVariable("exit").setPos(ex)
-                            Emit.statementCont(CFGAssign(retV, CFGLong(0)).setPos(ex), cfg.exit)
+                            Emit.statementCont(CFGAssign(v, CFGLong(0)).setPos(ex), cfg.exit)
 
                         case _ => error("expr() not handling correctly: "+ ex +"("+ex.getPos+")")
                     }
