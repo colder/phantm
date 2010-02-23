@@ -153,6 +153,10 @@ object ASTToCFG {
     def alreadySimple(ex: Expression): Option[CFGSimpleValue] = ex match {
       case v: Variable =>
         Some(varFromVar(v))
+      case Constant(c) =>
+        Some(CFGConstant(c).setPos(ex))
+      case ClassConstant(c, i) =>
+        Some(CFGClassConstant(c, i).setPos(ex))
       case PHPInteger(v) =>
         Some(CFGLong(v).setPos(ex))
       case PHPFloat(v) =>
@@ -260,12 +264,6 @@ object ASTToCFG {
                 exprStoreGet(v, ex) match {
                     case Some(stmt) => stmt.setPos(ex); Emit.statement(stmt)
                     case _ => ex match {
-                        case Exit(Some(value)) =>
-                            val retV = FreshVariable("exit").setPos(ex)
-                            Emit.statementCont(exprStore(retV, value), cfg.exit)
-                        case Exit(None) =>
-                            val retV = FreshVariable("exit").setPos(ex)
-                            Emit.statementCont(CFGAssign(retV, CFGLong(0)).setPos(ex), cfg.exit)
                         case ExpandArray(vars, e) =>
                             v = FreshVariable("array").setPos(ex);
                             Emit.statement(CFGAssign(v, expr(e)).setPos(ex));
@@ -604,6 +602,12 @@ object ASTToCFG {
         case _: FunctionDecl | _: ClassDecl | _: InterfaceDecl => 
             /* ignore */
             Emit.goto(cont);
+        case ex @ Exit(Some(value)) =>
+            val retV = FreshVariable("exit").setPos(ex)
+            Emit.statementCont(exprStore(retV, value), cfg.exit)
+        case ex @ Exit(None) =>
+            val retV = FreshVariable("exit").setPos(ex)
+            Emit.statementCont(CFGAssign(retV, CFGLong(0)).setPos(ex), cfg.exit)
         case e: Expression =>
             Emit.statementCont(expr(e), cont);
       }
