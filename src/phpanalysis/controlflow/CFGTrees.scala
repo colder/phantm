@@ -78,6 +78,7 @@ object CFGTrees {
   case class CFGArrayCurKey(ar: CFGSimpleValue) extends CFGSimpleValue
   case class CFGArrayCurIsValid(ar: CFGSimpleValue) extends CFGSimpleValue
 
+  case class CFGConstant(name: Identifier) extends CFGSimpleValue
   case class CFGClassConstant(cl: ClassRef, name: Identifier) extends CFGSimpleValue
 
   case class CFGTernary(cond: CFGSimpleValue,
@@ -148,6 +149,7 @@ object CFGTrees {
       case CFGStaticMethodCall(r, mid, p) => r + "::" + mid.value + p.mkString("(", ", ", ")")
       case CFGMethodCall(r, mid, p) => r + "->" + mid.value + p.mkString("(", ", ", ")")
       case CFGFunctionCall(fid, p) => fid.value + p.mkString("(", ", ", ")")
+      case CFGConstant(cid) => cid.value
       case CFGClassConstant(cl, cid) => cl + "::" + cid.value
       case CFGTernary(i, then, elze) => i + " ? " + then + " : " + elze
       case CFGAssign(v, e) => v + assOp + e

@@ -319,6 +319,10 @@ object ASTToCFG {
                                     Emit.statement(CFGAssign(CFGArrayEntry(v, CFGLong(i).setPos(v)).setPos(va), expr(va)).setPos(ex))
                                     i += 1
                             }
+
+                        case Constant(id) =>
+                            Emit.statement(CFGAssign(v, CFGConstant(id).setPos(ex)).setPos(ex))
+
                         case ClassConstant(cl, id) =>
                             Emit.statement(CFGAssign(v, CFGClassConstant(cl, id).setPos(ex)).setPos(ex))
 
@@ -337,7 +341,7 @@ object ASTToCFG {
                             // ignore
                             retval = Some(CFGFalse().setPos(r))
 
-                        case _ => error("expr() not handling correctly: "+ ex)
+                        case _ => error("expr() not handling correctly: "+ ex +"("+ex.getPos+")")
                     }
                 }
                 retval match {

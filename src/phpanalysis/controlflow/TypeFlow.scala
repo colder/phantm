@@ -223,7 +223,7 @@ object TypeFlow {
                             case a @ Some(cs) =>
                                 getObject(node, a)
                             case _ =>
-                                Predef.error("Undefined class '"+id.value+"'")
+                                error("Undefined class '"+id.value+"'", id)
                                 getObject(node, None)
                         }
                     case _ =>
@@ -272,6 +272,9 @@ object TypeFlow {
                         case _ =>
                             TNone
                     }
+
+                case const @ CFGConstant(id) =>
+                    TAny // TODO
 
                 case const @ CFGClassConstant(cl, id) =>
                     TAny // TODO
