@@ -58,7 +58,7 @@ object Reporter {
     }
 
     private def emit(prefix: String, msg: String, pos: Positional) = {
-        println(pos.file.getOrElse("?")+":"+pos.line+"  "+prefix+msg)
+        println(pos.file.getOrElse("?")+":"+(if (pos.line < 0) "?" else pos.line)+"  "+prefix+msg)
         pos.file match {
             case Some(file) =>
                 getFileLine(file, pos.line) match {

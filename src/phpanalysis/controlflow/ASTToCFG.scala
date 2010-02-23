@@ -338,12 +338,10 @@ object ASTToCFG {
                         case r: Require =>
                             // ignore
                             retval = Some(CFGFalse().setPos(r))
-                        case Exit(Some(value)) =>
-                            v = FreshVariable("exit").setPos(ex);
-                            Emit.statementCont(exprStore(v, value), cfg.exit)
+                        case e: Exit =>
+                            Emit.goto(cfg.exit)
                             Emit.setPC(cfg.newVertex)
-                        case Exit(None) =>
-                            Emit.statementCont(CFGAssign(v, CFGLong(0)).setPos(ex), cfg.exit)
+                            retval = Some(new CFGNone().setPos(ex))
 
                         case _ => error("expr() not handling correctly: "+ ex +"("+ex.getPos+")")
                     }
@@ -608,12 +606,9 @@ object ASTToCFG {
         case _: FunctionDecl | _: ClassDecl | _: InterfaceDecl => 
             /* ignore */
             Emit.goto(cont);
-        case ex @ Exit(Some(value)) =>
-            val retV = FreshVariable("exit").setPos(ex)
-            Emit.statementCont(exprStore(retV, value), cfg.exit)
-        case ex @ Exit(None) =>
-            val retV = FreshVariable("exit").setPos(ex)
-            Emit.statementCont(CFGAssign(retV, CFGLong(0)).setPos(ex), cfg.exit)
+        case e: Exit =>
+            Emit.goto(cfg.exit)
+            Emit.setPC(cfg.newVertex)
         case e: Expression =>
             Emit.statementCont(expr(e), cont);
       }
