@@ -445,17 +445,30 @@ case class STToAST(comp: Compiler, st: ParseNode) {
                 // dispatch based on the type
                 val str = child(n).tokenContent;
 
-                val l = if (str.startsWith("0x")) {
-                    java.lang.Long.parseLong(str.substring(2), 16)
-                } else if (str.startsWith("0")) {
-                    java.lang.Long.parseLong(str.substring(1), 8)
-                } else {
-                    java.lang.Long.parseLong(str, 10)
-                }
+                try {
+                    val l = if (str.startsWith("0x")) {
+                        java.lang.Long.parseLong(str.substring(2), 16)
+                    } else if (str.startsWith("0") && str.length() > 1) {
+                        java.lang.Long.parseLong(str.substring(1), 8)
+                    } else {
+                        java.lang.Long.parseLong(str, 10)
+                    }
 
-                PHPInteger(l)
+                    PHPInteger(l)
+                } catch {
+                    case e: java.lang.NumberFormatException =>
+                        Reporter.error("Failed parsing LNUMBER("+str+"): "+e.getMessage, pos)
+                        PHPInteger(0)
+                }
             case List("T_DNUMBER") =>
-                PHPFloat(child(n).tokenContent.toFloat)
+                val str = child(n).tokenContent
+                try {
+                    PHPFloat(str.toFloat)
+                } catch {
+                    case e: java.lang.NumberFormatException =>
+                        Reporter.error("Failed parsing DNUMBER("+str+"): "+e.getMessage, pos)
+                        PHPFloat(0)
+                }
             case List("T_CONSTANT_ENCAPSED_STRING") =>
                 PHPString(child(n).tokenContent)
             case List("T_LINE") =>
