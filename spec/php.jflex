@@ -681,8 +681,14 @@ NEWLINE = ("\r"|"\n"|"\r\n")
                 }
 
                 if (label.equals(this.heredocLabel)) {
-                    yybegin(ST_END_HEREDOC);
-                    break scanner;
+                    if (pos < zzEndRead && zzBuffer[pos] == ';') {
+                        pos++;
+                    }
+
+                    if (zzBuffer[pos] == '\r' || zzBuffer[pos] == '\n') {
+                        yybegin(ST_END_HEREDOC);
+                        break scanner;
+                    }
                 }
                 zzMarkedPos = pos;
             default:
@@ -711,14 +717,20 @@ NEWLINE = ("\r"|"\n"|"\r\n")
                 /* Check for ending label on the next line */
                 String label = "";
                 int pos = zzMarkedPos;
-                while(pos< zzEndRead && isLabelStart(zzBuffer[pos])) {
+                while(pos < zzEndRead && isLabelStart(zzBuffer[pos])) {
                     label = label + zzBuffer[pos];
                     pos++;
                 }
 
                 if (label.equals(this.heredocLabel)) {
-                    yybegin(ST_END_HEREDOC);
-                    break scanner;
+                    if (pos < zzEndRead && zzBuffer[pos] == ';') {
+                        pos++;
+                    }
+
+                    if (zzBuffer[pos] == '\r' || zzBuffer[pos] == '\n') {
+                        yybegin(ST_END_HEREDOC);
+                        break scanner;
+                    }
                 }
                 zzMarkedPos = pos;
 
