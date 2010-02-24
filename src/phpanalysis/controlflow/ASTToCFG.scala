@@ -4,10 +4,14 @@ object ASTToCFG {
   import parser.Trees._
   import analyzer.Symbols._
   import CFGTrees._
+  import scala.collection.mutable.{Map,HashMap}
 
   /** Builds a control flow graph from a method declaration. */
   def convertAST(statements: List[Statement]): CFG = {
     // Contains the entry+exit vertices for continue/break
+    var gotoLabels = Map[String, Vertex]();
+    var forwardGotos = Map[String, List[(Vertex, Positional)]]();
+
     var controlStack: List[(Vertex, Vertex)] = Nil
     var dispatchers: List[(Vertex, CFGTempID)] = Nil
 
@@ -368,10 +372,30 @@ object ASTToCFG {
     def stmt(s: Statement, cont: Vertex): Unit = { 
       s match {
         case LabelDecl(name) =>
+            val v = Emit.getPC
+
+            gotoLabels(name.value) = Emit.getPC
+
+            for ((l, p) <- forwardGotos.getOrElse(name.value, Nil)) {
+                Emit.setPC(l);
+                Emit.goto(v);
+            }
+
+            Emit.setPC(v)
+
+            forwardGotos -= name.value
+
             Emit.goto(cont)
-        case Goto(_) =>
-            Reporter.notice("Goto's are currently ignored", s)
-            Emit.goto(cont)
+        case Goto(Label(name)) =>
+            val v = Emit.getPC
+
+            if (gotoLabels contains name.value) {
+                Emit.goto(gotoLabels(name.value));
+            } else {
+                forwardGotos(name.value) = (v, s) :: forwardGotos.getOrElse(name.value, Nil)
+            }
+
+            Emit.setPC(cont)
         case Block(sts) =>
             stmts(sts, cont)
         case If(cond, then, elze) =>
@@ -646,6 +670,13 @@ object ASTToCFG {
     Emit.setPC(codeEntry)
     stmts(statements, cfg.exit)
     Emit.setPC(cfg.exit)
+
+    for ((l, vs) <- forwardGotos) {
+        for ((v, p) <- vs) {
+            Reporter.notice("Goto referencing an undefined label "+l, p)
+        }
+    }
+
     fewerSkips
     cfg
     }
