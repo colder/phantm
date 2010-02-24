@@ -141,7 +141,9 @@ import java_cup.runtime.*;
 %x ST_DOUBLE_QUOTES
 %x ST_SINGLE_QUOTE
 %x ST_BACKQUOTE
+%x ST_NOWDOC
 %x ST_HEREDOC
+%x ST_END_HEREDOC
 %x ST_LOOKING_FOR_PROPERTY
 %x ST_LOOKING_FOR_VARNAME
 %x ST_VAR_OFFSET
@@ -320,6 +322,45 @@ NEWLINE = ("\r"|"\n"|"\r\n")
     pushState(ST_IN_SCRIPTING);
     yypushback(1);
     return symbol(Symbols.T_CURLY_OPEN, "T_CURLY_OPEN");
+}
+
+<ST_IN_SCRIPTING>[`] {
+    yybegin(ST_BACKQUOTE);
+    return symbol(Symbols.T_BACKTICK, "T_BACKTICK");
+}
+
+<ST_BACKQUOTE>[`] {
+    yybegin(ST_IN_SCRIPTING);
+    return symbol(Symbols.T_BACKTICK, "T_BACKTICK");
+}
+
+
+<ST_BACKQUOTE>{ANY_CHAR} {
+    scanner:
+    while(zzMarkedPos < zzEndRead) {
+        switch(zzBuffer[zzMarkedPos-1]) {
+            case '`':
+                zzMarkedPos--;
+                break scanner;
+            case '$':
+                if (zzBuffer[zzMarkedPos] == '{' || isLabelStart(zzBuffer[zzMarkedPos])) {
+                    zzMarkedPos--;
+                    break scanner;
+                }
+                break;
+            case '{':
+                if (zzBuffer[zzMarkedPos] == '$') {
+                    zzMarkedPos--;
+                    break scanner;
+                }
+                break;
+            case '\\':
+                zzMarkedPos++;
+        }
+        zzMarkedPos++;
+    }
+
+    return symbol(Symbols.T_ENCAPSED_AND_WHITESPACE, "T_ENCAPSED_AND_WHITESPACE");
 }
 
 <ST_DOUBLE_QUOTES>{ANY_CHAR} {
@@ -536,34 +577,120 @@ NEWLINE = ("\r"|"\n"|"\r\n")
     return symbol(Symbols.T_DOUBLE_QUOTE, "T_DOUBLE_QUOTE");
 }
 
-<ST_IN_SCRIPTING>b?"<<<"{TABS_AND_SPACES}{LABEL}{NEWLINE} {
-    // start of heredoc
+<ST_IN_SCRIPTING>b?"<<<"{TABS_AND_SPACES}({LABEL}|([']{LABEL}['])|([\"]{LABEL}[\"])){NEWLINE} {
+    // start of heredoc/nowdoc
+    int initPos = zzStartRead;
+    int pos     = zzStartRead;
+    int labelLength = length();
 
-    // determine heredoc label and save it for later use
-    if (text().substring(0, 1).equals("b")) {
-        this.heredocLabel = text().substring(4).trim();
-    } else {
-        this.heredocLabel = text().substring(3).trim();
+    if (text().startsWith("b")) {
+        pos++;
+        labelLength--;
     }
 
-    yybegin(ST_HEREDOC);
+    // skip <<<
+    pos += 3;
+
+    if (text().endsWith("\r\n")) {
+        labelLength -= 5; // <<< and \r\n
+    } else {
+        labelLength -= 4; // <<< and \n
+    }
+
+    // skip spaces and tabs
+    while(zzBuffer[pos] == ' ' || zzBuffer[pos] == '\t') {
+        pos++;
+        labelLength--;
+    }
+
+    if (zzBuffer[pos] == '\'') {
+        pos++;
+        yybegin(ST_NOWDOC);
+        labelLength -= 2;
+    } else {
+        if (zzBuffer[pos] == '\"') {
+            pos++;
+            labelLength -= 2;
+        }
+        yybegin(ST_HEREDOC);
+    }
+
+    this.heredocLabel = text().substring((pos-initPos), (pos-initPos) + labelLength);
+
+    // Check if it's directly in the next line
+    if (labelLength < zzEndRead - zzMarkedPos) {
+        int lpos = zzMarkedPos;
+
+        String label = "";
+        while(lpos < zzEndRead && isLabelStart(zzBuffer[lpos]) && lpos-zzMarkedPos <= labelLength) {
+            label = label + zzBuffer[lpos];
+            lpos++;
+        }
+
+        if (label.equals(this.heredocLabel)) {
+            if (zzBuffer[lpos] == ';') {
+                lpos++;
+            }
+
+            if (zzBuffer[lpos] == '\n' || zzBuffer[lpos] == '\r') {
+                yybegin(ST_END_HEREDOC);
+            }
+        }
+
+    }
+
     return symbol(Symbols.T_START_HEREDOC, "T_START_HEREDOC");
 }
 
-<ST_IN_SCRIPTING>[`] {
-	yybegin(ST_BACKQUOTE);
-    return symbol(Symbols.T_BACKTICK, "T_BACKTICK");
+
+<ST_END_HEREDOC>{ANY_CHAR} {
+    zzMarkedPos += this.heredocLabel.length()-1;
+    yybegin(ST_IN_SCRIPTING);
+    return symbol(Symbols.T_END_HEREDOC, "T_END_HEREDOC");
 }
 
-
 <ST_IN_SCRIPTING>b?['] {
-	yybegin(ST_SINGLE_QUOTE);
+    yybegin(ST_SINGLE_QUOTE);
     return symbol(Symbols.T_DOUBLE_QUOTE, "T_DOUBLE_QUOTE");
 }
 
-<ST_HEREDOC>{ANY_CHAR} {
-    int newline = 0;
+<ST_NOWDOC>{ANY_CHAR} {
+    if (zzMarkedPos > zzEndRead) {
+        return null;
+    }
 
+    zzMarkedPos--;
+
+    scanner:
+    while(zzMarkedPos < zzEndRead) {
+        switch(zzBuffer[zzMarkedPos++]) {
+            case '\r':
+                if (zzBuffer[zzMarkedPos] == '\n') {
+                    zzMarkedPos++;
+                }
+                /* fall through */
+            case '\n':
+                /* Check for ending label on the next line */
+                int pos = zzMarkedPos;
+                String label = "";
+                while(pos < zzEndRead && isLabelStart(zzBuffer[pos])) {
+                    label = label + zzBuffer[pos];
+                    pos++;
+                }
+
+                if (label.equals(this.heredocLabel)) {
+                    yybegin(ST_END_HEREDOC);
+                    break scanner;
+                }
+                zzMarkedPos = pos;
+            default:
+                continue;
+        }
+    }
+    return symbol(Symbols.T_ENCAPSED_AND_WHITESPACE, "T_ENCAPSED_AND_WHITESPACE");
+}
+
+<ST_HEREDOC>{ANY_CHAR} {
     if (zzMarkedPos > zzEndRead) {
         return null;
     }
@@ -581,15 +708,17 @@ NEWLINE = ("\r"|"\n"|"\r\n")
             case '\n':
                 /* Check for ending label on the next line */
                 String label = "";
-                while(zzMarkedPos < zzEndRead && isLabelStart(zzBuffer[zzMarkedPos])) {
-                    label = label + zzBuffer[zzMarkedPos];
-                    zzMarkedPos++;
+                int pos = zzMarkedPos;
+                while(pos< zzEndRead && isLabelStart(zzBuffer[pos])) {
+                    label = label + zzBuffer[pos];
+                    pos++;
                 }
 
                 if (label.equals(this.heredocLabel)) {
-                    yybegin(ST_IN_SCRIPTING);
-                    return symbol(Symbols.T_END_HEREDOC, "T_END_HEREDOC");
+                    yybegin(ST_END_HEREDOC);
+                    break scanner;
                 }
+                zzMarkedPos = pos;
 
                 continue;
             case '$':
@@ -627,56 +756,13 @@ NEWLINE = ("\r"|"\n"|"\r\n")
 //}
 
 
-<ST_BACKQUOTE>[\"]+ {
-    return symbol(Symbols.T_ENCAPSED_AND_WHITESPACE, "T_ENCAPSED_AND_WHITESPACE");
-}
-
-<ST_BACKQUOTE,ST_HEREDOC>"$"[^a-zA-Z_\x7f-\xbb\xbc-\xde\xdf-\xff{] {
-	if (length() == 2) {
-		yypushback(1);
-	}
-    return symbol(Symbols.T_STRING, "T_STRING");
-}
-
 // NJ: split up rule for {ENCAPSED_TOKENS} since CUP doesn't support character tokens
-<ST_BACKQUOTE,ST_HEREDOC> {
-
-    "[" { return symbol(Symbols.T_OPEN_RECT_BRACES, "T_OPEN_RECT_BRACES"); }
-    "]" { return symbol(Symbols.T_CLOSE_RECT_BRACES, "T_CLOSE_RECT_BRACES"); }
-    "{" { return symbol(Symbols.T_OPEN_CURLY_BRACES, "T_OPEN_CURLY_BRACES"); }
-    "}" { return symbol(Symbols.T_CLOSE_CURLY_BRACES, "T_CLOSE_CURLY_BRACES"); }
-    "$" { return symbol(Symbols.T_DOLLAR, "T_DOLLAR"); }
-
-}
-
 <ST_SINGLE_QUOTE>"\\'" {
     return symbol(Symbols.T_STRING, "T_STRING");
 }
 
 <ST_SINGLE_QUOTE>"\\\\" {
     return symbol(Symbols.T_STRING, "T_STRING");
-}
-
-<ST_BACKQUOTE>"\\`" {
-    return symbol(Symbols.T_STRING, "T_STRING");
-}
-
-<ST_BACKQUOTE,ST_HEREDOC>"\\"[0-7]{1,3} {
-    return symbol(Symbols.T_STRING, "T_STRING");
-}
-
-<ST_BACKQUOTE,ST_HEREDOC>"\\x"[0-9A-Fa-f]{1,2} {
-    return symbol(Symbols.T_STRING, "T_STRING");
-}
-
-<ST_HEREDOC>[\"'`]+ {
-    return symbol(Symbols.T_ENCAPSED_AND_WHITESPACE, "T_ENCAPSED_AND_WHITESPACE");
-}
-
-
-<ST_BACKQUOTE>[`] {
-    yybegin(ST_IN_SCRIPTING);
-    return symbol(Symbols.T_BACKTICK, "T_BACKTICK");
 }
 
 <ST_SINGLE_QUOTE>['] {
