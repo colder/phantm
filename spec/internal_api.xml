@@ -48,6 +48,18 @@
 
  <!-- Functions definitions -->
  <functions>
+  <function name="print">
+   <return><type name="int"></type></return>
+   <args>
+    <arg opt="0">
+      <type name="boolean"></type>
+      <type name="float"></type>
+      <type name="object"></type>
+      <type name="int"></type>
+      <type name="string"></type>
+    </arg>
+   </args>
+  </function>
   <function name="display_disabled_function">
    <return><type name="void"></type></return>
    <args>
