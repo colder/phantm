@@ -222,6 +222,7 @@ NEWLINE = ("\r"|"\n"|"\r\n")
     "final" { return symbol(Symbols.T_FINAL, "T_FINAL"); }
     "print" { return symbol(Symbols.T_PRINT, "T_PRINT"); }
     "class" { return symbol(Symbols.T_CLASS, "T_CLASS"); }
+    "namespace" { return symbol(Symbols.T_NAMESPACE, "T_NAMESPACE"); }
     "extends" { return symbol(Symbols.T_EXTENDS, "T_EXTENDS"); }
     "::" { return symbol(Symbols.T_DOUBLE_COLON, "T_DOUBLE_COLON"); }
     "new" { return symbol(Symbols.T_NEW, "T_NEW"); }
