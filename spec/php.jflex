@@ -596,7 +596,7 @@ NEWLINE = ("\r"|"\n"|"\r\n")
     if (text().endsWith("\r\n")) {
         labelLength -= 5; // <<< and \r\n
     } else {
-        labelLength -= 4; // <<< and \n
+        labelLength -= 4; // <<< and \n or \r
     }
 
     // skip spaces and tabs
