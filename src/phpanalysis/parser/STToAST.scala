@@ -485,6 +485,8 @@ case class STToAST(comp: Compiler, st: ParseNode) {
                 MCFunction()
             case List("T_NS_C") =>
                 MCNamespace()
+            case List("T_START_HEREDOC", "T_ENCAPSED_AND_WHITESPACE", "T_END_HEREDOC") =>
+                PHPString(child(n, 1).tokenContent)
             case List("T_START_HEREDOC", "T_CONSTANT_ENCAPSED_STRING", "T_END_HEREDOC") =>
                 PHPString(child(n, 1).tokenContent)
             case List("T_START_HEREDOC", "T_END_HEREDOC") =>
