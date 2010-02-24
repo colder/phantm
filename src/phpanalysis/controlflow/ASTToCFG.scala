@@ -368,7 +368,9 @@ object ASTToCFG {
     def stmt(s: Statement, cont: Vertex): Unit = { 
       s match {
         case LabelDecl(name) =>
-            // GOTO
+            Emit.goto(cont)
+        case Goto(_) =>
+            Reporter.notice("Goto's are currently ignored", s)
             Emit.goto(cont)
         case Block(sts) =>
             stmts(sts, cont)
@@ -611,6 +613,8 @@ object ASTToCFG {
             Emit.setPC(cfg.newVertex)
         case e: Expression =>
             Emit.statementCont(expr(e), cont);
+        case _ =>
+            Reporter.notice("Not yet implemented (AST->CFG): "+s, s);
       }
       Emit.setPC(cont)
     }

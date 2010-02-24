@@ -206,6 +206,7 @@ NEWLINE = ("\r"|"\n"|"\r\n")
     "default" { return symbol(Symbols.T_DEFAULT, "T_DEFAULT"); }
     "break" { return symbol(Symbols.T_BREAK, "T_BREAK"); }
     "continue" { return symbol(Symbols.T_CONTINUE, "T_CONTINUE"); }
+    "goto" { return symbol(Symbols.T_GOTO, "T_GOTO"); }
     "echo" { return symbol(Symbols.T_ECHO, "T_ECHO"); }
     "try" { return symbol(Symbols.T_TRY, "T_TRY"); }
     "catch" { return symbol(Symbols.T_CATCH, "T_CATCH"); }
