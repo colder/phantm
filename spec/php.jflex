@@ -151,7 +151,7 @@ import java_cup.runtime.*;
 LNUM = [0-9]+
 DNUM = ([0-9]*[\.][0-9]+)|([0-9]+[\.][0-9]*)
 EXPONENT_DNUM = (({LNUM}|{DNUM})[eE][+\-]?{LNUM})
-HNUM = "0x"[0-9a-fA-F]+
+HNUM = "0"[xX][0-9a-fA-F]+
 // a few special characters are not matched by LABEL in jflex although they
 // are matched by flex (e.g. in very few language files of PHPNuke 7.5); encoding problem?
 LABEL = [a-zA-Z_\x7f-\xbb\xbc-\xde\xdf-\xff][a-zA-Z0-9_\x7f-\xbb\xbc-\xde\xdf-\xff]*
@@ -540,9 +540,11 @@ NEWLINE = ("\r"|"\n"|"\r\n")
     // start of heredoc
 
     // determine heredoc label and save it for later use
-    this.heredocLabel = text().substring(3).trim();
-
-    System.err.println("Starting HEREDOC!");
+    if (text().substring(0, 1).equals("b")) {
+        this.heredocLabel = text().substring(4).trim();
+    } else {
+        this.heredocLabel = text().substring(3).trim();
+    }
 
     yybegin(ST_HEREDOC);
     return symbol(Symbols.T_START_HEREDOC, "T_START_HEREDOC");
