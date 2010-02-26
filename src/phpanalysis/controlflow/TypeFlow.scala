@@ -160,7 +160,7 @@ object TypeFlow {
                 case BaseTypeEnvironment =>
                     true
                 case e: TypeEnvironment =>
-                    scope != e.scope || map !=  e.map
+                    scope != e.scope || map != e.map || store != e.store
             }
         }
 

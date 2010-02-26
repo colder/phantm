@@ -1,6 +1,6 @@
 package phpanalysis.analyzer;
 import Symbols._
-import scala.collection.mutable.{HashSet, HashMap, Map, Set}
+import scala.collection.mutable.{Map, Set}
 
 import controlflow.TypeFlow._
 import controlflow.CFGTrees._
@@ -97,7 +97,7 @@ object Types {
     // Stores the ref => Real Objects relashionship
     case class ObjectStore(val store: collection.immutable.Map[ObjectId, RealObjectType]) {
 
-        def this() = this(new collection.immutable.HashMap[ObjectId, RealObjectType]())
+        def this() = this(collection.immutable.Map[ObjectId, RealObjectType]())
 
         def union(os: ObjectStore) : ObjectStore = {
             var res = new ObjectStore()
@@ -136,10 +136,10 @@ object Types {
                 val rot = ocs match {
                     case Some(cs) =>
                         // construct a default object for this class
-                        new TRealClassObject(new TClass(cs), HashMap[String,Type]() ++ cs.properties.mapElements[Type] { x => x.typ }, None)
+                        new TRealClassObject(new TClass(cs), Map[String,Type]() ++ cs.properties.mapElements[Type] { x => x.typ }, None)
                     case None =>
                         // No class => any object
-                        new TRealObject(HashMap[String,Type](), None)
+                        new TRealObject(Map[String,Type](), None)
                 }
 
                 set(id, rot);
@@ -245,7 +245,7 @@ object Types {
                 case (None, None) => None
             }
 
-            val newFields = HashMap[String, Type]() ++ fields;
+            val newFields = Map[String, Type]() ++ fields;
 
             for((index, typ)<- a2.fields) {
                 newFields(index) = newFields.get(index) match {
@@ -263,7 +263,7 @@ object Types {
         }
 
         def duplicate =
-            new TRealObject(HashMap[String, Type]() ++ fields, pollutedType)
+            new TRealObject(Map[String, Type]() ++ fields, pollutedType)
     }
 
     class TRealClassObject(val cl: TClass,
@@ -301,7 +301,7 @@ object Types {
             }
 
         override def duplicate =
-            new TRealClassObject(cl, HashMap[String, Type]() ++ fields, pollutedType)
+            new TRealClassObject(cl, Map[String, Type]() ++ fields, pollutedType)
     }
 
     abstract class ArrayType extends Type {
@@ -309,7 +309,7 @@ object Types {
 
         val entries: Map[String, Type]
         var pollutedType: Option[Type]
-        var pushPositions = HashMap[Int, String]()
+        var pushPositions = Map[Int, String]()
         var nextFreeIndex = 0
 
         def lookup(index: String): Option[Type] = {
@@ -389,7 +389,7 @@ object Types {
                 case (None, None) => None
             }
 
-            val newEntries = HashMap[String, Type]() ++ entries;
+            val newEntries = Map[String, Type]() ++ entries;
 
             for((index, typ)<- a2.entries) {
                 newEntries(index) = newEntries.get(index) match {
@@ -415,16 +415,16 @@ object Types {
                  var pollutedType: Option[Type]) extends ArrayType {
         self =>
 
-        def this() = this(HashMap[String, Type](), None)
-        def this(pollutedType: Type) = this(HashMap[String, Type](), Some(pollutedType))
+        def this() = this(Map[String, Type](), None)
+        def this(pollutedType: Type) = this(Map[String, Type](), Some(pollutedType))
 
         def duplicate = {
-            new TArray(HashMap[String, Type]() ++ entries, pollutedType)
+            new TArray(Map[String, Type]() ++ entries, pollutedType)
         }
 
     }
 
-    object TAnyArray extends TArray(HashMap[String, Type](), Some(TAny)) {
+    object TAnyArray extends TArray(Map[String, Type](), Some(TAny)) {
         override def toString = "Array[?]"
         override def toText = "any array"
     }
@@ -463,24 +463,33 @@ object Types {
     }
 
     class TUnion extends Type {
-        var types: Set[Type] = HashSet[Type]()
+        var types: List[Type] = List[Type]()
 
         def add(t: Type) = t match {
             case t1: TUnion =>
                 for (t2 <- t1.types) {
                     if (!(types contains t2)) {
-                        types += t2
+                        types = t2 :: types
                     }
                 }
             case _ =>
                 if (!(types contains t)) {
-                    types += t
+                    types = t :: types
                 }
         }
 
-        override def equals(t: Any) = t match {
+        override def equals(t: Any): Boolean = t match {
             case tu: TUnion =>
-                types == tu.types
+                if (tu.types.size == types.size) {
+                    for (v <- types) {
+                        if (!(tu.types contains v)) {
+                            return false;
+                        }
+                    }
+                    true
+                } else {
+                    false
+                }
             case _ => false
         }
 
