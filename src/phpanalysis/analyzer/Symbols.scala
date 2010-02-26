@@ -19,6 +19,15 @@ object Symbols {
     }
   }
 
+  def previousPos(x: Positional) = {
+      if (x.file == None) {
+          "internally"
+      } else {
+          "in "+x.getPos
+      }
+  }
+
+
   abstract class Symbol extends Positional {
     val id: Int = ID.next
     val name: String
@@ -69,28 +78,28 @@ object Symbols {
 
     def registerIface(is: IfaceSymbol) : Unit = ifaces.get(is.name) match {
       case None => ifaces += ((is.name, is))
-      case Some(x) => Reporter.error("Interface " + is.name + " already declared (previously declared in "+x.getPos+")", is)
+      case Some(x) => Reporter.notice("Interface " + is.name + " already declared (previously declared "+previousPos(x)+")", is)
     }
 
     def lookupClass(n: String): Option[ClassSymbol] = classes.get(n.toLowerCase)
 
     def registerClass(cs: ClassSymbol) : Unit = classes.get(cs.name.toLowerCase) match {
       case None => classes += ((cs.name.toLowerCase, cs))
-      case Some(x) => Reporter.error("Class " + cs.name + " already declared (previously declared in "+x.getPos+")", cs)
+      case Some(x) => Reporter.notice("Class " + cs.name + " already declared (previously declared "+previousPos(x)+")", cs)
     }
 
     def lookupFunction(n: String): Option[FunctionSymbol] = functions.get(n.toLowerCase)
 
     def registerFunction(fs: FunctionSymbol) : Unit = functions.get(fs.name.toLowerCase) match {
       case None => functions += ((fs.name.toLowerCase, fs))
-      case Some(x) => Reporter.error("Function " + fs.name + " already declared (previously declared in "+x.getPos+")", fs)
+      case Some(x) => Reporter.notice("Function " + fs.name + " already declared (previously declared "+previousPos(x)+")", fs)
     }
 
     def lookupConstant(n: String): Option[ConstantSymbol] = constants.get(n)
 
     def registerConstant(cs: ConstantSymbol) : Unit = constants.get(cs.name) match {
       case None => constants += ((cs.name, cs))
-      case Some(x) => Reporter.error("Function " + cs.name + " already declared (previously declared in "+x.getPos+")", cs)
+      case Some(x) => Reporter.notice("Function " + cs.name + " already declared (previously declared "+previousPos(x)+")", cs)
     }
 
     def getClasses: List[ClassSymbol] = classes map { x => x._2 } toList
@@ -103,7 +112,7 @@ object Symbols {
     var argList: List[(String, ArgumentSymbol)] = Nil;
 
     def registerArgument(as: ArgumentSymbol) = args.get(as.name) match {
-        case Some(x) => Reporter.error("Argument "+as.name+" already defined (previously defined in "+x.getPos+")", as)
+        case Some(x) => Reporter.error("Argument "+as.name+" already defined (previously defined "+previousPos(x)+")", as)
         case None => args(as.name) = as; argList = argList ::: List((as.name, as));
 
     }
@@ -177,7 +186,7 @@ object Symbols {
 
     /* if a parent is defined and the method is defined in its parent, then the method can't be more restrictive */
     def registerMethod(ms: MethodSymbol) : Unit = methods.get(ms.name) match {
-        case Some(x) => Reporter.error("Method "+name+"::"+ms.name+" already defined (previously defined in "+x.getPos+")", ms)
+        case Some(x) => Reporter.error("Method "+name+"::"+ms.name+" already defined (previously defined "+previousPos(x)+")", ms)
         case None    =>
             parent match {
                 case Some(pcs) => pcs.lookupMethod(ms.name, None) match {
@@ -231,7 +240,7 @@ object Symbols {
     }
 
     def registerConstant(cs: ClassConstantSymbol): Unit = constants.get(cs.name) match {
-        case Some(x) => Reporter.error("Class constant "+name+"::"+cs.name+" already declared (previously declared in "+x.getPos+")", cs)
+        case Some(x) => Reporter.notice("Class constant "+name+"::"+cs.name+" already declared (previously declared "+previousPos(x)+")", cs)
         case None    => constants += ((cs.name, cs))
     }
 
@@ -245,17 +254,17 @@ object Symbols {
 
 
     def registerStaticProperty(ps: PropertySymbol): Unit = properties.get(ps.name) match {
-        case Some(x) => Reporter.error("Property "+name+"::"+ps.name+" already declared (previously declared as a property in "+x.getPos+")", ps)
+        case Some(x) => Reporter.notice("Property "+name+"::"+ps.name+" already declared (previously declared as a property "+previousPos(x)+")", ps)
         case None    => static_properties.get(ps.name) match {
-            case Some(x) => Reporter.error("Property "+name+"::"+ps.name+" already declared (previously declared as a static property in "+x.getPos+")", ps)
+            case Some(x) => Reporter.notice("Property "+name+"::"+ps.name+" already declared (previously declared as a static property "+previousPos(x)+")", ps)
             case None    => static_properties += ((ps.name, ps))
         }
     }
 
     def registerProperty(ps: PropertySymbol): Unit = static_properties.get(ps.name) match {
-        case Some(x) => Reporter.error("Property "+name+"::"+ps.name+" already declared (previously declared as a static property in "+x.getPos+")", ps)
+        case Some(x) => Reporter.notice("Property "+name+"::"+ps.name+" already declared (previously declared as a static property "+previousPos(x)+")", ps)
         case None    => properties.get(ps.name) match {
-            case Some(x) => Reporter.error("Property "+name+"::"+ps.name+" already declared (previously declared as a property in "+x.getPos+")", ps)
+            case Some(x) => Reporter.notice("Property "+name+"::"+ps.name+" already declared (previously declared as a property "+previousPos(x)+")", ps)
             case None    => properties += ((ps.name, ps))
         }
     }

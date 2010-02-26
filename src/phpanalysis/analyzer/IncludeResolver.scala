@@ -65,7 +65,7 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
         IncludeResolver.begin
 
         val result = if (IncludeResolver.deepNess < 20) {
-            Evaluator.staticEval(path) match {
+            Evaluator.staticEval(path, false) match {
                 case Some(scalar_p) =>
                     val p = Evaluator.scalarToString(scalar_p)
                     if (p(0) == '/') {
@@ -100,7 +100,9 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
                         }
                     }
                 case None =>
-                    Reporter.notice("Include with non trivial argument will be ignored", path)
+                    if (Main.verbosity >= 2) {
+                        Reporter.notice("Include with non trivial argument will be ignored", path)
+                    }
                     PHPFalse()
             }
         } else {

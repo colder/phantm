@@ -1,6 +1,6 @@
 package phpanalysis.analyzer
 import analyzer.Symbols._
-import analyzer.Types._
+import analyzer.Types.TAny
 import parser.Trees._
 import scala.collection.mutable.Map;
 
@@ -10,23 +10,19 @@ case class ConstantsResolver(ast: Program, issueErrors: Boolean) extends ASTTran
         case FunctionCall(StaticFunctionRef(_, _, Identifier("define")), List(CallArg(PHPString(name), _), CallArg(expr, _))) =>
             GlobalSymbols.lookupConstant(name) match {
                 case None =>
-                    Evaluator.staticEval(expr) match {
+                    Evaluator.staticEval(expr, issueErrors) match {
                         case Some(v) =>
-                            val cs = new ConstantSymbol(name, Some(v), v match {
-                                case PHPTrue() => TBoolean
-                                case PHPFalse() => TBoolean
-                                case PHPInteger(_) => TInt
-                                case PHPFloat(_) => TFloat
-                                case PHPString(_) => TString
-                                case PHPNull() => TNull
-                                case MCLine() => TInt
-                                case _ => TString
-                            })
+                            val cs = new ConstantSymbol(name, Some(v), Evaluator.typeFromExpr(v))
 
                             GlobalSymbols.registerConstant(cs)
                         case None =>
-                            if (issueErrors) {
-                                Reporter.notice("Dynamic constant declaration ignored", expr)
+                            if (issueErrors && Main.verbosity >= 2) {
+                                Reporter.notice("Dynamic constant declaration", expr)
+                            }
+
+                            if(issueErrors) {
+                                val cs = new ConstantSymbol(name, None, TAny)
+                                GlobalSymbols.registerConstant(cs)
                             }
                     }
                 case Some(_) =>
@@ -35,7 +31,7 @@ case class ConstantsResolver(ast: Program, issueErrors: Boolean) extends ASTTran
             ex
 
         case FunctionCall(StaticFunctionRef(_, _, Identifier("define")), _) =>
-            if (issueErrors) {
+            if (issueErrors && Main.verbosity >= 2) {
                 Reporter.notice("Dynamic constant declaration ignored", ex)
             }
             ex

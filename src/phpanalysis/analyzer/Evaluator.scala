@@ -2,9 +2,37 @@ package phpanalysis.analyzer
 
 import analyzer.Symbols.GlobalSymbols
 import parser.Trees._
+import analyzer.Types._
 import java.io.File
 
 object Evaluator {
+
+    def typeFromExpr(oe: Option[Expression]): Type = oe match {
+        case Some(e) => typeFromExpr(e)
+        case None => TNull
+    }
+
+    def typeFromExpr(e: Expression): Type = e match {
+        case PHPTrue() => TTrue
+        case PHPFalse() => TFalse
+        case PHPInteger(_) => TInt
+        case PHPFloat(_) => TFloat
+        case PHPString(_) => TString
+        case PHPNull() => TNull
+        case MCFile() => TString
+        case MCLine() => TString
+        case MCDir() => TString
+        case MCClass() => TString
+        case MCFunction()  => TString
+        case MCMethod() => TString
+        case MCNamespace() => TString
+        case Minus(_, _) => TInt
+        case a: Array =>
+            //TODO
+            TAnyArray
+        case _=>
+            TAny
+    }
 
     def scalarToString(ex: Scalar) = ex match {
         case PHPTrue() =>
@@ -38,14 +66,16 @@ object Evaluator {
             }
     }
 
-    def staticEval(ex: Expression): Option[Scalar] = ex match {
+    def staticEval(ex: Expression): Option[Scalar] = staticEval(ex, true)
+
+    def staticEval(ex: Expression, issueErrors: Boolean): Option[Scalar] = ex match {
         case Concat (lhs, rhs) =>
-            (staticEval(lhs), staticEval(rhs)) match {
+            (staticEval(lhs, issueErrors), staticEval(rhs, issueErrors)) match {
                 case (Some(slhs), Some(srhs)) => Some(PHPString(scalarToString(slhs)+scalarToString(srhs)).setPos(slhs))
                 case _ => None
             }
         case FunctionCall(StaticFunctionRef(_,_,Identifier("dirname")), List(CallArg(arg, _))) =>
-            staticEval(arg) match {
+            staticEval(arg, issueErrors) match {
                 case Some(a) =>
                     Some(PHPString(dirname(scalarToString(a))).setPos(ex))
                 case None =>
@@ -54,9 +84,16 @@ object Evaluator {
         case Constant(name) =>
             GlobalSymbols.lookupConstant(name.value) match {
                 case Some(cs) =>
-                    cs.value
+                    cs.value match {
+                        case Some(v) =>
+                            Some(v)
+                        case None =>
+                            Some(PHPString(name.value).setPos(ex))
+                    }
                 case None =>
-                    Reporter.notice("Potentially undefined constant '"+name.value+"'", ex)
+                    if (issueErrors) {
+                        Reporter.notice("Potentially undefined constant '"+name.value+"'", ex)
+                    }
                     Some(PHPString(name.value).setPos(ex))
             }
         case ClassConstant(_:StaticClassRef, _) =>

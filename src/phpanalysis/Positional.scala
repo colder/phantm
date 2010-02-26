@@ -16,7 +16,7 @@ trait Positional {
         line < p.line || (line == p.line && col < p.col)
     }
 
-    def getPos =  file.getOrElse("<unknown>")+" line "+line+" column "+col;
+    def getPos = file.getOrElse("<unknown>")+" line "+line+" column "+col;
 
     def setPos(l: Int, c: Int, f: String): self.type = {
         line = l;

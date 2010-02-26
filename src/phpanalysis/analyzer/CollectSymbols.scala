@@ -39,7 +39,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
           firstClassPass0(cd)
           firstClassPass
         }
-        case Some(x) => Reporter.error("Class " + x.name + " already declared (previously declared at "+x.getPos+")", cd)
+        case Some(x) => Reporter.notice("Class " + x.name + " already declared (previously declared at "+x.getPos+")", cd)
       }
     }
     
@@ -79,32 +79,6 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
       classesToPass = classesToPass.remove(_.equals(cd))
     }
 
-    def typeFromExpr(oe: Option[Expression]): Type = oe match {
-        case Some(e) => typeFromExpr(e)
-        case None => TNull
-    }
-    def typeFromExpr(e: Expression): Type = e match {
-        case PHPTrue() => TTrue
-        case PHPFalse() => TFalse
-        case PHPInteger(_) => TInt
-        case PHPFloat(_) => TFloat
-        case PHPString(_) => TString
-        case PHPNull() => TNull
-        case MCFile() => TString
-        case MCLine() => TString
-        case MCDir() => TString
-        case MCClass() => TString
-        case MCFunction()  => TString
-        case MCMethod() => TString
-        case MCNamespace() => TString
-        case Minus(_, _) => TInt
-        case a: Array =>
-            //TODO
-            TAnyArray
-        case _=>
-            println("Woops, getting type from a non-scalar expression: "+e);
-            TAny
-    }
 
     def secondClassPass(cd: ClassDecl, cs: ClassSymbol): Unit = {
         for (val m <- cd.methods) {
@@ -128,21 +102,21 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
         }
 
         for (val p <- cd.props) {
-            val ps = new PropertySymbol(cs, p.v.value, getVisibility(p.flags), typeFromExpr(p.default)).setPos(p)
+            val ps = new PropertySymbol(cs, p.v.value, getVisibility(p.flags), Evaluator.typeFromExpr(p.default)).setPos(p)
             cs.registerProperty(ps)
         }
 
         for (val p <- cd.static_props) {
-            val ps = new PropertySymbol(cs, p.v.value, getVisibility(p.flags), typeFromExpr(p.default)).setPos(p)
+            val ps = new PropertySymbol(cs, p.v.value, getVisibility(p.flags), Evaluator.typeFromExpr(p.default)).setPos(p)
             cs.registerStaticProperty(ps)
         }
 
         for (val c <- cd.consts) {
             val ccs = c.value match {
                 case sc: Scalar => 
-                    new ClassConstantSymbol(cs, c.v.value, Some(sc), typeFromExpr(c.value)).setPos(c)
+                    new ClassConstantSymbol(cs, c.v.value, Some(sc), Evaluator.typeFromExpr(c.value)).setPos(c)
                 case _ =>
-                    new ClassConstantSymbol(cs, c.v.value, None, typeFromExpr(c.value)).setPos(c)
+                    new ClassConstantSymbol(cs, c.v.value, None, Evaluator.typeFromExpr(c.value)).setPos(c)
             }
 
             cs.registerConstant(ccs)

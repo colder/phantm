@@ -275,7 +275,13 @@ object TypeFlow {
                     }
 
                 case const @ CFGConstant(id) =>
-                    TAny // TODO
+                    GlobalSymbols.lookupConstant(id.value) match {
+                        case Some(cs) =>
+                            cs.typ
+                        case None =>
+                            notice("Undefined constant '" + id.value + "'", const)
+                            TString
+                    }
 
                 case const @ CFGClassConstant(cl, id) =>
                     TAny // TODO

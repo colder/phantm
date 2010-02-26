@@ -69,35 +69,19 @@ object Main {
 
     def compile(files: List[String]) = {
         try {
-            if (displayProgress) println("1/8 Compiling...")
+            if (displayProgress) println("1/9 Parsing...")
             val sts = files map { f => val c = new Compiler(f); (c, c compile) }
             if (sts exists { _._2 == None} ) {
                 println("Compilation failed.")
             } else {
-                if (displayProgress) println("2/8 Simplifying...")
+                if (displayProgress) println("2/9 Simplifying...")
                 val asts = sts map { c => new STToAST(c._1, c._2.get) getAST }
                 Reporter.errorMilestone
                 var ast: Program = asts.reduceLeft {(a,b) => a combine b}
                 Reporter.errorMilestone
 
                 if (!onlyLint) {
-                    if (resolveIncludes) {
-                        if (displayProgress) println("3/8 Resolving and expanding...")
-                        // Run Constants Resolver
-                        ast = ConstantsResolver(ast, false).transform
-                        // Run AST transformers
-                        ast = IncludeResolver(ast).transform
-                        // Run Constants Resolver, to issue potential errors
-                        ast = ConstantsResolver(ast, true).transform
-                    } else {
-                        if (displayProgress) println("3/8 Resolving and expanding (skipped)")
-                    }
-                    if (displayProgress) println("4/8 Structural checks...")
-                    // Traverse the ast to look for ovious mistakes.
-                    new ASTChecks(ast) execute;
-                    Reporter.errorMilestone
-
-                    if (displayProgress) println("5/8 Importing APIs...")
+                    if (displayProgress) println("3/9 Importing APIs...")
                     // Load internal classes and functions into the symbol tables
                     new API("spec/internal_api.xml").load
 
@@ -105,15 +89,35 @@ object Main {
                         new API(api).load
                     }
 
+                    if (resolveIncludes) {
+                        ast = ConstantsResolver(ast, false).transform
+                        Reporter.errorMilestone
+
+                        if (displayProgress) println("4/9 Resolving includes...")
+                        // Run AST transformers
+                        ast = IncludeResolver(ast).transform
+                    } else {
+                        if (displayProgress) println("4/9 Resolving and expanding (skipped)")
+                    }
+
+                    if (displayProgress) println("5/9 Resolving constants...")
+                    // Run Constants Resolver, to issue potential errors
+                    ast = ConstantsResolver(ast, true).transform
                     Reporter.errorMilestone
 
-                    if (displayProgress) println("6/8 Parsing annotations...")
+                    if (displayProgress) println("6/9 Structural checks...")
+                    // Traverse the ast to look for ovious mistakes.
+                    new ASTChecks(ast) execute;
+
+                    Reporter.errorMilestone
+
+                    if (displayProgress) println("7/9 Parsing annotations...")
                     // Inject type information from the annotations
                     ast = new Annotations(ast).transform
 
                     Reporter.errorMilestone
 
-                    if (displayProgress) println("7/8 Symbolic checks...")
+                    if (displayProgress) println("8/9 Symbolic checks...")
                     // Collect symbols and detect obvious types errors
                     CollectSymbols(ast) execute;
                     Reporter.errorMilestone
@@ -123,7 +127,7 @@ object Main {
                         analyzer.Symbols.emitSummary
                     }
 
-                    if (displayProgress) println("8/8 Type flow analysis...")
+                    if (displayProgress) println("9/9 Type flow analysis...")
                     // Build CFGs and analyzes them
                     CFGChecks(ast) execute;
                     Reporter.errorMilestone
