@@ -204,5 +204,4 @@ object Trees {
     case class MCMethod() extends Scalar
     case class MCNamespace() extends Scalar
 
-
 }

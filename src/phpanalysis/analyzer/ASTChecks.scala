@@ -19,7 +19,7 @@ case class ASTChecks(node: Tree, context: CheckContext) extends ASTTraversal[Che
         node match {
             case f : FunctionDecl => 
                 newCtx = CheckContext(false, false); 
-                if (!ctx.topLevel) {
+                if (!ctx.topLevel && Main.verbosity >= 2) {
                     Reporter.notice("Function "+f.name.value+" should be declared at top-level", f.name)
                 }
             case c: ClassDecl =>

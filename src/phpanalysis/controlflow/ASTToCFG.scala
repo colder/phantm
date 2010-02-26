@@ -173,6 +173,20 @@ object ASTToCFG {
         Some(CFGFalse().setPos(ex))
       case PHPNull() =>
         Some(CFGNull().setPos(ex))
+      case MCFile() =>
+        Some(CFGString("__FILE__").setPos(ex))
+      case MCLine() =>
+        Some(CFGLong(1).setPos(ex))
+      case MCDir() =>
+        Some(CFGString("__DIR__").setPos(ex))
+      case MCClass() =>
+        Some(CFGString("__CLASS__").setPos(ex))
+      case MCMethod() =>
+        Some(CFGString("__METHOD__").setPos(ex))
+      case MCFunction() =>
+        Some(CFGString("__FUNCTION__").setPos(ex))
+      case MCNamespace() =>
+        Some(CFGString("__NAMESPACE__").setPos(ex))
       case _ => None
     }
  

@@ -83,8 +83,12 @@ object Main {
                 if (!onlyLint) {
                     if (resolveIncludes) {
                         if (displayProgress) println("3/8 Resolving and expanding...")
+                        // Run Constants Resolver
+                        ast = ConstantsResolver(ast, false).transform
                         // Run AST transformers
                         ast = IncludeResolver(ast).transform
+                        // Run Constants Resolver, to issue potential errors
+                        ast = ConstantsResolver(ast, true).transform
                     } else {
                         if (displayProgress) println("3/8 Resolving and expanding (skipped)")
                     }

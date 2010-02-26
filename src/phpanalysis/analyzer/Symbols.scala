@@ -1,6 +1,7 @@
 package phpanalysis.analyzer
 
 import scala.collection.mutable.HashMap
+import parser.Trees.Scalar
 import Types._
 
 
@@ -154,10 +155,10 @@ object Symbols {
 
   }
   class PropertySymbol(val cs: ClassSymbol, name: String, val visibility: MemberVisibility, val typ: Type) extends VariableSymbol(name);
-  class ClassConstantSymbol(val cs: ClassSymbol,  name: String, typ: Type) extends ConstantSymbol(name, typ);
+  class ClassConstantSymbol(val cs: ClassSymbol,  name: String, value: Option[Scalar], typ: Type) extends ConstantSymbol(name, value, typ);
 
   class IfaceMethodSymbol(val cs: IfaceSymbol, name: String, typ: Type, val visibility: MemberVisibility) extends FunctionSymbol(name, typ);
-  class IfaceConstantSymbol(val cs: IfaceSymbol,  name: String, typ: Type) extends ConstantSymbol(name, typ);
+  class IfaceConstantSymbol(val cs: IfaceSymbol,  name: String, value: Option[Scalar], typ: Type) extends ConstantSymbol(name, value, typ);
 
   case class LookupResult[T](ms: Option[T], visibError: Option[MemberVisibility], staticClash: Boolean) {
       def isError = ms == None || visibError != None
@@ -319,7 +320,7 @@ object Symbols {
 
   }
 
-  class ConstantSymbol(val name: String, val typ: Type) extends Symbol
+  class ConstantSymbol(val name: String, val value: Option[Scalar], val typ: Type) extends Symbol
   class VariableSymbol(val name: String) extends Symbol
   class ArgumentSymbol(override val name: String, val byref: Boolean, val optional: Boolean, val typ: Type) extends VariableSymbol(name)
 

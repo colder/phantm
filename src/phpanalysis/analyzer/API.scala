@@ -62,6 +62,7 @@ class API(file: String) {
     def load = {
         try {
             val data = XML.loadFile(file)
+            // classes
             for (c <- data \\ "class") {
                 val name = (c \ "@name").text
                 val parent = (c \ "@parent").text
@@ -128,13 +129,14 @@ class API(file: String) {
                 // Register constants
                 for (cc <- c \ "constants" \\ "constant") {
                     val name = (cc \ "@name").text;
-                    val ccs = new ClassConstantSymbol(cs, name, elemsToType(cc \ "type")).setPos(APIPos(cc))
+                    val ccs = new ClassConstantSymbol(cs, name, None, elemsToType(cc \ "type")).setPos(APIPos(cc))
                     cs.registerConstant(ccs)
                 }
 
                 GlobalSymbols.registerClass(cs)
             }
 
+            // functions
             for (f <- data \\ "function") {
                 val name = (f \ "@name").text
                 val args: List[(Node, Type, Boolean)] = ((f \ "args" \\ "arg") map { a => (a, elemsToType(a \ "type"), Integer.parseInt((a \ "@opt").text) > 0) }).toList
@@ -154,7 +156,7 @@ class API(file: String) {
 
             for (cc <- data \ "constants" \\ "constant") {
                 val name = (cc \ "@name").text;
-                val ccs = new ConstantSymbol(name, elemsToType(cc \ "type")).setPos(APIPos(cc))
+                val ccs = new ConstantSymbol(name, None, elemsToType(cc \ "type")).setPos(APIPos(cc))
                 GlobalSymbols.registerConstant(ccs)
             }
 

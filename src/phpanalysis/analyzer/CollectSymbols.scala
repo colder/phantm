@@ -138,7 +138,13 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
         }
 
         for (val c <- cd.consts) {
-            val ccs = new ClassConstantSymbol(cs, c.v.value, typeFromExpr(c.value)).setPos(c)
+            val ccs = c.value match {
+                case sc: Scalar => 
+                    new ClassConstantSymbol(cs, c.v.value, Some(sc), typeFromExpr(c.value)).setPos(c)
+                case _ =>
+                    new ClassConstantSymbol(cs, c.v.value, None, typeFromExpr(c.value)).setPos(c)
+            }
+
             cs.registerConstant(ccs)
         }
     }

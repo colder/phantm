@@ -1,5 +1,10 @@
 <!-- PHP Internal functions classes API -->
 <api>
+ <!-- Constants definitions -->
+ <constants>
+  <constant name="PHP_OS"><type name="string" /></constant>
+ </constants>
+
  <!-- Classes definitions -->
  <classes>
   <class name="stdClass">

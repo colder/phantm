@@ -1,8 +1,11 @@
 package phpanalysis.analyzer
 import parser.Trees._
 import java.io.File
+import scala.collection.mutable.Set;
 
 object IncludeResolver {
+    val includedFiles = Set[String]();
+
     var deepNess = 0;
 
     def begin = {
@@ -24,75 +27,26 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
         case _ => super.trExpr(ex)
     }
 
-    def includeFile(inc: Expression, path: Expression, once: Boolean, require: Boolean): Expression = {
-        def dirname(path: String): String = {
-            val ind = path.lastIndexOf('/')
-            if (ind < 0) {
-                "."
-            } else {
-                path.substring(0, ind)
-            }
-        }
 
-        def unrollPath(path: Expression): Option[String] = path match {
-            case Concat (lhs, rhs) =>
-                (unrollPath(lhs), unrollPath(rhs)) match {
-                    case (Some(slhs), Some(srhs)) => Some(slhs+srhs)
-                    case _ => None
-                }
-            case FunctionCall(StaticFunctionRef(_,_,Identifier("dirname")), List(CallArg(arg, _))) =>
-                unrollPath(arg) match {
-                    case Some(a) =>
-                        Some(dirname(a))
-                    case None =>
-                        None
-                }
-            case Constant(_) =>
-                Some("CONSTANT")
-            case ClassConstant(_:StaticClassRef, _) =>
-                Some("CLASSCONSTANT")
-            case PHPTrue() =>
-                Some("1")
-            case PHPFalse() =>
-                Some("")
-            case PHPInteger(value) =>
-                Some(""+value)
-            case PHPFloat(value) =>
-                Some(""+value)
-            case PHPString(value) =>
-                Some(value)
-            case PHPNull() =>
-                Some("")
-            case MCFile() =>
-                inc.file match {
-                    case Some(p) =>
-                        Some(new File(p).getAbsolutePath())
-                    case None =>
-                        Some("")
-                }
-            case MCLine() =>
-                Some(""+inc.line)
-            case MCDir() =>
-                inc.file match {
-                    case Some(p) =>
-                        Some(dirname(new File(p).getAbsolutePath()))
-                    case None =>
-                        Some("")
-                }
-            case sc: Scalar =>
-                Some(""+sc)
-            case _ =>
-                None
+    def includeFile(inc: Expression, path: Expression, once: Boolean, require: Boolean): Expression = {
+
+        def shouldInclude(p: String): Boolean = {
+            !once || !IncludeResolver.includedFiles.contains(p)
         }
 
         def pathExists(p: String): Boolean = new File(p).exists
 
         def getAST(path: String): Expression = {
             import parser.STToAST
+
+            IncludeResolver.includedFiles += path
+
             val c = new Compiler(path)
             c compile match {
                 case Some(node) =>
                     var ast: Program = new STToAST(c, node) getAST;
+                    // We define/resolve constants there too
+                    ast = ConstantsResolver(ast, false).transform
                     // We include-resolve this file too
                     ast = IncludeResolver(ast).transform
 
@@ -111,11 +65,16 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
         IncludeResolver.begin
 
         val result = if (IncludeResolver.deepNess < 20) {
-            unrollPath(path) match {
-                case Some(p) =>
+            Evaluator.staticEval(path) match {
+                case Some(scalar_p) =>
+                    val p = Evaluator.scalarToString(scalar_p)
                     if (p(0) == '/') {
                         if (pathExists(p)) {
-                            getAST(p)
+                            if (shouldInclude(p)) {
+                                getAST(p)
+                            } else {
+                                PHPFalse()
+                            }
                         } else {
                             notfound(p)
                         }
@@ -131,7 +90,11 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
 
                         foundPath match {
                             case Some(path) =>
-                                getAST(path)
+                                if (shouldInclude(p)) {
+                                    getAST(path)
+                                } else {
+                                    PHPFalse()
+                                }
                             case None =>
                                 notfound(p)
                         }
