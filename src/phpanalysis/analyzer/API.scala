@@ -56,7 +56,8 @@ class API(file: String) {
         case "bool" => TBoolean
         case "boolean" => TBoolean
         case "void" => TNull
-        case _ => TAny
+        case typ =>
+            TAny
     }
 
     def load = {
