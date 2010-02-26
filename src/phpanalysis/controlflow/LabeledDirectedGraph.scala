@@ -134,13 +134,20 @@ abstract class LabeledDirectedGraphImp[LabelType] extends LabeledDirectedGraph[L
          alreadyIn += myVertOut
 
 
-         def followGraph(v:Vertex): Unit = {
-            if (!alreadyIn.contains(v) && vertices.contains(v)) {
-                alreadyIn += v;
-                emit("    "+v.name+";\n");
-                for(eOut <- v.out) {
-                    emit("    "+eOut.name+";\n");
-                    followGraph(eOut.v2);
+         def followGraph(vinit:Vertex): Unit = {
+            var vs: List[Vertex] = List(vinit);
+
+            while(vs != Nil) {
+                val v = vs.head
+                vs = vs.tail
+
+                if (!alreadyIn.contains(v) && vertices.contains(v)) {
+                    alreadyIn += v;
+                    emit("    "+v.name+";\n");
+                    for(eOut <- v.out) {
+                        emit("    "+eOut.name+";\n");
+                        vs = eOut.v2 :: vs
+                    }
                 }
             }
          }
