@@ -104,16 +104,16 @@ object TypeFlow {
             e
         }
 
-        override def differsFrom(e: TypeEnvironment): Boolean = {
-            e match {
-                case BaseTypeEnvironment =>
-                    false
-                case _ =>
-                    true
+        override def equals(e: Any) = {
+            if (e.isInstanceOf[AnyRef]) {
+                BaseTypeEnvironment eq e.asInstanceOf[AnyRef]
+            } else {
+                false
             }
         }
+
         override def toString = {
-            "[_]"
+            "<base>"
         }
 
     }
@@ -155,12 +155,15 @@ object TypeFlow {
             }
         }
 
-        def differsFrom(e: TypeEnvironment): Boolean = {
-            e match {
-                case BaseTypeEnvironment =>
-                    true
-                case e: TypeEnvironment =>
-                    scope != e.scope || map != e.map || store != e.store
+        override def equals(e: Any): Boolean = {
+            if (BaseTypeEnvironment == e) {
+                false
+            } else if (e.isInstanceOf[TypeEnvironment]) {
+                val env = e.asInstanceOf[TypeEnvironment];
+
+                scope == env.scope && map == env.map && store == env.store
+            } else {
+                false
             }
         }
 

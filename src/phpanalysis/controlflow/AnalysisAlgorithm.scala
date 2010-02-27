@@ -53,7 +53,7 @@ class AnalysisAlgorithm[E <: Environment[E],S]
                 val oldFact : E = facts(v)
                 var newFact : Option[E] = None
 
-                for (e <- cfg.inEdges(v) if facts(e.v1) differsFrom bottomEnv) {
+                for (e <- cfg.inEdges(v) if facts(e.v1) != bottomEnv) {
                     val propagated = transferFun(e.lab, facts(e.v1));
 
                     newFact = newFact match {
@@ -64,12 +64,10 @@ class AnalysisAlgorithm[E <: Environment[E],S]
 
                 val nf = newFact.getOrElse(baseEnv);
 
-                if (nf differsFrom oldFact) {
-                    /*
+                if (nf != oldFact) {
                     println("["+v+"]: ")
                     println("  OLD: "+oldFact)
                     println("  NEW: "+nf)
-                    */
 
                     facts = facts.update(v, nf)
 

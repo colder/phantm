@@ -76,11 +76,17 @@ object Types {
             case _ => None
         }
 
-        def injectField(index: String, typ: Type) : self.type;
+        def injectField(index: String, typ: Type, weak: Boolean) : self.type;
 
-        def injectField(index: CFGSimpleValue, typ: Type): this.type = index match {
-          case CFGLong(i)        => injectField(i+"", typ)
-          case CFGString(index) => injectField(index, typ)
+        def injectField(index: String, typ: Type) : self.type =
+            injectField(index, typ, true)
+
+        def injectField(index: CFGSimpleValue, typ: Type): this.type =
+            injectField(index, typ, true)
+
+        def injectField(index: CFGSimpleValue, typ: Type, weak: Boolean): this.type = index match {
+          case CFGLong(i)        => injectField(i+"", typ, weak)
+          case CFGString(index) => injectField(index, typ, weak)
           case _ => polluteFields(typ)
         }
 
@@ -114,6 +120,8 @@ object Types {
                     res = res.set(id, os.store(id).duplicate)
                 }
             }
+
+            println("Union of "+this+" and "+os+" => "+res)
 
             res
 
@@ -188,8 +196,10 @@ object Types {
         def lookupMethod(index: String, from: Option[ClassSymbol]): Option[FunctionType] =
             None
 
-        def injectField(index: String, typ: Type): this.type = {
-            fields(index) = typ;
+        def injectField(index: String, typ: Type, weak: Boolean): this.type = {
+            println("Injecting field "+index+" -> "+typ)
+            println("ON: "+fields)
+            fields(index) = (if (weak) TypeLattice.join(typ, fields.getOrElse(index, TNull)) else typ)
             this
         }
 
