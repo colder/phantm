@@ -9,7 +9,7 @@ case class STToAST(comp: Compiler, st: ParseNode) {
 
     // Tree visitors functions
 
-    def S(n: ParseNode): Program = new Program(top_statement_list(child(n, 0)))
+    def S(n: ParseNode): Program = new Program(top_statement_list(child(n, 0))).setPos(n)
 
     def top_statement_list(n: ParseNode): List[Statement] = {
         childrenNames(n) match {

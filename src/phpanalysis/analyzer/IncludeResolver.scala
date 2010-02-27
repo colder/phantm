@@ -116,4 +116,10 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
 
         result
     }
+
+    if (ast.file != None) {
+        IncludeResolver.includedFiles += ast.file.get
+    } else {
+        println("AST pos undef")
+    }
 }

@@ -117,6 +117,7 @@ object TypeFlow {
         }
 
     }
+
     class TypeEnvironment(val map: Map[CFGSimpleVariable, Type], val scope: Option[ClassSymbol], val store: ObjectStore) extends Environment[TypeEnvironment] {
         def this(scope: Option[ClassSymbol]) = {
             this(new HashMap[CFGSimpleVariable, Type], scope, new ObjectStore);
@@ -156,14 +157,37 @@ object TypeFlow {
         }
 
         override def equals(e: Any): Boolean = {
-            if (BaseTypeEnvironment == e) {
-                false
-            } else if (e.isInstanceOf[TypeEnvironment]) {
-                val env = e.asInstanceOf[TypeEnvironment];
+            e match {
+                case BaseTypeEnvironment =>
+                    false
 
-                scope == env.scope && map == env.map && store == env.store
-            } else {
-                false
+                case env: TypeEnvironment =>
+
+                    /*
+                    if (scope != env.scope) {
+                        println("Scope mismatch:")
+                        println(" - "+scope)
+                        println(" - "+env.scope)
+                    }
+
+                    if (map != env.map) {
+                        println("Map mismatch:")
+                        println(" - "+map)
+                        println(" - "+env.map)
+                    }
+
+
+                    if (store != env.store) {
+                        println("Store mismatch:")
+                        println(" - "+store)
+                        println(" - "+env.store)
+                    }
+                    */
+
+                    scope == env.scope && map == env.map && store == env.store
+                case _ =>
+                    false
+
             }
         }
 
@@ -545,18 +569,19 @@ object TypeFlow {
                         //println(" Checking for "+elem +"(actualType: "+typeFromSimpleValue(elem)+", checkType: "+ct+", resultType: "+rt+")");
                         def assignMergeObject(from: TObjectRef, to: TObjectRef): Type ={
                                 import scala.collection.mutable.HashMap
-                                //println("Trying to assign-merge "+from+" and "+ to)
 
                                 val fromRO = store.lookup(from)
                                 val toRO   = store.lookup(to)
+
+                                //println("Trying to assign-merge "+fromRO+" and "+ toRO)
 
                                 val newFields = HashMap[String, Type]() ++ fromRO.fields;
 
                                 val pt = toRO.pollutedType.getOrElse(TNone) join fromRO.pollutedType.getOrElse(TNone)
 
-                                for((index, typ)<- toRO.fields) {
+                                for((index, typ) <- toRO.fields) {
                                     newFields(index) = newFields.get(index) match {
-                                        case Some(t) => pt join assignMerge(t, typ)
+                                        case Some(t) => pt join (t join typ) // weak assign here
                                         case None => pt join typ
                                     }
                                 }
@@ -569,6 +594,8 @@ object TypeFlow {
                                     case o: TRealObject =>
                                         new TRealObject(newFields, opt)
                                 }
+
+                                //println("Result: "+o)
 
                                 store = store.set(to.id, o)
 
@@ -864,8 +891,9 @@ object TypeFlow {
             aa.computeFixpoint
 
             if (Main.displayDebug) {
+                println("     - Fixpoint:");
                 for ((v,e) <- aa.getResult.toList.sort{(x,y) => x._1.name < y._1.name}) {
-                    println("node "+v+" has env "+e);
+                    println("      * ["+v+"] => "+e);
                 }
             }
 

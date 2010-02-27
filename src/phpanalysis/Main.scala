@@ -96,6 +96,13 @@ object Main {
                         if (displayProgress) println("4/9 Resolving includes...")
                         // Run AST transformers
                         ast = IncludeResolver(ast).transform
+
+                        if (displayDebug) {
+                            println("     - Files sucessfully imported:")
+                            for (f <- IncludeResolver.includedFiles) {
+                                println("       * "+f)
+                            }
+                        }
                     } else {
                         if (displayProgress) println("4/9 Resolving and expanding (skipped)")
                     }

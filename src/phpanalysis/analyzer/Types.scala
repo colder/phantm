@@ -121,8 +121,6 @@ object Types {
                 }
             }
 
-            println("Union of "+this+" and "+os+" => "+res)
-
             res
 
         }
@@ -187,6 +185,14 @@ object Types {
     class TRealObject(var fields: Map[String, Type],
                       var pollutedType: Option[Type]) extends RealObjectType {
 
+        override def equals(o: Any): Boolean = o match {
+            case ro: TRealObject =>
+                fields == ro.fields && pollutedType == ro.pollutedType
+            case _ =>
+                false
+        }
+
+
         def lookupField(index: String) =
             fields.get(index) match {
                 case Some(t) => Some(t)
@@ -197,8 +203,10 @@ object Types {
             None
 
         def injectField(index: String, typ: Type, weak: Boolean): this.type = {
+            /*
             println("Injecting field "+index+" -> "+typ)
             println("ON: "+fields)
+            */
             fields(index) = (if (weak) TypeLattice.join(typ, fields.getOrElse(index, TNull)) else typ)
             this
         }

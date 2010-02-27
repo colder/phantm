@@ -65,9 +65,11 @@ class AnalysisAlgorithm[E <: Environment[E],S]
                 val nf = newFact.getOrElse(baseEnv);
 
                 if (nf != oldFact) {
-                    println("["+v+"]: ")
-                    println("  OLD: "+oldFact)
-                    println("  NEW: "+nf)
+                    if (pass == 150) {
+                        println("["+v+"]: ")
+                        println("  OLD: "+oldFact)
+                        println("  NEW: "+nf)
+                    }
 
                     facts = facts.update(v, nf)
 
@@ -81,9 +83,9 @@ class AnalysisAlgorithm[E <: Environment[E],S]
     }
 
     def dumpFacts = {
-    for ((v,e) <- facts.toList.sort{(x,y) => x._1.name < y._1.name}) {
-        println("  "+v+" => "+e)
-    }
+        for ((v,e) <- facts.toList.sort{(x,y) => x._1.name < y._1.name}) {
+            println("  "+v+" => "+e)
+        }
     }
     def getResult : Map[Vertex,E] = facts
 }

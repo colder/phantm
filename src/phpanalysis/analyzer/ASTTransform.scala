@@ -3,7 +3,7 @@ import parser.Trees._
 
 abstract class ASTTransform(p: Program) {
     def transform: Program = {
-        Program(trStmts(p.stmts))
+        Program(trStmts(p.stmts)).setPos(p)
     }
 
     def trStmts(stmts: List[Statement]): List[Statement] = stmts match {
