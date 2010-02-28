@@ -156,6 +156,31 @@ object TypeFlow {
             }
         }
 
+        def dumpDiff(e: TypeEnvironment): Unit = {
+            if (scope != e.scope) {
+                println("Scope diff!")
+            } else if (store != e.store) {
+                println("Store diff!")
+            } else {
+                for ((v, t) <- map) {
+                    if (e.map contains v) {
+                        if (t != e.map(v)) {
+                            println(" "+v+" => ")
+                            println("      OLD: "+t)
+                            println("      NEW: "+e.map(v))
+                        }
+                    } else {
+                        println(" "+v+" not in NEW")
+                    }
+                }
+                for ((v, t) <- e.map) {
+                    if (!(map contains v)) {
+                        println(" "+v+" not in OLD")
+                    }
+                }
+            }
+        }
+
         override def equals(e: Any): Boolean = {
             e match {
                 case BaseTypeEnvironment =>
@@ -863,7 +888,7 @@ object TypeFlow {
             // for methods, we inject $this as its always defined
             scope match {
                 case ms: MethodSymbol =>
-                    baseEnv.injectStore(baseEnv.store.initIfNotExist(ObjectId(-1, 0), Some(ms.cs)))
+                    baseEnv = baseEnv.injectStore(baseEnv.store.initIfNotExist(ObjectId(-1, 0), Some(ms.cs)))
                     injectPredef("this", new TObjectRef(ObjectId(-1, 0)))
                 case _ =>
             }
