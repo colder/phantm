@@ -255,6 +255,8 @@ object ASTToCFG {
                     Some(CFGAssign(v, CFGAny().setPos(fc)))
                 case MethodCall(obj, StaticMethodRef(id), args) => 
                     Some(CFGAssign(v, CFGMethodCall(expr(obj), id, args.map {a => expr(a.value) }).setPos(ex)))
+                case MethodCall(obj, _, args) => 
+                    Some(CFGAssign(v, CFGAny().setPos(ex)))
                 case StaticMethodCall(cl, StaticMethodRef(id), args) => 
                     Some(CFGAssign(v, CFGStaticMethodCall(cl, id, args.map {a => expr(a.value) }).setPos(ex)))
                 case Array(Nil) =>
@@ -637,9 +639,12 @@ object ASTToCFG {
                 case None =>
                     Emit.goto(bodyV)
             }
+
             Emit.setPC(bodyV)
 
+            controlStack = (nextV, cont) :: controlStack
             stmt(body, nextV)
+            controlStack = controlStack.tail
 
             Emit.setPC(nextV)
             Emit.statementCont(CFGAssign(v, CFGArrayNext(v).setPos(s)).setPos(s), condV)
@@ -650,7 +655,12 @@ object ASTToCFG {
             Emit.goto(cfg.exit)
             Emit.setPC(cfg.newVertex)
         case e: Expression =>
-            Emit.statementCont(expr(e), cont);
+            expr(e) match {
+                case csv: CFGVariable =>
+                    Emit.goto(cont)
+                case e =>
+                    Emit.statementCont(e, cont);
+            }
         case _ =>
             Reporter.notice("Not yet implemented (AST->CFG): "+s, s);
       }
