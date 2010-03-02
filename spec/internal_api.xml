@@ -33669,7 +33669,7 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
   </function>
 
   <function name="gzopen">
-   <return><type name="resource"></type></return>
+   <return><type name="resource" /> <type name="false" /></return>
    <args>
     <arg opt="0"><type name="string"></type></arg>
     <arg opt="0"><type name="string"></type></arg>
