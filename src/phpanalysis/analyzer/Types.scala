@@ -98,7 +98,7 @@ object Types {
         def merge(t2: RealObjectType): RealObjectType;
         def duplicate: RealObjectType;
 
-        def toText = toString;
+        def toText = toString
     }
 
     // Objects related types
@@ -247,8 +247,6 @@ object Types {
             r
         }
 
-        override def toText =  "Object(?)"
-
         def polluteFields(typ: Type) = {
 
             // When the index is unknown, we have to pollute every entries
@@ -324,8 +322,6 @@ object Types {
             RecProtection.objectToStringDeep -= 1;
             r
         }
-
-        override def toText =  "Object("+cl+")"
 
         def msToTMethod(ms: MethodSymbol) = {
             new TFunction(ms.argList.map{ x => (x._2.typ, x._2.optional)}.toList, ms.typ)
