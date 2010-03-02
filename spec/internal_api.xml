@@ -17972,10 +17972,17 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
   </function>
 
   <function name="bzopen">
-   <return><type name="resource"></type></return>
+   <return><type name="false"></type><type name="resource"></type></return>
    <args>
     <arg opt="0"><type name="string"></type><type name="int"></type></arg>
     <arg opt="0"><type name="string"></type></arg>
+   </args>
+  </function>
+
+  <function name="bzclose">
+   <return><type name="boolean"></type></return>
+   <args>
+    <arg opt="0"><type name="resource"></type></arg>
    </args>
   </function>
 
