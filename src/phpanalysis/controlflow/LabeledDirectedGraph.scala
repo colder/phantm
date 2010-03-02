@@ -82,7 +82,7 @@ abstract class LabeledDirectedGraphImp[LabelType] extends LabeledDirectedGraph[L
     to.in -= edge
   }
  def escape(s: String) =
-    s.replaceAll("\\\\", "\\\\\\\\").replaceAll("\"", "\\\\\"").replaceAll("\\\n", "\\\\n").replaceAll("[^a-zA-Z0-9;$.,!# \t=^:_\\\\\"'*+/&()\\[\\]{}-]", "?")
+    s.replaceAll("\\\\", "\\\\\\\\").replaceAll("\"", "\\\\\"").replaceAll("\\\n", "\\\\n").replaceAll("[^<>a-zA-Z0-9;$.,!# \t=^:_\\\\\"'*+/&()\\[\\]{}-]", "?")
 
   private var groups: List[Group] = Nil;
   private var groupStack: List[Group] = Nil;
