@@ -454,7 +454,9 @@ object TypeFlow {
                 if (TypeLattice.leq(env, vtyp, etyp)) {
                     vtyp
                 } else {
-                    notice("Potential type mismatch: expected: "+typs.toList.map{x => x.toText(env)}.mkString(" or ")+", found: "+vtyp.toText(env), v1)
+                    if (!silent) {
+                        notice("Potential type mismatch: expected: "+typs.toList.map{x => x.toText(env)}.mkString(" or ")+", found: "+vtyp.toText(env), v1)
+                    }
                     typs.toList.head
                 }
             }
@@ -611,7 +613,7 @@ object TypeFlow {
 
                                 //println("Result: "+o)
 
-                                store = store.set(to.id, o)
+                                e = e.injectStore(e.store.set(to.id, o))
 
                                 to
                         }
