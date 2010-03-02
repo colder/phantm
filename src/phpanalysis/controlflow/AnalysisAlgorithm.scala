@@ -33,9 +33,11 @@ class AnalysisAlgorithm[E <: Environment[E],S]
             println("      * Analyzing CFG ("+cfg.V.size+" vertices, "+cfg.E.size+" edges)")
         }
 
-        facts(cfg.entry) = baseEnv
+        facts = facts.update(cfg.entry, baseEnv)
 
-        workList += cfg.entry
+        for (e <- cfg.outEdges(cfg.entry)) {
+            workList += e.v2
+        }
 
         while (workList.size > 0) {
             pass += 1
@@ -44,23 +46,11 @@ class AnalysisAlgorithm[E <: Environment[E],S]
               println("      * Pass "+pass+" ("+workList.size+" nodes to propagate)...")
             }
 
-            /*
-            if (pass == 25000 || true) {
-                cfg.writeDottyToFile("output.cfg", "Debug");
-            }
-            */
-            /*
-            if (pass >= 25000 || true) {
-                  println("  #######################################")
-                  println("  #### Pass "+pass+" ("+workList.size+" nodes to propagate)...")
-                  println("  #######################################")
-            }
-            */
-
             val passWorkList = Set[Vertex]() ++ workList;
             workList = Set[Vertex]()
 
             for(v <- passWorkList) {
+
                 val oldFact : E = facts(v)
                 var newFact : Option[E] = None
 
@@ -73,20 +63,9 @@ class AnalysisAlgorithm[E <: Environment[E],S]
                     }
                 }
 
-                val nf = newFact.getOrElse(baseEnv);
+                val nf = newFact.getOrElse(oldFact);
 
                 if (nf != oldFact) {
-                    /*
-                    if (pass >= 25000 || true) {
-                        println("["+v+"]: ")
-                        for (e <- cfg.inEdges(v) if facts(e.v1) != bottomEnv) {
-                            println("  -> "+e.lab+" ["+facts(e.v1)+"]")
-                        }
-                        println("  ######DIFF######")
-                        oldFact dumpDiff nf
-                    }
-                    */
-
                     facts = facts.update(v, nf)
 
                     for (e <- cfg.outEdges(v)) {
