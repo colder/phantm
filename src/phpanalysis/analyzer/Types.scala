@@ -21,7 +21,7 @@ object Types {
 
         def deepNess(st: ObjectStore): Int = 1;
 
-        def toText = toString
+        def toText(te: TypeEnvironment) = toString
     }
 
     sealed abstract class ClassType {
@@ -98,7 +98,7 @@ object Types {
         def merge(t2: RealObjectType): RealObjectType;
         def duplicate: RealObjectType;
 
-        def toText = toString
+        def toText(te: TypeEnvironment) = toString
     }
 
     // Objects related types
@@ -166,7 +166,7 @@ object Types {
     // Any object, should be only used to typecheck, no symbol should be infered to this type
     object TAnyObject extends ObjectType {
         override def toString = "TAnyObject"
-        override def toText   = "any object"
+        override def toText(te: TypeEnvironment)   = "any object"
     }
     // Reference to an object in the store
     class TObjectRef(val id: ObjectId) extends ObjectType {
@@ -174,8 +174,8 @@ object Types {
             "TObjectRef#"+id+""
         }
 
-        override def toText = {
-            "Object #"+id+""
+        override def toText(te: TypeEnvironment) = {
+            te.store.lookup(id).toText(te)
         }
 
         override def equals(v: Any) = v match {
@@ -486,40 +486,40 @@ object Types {
 
     object TAnyArray extends TArray(Map[String, Type](), Some(TAny)) {
         override def toString = "Array[?]"
-        override def toText = "any array"
+        override def toText(te: TypeEnvironment) = "any array"
     }
 
 
     case object TInt extends Type {
-        override def toText = "int"
+        override def toText(te: TypeEnvironment) = "int"
     }
     case object TBoolean extends Type {
-        override def toText = "boolean"
+        override def toText(te: TypeEnvironment) = "boolean"
     }
     case object TTrue extends Type {
-        override def toText = "true"
+        override def toText(te: TypeEnvironment) = "true"
     }
     case object TFalse extends Type {
-        override def toText = "false"
+        override def toText(te: TypeEnvironment) = "false"
     }
 
     case object TFloat extends Type {
-        override def toText = "float"
+        override def toText(te: TypeEnvironment) = "float"
     }
     case object TString extends Type {
-        override def toText = "string"
+        override def toText(te: TypeEnvironment) = "string"
     }
     case object TAny extends Type {
-        override def toText = "any"
+        override def toText(te: TypeEnvironment) = "any"
     }
     case object TNone extends Type {
-        override def toText = "none"
+        override def toText(te: TypeEnvironment) = "none"
     }
     case object TResource extends Type {
-        override def toText = "resource"
+        override def toText(te: TypeEnvironment) = "resource"
     }
     case object TNull extends Type {
-        override def toText = "null"
+        override def toText(te: TypeEnvironment) = "null"
     }
 
     class TUnion extends Type {
@@ -574,7 +574,7 @@ object Types {
         }
 
         override def toString = types.mkString("{", ",", "}")
-        override def toText   = types.map { x => x.toText }.mkString(" or ")
+        override def toText(te: TypeEnvironment)   = types.map { x => x.toText(te) }.mkString(" or ")
     }
 
     object TUnion extends Type {

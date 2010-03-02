@@ -450,25 +450,11 @@ object TypeFlow {
             def expectWithEnv(env: TypeEnvironment, v1: CFGSimpleValue, typs: Type*): Type = {
                 val vtyp = typeFromSimpleValue(v1);
                 val etyp = typs reduceLeft (_ join _)
-                /*
-                for (t <- typs) {
-                    if (TypeLattice.leq(vtyp, t)) {
-                        return vtyp
-                    }
-                }
-                */
+
                 if (TypeLattice.leq(env, vtyp, etyp)) {
                     vtyp
                 } else {
-                    def typeAsString(t: Type): String = t match {
-                        case tu: TUnion =>
-                            tu.types.map(typeAsString).mkString(" or ")
-                        case or: TObjectRef =>
-                            store.lookup(or).toText
-                        case t =>
-                            t.toText
-                    }
-                    notice("Potential type mismatch: expected: "+typs.toList.map{x => typeAsString(x)}.mkString(" or ")+", found: "+typeAsString(vtyp), v1)
+                    notice("Potential type mismatch: expected: "+typs.toList.map{x => x.toText(env)}.mkString(" or ")+", found: "+vtyp.toText(env), v1)
                     typs.toList.head
                 }
             }
@@ -571,7 +557,7 @@ object TypeFlow {
                                 // for params
                                 val ct = if (pass > 0) {
                                     store = store.initIfNotExist(ObjectId(sv.uniqueID, 1), None);
-                                    store.lookup(ObjectId(sv.uniqueID, 1)).injectField(index, checkType)
+                                    store.lookup(ObjectId(sv.uniqueID, 1)).injectField(index, checkType, false)
                                     new TObjectRef(ObjectId(sv.uniqueID, 1))
                                 } else {
                                     TAnyObject;
