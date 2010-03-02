@@ -12,6 +12,7 @@ object Main {
     var displaySymbols     = false;
     var verbosity          = 1;
     var resolveIncludes    = true;
+    var importAPI          = true;
     var displayDebug       = false;
     var displayProgress    = false;
     var onlyLint           = false;
@@ -39,6 +40,9 @@ object Main {
             handleArgs(xs)
         case "--noincludes" :: xs =>
             resolveIncludes = false
+            handleArgs(xs)
+        case "--noapi" :: xs =>
+            importAPI = false
             handleArgs(xs)
         case "--debug" :: xs =>
             displayDebug = true
@@ -81,12 +85,16 @@ object Main {
                 Reporter.errorMilestone
 
                 if (!onlyLint) {
-                    if (displayProgress) println("3/9 Importing APIs...")
-                    // Load internal classes and functions into the symbol tables
-                    new API("spec/internal_api.xml").load
+                    if (importAPI) {
+                        if (displayProgress) println("3/9 Importing APIs...")
+                        // Load internal classes and functions into the symbol tables
+                        new API("spec/internal_api.xml").load
 
-                    for (api <-apis) {
-                        new API(api).load
+                        for (api <-apis) {
+                            new API(api).load
+                        }
+                    } else {
+                        if (displayProgress) println("3/9 Importing APIs (skipped)")
                     }
 
                     if (resolveIncludes) {
