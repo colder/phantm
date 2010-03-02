@@ -35,9 +35,7 @@ class AnalysisAlgorithm[E <: Environment[E],S]
 
         facts(cfg.entry) = baseEnv
 
-        for (v <- cfg.V) {
-            workList += v
-        }
+        workList += cfg.entry
 
         while (workList.size > 0) {
             pass += 1
@@ -45,6 +43,19 @@ class AnalysisAlgorithm[E <: Environment[E],S]
             if (Main.displayProgress) {
               println("      * Pass "+pass+" ("+workList.size+" nodes to propagate)...")
             }
+
+            /*
+            if (pass == 25000 || true) {
+                cfg.writeDottyToFile("output.cfg", "Debug");
+            }
+            */
+            /*
+            if (pass >= 25000 || true) {
+                  println("  #######################################")
+                  println("  #### Pass "+pass+" ("+workList.size+" nodes to propagate)...")
+                  println("  #######################################")
+            }
+            */
 
             val passWorkList = Set[Vertex]() ++ workList;
             workList = Set[Vertex]()
@@ -65,11 +76,16 @@ class AnalysisAlgorithm[E <: Environment[E],S]
                 val nf = newFact.getOrElse(baseEnv);
 
                 if (nf != oldFact) {
-                    if (pass == 150) {
+                    /*
+                    if (pass >= 25000 || true) {
                         println("["+v+"]: ")
-                        println("  OLD: "+oldFact)
-                        println("  NEW: "+nf)
+                        for (e <- cfg.inEdges(v) if facts(e.v1) != bottomEnv) {
+                            println("  -> "+e.lab+" ["+facts(e.v1)+"]")
+                        }
+                        println("  ######DIFF######")
+                        oldFact dumpDiff nf
                     }
+                    */
 
                     facts = facts.update(v, nf)
 

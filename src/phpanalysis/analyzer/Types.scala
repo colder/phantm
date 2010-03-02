@@ -19,6 +19,8 @@ object Types {
 
         def equals(t: Type) = t == self;
 
+        def deepNess(st: ObjectStore): Int = 1;
+
         def toText = toString
     }
 
@@ -61,6 +63,8 @@ object Types {
         var pollutedType: Option[Type]
 
         def lookupField(index: String): Option[Type];
+
+        def deepNess(st: ObjectStore): Int;
 
         def lookupField(index: CFGSimpleValue): Option[Type] = index match {
           case CFGLong(i)        => lookupField(i+"")
@@ -179,6 +183,10 @@ object Types {
                 ref.id == id
             case _ => false
         }
+
+        override def deepNess(st: ObjectStore) = {
+            st.lookup(this).deepNess(st)
+        }
     }
 
     // Real object type (in the store) representing a specific object of any class
@@ -190,6 +198,22 @@ object Types {
                 fields == ro.fields && pollutedType == ro.pollutedType
             case _ =>
                 false
+        }
+
+        def deepNess(st: ObjectStore): Int = {
+            var max = 0;
+            for (v <- fields.values) {
+                if (max < v.deepNess(st)) max = v.deepNess(st);
+            }
+
+            pollutedType match {
+                case Some(t) =>
+                    if (t.deepNess(st) > max)
+                        max = t.deepNess(st)
+                case None =>
+            }
+
+            max+1;
         }
 
 
@@ -358,15 +382,20 @@ object Types {
         }
 
         def getPushedType(uniqueID: Int) = {
+            pollutedType.getOrElse(TAny)
+            /*
             pushPositions.get(uniqueID) match {
                 case Some(index) =>
                     entries(index)
                 case None =>
                     TAny
             }
+            */
         }
 
         def injectNext(typ: Type, uniqueID: Int) = {
+            pollute(typ)
+            /*
             pushPositions.get(uniqueID) match {
                 case Some(index) =>
                     // Was already pushed
@@ -379,6 +408,7 @@ object Types {
                     entries(nextFreeIndex+"") = typ
                     pushPositions(uniqueID) = nextFreeIndex+""
             }
+            */
             this
         }
 
@@ -423,6 +453,22 @@ object Types {
             case ta: TArray =>
                 entries == ta.entries && pollutedType == ta.pollutedType
             case _ => false
+        }
+
+        override def deepNess(st: ObjectStore) = {
+            var max = 0;
+            for (v <- entries.values) {
+                if (max < v.deepNess(st)) max = v.deepNess(st);
+            }
+
+            pollutedType match {
+                case Some(t) =>
+                    if (t.deepNess(st) > max)
+                        max = t.deepNess(st)
+                case None =>
+            }
+
+            max+1;
         }
 
         override def toString =
@@ -481,16 +527,36 @@ object Types {
     }
 
     class TUnion extends Type {
-        var types: List[Type] = List[Type]()
+        var types: List[Type] = Nil
 
-        def add(t: Type) = t match {
+        def add(t: Type): Unit = t match {
             case t1: TUnion =>
                 for (t2 <- t1.types) {
-                    if (!(types contains t2)) {
-                        types = t2 :: types
-                    }
+                    add(t2)
                 }
-            case _ =>
+            case TAnyArray =>
+                // we can ignore any array type in the union
+                types = t :: types.filter{! _.isInstanceOf[ArrayType]}.toList
+
+            case t: TArray =>
+
+                if (types contains TAnyArray) {
+                    // we ignore
+                } else {
+                    var nt: List[Type] = Nil
+                    var toAdd = t
+
+                    for (tc <- types) tc match {
+                        case t: TArray =>
+                            toAdd = toAdd merge t
+                        case _ =>
+                            nt = tc :: nt
+                    }
+
+                    types = toAdd :: nt;
+
+                }
+            case t =>
                 if (!(types contains t)) {
                     types = t :: types
                 }

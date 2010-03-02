@@ -170,12 +170,12 @@ object TypeFlow {
                             println("      NEW: "+e.map(v))
                         }
                     } else {
-                        println(" "+v+" not in NEW")
+                        println(" "+v+" not in NEW:"+t)
                     }
                 }
                 for ((v, t) <- e.map) {
                     if (!(map contains v)) {
-                        println(" "+v+" not in OLD")
+                        println(" "+v+" not in OLD: "+t)
                     }
                 }
             }
@@ -444,7 +444,10 @@ object TypeFlow {
                 new TObjectRef(id)
             }
 
-            def expect(v1: CFGSimpleValue, typs: Type*): Type = {
+            def expect(v1: CFGSimpleValue, typs: Type*): Type =
+                expectWithEnv(env, v1, typs:_*)
+
+            def expectWithEnv(env: TypeEnvironment, v1: CFGSimpleValue, typs: Type*): Type = {
                 val vtyp = typeFromSimpleValue(v1);
                 val etyp = typs reduceLeft (_ join _)
                 /*
@@ -587,7 +590,7 @@ object TypeFlow {
 
                     // We lineraize the recursive structure
                     linearize(v, ext, ext, 0)
-                    var e = env
+                    var e = env.injectStore(store)
 
                     // Let's traverse all up to the last elem (the outermost assign)
                     for ((elem, ct, rt) <- elems.init) {
@@ -674,7 +677,7 @@ object TypeFlow {
                             case sv: CFGSimpleVariable =>
                                 // Due to our deep type system, checking
                                 // the base variable should be enough
-                                expect(elem, ct)
+                                expectWithEnv(e, elem, ct)
                                 e = e.inject(sv, resultingType);
                             case _ =>
                         }
