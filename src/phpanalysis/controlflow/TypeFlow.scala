@@ -14,8 +14,9 @@ object TypeFlow {
         def leq(tex: TypeEnvironment, tey: TypeEnvironment, x : Type, y : Type): Boolean = (x,y) match {
             case (x, y) if x == y => true
 
-            case (TNone, _) => true
-            case (_, TAny) => true
+            case (TBottom, _) => true
+            case (_, TTop) => true
+            case (_:ConcreteType, TAny) => true
             case (TTrue, TBoolean) => true
             case (TFalse, TBoolean) => true
             case (t1: TObjectRef, TAnyObject) => true
@@ -62,17 +63,16 @@ object TypeFlow {
             case _ => false
         }
 
-        val top = TAny
-        val bottom = TNone
+        val top = TTop
+        val bottom = TBottom
 
-        def join(x : Type, y : Type) = {
-            val res = (x,y) match {
+        def join(x : Type, y : Type) = (x,y) match {
             case (TAny, _) => TAny
             case (_, TAny) => TAny
             case (TTrue, TFalse) => TBoolean
             case (TFalse, TTrue) => TBoolean
-            case (TNone, _) => y
-            case (_, TNone) => x
+            case (TBottom, _) => y
+            case (_, TBottom) => x
 
             case (t1, t2) if t1 == t2 => t1
 
@@ -90,9 +90,6 @@ object TypeFlow {
 
             // Unions
             case (t1, t2) => TUnion(t1, t2)
-        }
-            //println("Joining "+x+" and "+y+", result: "+res)
-            res
         }
 
         // unused
@@ -149,13 +146,13 @@ object TypeFlow {
                 case te: TypeEnvironment =>
                     var newmap = new scala.collection.mutable.HashMap[CFGSimpleVariable, Type]();
                     for ((v,t) <- map) {
-                        newmap(v) = t join TNull
+                        newmap(v) = t join TUninitialized
                     }
                     for ((v,t) <- e.map) {
                         if (newmap contains v) {
                             newmap(v) = map(v) join t
                         } else {
-                            newmap(v) = t join TNull
+                            newmap(v) = t join TUninitialized
                         }
                     }
                     new TypeEnvironment(Map[CFGSimpleVariable, Type]()++newmap, scope, te.store union store)
@@ -263,7 +260,7 @@ object TypeFlow {
                 case CFGTrue() => TTrue
                 case CFGFalse() => TFalse
                 case CFGAny() => TAny
-                case CFGNone() => TNone
+                case CFGNone() => TBottom
                 case CFGNull() => TNull
                 case CFGThis() => getObject(node, env.scope)
                 case CFGEmptyArray() => new TArray()
@@ -322,7 +319,7 @@ object TypeFlow {
                                     TBoolean // no need to check the args, this is a no-error function
                                 case _ =>
                                     notice("Function "+id.value+" appears to be undefined!", id)
-                                    TNone
+                                    TBottom
                             }
                     }
                 case mcall @ CFGMethodCall(r, mid, args) =>
@@ -337,13 +334,13 @@ object TypeFlow {
                                     val cms = ro.lookupMethod("__call", env.scope)
                                     if (cms == None) {
                                         notice("Undefined method '" + mid.value + "' in object "+ro, mid)
-                                        TNone
+                                        TBottom
                                     } else {
                                         cms.get.ret
                                     }
                             }
                         case _ =>
-                            TNone
+                            TBottom
                     }
 
                 case const @ CFGConstant(id) =>
@@ -387,7 +384,7 @@ object TypeFlow {
                         t
                     case None =>
                         notice("Potentially undefined variable "+stringRepr(id), id)
-                        TNone
+                        TBottom
                 }
 
                 case CFGArrayEntry(ar, ind) =>
@@ -399,12 +396,12 @@ object TypeFlow {
                                 case Some(t) => t
                                 case None =>
                                     notice("Potentially undefined array index "+stringRepr(ind), ar)
-                                    TNone
+                                    TBottom
                             }
-                        case TNone => TNone
+                        case TBottom => TBottom
                         case t =>
                             println("Woops?? invlid type returned from expect: "+t);
-                            TNone
+                            TBottom
                     }
 
                 case op @ CFGObjectProperty(obj, p) =>
@@ -418,9 +415,9 @@ object TypeFlow {
                                 case Some(t2) => t2
                                 case None =>
                                     notice("Potentially undefined object property "+stringRepr(p), op)
-                                    TNone
+                                    TBottom
                             }
-                        case TNone => TNone
+                        case TBottom => TBottom
                         case u: TUnion =>
                             TUnion(u.types.map { _ match {
                                 case TAnyObject =>
@@ -431,9 +428,9 @@ object TypeFlow {
                                         case Some(t) => t
                                         case None =>
                                             notice("Potentially undefined object property "+stringRepr(p), op)
-                                            TNone
+                                            TBottom
                                     }
-                                case _ => TNone
+                                case _ => TBottom
                             }})
                         case t =>
                             println("Woops?? invlid type returned from expect: "+t);
@@ -613,7 +610,7 @@ object TypeFlow {
 
                                 val newFields = HashMap[String, Type]() ++ fromRO.fields;
 
-                                val pt = toRO.pollutedType.getOrElse(TNone) join fromRO.pollutedType.getOrElse(TNone)
+                                val pt = toRO.pollutedType.getOrElse(TBottom) join fromRO.pollutedType.getOrElse(TBottom)
 
                                 for((index, typ) <- toRO.fields) {
                                     newFields(index) = newFields.get(index) match {
@@ -622,7 +619,7 @@ object TypeFlow {
                                     }
                                 }
 
-                                val opt = if (pt == TNone) None else Some(pt)
+                                val opt = if (pt == TBottom) None else Some(pt)
 
                                 val o : RealObjectType = toRO match {
                                     case o: TRealClassObject =>
@@ -649,7 +646,7 @@ object TypeFlow {
                                 import scala.collection.mutable.HashMap
                                 import Math.max
 
-                                val pt = to.pollutedType.getOrElse(TNone) join from.pollutedType.getOrElse(TNone)
+                                val pt = to.pollutedType.getOrElse(TBottom) join from.pollutedType.getOrElse(TBottom)
 
                                 val newEntries = HashMap[String, Type]() ++ from.entries;
 
@@ -660,7 +657,7 @@ object TypeFlow {
                                     }
                                 }
 
-                                val opt = if (pt == TNone) None else Some(pt)
+                                val opt = if (pt == TBottom) None else Some(pt)
 
                                 new TArray(newEntries, opt)
 
@@ -724,7 +721,7 @@ object TypeFlow {
                     case Nil =>
                         if (syms.size > 1) {
                             error("Unmatched function prototype '("+fcall_params.map(typeFromSimpleValue).mkString(", ")+")', candidates are:\n    "+syms.mkString(",\n    "), pos)
-                            TNone
+                            TBottom
                         } else {
                             syms.first match {
                                 case tf: TFunction =>
@@ -796,7 +793,7 @@ object TypeFlow {
                                             // we had a single incompatible type
                                             // The branch will never be taken!
                                             notice("Redundant or incompatible check", v);
-                                            TNone
+                                            TBottom
                                         }
                                     } else {
                                         if (t != TTrue && t != TResource) {
@@ -805,7 +802,7 @@ object TypeFlow {
                                             // we had a single incompatible type
                                             // The branch will never be taken!
                                             notice("Redundant or incompatible check", v);
-                                            TNone
+                                            TBottom
                                         }
                                     }
                             }
@@ -852,7 +849,7 @@ object TypeFlow {
                 case CFGUnset(id) =>
                     id match {
                         case v: CFGSimpleVariable =>
-                            env.inject(v, TNull)
+                            env.inject(v, TUninitialized)
                         case _ =>
                             env // TODO
 
@@ -888,13 +885,13 @@ object TypeFlow {
             }
 
             scope.registerPredefVariables
-            injectPredef("_GET",     new TArray(TNone))
-            injectPredef("_POST",    new TArray(TNone))
-            injectPredef("_REQUEST", new TArray(TNone))
-            injectPredef("_COOKIE",  new TArray(TNone))
-            injectPredef("_SERVER",  new TArray(TNone))
-            injectPredef("_ENV",     new TArray(TNone))
-            injectPredef("_SESSION", new TArray(TNone))
+            injectPredef("_GET",     new TArray(TBottom))
+            injectPredef("_POST",    new TArray(TBottom))
+            injectPredef("_REQUEST", new TArray(TBottom))
+            injectPredef("_COOKIE",  new TArray(TBottom))
+            injectPredef("_SERVER",  new TArray(TBottom))
+            injectPredef("_ENV",     new TArray(TBottom))
+            injectPredef("_SESSION", new TArray(TBottom))
 
             // for methods, we inject $this as its always defined
             scope match {

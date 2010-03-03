@@ -24,6 +24,8 @@ object Types {
         def toText(te: TypeEnvironment) = toString
     }
 
+    sealed abstract class ConcreteType extends Type;
+
     sealed abstract class ClassType {
         def isSubtypeOf(cl2: ClassType): Boolean;
     }
@@ -161,7 +163,7 @@ object Types {
     }
 
     // Object types exposed to symbols
-    abstract class ObjectType extends Type
+    abstract class ObjectType extends ConcreteType
 
     // Any object, should be only used to typecheck, no symbol should be infered to this type
     object TAnyObject extends ObjectType {
@@ -231,7 +233,7 @@ object Types {
             println("Injecting field "+index+" -> "+typ)
             println("ON: "+fields)
             */
-            fields(index) = (if (weak) TypeLattice.join(typ, fields.getOrElse(index, TNull)) else typ)
+            fields(index) = (if (weak) TypeLattice.join(typ, fields.getOrElse(index, TUninitialized)) else typ)
             this
         }
 
@@ -342,7 +344,7 @@ object Types {
             new TRealClassObject(cl, Map[String, Type]() ++ fields, pollutedType)
     }
 
-    abstract class ArrayType extends Type {
+    abstract class ArrayType extends ConcreteType {
         self=>
 
         val entries: Map[String, Type]
@@ -438,7 +440,7 @@ object Types {
             for((index, typ)<- a2.entries) {
                 newEntries(index) = newEntries.get(index) match {
                     case Some(t) => TypeLattice.join(t, typ)
-                    case None => TypeLattice.join(typ, TNull)
+                    case None => TypeLattice.join(typ, TUninitialized)
                 }
             }
 
@@ -490,39 +492,49 @@ object Types {
     }
 
 
-    case object TInt extends Type {
+    case object TInt extends ConcreteType {
         override def toText(te: TypeEnvironment) = "int"
     }
-    case object TBoolean extends Type {
+    case object TBoolean extends ConcreteType {
         override def toText(te: TypeEnvironment) = "boolean"
     }
-    case object TTrue extends Type {
+    case object TTrue extends ConcreteType {
         override def toText(te: TypeEnvironment) = "true"
     }
-    case object TFalse extends Type {
+    case object TFalse extends ConcreteType {
         override def toText(te: TypeEnvironment) = "false"
     }
 
-    case object TFloat extends Type {
+    case object TFloat extends ConcreteType {
         override def toText(te: TypeEnvironment) = "float"
     }
-    case object TString extends Type {
+    case object TString extends ConcreteType {
         override def toText(te: TypeEnvironment) = "string"
     }
-    case object TAny extends Type {
+    case object TAny extends ConcreteType {
         override def toText(te: TypeEnvironment) = "any"
     }
-    case object TNone extends Type {
-        override def toText(te: TypeEnvironment) = "none"
-    }
-    case object TResource extends Type {
+    case object TResource extends ConcreteType {
         override def toText(te: TypeEnvironment) = "resource"
     }
-    case object TNull extends Type {
+    case object TNull extends ConcreteType {
         override def toText(te: TypeEnvironment) = "null"
     }
 
-    class TUnion extends Type {
+    /* Special types */
+    case object TTop extends Type {
+        override def toText(te: TypeEnvironment) = "top"
+    }
+
+    case object TBottom extends Type {
+        override def toText(te: TypeEnvironment) = "bottom"
+    }
+
+    case object TUninitialized extends Type {
+        override def toText(te: TypeEnvironment) = "uninitialized"
+    }
+
+    class TUnion extends ConcreteType {
         var types: List[Type] = Nil
 
         def add(t: Type): Unit = t match {
@@ -577,7 +589,7 @@ object Types {
         override def toText(te: TypeEnvironment)   = types.map { x => x.toText(te) }.mkString(" or ")
     }
 
-    object TUnion extends Type {
+    object TUnion extends ConcreteType {
         def apply(t1: TUnion, t2: Type): Type = {
             t1 add t2
             t1
@@ -594,7 +606,7 @@ object Types {
             if (t.types.size == 1) {
                 t.types.toList.head
             } else if(t.types.size == 0) {
-                TNone
+                TBottom
             } else {
                 t
             }
