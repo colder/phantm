@@ -243,6 +243,26 @@ object TypeFlow {
         def notice(msg: String, pos: Positional) = if (!silent) Reporter.notice(msg, pos)
         def error(msg: String, pos: Positional) = if (!silent) Reporter.error(msg, pos)
 
+        def containsUninit(t: Type) = t match {
+            case TTop =>
+                true
+            case TUninitialized =>
+                true
+            case tu: TUnion =>
+                tu.types contains TUninitialized
+            case _ =>
+                false;
+        }
+
+        def uninitToNull(t: Type): Type = t match {
+            case TUninitialized =>
+                TNull
+            case tu: TUnion =>
+                new TUnion(tu.types.map { x => if (x == TUninitialized) TNull else x })
+            case _ =>
+                t
+        }
+
         def apply(node : CFGStatement, env : TypeEnvironment) : TypeEnvironment = {
             var store = env.store
 
@@ -264,13 +284,13 @@ object TypeFlow {
                         case Some(TAnyArray) =>
                             TAny
                         case Some(t: TArray) =>
-                            // TODO: replace undef by null
                             val et = if (t.entries.size > 0) {
-                                    t.entries.values.reduceLeft(_ join _)
-                                } else {
-                                    TBottom
-                                }
-                            et union t.globalType
+                                t.entries.values.reduceLeft(_ join _)
+                            } else {
+                                TBottom
+                            }
+
+                            uninitToNull(et union t.globalType)
                         case _ =>
                             TAny
                     }
@@ -382,8 +402,14 @@ object TypeFlow {
 
                     expect(ar, TAnyArray) match {
                         case t: TArray =>
-                            // TODO, check for undef and replace by NULL
-                            t.lookup(ind)
+                            val typ = t.lookup(ind)
+
+                            if (containsUninit(typ)) {
+                                notice("Potentially undefined array element "+stringRepr(ind), ind)
+                                uninitToNull(typ)
+                            } else {
+                                typ
+                            }
                         case TBottom => TBottom
                         case t =>
                             println("Woops?? invlid type returned from expect: "+t);
@@ -392,27 +418,31 @@ object TypeFlow {
 
                 case op @ CFGObjectProperty(obj, p) =>
                     expect(p, TString);
-                    expect(obj, TAnyObject) match {
+                    val typ = expect(obj, TAnyObject) match {
                         case TAnyObject =>
                             TAny
                         case or: TObjectRef =>
-                            val ro = store.lookup(or)
-                            // TODO: check for undefined and replace by NULL
-                            ro.lookupField(p)
+                            store.lookup(or).lookupField(p)
+
                         case TBottom => TBottom
                         case u: TUnion =>
                             TUnion(u.types.map { _ match {
                                 case TAnyObject =>
                                     TAny
                                 case or: TObjectRef =>
-                                    val ro = store.lookup(or)
-                                    // TODO: check for undefined and replace by NULL
-                                    ro.lookupField(p)
+                                    store.lookup(or).lookupField(p)
                                 case _ => TBottom
                             }})
                         case t =>
                             println("Woops?? invlid type returned from expect: "+t);
                             TAny
+                    }
+
+                    if (containsUninit(typ)) {
+                        notice("Potentially undefined object property "+stringRepr(p), p)
+                        uninitToNull(typ)
+                    } else {
+                        typ
                     }
                 case CFGNextArrayEntry(arr) =>
                     typeFromSimpleValue(arr) match {
