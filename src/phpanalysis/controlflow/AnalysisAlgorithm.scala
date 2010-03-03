@@ -74,7 +74,7 @@ class AnalysisAlgorithm[E <: Environment[E],S]
                             oldFact.dumpDiff(nf)
                             println("Incoming edges: ");
                             for (e <- cfg.inEdges(v)) {
-                                println(" * "+e.v1+"-> ("+e.lab+")")
+                                println(" * "+e.v1+"-> ("+e.lab+") : "+facts(e.v1))
                             }
                         }
                     }

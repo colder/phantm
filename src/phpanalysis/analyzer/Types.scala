@@ -448,50 +448,63 @@ object Types {
             }
         }
 
-        def addToList(typs: List[Type], typ: Type): List[Type] = typ match {
-            case tu: TUnion =>
-                var res: List[Type] = Nil
-                for (t <- tu.types) {
-                    res = addToList(res, t)
-                }
-                res
-            case TAnyArray =>
-                TAnyArray :: typs.filter{! _.isInstanceOf[TArray]}.toList
+        def getList(t1: Type, t2: Type) = (t1, t2) match {
+            case (_, tu: TUnion) =>
+                addToList(tu.types, t1)
+            case (tu: TUnion, _) =>
+                addToList(tu.types, t2)
+            case (_, _) =>
+                addToList(List(t1), t2)
+        }
 
-            case ta: TArray =>
-                if (typs contains TAnyArray) {
-                    typs
-                } else {
-                    var nt: List[Type] = Nil
-                    var toAdd: Type = ta
-
-                    for (tc <- typs) tc match {
-                        case t: TArray =>
-                            toAdd = toAdd union typ
-                        case _ =>
-                            nt = tc :: nt
+        def addToList(typs: List[Type], typ: Type): List[Type] = {
+            val res = typ match {
+                case tu: TUnion =>
+                    var res: List[Type] = typs
+                    for (t <- tu.types) {
+                        res = addToList(res, t)
                     }
-                    toAdd :: nt;
-                }
-            case _ =>
-                if (!(typs contains typ)) {
-                    typ :: typs
-                } else {
-                    typs
-                }
+                    res
+                case TAnyArray =>
+                    TAnyArray :: typs.filter{! _.isInstanceOf[TArray]}.toList
+
+                case ta: TArray =>
+                    if (typs contains TAnyArray) {
+                        typs
+                    } else {
+                        var nt: List[Type] = Nil
+                        var toAdd: Type = ta
+
+                        for (tc <- typs) tc match {
+                            case t: TArray =>
+                                toAdd = toAdd union tc
+                            case _ =>
+                                nt = tc :: nt
+                        }
+                        toAdd :: nt;
+                    }
+                case _ =>
+                    if (!(typs contains typ)) {
+                        typ :: typs
+                    } else {
+                        typs
+                    }
+            }
+
+            for (t <- res) t match {
+                case _: TUnion =>
+                    println("WOOOOOOOOOOT: addToList("+typs+", "+typ+") includes TUnion!")
+                case _ =>
+            }
+
+            res
         }
     }
 
     class TUnion(val types: List[Type]) extends ConcreteType {
 
-        def this(typ: Type, tu: TUnion) =
-            this(TUnion.addToList(tu.types, typ))
-
-        def this(tu: TUnion, typ: Type) =
-            this(TUnion.addToList(tu.types, typ))
-
         def this(t1: Type, t2: Type) =
-            this(TUnion.addToList(List(t1), t2))
+            this(TUnion.getList(t1, t2))
 
         override def equals(t: Any): Boolean = t match {
             case tu: TUnion =>
@@ -510,6 +523,8 @@ object Types {
 
         override def toString = types.mkString("{", ",", "}")
         override def toText(te: TypeEnvironment)   = types.map { x => x.toText(te) }.mkString(" or ")
+
+        if (types.size < 2) throw new RuntimeException("TUnion should at least be 2 types!")
     }
 
     trait Typed {

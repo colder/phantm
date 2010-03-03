@@ -137,7 +137,7 @@ object ASTToCFG {
         case VariableVariable(ex) => CFGVariableVar(expr(ex)).setPos(v)
         case ArrayEntry(array, index) => CFGArrayEntry(expr(array), expr(index)).setPos(v)
         case NextArrayEntry(array) => CFGNextArrayEntry(expr(array)).setPos(v)
-        case ObjectProperty(obj, property) => CFGObjectProperty(expr(obj), CFGString(property.value)).setPos(v)
+        case ObjectProperty(obj, property) => CFGObjectProperty(expr(obj), CFGString(property.value).setPos(property)).setPos(v)
         case DynamicObjectProperty(obj, property) => CFGObjectProperty(expr(obj), expr(property)).setPos(v)
         case ClassProperty(cl, property) => CFGClassProperty(cl, expr(property)).setPos(v)
     }

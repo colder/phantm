@@ -53,8 +53,8 @@ object TypeFlow {
         val bottom = TBottom
 
         def join(x : Type, y : Type): Type = (x,y) match {
-            case (TAny, _) => TAny
-            case (_, TAny) => TAny
+            case (TTop, _) => TTop
+            case (TAny, _: ConcreteType) => TAny
             case (TTrue, TFalse) => TBoolean
             case (TFalse, TTrue) => TBoolean
             case (TBottom, _) => y
@@ -80,7 +80,6 @@ object TypeFlow {
                 }
 
                 new TArray(newEntries, t1.globalType union t2.globalType)
-
             // Unions
             case (t1, t2) => TUnion(t1, t2)
         }
@@ -137,18 +136,14 @@ object TypeFlow {
                     this
 
                 case te: TypeEnvironment =>
-                    var newmap = new scala.collection.mutable.HashMap[CFGSimpleVariable, Type]();
-                    for ((v,t) <- map) {
-                        newmap(v) = t join TUninitialized
+                    var newmap = Map[CFGSimpleVariable, Type]();
+
+                    for (k <- map.keySet ++ e.map.keySet) {
+                        newmap = newmap.update(k,
+                            map.getOrElse(k, TUninitialized) union e.map.getOrElse(k, TUninitialized))
                     }
-                    for ((v,t) <- e.map) {
-                        if (newmap contains v) {
-                            newmap(v) = map(v) join t
-                        } else {
-                            newmap(v) = t join TUninitialized
-                        }
-                    }
-                    new TypeEnvironment(Map[CFGSimpleVariable, Type]()++newmap, scope, te.store union store)
+
+                    new TypeEnvironment(newmap, scope, te.store union store)
             }
         }
 
@@ -650,7 +645,7 @@ object TypeFlow {
                                 import scala.collection.mutable.HashMap
                                 import Math.max
 
-                                val pt = to.globalType join from.globalType
+                                val pt = to.globalType union from.globalType
 
                                 val newEntries = Map[String, Type]() ++ from.entries;
 
