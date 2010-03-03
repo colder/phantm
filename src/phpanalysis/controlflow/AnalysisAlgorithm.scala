@@ -63,9 +63,22 @@ class AnalysisAlgorithm[E <: Environment[E],S]
                     }
                 }
 
-                val nf = newFact.getOrElse(oldFact);
+                val nf = newFact.getOrElse(oldFact.copy);
 
                 if (nf != oldFact) {
+
+                    if (Main.testsActive) {
+                        if (!(oldFact checkMonotonicity nf)) {
+                            println("######################################")
+                            println("Monotonicity violated in: "+v)
+                            oldFact.dumpDiff(nf)
+                            println("Incoming edges: ");
+                            for (e <- cfg.inEdges(v)) {
+                                println(" * "+e.v1+"-> ("+e.lab+")")
+                            }
+                        }
+                    }
+
                     facts = facts.update(v, nf)
 
                     for (e <- cfg.outEdges(v)) {

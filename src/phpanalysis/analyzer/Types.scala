@@ -438,7 +438,7 @@ object Types {
             for((index, typ)<- a2.entries) {
                 newEntries(index) = newEntries.get(index) match {
                     case Some(t) => TypeLattice.join(t, typ)
-                    case None => typ
+                    case None => TypeLattice.join(typ, TNull)
                 }
             }
 

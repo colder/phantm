@@ -13,6 +13,7 @@ object Main {
     var verbosity          = 1;
     var resolveIncludes    = true;
     var importAPI          = true;
+    var testsActive        = false;
     var displayDebug       = false;
     var displayProgress    = false;
     var onlyLint           = false;
@@ -43,6 +44,9 @@ object Main {
             handleArgs(xs)
         case "--noapi" :: xs =>
             importAPI = false
+            handleArgs(xs)
+        case "--tests" :: xs =>
+            testsActive = true
             handleArgs(xs)
         case "--debug" :: xs =>
             displayDebug = true

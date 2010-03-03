@@ -11,7 +11,7 @@ object TypeFlow {
     case object TypeLattice extends Lattice[TypeEnvironment] {
         type E = Type
 
-        def leq(te: TypeEnvironment, x : Type, y : Type): Boolean = (x,y) match {
+        def leq(tex: TypeEnvironment, tey: TypeEnvironment, x : Type, y : Type): Boolean = (x,y) match {
             case (x, y) if x == y => true
 
             case (TNone, _) => true
@@ -20,8 +20,8 @@ object TypeFlow {
             case (TFalse, TBoolean) => true
             case (t1: TObjectRef, TAnyObject) => true
             case (t1: TObjectRef, t2: TObjectRef) =>
-                val r1 = te.store.lookup(t1)
-                val r2 = te.store.lookup(t2)
+                val r1 = tex.store.lookup(t1)
+                val r2 = tey.store.lookup(t2)
 
                 val classesMatch = (r1, r2) match {
                     case (r1: TRealClassObject, r2: TRealClassObject) =>
@@ -32,33 +32,33 @@ object TypeFlow {
 
                  val ptMatch = (r1.pollutedType, r2.pollutedType) match {
                     case (Some(pt1), Some(pt2)) =>
-                        leq(te, pt1, pt2)
+                        leq(tex, tey, pt1, pt2)
                     case (None, _) =>
                         true
                     case _ =>
                         false
                 }
 
-                classesMatch && ptMatch && r2.fields.forall(f => r1.fields.get(f._1) != None && leq(te, r1.fields(f._1), f._2))
+                classesMatch && ptMatch && r2.fields.forall(f => r1.fields.get(f._1) != None && leq(tex, tey, r1.fields(f._1), f._2))
 
             case (t1: ArrayType, t2: ArrayType) =>
                  val ptMatch = (t1.pollutedType, t2.pollutedType) match {
                     case (Some(pt1), Some(pt2)) =>
-                        leq(te, pt1, pt2)
+                        leq(tex, tey, pt1, pt2)
                     case (None, _) =>
                         true
                     case _ =>
                         false
                 }
 
-                ptMatch && t2.entries.forall(e => t1.entries.get(e._1) != None && leq(te, t1.entries(e._1), e._2))
+                ptMatch && t2.entries.forall(e => t1.entries.get(e._1) != None && leq(tex, tey, t1.entries(e._1), e._2))
 
             case (t1: TUnion, t2: TUnion) =>
-                t1.types forall { x => t2.types.exists { y => leq(te, x, y) } }
+                t1.types forall { x => t2.types.exists { y => leq(tex, tey, x, y) } }
             case (t1, t2: TUnion) =>
-                t2.types exists { x => leq(te, t1, x) }
+                t2.types exists { x => leq(tex, tey, t1, x) }
             case (t1: TUnion, t2) =>
-                t1.types forall { x => leq(te, x, t2) }
+                t1.types forall { x => leq(tex, tey, x, t2) }
             case _ => false
         }
 
@@ -112,6 +112,9 @@ object TypeFlow {
             }
         }
 
+        override def copy: TypeEnvironment =
+            this
+
         override def toString = {
             "<base>"
         }
@@ -135,6 +138,9 @@ object TypeFlow {
         def injectStore(st: ObjectStore): TypeEnvironment =
             new TypeEnvironment(map, scope, st)
 
+        def copy: TypeEnvironment =
+            new TypeEnvironment(Map[CFGSimpleVariable, Type]()++map, scope, store)
+
         def union(e: TypeEnvironment): TypeEnvironment = {
             e match {
                 case BaseTypeEnvironment =>
@@ -153,6 +159,20 @@ object TypeFlow {
                         }
                     }
                     new TypeEnvironment(Map[CFGSimpleVariable, Type]()++newmap, scope, te.store union store)
+            }
+        }
+
+        def checkMonotonicity(e: TypeEnvironment): Boolean = {
+            map.forall { x =>
+                if (e.map contains x._1) {
+                    if (!TypeLattice.leq(this, e, x._2, e.map(x._1))) {
+                        false
+                    } else {
+                        true
+                    }
+                } else {
+                    false
+                }
             }
         }
 

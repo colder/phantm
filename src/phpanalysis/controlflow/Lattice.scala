@@ -3,7 +3,8 @@ import scala.collection.Set
 
 trait PartialOrder[UData] {
     type E
-    def leq(env: UData, x : E, y : E) : Boolean // less than or equal
+    def leq(ex: UData, x : E, y : E) : Boolean = leq(ex, ex, x, y)
+    def leq(ex: UData, ey: UData, x : E, y : E) : Boolean // less than or equal
 }
 trait Lattice[UData] extends PartialOrder[UData] {
     val top : E                  // universal set
