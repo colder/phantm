@@ -15,7 +15,7 @@ object Types {
         self=>
 
         def union(t: Type) = TypeLattice.join(this, t)
-        def join(t: Type) = union(t)
+        def join(t: Type)  = union(t)
 
         def equals(t: Type) = t == self;
 
@@ -58,60 +58,13 @@ object Types {
             }}.mkString("(", ", ", ")")+" => "+ret
     }
 
-    abstract class RealObjectType {
-        self =>
-
-        import controlflow.CFGTrees._
-
-        var fields: Map[String, Type]
-        var pollutedType: Option[Type]
-
-        def lookupField(index: String): Option[Type];
-
-        def deepNess(st: ObjectStore): Int;
-
-        def lookupField(index: CFGSimpleValue): Option[Type] = index match {
-          case CFGLong(i)        => lookupField(i+"")
-          case CFGString(index) => lookupField(index)
-          case _ => pollutedType
-        }
-
-        def lookupMethod(index: String, from: Option[ClassSymbol]): Option[FunctionType];
-
-        def lookupMethod(index: CFGSimpleValue, from: Option[ClassSymbol]): Option[FunctionType] = index match {
-            case CFGLong(i)        => lookupMethod(i+"", from)
-            case CFGString(index) => lookupMethod(index, from)
-            case _ => None
-        }
-
-        def injectField(index: String, typ: Type, weak: Boolean) : self.type;
-
-        def injectField(index: String, typ: Type) : self.type =
-            injectField(index, typ, true)
-
-        def injectField(index: CFGSimpleValue, typ: Type): this.type =
-            injectField(index, typ, true)
-
-        def injectField(index: CFGSimpleValue, typ: Type, weak: Boolean): this.type = index match {
-          case CFGLong(i)        => injectField(i+"", typ, weak)
-          case CFGString(index) => injectField(index, typ, weak)
-          case _ => polluteFields(typ)
-        }
-
-        def polluteFields(typ: Type): self.type;
-        def merge(t2: RealObjectType): RealObjectType;
-        def duplicate: RealObjectType;
-
-        def toText(te: TypeEnvironment) = toString
-    }
-
     // Objects related types
     case class ObjectId(val pos: Int, val offset: Int)
 
     // Stores the ref => Real Objects relashionship
-    case class ObjectStore(val store: Map[ObjectId, RealObjectType]) {
+    case class ObjectStore(val store: Map[ObjectId, TRealObject]) {
 
-        def this() = this(Map[ObjectId, RealObjectType]())
+        def this() = this(Map[ObjectId, TRealObject]())
 
         def union(os: ObjectStore) : ObjectStore = {
             var res = new ObjectStore()
@@ -123,9 +76,9 @@ object Types {
                 if (c1 && c2) {
                     res = res.set(id, this.store(id) merge os.store(id))
                 } else if (c1) {
-                    res = res.set(id, this.store(id).duplicate)
+                    res = res.set(id, this.store(id))
                 } else {
-                    res = res.set(id, os.store(id).duplicate)
+                    res = res.set(id, os.store(id))
                 }
             }
 
@@ -133,14 +86,14 @@ object Types {
 
         }
 
-        def lookup(id: TObjectRef): RealObjectType = lookup(id.id);
+        def lookup(id: TObjectRef): TRealObject = lookup(id.id);
 
-        def lookup(id: ObjectId): RealObjectType = store.get(id) match {
+        def lookup(id: ObjectId): TRealObject = store.get(id) match {
             case Some(o) => o
             case None => error("Woops incoherent store")
         }
 
-        def set(id: ObjectId, robj: RealObjectType): ObjectStore = new ObjectStore(store.update(id, robj));
+        def set(id: ObjectId, robj: TRealObject): ObjectStore = new ObjectStore(store.update(id, robj));
 
         def initIfNotExist(id: ObjectId, ocs: Option[ClassSymbol]) : ObjectStore = store.get(id) match {
             case Some(_) =>
@@ -150,10 +103,10 @@ object Types {
                 val rot = ocs match {
                     case Some(cs) =>
                         // construct a default object for this class
-                        new TRealClassObject(new TClass(cs), Map[String,Type]() ++ cs.properties.mapElements[Type] { x => x.typ }, None)
+                        new TRealClassObject(new TClass(cs), Map[String,Type]() ++ cs.properties.mapElements[Type] { x => x.typ }, TUninitialized)
                     case None =>
                         // No class => any object
-                        new TRealObject(Map[String,Type](), None)
+                        new TRealObject(Map[String,Type](), TUninitialized)
                 }
 
                 set(id, rot);
@@ -194,12 +147,12 @@ object Types {
     }
 
     // Real object type (in the store) representing a specific object of any class
-    class TRealObject(var fields: Map[String, Type],
-                      var pollutedType: Option[Type]) extends RealObjectType {
+    class TRealObject(val fields: Map[String, Type],
+                      val globalType: Type) {
 
         override def equals(o: Any): Boolean = o match {
             case ro: TRealObject =>
-                fields == ro.fields && pollutedType == ro.pollutedType
+                fields == ro.fields && globalType == ro.globalType
             case _ =>
                 false
         }
@@ -207,43 +160,77 @@ object Types {
         def deepNess(st: ObjectStore): Int = {
             var max = 0;
             for (v <- fields.values) {
-                if (max < v.deepNess(st)) max = v.deepNess(st);
+                val dp = v.deepNess(st)
+                if (dp > max) max = dp
             }
 
-            pollutedType match {
-                case Some(t) =>
-                    if (t.deepNess(st) > max)
-                        max = t.deepNess(st)
-                case None =>
-            }
+            val gdp = globalType.deepNess(st)
+            if (gdp > max) max = gdp
 
             max+1;
         }
 
+        def lookupField(index: CFGSimpleValue): Type = index match {
+          case CFGLong(i)        => lookupField(i+"")
+          case CFGString(index) => lookupField(index)
+          case _ => globalType
+        }
 
         def lookupField(index: String) =
-            fields.get(index) match {
-                case Some(t) => Some(t)
-                case None => pollutedType
+            fields.getOrElse(index, globalType)
+
+        def lookupMethod(index: String, from: Option[ClassSymbol]): Option[FunctionType] = None
+
+        def lookupMethod(index: CFGSimpleValue, from: Option[ClassSymbol]): Option[FunctionType] = index match {
+            case CFGLong(i)        => lookupMethod(i+"", from)
+            case CFGString(index) => lookupMethod(index, from)
+            case _ => None
+        }
+
+        def injectField(index: CFGSimpleValue, typ: Type): TRealObject =
+            injectField(index, typ, true)
+
+        def injectField(index: CFGSimpleValue, typ: Type, weak: Boolean): TRealObject = index match {
+          case CFGLong(i)       => injectField(i+"",  typ, weak)
+          case CFGString(index) => injectField(index, typ, weak)
+          case _ => injectAnyField(typ)
+        }
+
+        def injectField(index: String, typ: Type): TRealObject =
+            injectField(index, typ, true)
+
+
+        def injectField(index: String, typ: Type, weak: Boolean): TRealObject = {
+            val newFields = fields.update(index, if (weak) typ union lookupField(index) else typ)
+            this match {
+                case t: TRealClassObject =>
+                    new TRealClassObject(t.cl, newFields, globalType)
+                case _ =>
+                    new TRealObject(newFields, globalType)
+            }
+        }
+
+        def injectAnyField(typ: Type) = {
+            var newFields = fields;
+            // When the index is unknown, we have to pollute every entries
+            for ((i,t) <- fields) {
+                newFields = newFields.update(i,t union typ)
             }
 
-        def lookupMethod(index: String, from: Option[ClassSymbol]): Option[FunctionType] =
-            None
-
-        def injectField(index: String, typ: Type, weak: Boolean): this.type = {
-            /*
-            println("Injecting field "+index+" -> "+typ)
-            println("ON: "+fields)
-            */
-            fields(index) = (if (weak) TypeLattice.join(typ, fields.getOrElse(index, TUninitialized)) else typ)
-            this
+            this match {
+                case t: TRealClassObject =>
+                    new TRealClassObject(t.cl, newFields, globalType union typ)
+                case _ =>
+                    new TRealObject(newFields, globalType union typ)
+            }
         }
+
 
         override def toString = {
             RecProtection.objectToStringDeep += 1;
             var r = "Object(?)"
             if (RecProtection.objectToStringDeep < 2) {
-                r = r+"["+(fields.map(x => x._1 +" => "+ x._2).mkString("; "))+(if(pollutedType != None) " ("+pollutedType.get+")" else "")+"]"
+                r = r+"["+((fields.map(x => x._1 +" => "+ x._2).toList ::: "? -> "+globalType :: Nil).mkString("; "))+"]"
             } else {
                 r = r+"[...]"
             }
@@ -251,23 +238,9 @@ object Types {
             r
         }
 
-        def polluteFields(typ: Type) = {
+        def toText(te: TypeEnvironment) = toString
 
-            // When the index is unknown, we have to pollute every entries
-            for ((i,t) <- fields) {
-                fields(i) = t union typ
-            }
-            // we flag the array to allow lookup to return Any instead of None
-            // since the key=>value relationship is not longer safe
-            pollutedType = pollutedType match { 
-                case Some(pt) => Some(pt union typ)
-                case None => Some(typ)
-            }
-
-            this
-        }
-
-        def merge(a2: RealObjectType): RealObjectType = {
+        def merge(a2: TRealObject): TRealObject = {
             // Pick superclass class, and subclass methods
             val newcl = (this, a2) match {
                 case (o1: TRealClassObject, o2: TRealClassObject) =>
@@ -282,43 +255,30 @@ object Types {
                     None
             }
 
-            val newPollutedType = (pollutedType, a2.pollutedType) match {
-                case (Some(pt1), Some(pt2)) => Some(TypeLattice.join(pt1, pt2))
-                case (Some(pt1), None) => Some(pt1)
-                case (None, Some(pt2)) => Some(pt2)
-                case (None, None) => None
-            }
+            var newFields = Map[String, Type]();
 
-            val newFields = Map[String, Type]() ++ fields;
-
-            for((index, typ)<- a2.fields) {
-                newFields(index) = newFields.get(index) match {
-                    case Some(t) => TypeLattice.join(t, typ)
-                    case None => typ
-                }
+            for (index <- (fields.keySet ++ a2.fields.keySet)) {
+                newFields = newFields.update(index, lookupField(index) union a2.lookupField(index))
             }
 
             newcl match {
                 case Some(cl) =>
-                    new TRealClassObject(cl, newFields, newPollutedType)
+                    new TRealClassObject(cl, newFields, globalType union a2.globalType)
                 case None =>
-                    new TRealObject(newFields, newPollutedType)
+                    new TRealObject(newFields, globalType union a2.globalType)
             }
         }
-
-        def duplicate =
-            new TRealObject(Map[String, Type]() ++ fields, pollutedType)
     }
 
     class TRealClassObject(val cl: TClass,
-                           initFields: Map[String, Type],
-                           initPollutedType: Option[Type]) extends TRealObject(initFields, initPollutedType){
+                           fields: Map[String, Type],
+                           globalType: Type) extends TRealObject(fields, globalType) {
 
         override def toString = {
             RecProtection.objectToStringDeep += 1;
             var r = "Object("+cl+")"
             if (RecProtection.objectToStringDeep < 2) {
-                r = r+"["+(fields.map(x => x._1 +" => "+ x._2).mkString("; "))+(if(pollutedType != None) " ("+pollutedType.get+")" else "")+"]"
+                r = r+"["+((fields.map(x => x._1 +" => "+ x._2).toList ::: "? -> "+globalType :: Nil).mkString("; "))+"]"
                 r = r+"["+(cl.cs.methods.map(x => x._1+": "+msToTMethod(x._2)).mkString("; "))+"]"
             } else {
                 r = r+"[...]"
@@ -341,9 +301,6 @@ object Types {
                 case LookupResult(None, _, _) =>
                     None
             }
-
-        override def duplicate =
-            new TRealClassObject(cl, Map[String, Type]() ++ fields, pollutedType)
     }
 
     class TArray(val entries: Map[String, Type], val globalType: Type) extends ConcreteType {
@@ -415,7 +372,7 @@ object Types {
         }
 
         override def toString =
-            "Array["+(entries.map(x => x._1 +" => "+ x._2).toList :: "? => "+globalType :: Nil).mkString("; ")+"]"
+            "Array["+(entries.map(x => x._1 +" => "+ x._2).toList ::: "? => "+globalType :: Nil).mkString("; ")+"]"
     }
 
     object TAnyArray extends TArray(Map[String, Type](), TTop) {

@@ -14,7 +14,8 @@ object Main {
     var resolveIncludes    = true;
     var importAPI          = true;
     var testsActive        = false;
-    var displayDebug       = false;
+    var displayFixPoint    = false;
+    var displayIncludes    = false;
     var displayProgress    = false;
     var onlyLint           = false;
     var includePaths       = List(".");
@@ -39,6 +40,9 @@ object Main {
         case "--symbols" :: xs =>
             displaySymbols = true
             handleArgs(xs)
+        case "--showincludes" :: xs =>
+            displayIncludes = true
+            handleArgs(xs)
         case "--noincludes" :: xs =>
             resolveIncludes = false
             handleArgs(xs)
@@ -48,8 +52,13 @@ object Main {
         case "--tests" :: xs =>
             testsActive = true
             handleArgs(xs)
+        case "--fixpoint" :: xs =>
+            displayFixPoint = true
+            handleArgs(xs)
         case "--debug" :: xs =>
-            displayDebug = true
+            displayFixPoint = true
+            testsActive     = true
+            displayProgress = true
             handleArgs(xs)
         case "--verbose" :: xs =>
             verbosity = max(verbosity, 2)
@@ -109,7 +118,7 @@ object Main {
                         // Run AST transformers
                         ast = IncludeResolver(ast).transform
 
-                        if (displayDebug) {
+                        if (displayIncludes) {
                             println("     - Files sucessfully imported:")
                             for (f <- IncludeResolver.includedFiles) {
                                 println("       * "+f)

@@ -27,24 +27,18 @@ object TypeFlow {
                 val classesMatch = (r1, r2) match {
                     case (r1: TRealClassObject, r2: TRealClassObject) =>
                         r1.cl isSubtypeOf r2.cl
-                    case _ =>
-                        true
-                }
-
-                 val ptMatch = (r1.pollutedType, r2.pollutedType) match {
-                    case (Some(pt1), Some(pt2)) =>
-                        leq(tex, tey, pt1, pt2)
-                    case (None, _) =>
-                        true
-                    case _ =>
+                    case (r1: TRealClassObject, r2: TRealObject) =>
                         false
+                    case _ =>
+                        true
                 }
 
-                classesMatch && ptMatch && r2.fields.forall(f => r1.fields.get(f._1) != None && leq(tex, tey, r1.fields(f._1), f._2))
+                classesMatch && leq(tex, tey, r1.globalType, r2.globalType) && ((r1.fields.keySet ++ r2.fields.keySet) forall (k =>
+                    TypeLattice.leq(tex, tey, r1.lookupField(k), r1.lookupField(k))))
 
             case (t1: TArray, t2: TArray) =>
                 leq(tex, tey, t1.globalType, t2.globalType) && ((t1.entries.keySet ++ t2.entries.keySet) forall (k =>
-                    TypeLattice.leq(tex, tey, t1.entries.getOrElse(k, t1.globalType), t2.entries.getOrElse(k, t2.globalType))))
+                    TypeLattice.leq(tex, tey, t1.lookup(k), t2.lookup(k))))
 
             case (t1: TUnion, t2: TUnion) =>
                 t1.types forall { x => t2.types.exists { y => leq(tex, tey, x, y) } }
@@ -58,7 +52,7 @@ object TypeFlow {
         val top = TTop
         val bottom = TBottom
 
-        def join(x : Type, y : Type) = (x,y) match {
+        def join(x : Type, y : Type): Type = (x,y) match {
             case (TAny, _) => TAny
             case (_, TAny) => TAny
             case (TTrue, TFalse) => TBoolean
@@ -78,7 +72,14 @@ object TypeFlow {
             // Arrays
             case (TAnyArray, t: TArray) => TAnyArray
             case (t: TArray, TAnyArray) => TAnyArray
-            case (t1: TArray, t2: TArray) => t1 merge t2
+            case (t1: TArray, t2: TArray) =>
+                var newEntries = Map[String, Type]();
+
+                for (k <- t1.entries.keySet ++ t2.entries.keySet) {
+                    newEntries = newEntries.update(k, t1.lookup(k) union t2.lookup(k))
+                }
+
+                new TArray(newEntries, t1.globalType union t2.globalType)
 
             // Unions
             case (t1, t2) => TUnion(t1, t2)
@@ -292,7 +293,7 @@ object TypeFlow {
                     expect(obj, TAnyObject) match {
                         case ref: TObjectRef =>
                             val ro = store.lookup(ref)
-                            store = store.set(ObjectId(cl.uniqueID, 0), ro.duplicate)
+                            store = store.set(ObjectId(cl.uniqueID, 0), ro)
                             new TObjectRef(ObjectId(cl.uniqueID, 0))
                         case _ =>
                             TAnyObject
@@ -396,12 +397,8 @@ object TypeFlow {
                             TAny
                         case or: TObjectRef =>
                             val ro = store.lookup(or)
-                            ro.lookupField(p) match {
-                                case Some(t2) => t2
-                                case None =>
-                                    notice("Potentially undefined object property "+stringRepr(p), op)
-                                    TBottom
-                            }
+                            // TODO: check for undefined and replace by NULL
+                            ro.lookupField(p)
                         case TBottom => TBottom
                         case u: TUnion =>
                             TUnion(u.types.map { _ match {
@@ -409,12 +406,8 @@ object TypeFlow {
                                     TAny
                                 case or: TObjectRef =>
                                     val ro = store.lookup(or)
-                                    ro.lookupField(p) match {
-                                        case Some(t) => t
-                                        case None =>
-                                            notice("Potentially undefined object property "+stringRepr(p), op)
-                                            TBottom
-                                    }
+                                    // TODO: check for undefined and replace by NULL
+                                    ro.lookupField(p)
                                 case _ => TBottom
                             }})
                         case t =>
@@ -586,31 +579,27 @@ object TypeFlow {
                     for ((elem, ct, rt) <- elems.init) {
                         //println(" Checking for "+elem +"(actualType: "+typeFromSimpleValue(elem)+", checkType: "+ct+", resultType: "+rt+")");
                         def assignMergeObject(from: TObjectRef, to: TObjectRef): Type ={
-                                import scala.collection.mutable.HashMap
-
                                 val fromRO = store.lookup(from)
                                 val toRO   = store.lookup(to)
 
                                 //println("Trying to assign-merge "+fromRO+" and "+ toRO)
 
-                                val newFields = HashMap[String, Type]() ++ fromRO.fields;
+                                var newFields = HashMap[String, Type]() ++ fromRO.fields;
 
-                                val pt = toRO.pollutedType.getOrElse(TBottom) join fromRO.pollutedType.getOrElse(TBottom)
+                                val pt = toRO.globalType join fromRO.globalType
 
                                 for((index, typ) <- toRO.fields) {
-                                    newFields(index) = newFields.get(index) match {
+                                    newFields = newFields.update(index, newFields.get(index) match {
                                         case Some(t) => pt join (t join typ) // weak assign here
                                         case None => pt join typ
-                                    }
+                                    })
                                 }
 
-                                val opt = if (pt == TBottom) None else Some(pt)
-
-                                val o : RealObjectType = toRO match {
+                                val o : TRealObject = toRO match {
                                     case o: TRealClassObject =>
-                                        new TRealClassObject(o.cl, newFields, opt)
+                                        new TRealClassObject(o.cl, newFields, pt)
                                     case o: TRealObject =>
-                                        new TRealObject(newFields, opt)
+                                        new TRealObject(newFields, pt)
                                 }
 
                                 //println("Result: "+o)
@@ -642,9 +631,7 @@ object TypeFlow {
                                     }
                                 }
 
-                                val opt = if (pt == TBottom) None else Some(pt)
-
-                                new TArray(newEntries, opt)
+                                new TArray(newEntries, pt)
 
                             case (from: TObjectRef, to: TObjectRef) =>
                                 assignMergeObject(from, to)
@@ -908,7 +895,7 @@ object TypeFlow {
             aa.init
             aa.computeFixpoint
 
-            if (Main.displayDebug) {
+            if (Main.displayFixPoint) {
                 println("     - Fixpoint:");
                 for ((v,e) <- aa.getResult.toList.sort{(x,y) => x._1.name < y._1.name}) {
                     println("      * ["+v+"] => "+e);

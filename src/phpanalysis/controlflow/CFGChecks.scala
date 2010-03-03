@@ -24,10 +24,6 @@ case class CFGChecks(node: Tree) extends ASTTraversal[CheckContext](node, CheckC
             case Program(stmts) =>
                 display("Converting main scope...")
                 val cfg: CFG = ASTToCFG.convertAST(stmts)
-                if (Main.displayDebug) {
-                    display("Dumping main CFG...")
-                    cfg.writeDottyToFile("debug.cfg-main", "Main");
-                }
                 display("Analyzing main scope...")
                 val tfa = new TypeFlow.Analyzer(cfg, Symbols.GlobalSymbols)
                 tfa.analyze
