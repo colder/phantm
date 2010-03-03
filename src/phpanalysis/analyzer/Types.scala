@@ -422,41 +422,60 @@ object Types {
         override def toText(te: TypeEnvironment) = "uninitialized"
     }
 
-    class TUnion extends ConcreteType {
-        var types: List[Type] = Nil
+    object TUnion {
+        def apply(t1: Type, t2: Type) = {
+            if (t1 == t2) {
+                t1
+            } else {
+                new TUnion(t1, t2)
+            }
+        }
 
-        def add(t: Type): Unit = t match {
-            case t1: TUnion =>
-                for (t2 <- t1.types) {
-                    add(t2)
+        def addToList(typs: List[Type], typ: Type): List[Type] = typ match {
+            case tu: TUnion =>
+                var res: List[Type] = Nil
+                for (t <- tu.types) {
+                    res = addToList(res, t)
                 }
+                res
             case TAnyArray =>
-                // we can ignore any array type in the union
-                types = t :: types.filter{! _.isInstanceOf[TArray]}.toList
+                TAnyArray :: typs.filter{! _.isInstanceOf[TArray]}.toList
 
-            case t: TArray =>
-
-                if (types contains TAnyArray) {
-                    // we ignore
+            case ta: TArray =>
+                if (typs contains TAnyArray) {
+                    typs
                 } else {
                     var nt: List[Type] = Nil
-                    var toAdd = t
+                    var toAdd: Type = ta
 
-                    for (tc <- types) tc match {
+                    for (tc <- typs) tc match {
                         case t: TArray =>
-                            toAdd = toAdd merge t
+                            toAdd = toAdd union typ
                         case _ =>
                             nt = tc :: nt
                     }
-
-                    types = toAdd :: nt;
-
+                    toAdd :: nt;
                 }
-            case t =>
-                if (!(types contains t)) {
-                    types = t :: types
+            case _ =>
+                if (!(typs contains typ)) {
+                    typ :: typs
+                } else {
+                    typs
                 }
         }
+    }
+
+    class TUnion(val types: List[Type]) extends ConcreteType {
+
+
+        def this(typ: Type, tu: TUnion) =
+            this(TUnion.addToList(tu.types, typ))
+
+        def this(tu: TUnion, typ: Type) =
+            this(TUnion.addToList(tu.types, typ))
+
+        def this(t1: Type, t2: Type) =
+            this(TUnion.addToList(List(t1), t2))
 
         override def equals(t: Any): Boolean = t match {
             case tu: TUnion =>
@@ -476,42 +495,6 @@ object Types {
         override def toString = types.mkString("{", ",", "}")
         override def toText(te: TypeEnvironment)   = types.map { x => x.toText(te) }.mkString(" or ")
     }
-
-    object TUnion extends ConcreteType {
-        def apply(t1: TUnion, t2: Type): Type = {
-            t1 add t2
-            t1
-        }
-        def apply(t1: Type, t2: TUnion): Type = {
-            t2 add t1
-            t2
-        }
-        def apply(ts: Iterable[Type]): Type = {
-            val t = new TUnion;
-
-            for (ta <- ts) t add ta
-
-            if (t.types.size == 1) {
-                t.types.toList.head
-            } else if(t.types.size == 0) {
-                TBottom
-            } else {
-                t
-            }
-        }
-        def apply(t1: Type, t2: Type): Type = {
-            if (t1 == t2) {
-                t1
-            } else {
-                val t = new TUnion;
-                t add t1
-                t add t2
-                t
-            }
-        }
-
-    }
-
 
     trait Typed {
         self =>
