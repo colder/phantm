@@ -423,6 +423,23 @@ object Types {
     }
 
     object TUnion {
+        def apply(ts: Iterable[Type]) = {
+
+            var tlist: List[Type] = Nil
+
+            for (t <- ts) {
+                tlist = addToList(tlist, t)
+            }
+
+            if (tlist.size == 0) {
+                TBottom
+            } else if (tlist.size == 1) {
+                tlist.head
+            } else {
+                new TUnion(tlist)
+            }
+        }
+
         def apply(t1: Type, t2: Type) = {
             if (t1 == t2) {
                 t1
@@ -466,7 +483,6 @@ object Types {
     }
 
     class TUnion(val types: List[Type]) extends ConcreteType {
-
 
         def this(typ: Type, tu: TUnion) =
             this(TUnion.addToList(tu.types, typ))
