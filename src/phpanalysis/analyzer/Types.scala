@@ -1,6 +1,6 @@
 package phpanalysis.analyzer;
 import Symbols._
-import scala.collection.mutable.{Map, Set}
+import scala.collection.immutable.{Map, Set}
 
 import controlflow.TypeFlow._
 import controlflow.CFGTrees._
@@ -26,12 +26,14 @@ object Types {
 
     sealed abstract class ConcreteType extends Type;
 
+    // Classes types
     sealed abstract class ClassType {
         def isSubtypeOf(cl2: ClassType): Boolean;
     }
     case object TClassAny extends ClassType {
         def isSubtypeOf(cl2: ClassType) = true;
     }
+
     class TClass(val cs: ClassSymbol) extends ClassType {
         override def toString = cs.name
         def isSubtypeOf(cl2: ClassType) = cl2 match {
@@ -41,6 +43,7 @@ object Types {
         }
     }
 
+    // Functions types
     sealed abstract class FunctionType {
         val ret: Type;
     }
@@ -54,7 +57,6 @@ object Types {
                 case (t, true) => "["+t+"]"
             }}.mkString("(", ", ", ")")+" => "+ret
     }
-
 
     abstract class RealObjectType {
         self =>
@@ -107,9 +109,9 @@ object Types {
     case class ObjectId(val pos: Int, val offset: Int)
 
     // Stores the ref => Real Objects relashionship
-    case class ObjectStore(val store: collection.immutable.Map[ObjectId, RealObjectType]) {
+    case class ObjectStore(val store: Map[ObjectId, RealObjectType]) {
 
-        def this() = this(collection.immutable.Map[ObjectId, RealObjectType]())
+        def this() = this(Map[ObjectId, RealObjectType]())
 
         def union(os: ObjectStore) : ObjectStore = {
             var res = new ObjectStore()
@@ -344,112 +346,58 @@ object Types {
             new TRealClassObject(cl, Map[String, Type]() ++ fields, pollutedType)
     }
 
-    abstract class ArrayType extends ConcreteType {
-        self=>
+    class TArray(val entries: Map[String, Type], val globalType: Type) extends ConcreteType {
 
-        val entries: Map[String, Type]
-        var pollutedType: Option[Type]
-        var pushPositions = Map[Int, String]()
-        var nextFreeIndex = 0
+        def this() =
+            this(Map[String, Type](), TUninitialized)
 
-        def lookup(index: String): Option[Type] = {
-            entries.get(index) match {
-                case Some(t) => Some(t)
-                case None =>
-                    // If the array has been polluted, we return the best guess
-                    pollutedType
-            }
-        }
+        def this(global: Type) =
+            this(Map[String, Type](), global)
 
-        def lookup(index: CFGSimpleValue): Option[Type] = index match {
+        def lookup(index: String): Type =
+            entries.getOrElse(index, globalType)
+
+        def lookup(index: CFGSimpleValue): Type = index match {
           case CFGLong(i)       => lookup(i+"")
           case CFGString(index) => lookup(index)
-          case _ => pollutedType
+          case _ => globalType
         }
 
-        def inject(index: String, typ: Type): self.type = {
-            // Used to inject and specific entry=>type relationship
-            entries += ((index, typ))
-            this
-        }
+        def inject(index: String, typ: Type): TArray =
+            new TArray(entries + (index -> typ), globalType)
 
-        def inject(index: CFGSimpleValue, typ: Type): self.type = index match {
+        def inject(index: CFGSimpleValue, typ: Type): TArray = index match {
           case CFGLong(i)       => inject(i+"", typ)
           case CFGString(index) => inject(index, typ)
-          case _ => pollute(typ)
+          case _ => injectAny(typ)
         }
 
-        def getPushedType(uniqueID: Int) = {
-            pollutedType.getOrElse(TAny)
-            /*
-            pushPositions.get(uniqueID) match {
-                case Some(index) =>
-                    entries(index)
-                case None =>
-                    TAny
-            }
-            */
-        }
-
-        def injectNext(typ: Type, uniqueID: Int) = {
-            pollute(typ)
-            /*
-            pushPositions.get(uniqueID) match {
-                case Some(index) =>
-                    // Was already pushed
-                    entries(index) = typ
-                case None =>
-                    while(entries.get(nextFreeIndex+"") != None) {
-                        nextFreeIndex += 1;
-                    }
-
-                    entries(nextFreeIndex+"") = typ
-                    pushPositions(uniqueID) = nextFreeIndex+""
-            }
-            */
-            this
-        }
-
-        def pollute(typ: Type): self.type = {
+        def injectAny(typ: Type): TArray = {
             // When the index is unknown, we have to pollute every entries
+            var newEntries = Map[String, Type]();
             for ((i,t) <- entries) {
-                entries(i) = t union typ
-            }
-            // we flag the array to allow lookup to return Any instead of None
-            // since the key=>value relationship is not longer safe
-            pollutedType = pollutedType match { 
-                case Some(pt) => Some(pt union typ)
-                case None => Some(typ)
+                newEntries = newEntries + (i -> (t union typ))
             }
 
-            this
+            new TArray(newEntries, globalType union typ)
         }
 
         def merge(a2: TArray): TArray = {
-            import Math.max
-
-            val newPollutedType = (pollutedType, a2.pollutedType) match {
-                case (Some(pt1), Some(pt2)) => Some(TypeLattice.join(pt1, pt2))
-                case (Some(pt1), None) => Some(pt1)
-                case (None, Some(pt2)) => Some(pt2)
-                case (None, None) => None
-            }
-
-            val newEntries = Map[String, Type]() ++ entries;
+            var newEntries = Map[String, Type]() ++ entries;
 
             for((index, typ)<- a2.entries) {
-                newEntries(index) = newEntries.get(index) match {
+                newEntries = newEntries.update(index, newEntries.get(index) match {
                     case Some(t) => TypeLattice.join(t, typ)
                     case None => TypeLattice.join(typ, TUninitialized)
-                }
+                })
             }
 
-            new TArray(newEntries, newPollutedType)
+            new TArray(newEntries, globalType union a2.globalType)
         }
 
         override def equals(t: Any): Boolean = t match {
             case ta: TArray =>
-                entries == ta.entries && pollutedType == ta.pollutedType
+                entries == ta.entries && globalType == ta.globalType
             case _ => false
         }
 
@@ -459,38 +407,21 @@ object Types {
                 if (max < v.deepNess(st)) max = v.deepNess(st);
             }
 
-            pollutedType match {
-                case Some(t) =>
-                    if (t.deepNess(st) > max)
-                        max = t.deepNess(st)
-                case None =>
+            if (globalType.deepNess(st) > max) {
+                max = globalType.deepNess(st)
             }
 
             max+1;
         }
 
         override def toString =
-            "Array["+(entries.map(x => x._1 +" => "+ x._2).mkString("; "))+(if(pollutedType != None) " ("+pollutedType.get+")" else "")+"]"
+            "Array["+(entries.map(x => x._1 +" => "+ x._2).toList :: "? => "+globalType :: Nil).mkString("; ")+"]"
     }
 
-    class TArray(val entries: Map[String, Type],
-                 var pollutedType: Option[Type]) extends ArrayType {
-        self =>
-
-        def this() = this(Map[String, Type](), None)
-        def this(pollutedType: Type) = this(Map[String, Type](), Some(pollutedType))
-
-        def duplicate = {
-            new TArray(Map[String, Type]() ++ entries, pollutedType)
-        }
-
-    }
-
-    object TAnyArray extends TArray(Map[String, Type](), Some(TAny)) {
+    object TAnyArray extends TArray(Map[String, Type](), TTop) {
         override def toString = "Array[?]"
         override def toText(te: TypeEnvironment) = "any array"
     }
-
 
     case object TInt extends ConcreteType {
         override def toText(te: TypeEnvironment) = "int"
@@ -544,7 +475,7 @@ object Types {
                 }
             case TAnyArray =>
                 // we can ignore any array type in the union
-                types = t :: types.filter{! _.isInstanceOf[ArrayType]}.toList
+                types = t :: types.filter{! _.isInstanceOf[TArray]}.toList
 
             case t: TArray =>
 

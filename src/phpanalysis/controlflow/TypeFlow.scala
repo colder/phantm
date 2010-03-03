@@ -42,17 +42,9 @@ object TypeFlow {
 
                 classesMatch && ptMatch && r2.fields.forall(f => r1.fields.get(f._1) != None && leq(tex, tey, r1.fields(f._1), f._2))
 
-            case (t1: ArrayType, t2: ArrayType) =>
-                 val ptMatch = (t1.pollutedType, t2.pollutedType) match {
-                    case (Some(pt1), Some(pt2)) =>
-                        leq(tex, tey, pt1, pt2)
-                    case (None, _) =>
-                        true
-                    case _ =>
-                        false
-                }
-
-                ptMatch && t2.entries.forall(e => t1.entries.get(e._1) != None && leq(tex, tey, t1.entries(e._1), e._2))
+            case (t1: TArray, t2: TArray) =>
+                leq(tex, tey, t1.globalType, t2.globalType) && ((t1.entries.keySet ++ t2.entries.keySet) forall (k =>
+                    TypeLattice.leq(tex, tey, t1.entries.getOrElse(k, t1.globalType), t2.entries.getOrElse(k, t2.globalType))))
 
             case (t1: TUnion, t2: TUnion) =>
                 t1.types forall { x => t2.types.exists { y => leq(tex, tey, x, y) } }
@@ -271,16 +263,13 @@ object TypeFlow {
                         case Some(TAnyArray) =>
                             TAny
                         case Some(t: TArray) =>
-                            t.pollutedType match {
-                                case Some(pt) =>
-                                    pt
-                                case None =>
-                                    if (t.entries.size > 0) {
-                                        t.entries.values.reduceLeft(_ join _)
-                                    } else {
-                                        TNull
-                                    }
-                            }
+                            // TODO: replace undef by null
+                            val et = if (t.entries.size > 0) {
+                                    t.entries.values.reduceLeft(_ join _)
+                                } else {
+                                    TBottom
+                                }
+                            et union t.globalType
                         case _ =>
                             TAny
                     }
@@ -391,13 +380,9 @@ object TypeFlow {
                     expect(ind, TString, TInt)
 
                     expect(ar, TAnyArray) match {
-                        case t: ArrayType =>
-                            t.lookup(ind) match {
-                                case Some(t) => t
-                                case None =>
-                                    notice("Potentially undefined array index "+stringRepr(ind), ar)
-                                    TBottom
-                            }
+                        case t: TArray =>
+                            // TODO, check for undef and replace by NULL
+                            t.lookup(ind)
                         case TBottom => TBottom
                         case t =>
                             println("Woops?? invlid type returned from expect: "+t);
@@ -438,8 +423,8 @@ object TypeFlow {
                     }
                 case CFGNextArrayEntry(arr) =>
                     typeFromSimpleValue(arr) match {
-                        case t: ArrayType =>
-                            t.getPushedType(arr.uniqueID)
+                        case t: TArray =>
+                            t.globalType
                         case _ =>
                             println("woot! this is inconsistent!")
                             TAny
@@ -585,8 +570,8 @@ object TypeFlow {
                                 linearize(obj, ct, rt, pass+1)
                             case CFGNextArrayEntry(arr) =>
                                 // ditto ArrayEntry
-                                val rt = new TArray().injectNext(resultType, arr.uniqueID);
-                                val ct = if (pass > 0) new TArray().injectNext(checkType, arr.uniqueID) else TAnyArray;
+                                val rt = new TArray().injectAny(resultType);
+                                val ct = if (pass > 0) new TArray().injectAny(checkType) else TAnyArray;
 
                                 linearize(arr, ct, rt, pass+1)
                             case _ =>
@@ -646,9 +631,9 @@ object TypeFlow {
                                 import scala.collection.mutable.HashMap
                                 import Math.max
 
-                                val pt = to.pollutedType.getOrElse(TBottom) join from.pollutedType.getOrElse(TBottom)
+                                val pt = to.globalType join from.globalType
 
-                                val newEntries = HashMap[String, Type]() ++ from.entries;
+                                val newEntries = Map[String, Type]() ++ from.entries;
 
                                 for((index, typ)<- to.entries) {
                                     newEntries(index) = newEntries.get(index) match {
