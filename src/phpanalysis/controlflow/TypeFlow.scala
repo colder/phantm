@@ -486,13 +486,11 @@ object TypeFlow {
                         case v: CFGArrayEntry =>
                             error("array entry")
                             // refine
-                            var newType = new TArray().inject(v.index, TAny);
-
-                            (env, typs.toList.head)
+                            (complexAssign(env, v, etyp), typs.toList.head)
 
                         case v: CFGObjectProperty =>
                             error("object property")
-                            (env, typs.toList.head)
+                            (complexAssign(env, v, etyp), typs.toList.head)
 
                         case _ =>
                             if (!silent) {
@@ -628,6 +626,7 @@ object TypeFlow {
 
                     // We lineraize the recursive structure
                     linearize(v, ext, ext, 0)
+
                     var e = env.injectStore(store)
 
                     // Let's traverse all up to the last elem (the outermost assign)
