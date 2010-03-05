@@ -309,7 +309,7 @@ public class Main {
 		usage("-destdir must have a name argument");
 	      /* record the name */
 	      Main.dest_dir = new java.io.File(argv[i]);
-          emit.store_tables_path = argv[i];
+          emit.store_tables_path = new java.io.File(argv[i]);
 	    }
 	  else if (argv[i].equals("-parser"))
 	    {

@@ -212,7 +212,7 @@ public class emit {
   public static boolean store_tables       = false;
 
   /** Where to store tables */
-  public static String store_tables_path   = ".";
+  public static File store_tables_path   = new File(".");
 
   /* frankf 6/18/96 */
   protected static boolean _lr_values;
@@ -238,7 +238,7 @@ public class emit {
       unused_non_term = 0;
       unused_term = 0;
       store_tables = false;
-      store_tables_path = ".";
+      store_tables_path = new File(".");
   }
 
   /*-----------------------------------------------------------*/
@@ -793,7 +793,7 @@ public class emit {
 
   protected static void store_table(String filename, short[][] data) {
       try { 
-          FileOutputStream fout = new FileOutputStream(store_tables_path+"/"+filename);
+          FileOutputStream fout = new FileOutputStream(new File(store_tables_path, filename));
           ObjectOutputStream oos = new ObjectOutputStream(fout);
           oos.writeObject(data);
           oos.close();
@@ -804,7 +804,7 @@ public class emit {
 
   protected static void emit_load_table(PrintWriter out, String filename, String property) {
     out.println("    try {");
-    out.println("      FileInputStream fin = new FileInputStream(\""+store_tables_path +"/"+filename+"\");");
+    out.println("      FileInputStream fin = new FileInputStream(\""+new File(store_tables_path, filename).getAbsolutePath()+"\");");
     out.println("      ObjectInputStream ois = new ObjectInputStream(fin);");
     out.println("      this."+property+" = (short[][]) ois.readObject();");
     out.println("      ois.close();");
