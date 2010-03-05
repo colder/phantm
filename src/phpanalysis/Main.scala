@@ -19,6 +19,7 @@ object Main {
     var displayProgress    = false;
     var onlyLint           = false;
     var includePaths       = List(".");
+    var mainDir            = "./"
     var apis: List[String] = Nil;
 
     def main(args: Array[String]): Unit = {
@@ -37,6 +38,9 @@ object Main {
     }
 
     def handleArgs(args: List[String]): Unit = args match {
+        case "--maindir" :: x :: xs =>
+            mainDir = x
+            handleArgs(xs)
         case "--symbols" :: xs =>
             displaySymbols = true
             handleArgs(xs)
@@ -101,9 +105,9 @@ object Main {
                     if (importAPI) {
                         if (displayProgress) println("3/9 Importing APIs...")
                         // Load internal classes and functions into the symbol tables
-                        new API("spec/internal_api.xml").load
+                        new API(mainDir+"spec/internal_api.xml").load
 
-                        for (api <-apis) {
+                        for (api <- apis) {
                             new API(api).load
                         }
                     } else {
