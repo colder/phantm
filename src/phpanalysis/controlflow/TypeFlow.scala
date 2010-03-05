@@ -253,7 +253,7 @@ object TypeFlow {
             case TUninitialized =>
                 TNull
             case tu: TUnion =>
-                new TUnion(tu.types.map { x => if (x == TUninitialized) TNull else x })
+                tu.types.map { x => if (x == TUninitialized) TNull else x } reduceLeft (_ union _)
             case _ =>
                 t
         }
@@ -400,7 +400,7 @@ object TypeFlow {
                             val typ = t.lookup(ind)
 
                             if (containsUninit(typ)) {
-                                notice("Potentially undefined array element "+stringRepr(ind), ind)
+                                notice("Potentially undefined array element "+stringRepr(sv), ind)
                                 uninitToNull(typ)
                             } else {
                                 typ

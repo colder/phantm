@@ -317,6 +317,14 @@ object Types {
         def lookup(index: CFGSimpleValue): Type = index match {
           case CFGLong(i)       => lookup(i+"")
           case CFGString(index) => lookup(index)
+          case CFGConstant(id) =>
+            if (GlobalSymbols.lookupConstant(id.value) == None) {
+                // PHP falls back to the constant name as a string
+                lookup(id.value)
+            } else {
+                globalType
+            }
+
           case _ => globalType
         }
 
@@ -326,6 +334,13 @@ object Types {
         def inject(index: CFGSimpleValue, typ: Type): TArray = index match {
           case CFGLong(i)       => inject(i+"", typ)
           case CFGString(index) => inject(index, typ)
+          case CFGConstant(id) =>
+            if (GlobalSymbols.lookupConstant(id.value) == None) {
+                // PHP falls back to the constant name as a string
+                inject(id.value, typ)
+            } else {
+                injectAny(typ)
+            }
           case _ => injectAny(typ)
         }
 
