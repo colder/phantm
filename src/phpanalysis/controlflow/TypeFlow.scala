@@ -54,7 +54,10 @@ object TypeFlow {
 
         def join(x : Type, y : Type): Type = (x,y) match {
             case (TTop, _) => TTop
+            case (_, TTop) => TTop
             case (TAny, _: ConcreteType) => TAny
+            case (_: ConcreteType, TAny) => TAny
+
             case (TTrue, TFalse) => TBoolean
             case (TFalse, TTrue) => TBoolean
             case (TBottom, _) => y
@@ -250,6 +253,8 @@ object TypeFlow {
         }
 
         def uninitToNull(t: Type): Type = t match {
+            case TTop =>
+                TAny
             case TUninitialized =>
                 TNull
             case tu: TUnion =>
@@ -261,21 +266,21 @@ object TypeFlow {
         def apply(node : CFGStatement, env : TypeEnvironment) : TypeEnvironment = {
             var store = env.store
 
-            def typeFromSimpleValue(sv: CFGSimpleValue): Type = sv match {
-                case CFGLong(value) => TInt
-                case CFGFloat(value) => TFloat
-                case CFGString(value) => TString
-                case CFGTrue() => TTrue
-                case CFGFalse() => TFalse
-                case CFGAny() => TAny
-                case CFGNone() => TBottom
-                case CFGNull() => TNull
-                case CFGThis() => getObject(node, env.scope)
-                case CFGEmptyArray() => new TArray()
-                case CFGInstanceof(lhs, cl) => TBoolean
-                case CFGArrayNext(ar) => typeFromSimpleValue(ar)
+            def typeFromSV(env: TypeEnvironment, sv: CFGSimpleValue): (TypeEnvironment, Type) = sv match {
+                case CFGLong(value) => (env, TInt)
+                case CFGFloat(value) => (env, TFloat)
+                case CFGString(value) => (env, TString)
+                case CFGTrue() => (env, TTrue)
+                case CFGFalse() => (env, TFalse)
+                case CFGAny() => (env, TAny)
+                case CFGNone() => (env, TBottom)
+                case CFGNull() => (env, TNull)
+                case CFGThis() => (env, getObject(node, env.scope))
+                case CFGEmptyArray() => (env, new TArray())
+                case CFGInstanceof(lhs, cl) => (env, TBoolean)
+                case CFGArrayNext(ar) => typeFromSV(env, ar)
                 case CFGArrayCurElement(id: CFGSimpleVariable) =>
-                    env.lookup(id) match {
+                    (env, env.lookup(id) match {
                         case Some(TAnyArray) =>
                             TAny
                         case Some(t: TArray) =>
@@ -285,95 +290,103 @@ object TypeFlow {
                                 TBottom
                             }
 
-                            uninitToNull(et union t.globalType)
+                            et union t.globalType
                         case _ =>
                             TAny
-                    }
-                case CFGArrayCurElement(ar) => TAny
-                case CFGArrayCurKey(ar) => TUnion(TString, TInt)
-                case CFGArrayCurIsValid(ar) => expect(ar, TAnyArray); TBoolean
+                    })
+                case CFGArrayCurElement(ar) => (env, TAny)
+                case CFGArrayCurKey(ar) => (env, TString union TInt)
+                case CFGArrayCurIsValid(ar) =>
+                    (expOrRef(env, ar, TAnyArray)._1, TBoolean)
                 case CFGNew(cr, params) => cr match {
                     case parser.Trees.StaticClassRef(_, _, id) =>
-                        GlobalSymbols.lookupClass(id.value) match {
+                        (env, GlobalSymbols.lookupClass(id.value) match {
                             case a @ Some(cs) =>
                                 getObject(node, a)
                             case _ =>
                                 error("Undefined class '"+id.value+"'", id)
                                 getObject(node, None)
-                        }
+                        })
                     case _ =>
-                        getObject(node, None)
+                        (env, getObject(node, None))
                 }
                 case cl @ CFGClone(obj) =>
-                    expect(obj, TAnyObject) match {
-                        case ref: TObjectRef =>
+                    expOrRef(env, obj, TAnyObject) match {
+                        case (env, ref: TObjectRef) =>
                             val ro = store.lookup(ref)
                             store = store.set(ObjectId(cl.uniqueID, 0), ro)
-                            new TObjectRef(ObjectId(cl.uniqueID, 0))
-                        case _ =>
-                            TAnyObject
+                            (env, new TObjectRef(ObjectId(cl.uniqueID, 0)))
+                        case (env, _)=>
+                            (env, TAnyObject)
                     }
                 case fcall @ CFGFunctionCall(id, args) =>
                     GlobalSymbols.lookupFunction(id.value) match {
                         case Some(fs) =>
-                                checkFCalls(fcall.params, List(functionSymbolToFunctionType(fs)), fcall)
+                                checkFCalls(env, fcall.params, List(functionSymbolToFunctionType(fs)), fcall)
                         case None =>
                             // handle special functions
-                            id.value.toLowerCase match {
+                            val typ = id.value.toLowerCase match {
                                 case "isset" | "empty" =>
                                     TBoolean // no need to check the args, this is a no-error function
                                 case _ =>
                                     notice("Function "+id.value+" appears to be undefined!", id)
                                     TBottom
                             }
+
+                            (env, typ)
                     }
                 case mcall @ CFGMethodCall(r, mid, args) =>
-                    expect(r, TAnyObject) match {
-                        case or: TObjectRef =>
+                    expOrRef(env, r, TAnyObject) match {
+                        case (env, or: TObjectRef) =>
                             val ro = store.lookup(or);
                             ro.lookupMethod(mid.value, env.scope) match {
                                 case Some(mt) =>
-                                    checkFCalls(args, List(mt), mcall)
+                                    checkFCalls(env, args, List(mt), mcall)
                                 case None =>
                                     // Check for magic __call ?
                                     val cms = ro.lookupMethod("__call", env.scope)
-                                    if (cms == None) {
+                                    val t = if (cms == None) {
                                         notice("Undefined method '" + mid.value + "' in object "+ro, mid)
                                         TBottom
                                     } else {
                                         cms.get.ret
                                     }
+
+                                    (env, t)
                             }
                         case _ =>
-                            TBottom
+                            (env, TBottom)
                     }
 
                 case const @ CFGConstant(id) =>
-                    GlobalSymbols.lookupConstant(id.value) match {
+                    (env, GlobalSymbols.lookupConstant(id.value) match {
                         case Some(cs) =>
                             cs.typ
                         case None =>
                             notice("Undefined constant '" + id.value + "'", const)
                             TString
-                    }
+                    })
 
                 case const @ CFGClassConstant(cl, id) =>
-                    TAny // TODO
+                    (env, TAny) // TODO
 
                 case const @ CFGClassProperty(cl, index) =>
-                    TAny // TODO
+                    (env, TAny) // TODO
 
                 case mcall @ CFGStaticMethodCall(cl, id, args) =>
-                    TAny // TODO
+                    (env, TAny) // TODO
 
                 case tern @ CFGTernary(iff, then, elze) =>
-                    typeFromSimpleValue(then) union typeFromSimpleValue(elze)
+                    val t1 = typeFromSV(env, then);
+                    val t2 = typeFromSV(env, elze);
+
+                    (t1._1 union t2._1, t1._2 union t2._2)
 
                 case CFGCast(typ, v) =>
                     // TODO: not all cast from-to types are accepted, we could
                     // check for those!
                     import parser.Trees._
-                    typ match {
+                    (env, typ match {
                         case CastUnset => TNull
                         case CastInt => TInt
                         case CastString => TString
@@ -381,81 +394,64 @@ object TypeFlow {
                         case CastArray => TAnyArray
                         case CastBool => TBoolean
                         case CastObject => TAnyObject
-                    }
+                    })
 
                 case id: CFGSimpleVariable =>
-                  env.lookup(id) match {
+                  (env, env.lookup(id) match {
                     case Some(t) =>
                         t
                     case None =>
-                        notice("Potentially undefined variable "+stringRepr(id), id)
-                        TBottom
-                }
+                        TUninitialized
+                  })
 
                 case CFGArrayEntry(ar, ind) =>
-                    expect(ind, TString, TInt)
-
-                    expect(ar, TAnyArray) match {
-                        case t: TArray =>
-                            val typ = t.lookup(ind)
-
-                            if (containsUninit(typ)) {
-                                notice("Potentially undefined array element "+stringRepr(sv), ind)
-                                uninitToNull(typ)
-                            } else {
-                                typ
-                            }
-                        case TBottom => TBottom
-                        case t =>
+                    expOrRef(expOrRef(env, ind, TString, TInt)._1, ar, TAnyArray) match {
+                        case (env, t: TArray) =>
+                            (env, t.lookup(ind))
+                        case (env, TBottom) =>
+                            (env, TBottom)
+                        case (env, t) =>
                             println("Woops?? invlid type returned from expect: "+t);
-                            TBottom
+                            (env, TBottom)
                     }
 
                 case op @ CFGObjectProperty(obj, p) =>
-                    expect(p, TString);
-                    val typ = expect(obj, TAnyObject) match {
-                        case TAnyObject =>
-                            TAny
-                        case or: TObjectRef =>
-                            store.lookup(or).lookupField(p)
-
-                        case TBottom => TBottom
-                        case u: TUnion =>
-                            TUnion(u.types.map { _ match {
+                    expOrRef(expOrRef(env, p, TString)._1, obj, TAnyObject) match {
+                        case (env, TAnyObject) =>
+                            (env, TAny)
+                        case (env, or: TObjectRef) =>
+                            (env, store.lookup(or).lookupField(p))
+                        case (env, TBottom) =>
+                            (env, TBottom)
+                        case (env, u: TUnion) =>
+                            (env, TUnion(u.types.map { _ match {
                                 case TAnyObject =>
                                     TAny
                                 case or: TObjectRef =>
                                     store.lookup(or).lookupField(p)
-                                case _ => TBottom
-                            }})
-                        case t =>
+                                case _ =>
+                                    TBottom
+                            }}))
+                        case (env, t) =>
                             println("Woops?? invlid type returned from expect: "+t);
-                            TAny
-                    }
-
-                    if (containsUninit(typ)) {
-                        notice("Potentially undefined object property "+stringRepr(p), p)
-                        uninitToNull(typ)
-                    } else {
-                        typ
+                            (env, TAny)
                     }
                 case CFGNextArrayEntry(arr) =>
-                    typeFromSimpleValue(arr) match {
-                        case t: TArray =>
-                            t.globalType
+                    typeFromSV(env, arr) match {
+                        case (env, t: TArray) =>
+                            (env, t.globalType)
                         case _ =>
                             println("woot! this is inconsistent!")
-                            TAny
+                            (env, TAny)
                     }
 
                 case vv @ CFGVariableVar(v) =>
-                    expect(v, TString);
                     notice("Dynamic variable ignored", vv)
-                    TAny
+                    expOrRef(env, v, TString);
 
                 case u =>
                   println("Unknown simple value: "+u)
-                  TAny
+                  (env, TAny)
             }
 
             def getObject(node: CFGStatement, ocs: Option[ClassSymbol]): ObjectType = {
@@ -464,94 +460,128 @@ object TypeFlow {
                 new TObjectRef(id)
             }
 
-            def expect(v1: CFGSimpleValue, typs: Type*): Type =
-                expectWithEnv(env, v1, typs:_*)
-
-            def expectWithEnv(env: TypeEnvironment, v1: CFGSimpleValue, typs: Type*): Type = {
-                val vtyp = typeFromSimpleValue(v1);
+            def expOrRef(env_init: TypeEnvironment, v1: CFGSimpleValue, typs: Type*): (TypeEnvironment, Type) = {
+                val tmp  = typeFromSV(env_init, v1);
+                var env  = tmp._1;
+                val vtyp = tmp._2;
                 val etyp = typs reduceLeft (_ join _)
 
                 if (TypeLattice.leq(env, vtyp, etyp)) {
-                    vtyp
+                    (env, uninitToNull(vtyp))
                 } else {
-                    if (!silent) {
-                        notice("Potential type mismatch: expected: "+typs.toList.map{x => x.toText(env)}.mkString(" or ")+", found: "+vtyp.toText(env), v1)
+                    def error(kind: String) = {
+                        if (!silent) {
+                            if (containsUninit(vtyp)) {
+                                notice("Potentially undefined "+kind+": "+stringRepr(v1), v1)
+                            } else {
+                                notice("Potential type mismatch: expected: "+typs.toList.map{x => x.toText(env)}.mkString(" or ")+", found: "+vtyp.toText(env), v1)
+                            }
+                        }
                     }
-                    typs.toList.head
+                    v1 match {
+                        case sv: CFGSimpleVariable =>
+                            error("variable")
+                            (env.inject(sv, etyp), typs.toList.head)
+
+                        case v: CFGArrayEntry =>
+                            error("array entry")
+                            // refine
+                            var newType = new TArray().inject(v.index, TAny);
+
+                            (env, typs.toList.head)
+
+                        case v: CFGObjectProperty =>
+                            error("object property")
+                            (env, typs.toList.head)
+
+                        case _ =>
+                            if (!silent) {
+                                notice("Potential type mismatch: expected: "+typs.toList.map{x => x.toText(env)}.mkString(" or ")+", found: "+vtyp.toText(env), v1)
+                            }
+                            (env, typs.toList.head)
+
+                    }
                 }
             }
 
-            def typeCheckUnOP(op: CFGUnaryOperator, v1: CFGSimpleValue): Type = {
+            def typeCheckUnOP(env: TypeEnvironment, vr: Option[CFGSimpleVariable], op: CFGUnaryOperator, v1: CFGSimpleValue): (TypeEnvironment, Type) = {
                 op match {
                     case BOOLEANNOT =>
-                        expect(v1, TAny); TBoolean
+                        expOrRef(env, v1, TAny)
                     case BITSIWENOT =>
-                        expect(v1, TInt)
+                        expOrRef(env, v1, TInt)
                     case PREINC =>
-                        expect(v1, TInt)
+                        expOrRef(env, v1, TInt)
                     case POSTINC =>
-                        expect(v1, TInt)
+                        expOrRef(env, v1, TInt)
                     case PREDEC =>
-                        expect(v1, TInt)
+                        expOrRef(env, v1, TInt)
                     case POSTDEC =>
-                        expect(v1, TInt)
+                        expOrRef(env, v1, TInt)
                     case SILENCE =>
-                        expect(v1, TAny)
+                        expOrRef(env, v1, TAny)
                 }
             }
 
-            def typeCheckBinOP(v1: CFGSimpleValue, op: CFGBinaryOperator, v2: CFGSimpleValue): Type = {
-                op match {
+            def typeCheckBinOP(env: TypeEnvironment, vr: Option[CFGSimpleVariable], v1: CFGSimpleValue, op: CFGBinaryOperator, v2: CFGSimpleValue): (TypeEnvironment, Type) = {
+                val tmp = op match {
                     case PLUS =>
-                        expect(v1, TInt); expect(v2, TInt)
+                        expOrRef(expOrRef(env, v1, TInt)._1, v2, TInt)
                     case MINUS =>
-                        expect(v1, TInt); expect(v2, TInt)
+                        expOrRef(expOrRef(env, v1, TInt)._1, v2, TInt)
                     case MULT =>
-                        expect(v1, TInt); expect(v2, TInt)
+                        expOrRef(expOrRef(env, v1, TInt)._1, v2, TInt)
                     case DIV =>
-                        expect(v1, TInt); expect(v2, TInt)
+                        expOrRef(expOrRef(env, v1, TInt)._1, v2, TInt)
                     case CONCAT =>
-                        expect(v1, TString, TInt, TAnyObject); expect(v2, TString, TInt, TAnyObject)
+                        expOrRef(expOrRef(env, v1, TAny)._1, v2, TAny)
                     case MOD =>
-                        expect(v1, TInt); expect(v2, TInt)
+                        expOrRef(expOrRef(env, v1, TInt)._1, v2, TInt)
                     case INSTANCEOF =>
-                        expect(v1, TAnyObject); expect(v2, TString); TBoolean
+                        (expOrRef(expOrRef(env, v1, TAnyObject)._1, v2, TString)._1, TBoolean)
                     case BOOLEANAND =>
-                        expect(v1, TAny); expect(v2, TAny); TBoolean
+                        (expOrRef(expOrRef(env, v1, TAny)._1, v2, TAny)._1, TBoolean)
                     case BOOLEANOR =>
-                        expect(v1, TAny); expect(v2, TAny); TBoolean
+                        (expOrRef(expOrRef(env, v1, TAny)._1, v2, TAny)._1, TBoolean)
                     case BOOLEANXOR =>
-                        expect(v1, TAny); expect(v2, TAny); TBoolean
+                        (expOrRef(expOrRef(env, v1, TAny)._1, v2, TAny)._1, TBoolean)
                     case BITWISEAND =>
-                        expect(v1, TInt); expect(v2, TInt)
+                        expOrRef(expOrRef(env, v1, TInt)._1, v2, TInt)
                     case BITWISEOR =>
-                        expect(v1, TInt); expect(v2, TInt)
+                        expOrRef(expOrRef(env, v1, TInt)._1, v2, TInt)
                     case BITWISEXOR =>
-                        expect(v1, TInt); expect(v2, TInt)
+                        expOrRef(expOrRef(env, v1, TInt)._1, v2, TInt)
                     case SHIFTLEFT =>
-                        expect(v1, TInt); expect(v2, TInt)
+                        expOrRef(expOrRef(env, v1, TInt)._1, v2, TInt)
                     case SHIFTRIGHT =>
-                        expect(v1, TInt); expect(v2, TInt)
+                        expOrRef(expOrRef(env, v1, TInt)._1, v2, TInt)
                     case LT =>
-                        expect(v1, TInt); expect(v2, TInt)
+                        (expOrRef(expOrRef(env, v1, TAny)._1, v2, TAny)._1, TBoolean)
                     case LEQ =>
-                        expect(v1, TInt); expect(v2, TInt)
+                        (expOrRef(expOrRef(env, v1, TAny)._1, v2, TAny)._1, TBoolean)
                     case GEQ =>
-                        expect(v1, TInt); expect(v2, TInt)
+                        (expOrRef(expOrRef(env, v1, TAny)._1, v2, TAny)._1, TBoolean)
                     case GT =>
-                        expect(v1, TInt); expect(v2, TInt)
+                        (expOrRef(expOrRef(env, v1, TAny)._1, v2, TAny)._1, TBoolean)
                     case EQUALS =>
-                        expect(v2, expect(v1, TAny)); TBoolean
+                        (expOrRef(expOrRef(env, v1, TAny)._1, v2, TAny)._1, TBoolean)
                     case IDENTICAL =>
-                        expect(v2, expect(v1, TAny)); TBoolean
+                        (expOrRef(expOrRef(env, v1, TAny)._1, v2, TAny)._1, TBoolean)
                     case NOTEQUALS =>
-                        expect(v2, expect(v1, TAny)); TBoolean
+                        (expOrRef(expOrRef(env, v1, TAny)._1, v2, TAny)._1, TBoolean)
                     case NOTIDENTICAL =>
-                        expect(v2, expect(v1, TAny)); TBoolean
+                        (expOrRef(expOrRef(env, v1, TAny)._1, v2, TAny)._1, TBoolean)
+                }
+
+                vr match {
+                    case Some(vr) =>
+                        (tmp._1.inject(vr, tmp._2), tmp._2)
+                    case None =>
+                        tmp
                 }
             }
 
-            def complexAssign(v: CFGVariable, ext: Type): TypeEnvironment = {
+            def complexAssign(env: TypeEnvironment, v: CFGVariable, ext: Type): TypeEnvironment = {
                     var elems: List[(CFGSimpleValue, Type, Type)] = Nil;
 
                     def linearize(sv: CFGSimpleValue, checkType: Type, resultType: Type, pass: Int): Unit = {
@@ -602,7 +632,7 @@ object TypeFlow {
 
                     // Let's traverse all up to the last elem (the outermost assign)
                     for ((elem, ct, rt) <- elems.init) {
-                        //println(" Checking for "+elem +"(actualType: "+typeFromSimpleValue(elem)+", checkType: "+ct+", resultType: "+rt+")");
+                        //println(" Checking for "+elem +"(actualType: "+typeFromSV(elem)+", checkType: "+ct+", resultType: "+rt+")");
                         def assignMergeObject(from: TObjectRef, to: TObjectRef): Type ={
                                 val fromRO = store.lookup(from)
                                 val toRO   = store.lookup(to)
@@ -673,13 +703,13 @@ object TypeFlow {
                                 a
                         }
 
-                        val resultingType = assignMerge(rt, typeFromSimpleValue(elem))
+                        val resultingType = assignMerge(rt, typeFromSV(env, elem)._2)
 
                         elem match {
                             case sv: CFGSimpleVariable =>
                                 // Due to our deep type system, checking
                                 // the base variable should be enough
-                                expectWithEnv(e, elem, ct)
+                                e = expOrRef(e, elem, ct)._1
                                 e = e.inject(sv, resultingType);
                             case _ =>
                         }
@@ -692,7 +722,9 @@ object TypeFlow {
                 new TFunction(fs.argList.map { a => (a._2.typ, a._2.optional) }, fs.typ)
             }
 
-            def checkFCalls(fcall_params: List[CFGSimpleValue], syms: List[FunctionType], pos: Positional) : Type =  {
+            def checkFCalls(env_init: TypeEnvironment, fcall_params: List[CFGSimpleValue], syms: List[FunctionType], pos: Positional) : (TypeEnvironment, Type) =  {
+                var env = env_init;
+
                 def protoFilter(sym: FunctionType): Boolean = {
                     sym match {
                         case tf: TFunction =>
@@ -701,8 +733,8 @@ object TypeFlow {
                                 if (i >= tf.args.length) {
                                     ret = false
                                 } else {
-                                    if (!TypeLattice.leq(env, typeFromSimpleValue(fcall_params(i)), tf.args(i)._1)) {
-                                        //notice("Prototype mismatch because "+fcall.params(i)+"("+typeFromSimpleValue(fcall.params(i))+") </: "+args(i)._1) 
+                                    if (!TypeLattice.leq(env, typeFromSV(env, fcall_params(i))._2, tf.args(i)._1)) {
+                                        //notice("Prototype mismatch because "+fcall.params(i)+"("+typeFromSV(fcall.params(i))+") </: "+args(i)._1) 
 
                                         ret = false;
                                     }
@@ -717,16 +749,18 @@ object TypeFlow {
                 syms filter protoFilter match {
                     case Nil =>
                         if (syms.size > 1) {
-                            error("Unmatched function prototype '("+fcall_params.map(typeFromSimpleValue).mkString(", ")+")', candidates are:\n    "+syms.mkString(",\n    "), pos)
-                            TBottom
+                            error("Unmatched function prototype '("+fcall_params.map(x => typeFromSV(env, x)._2).mkString(", ")+")', candidates are:\n    "+syms.mkString(",\n    "), pos)
+                            (env, TBottom)
                         } else {
-                            syms.first match {
+                            val typ = syms.first match {
                                 case tf: TFunction =>
                                     for (i <- fcall_params.indices) {
                                         if (i >= tf.args.length) {
                                             error("Prototype error!", pos)
                                         } else {
-                                            expect(fcall_params(i), tf.args(i)._1)
+                                            val tmp = expOrRef(env, fcall_params(i), tf.args(i)._1)
+                                            env = tmp._1
+                                            tmp._2
                                         }
 
                                     }
@@ -734,40 +768,46 @@ object TypeFlow {
                                 case s =>
                                     s.ret
                             }
+
+                            (env, typ)
                         }
 
                     case f :: xs =>
-                        f.ret
+                        (env, f.ret)
                 }
             }
 
 
             val newEnv = node match {
                 case CFGAssign(vr: CFGSimpleVariable, v1) =>
-                    env.inject(vr, typeFromSimpleValue(v1))
+                    val tmp = typeFromSV(env, v1)
+                    tmp._1.inject(vr, tmp._2)
 
                 case CFGAssignUnary(vr: CFGSimpleVariable, op, v1) =>
                     // We want to typecheck v1 according to OP
-                    env.inject(vr, typeCheckUnOP(op, v1));
+                    typeCheckUnOP(env, Some(vr), op, v1)._1
 
                 case CFGAssignUnary(ca: CFGVariable, op, v1) =>
                     // We want to typecheck v1 according to OP
-                    complexAssign(ca, typeCheckUnOP(op, v1))
+                    val tmp = typeCheckUnOP(env, None, op, v1)
+                    complexAssign(tmp._1, ca, tmp._2)
 
                 case CFGAssignBinary(vr: CFGSimpleVariable, v1, op, v2) =>
                     // We want to typecheck v1/v2 according to OP
-                    env.inject(vr, typeCheckBinOP(v1, op, v2));
+                    typeCheckBinOP(env, Some(vr), v1, op, v2)._1
 
                 case CFGAssignBinary(ca: CFGVariable, v1, op, v2) =>
                     // We want to typecheck v1/v2 according to OP
-                    complexAssign(ca, typeCheckBinOP(v1, op, v2))
+                    val tmp = typeCheckBinOP(env, None, v1, op, v2)
+                    complexAssign(tmp._1, ca, tmp._2)
 
                 case CFGAssign(ca: CFGVariable, ex) =>
-                    complexAssign(ca, typeFromSimpleValue(ex))
+                    val tmp = typeFromSV(env, ex)
+                    complexAssign(tmp._1, ca, tmp._2)
 
                 case CFGAssume(v1, op, v2) => op match {
                     case LT | LEQ | GEQ | GT =>
-                        expect(v1, TInt, TFloat); expect(v2, TInt, TFloat); env
+                        expOrRef(expOrRef(env, v1, TInt, TFloat)._1, v2, TInt, TFloat)._1
                     case EQUALS | IDENTICAL | NOTEQUALS | NOTIDENTICAL =>
                         /**
                          * Type filtering:
@@ -775,7 +815,7 @@ object TypeFlow {
                          * we can filter incompatible values out
                          */
                         def filter(v: CFGSimpleVariable, value: Boolean): Type = {
-                            typeFromSimpleValue(v) match {
+                            typeFromSV(env, v)._2 match {
                                 case u: TUnion =>
                                     if (value) {
                                         TUnion(u.types.filter(t => t != TFalse && t != TNull))
@@ -806,7 +846,7 @@ object TypeFlow {
                         }
                         var t1 = v1;
                         var t2 = v2;
-                        (v1, typeFromSimpleValue(v1), v2, typeFromSimpleValue(v2)) match {
+                        (v1, typeFromSV(env,v1)._2, v2, typeFromSV(env, v2)._2) match {
                             case (v: CFGSimpleVariable, TTrue , w: CFGSimpleVariable, _) =>
                                 // we benefit from a switch:
                                 t1 = v2;
@@ -823,7 +863,7 @@ object TypeFlow {
                             case _ =>
                                 // no change, will be ignored anyway
                         }
-                        (t1, op, typeFromSimpleValue(t2)) match  {
+                        (t1, op, typeFromSV(env, t2)._2) match  {
                             case (v: CFGSimpleVariable, EQUALS, TFalse)  =>
                                 env.inject(v, filter(v, false))
                             case (v: CFGSimpleVariable, NOTEQUALS, TFalse)  =>
@@ -833,16 +873,14 @@ object TypeFlow {
                             case (v: CFGSimpleVariable, NOTEQUALS, TTrue)  =>
                                 env.inject(v, filter(v, false))
                             case _ =>
-                                expect(v1, TAny)
-                                expect(v2, TAny)
-                                env
+                                expOrRef(expOrRef(env, v1, TAny)._1, v2, TAny)._1
                         }
 
                   }
 
                 case CFGPrint(v) =>
-                    expect(v, TInt, TString, TAnyObject, TBoolean);
-                    env
+                    expOrRef(env, v, TInt, TString, TAnyObject, TBoolean)._1
+
                 case CFGUnset(id) =>
                     id match {
                         case v: CFGSimpleVariable =>
@@ -856,8 +894,8 @@ object TypeFlow {
                     env
 
                 case ex: CFGSimpleValue =>
-                    expect(ex, TAny);
-                    env
+                    expOrRef(env, ex, TAny)._1
+
                 case _ => notice(node+" not yet handled", node); env
             }
 
