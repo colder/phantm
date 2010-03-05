@@ -318,11 +318,17 @@ object Types {
           case CFGLong(i)       => lookup(i+"")
           case CFGString(index) => lookup(index)
           case CFGConstant(id) =>
-            if (GlobalSymbols.lookupConstant(id.value) == None) {
-                // PHP falls back to the constant name as a string
-                lookup(id.value)
-            } else {
-                globalType
+            GlobalSymbols.lookupConstant(id.value) match {
+                case None =>
+                    // PHP falls back to the constant name as a string
+                    lookup(id.value)
+                case Some(cs) =>
+                    cs.value match {
+                        case Some(v) =>
+                            lookup(Evaluator.scalarToString(v))
+                        case None =>
+                            globalType
+                    }
             }
 
           case _ => globalType
@@ -335,11 +341,17 @@ object Types {
           case CFGLong(i)       => inject(i+"", typ)
           case CFGString(index) => inject(index, typ)
           case CFGConstant(id) =>
-            if (GlobalSymbols.lookupConstant(id.value) == None) {
-                // PHP falls back to the constant name as a string
-                inject(id.value, typ)
-            } else {
-                injectAny(typ)
+            GlobalSymbols.lookupConstant(id.value) match {
+                case None =>
+                    // PHP falls back to the constant name as a string
+                    inject(id.value, typ)
+                case Some(cs) =>
+                    cs.value match {
+                        case Some(v) =>
+                            inject(Evaluator.scalarToString(v), typ)
+                        case None =>
+                            injectAny(typ)
+                    }
             }
           case _ => injectAny(typ)
         }
