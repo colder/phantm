@@ -373,6 +373,12 @@ object Types {
     object TAnyArray extends TArray(Map[String, Type](), TTop) {
         override def toString = "Array[?]"
         override def toText(te: TypeEnvironment) = "any array"
+
+        override def equals(t: Any): Boolean = t match {
+            case r: AnyRef =>
+                this eq r
+            case _ => false
+        }
     }
 
     case object TInt extends ConcreteType {
