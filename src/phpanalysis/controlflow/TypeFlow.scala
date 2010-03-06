@@ -669,6 +669,7 @@ object TypeFlow {
                         //    $a -> Array[foo => Array[bar => {TInt, TString}]]
                         // but
                         //    $a -> Array[foo => Array[bar => String]]
+                        var deepness = 0;
                         def assignMerge(from: Type, to: Type): Type = (from,to) match {
                             case (from: TArray, to: TArray) =>
                                 import scala.collection.mutable.HashMap
@@ -702,14 +703,15 @@ object TypeFlow {
                                 a
                         }
 
-                        val resultingType = assignMerge(rt, typeFromSV(env, elem)._2)
+                        val restyp = assignMerge(rt, typeFromSV(env, elem)._2)
 
                         elem match {
                             case sv: CFGSimpleVariable =>
                                 // Due to our deep type system, checking
                                 // the base variable should be enough
                                 e = expOrRef(e, elem, ct)._1
-                                e = e.inject(sv, resultingType);
+                                // We inject the resulting type
+                                e = e.inject(sv, restyp);
                             case _ =>
                         }
                     }

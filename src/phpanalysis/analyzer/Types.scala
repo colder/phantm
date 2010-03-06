@@ -19,8 +19,6 @@ object Types {
 
         def equals(t: Type) = t == self;
 
-        def deepNess(st: ObjectStore): Int = 1;
-
         def toText(te: TypeEnvironment) = toString
     }
 
@@ -140,10 +138,6 @@ object Types {
                 ref.id == id
             case _ => false
         }
-
-        override def deepNess(st: ObjectStore) = {
-            st.lookup(this).deepNess(st)
-        }
     }
 
     // Real object type (in the store) representing a specific object of any class
@@ -155,19 +149,6 @@ object Types {
                 fields == ro.fields && globalType == ro.globalType
             case _ =>
                 false
-        }
-
-        def deepNess(st: ObjectStore): Int = {
-            var max = 0;
-            for (v <- fields.values) {
-                val dp = v.deepNess(st)
-                if (dp > max) max = dp
-            }
-
-            val gdp = globalType.deepNess(st)
-            if (gdp > max) max = gdp
-
-            max+1;
         }
 
         def lookupField(index: CFGSimpleValue): Type = index match {
@@ -383,19 +364,6 @@ object Types {
             case ta: TArray =>
                 entries == ta.entries && globalType == ta.globalType
             case _ => false
-        }
-
-        override def deepNess(st: ObjectStore) = {
-            var max = 0;
-            for (v <- entries.values) {
-                if (max < v.deepNess(st)) max = v.deepNess(st);
-            }
-
-            if (globalType.deepNess(st) > max) {
-                max = globalType.deepNess(st)
-            }
-
-            max+1;
         }
 
         override def toString =
