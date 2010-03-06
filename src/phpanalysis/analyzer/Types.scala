@@ -460,6 +460,30 @@ object Types {
                         res = addToList(res, t)
                     }
                     res
+                case TBoolean =>
+                    TBoolean :: typs.filter{t => t != TFalse && t != TTrue && t != TBoolean}.toList
+
+                case TFalse =>
+                    if ((typs contains TFalse) || (typs contains TBoolean)) {
+                        typs
+                    } else {
+                        if (typs contains TTrue) {
+                            TBoolean :: typs.filter{t => t != TTrue}.toList
+                        } else {
+                            TFalse :: typs
+                        }
+                    }
+                case TTrue =>
+                    if ((typs contains TTrue) || (typs contains TBoolean)) {
+                        typs
+                    } else {
+                        if (typs contains TFalse) {
+                            TBoolean :: typs.filter{t => t != TFalse}.toList
+                        } else {
+                            TTrue :: typs
+                        }
+                    }
+
                 case TAnyArray =>
                     TAnyArray :: typs.filter{! _.isInstanceOf[TArray]}.toList
 
@@ -496,7 +520,7 @@ object Types {
         }
     }
 
-    class TUnion(val types: List[Type]) extends ConcreteType {
+    class TUnion(val types: List[Type]) extends Type {
 
         def this(t1: Type, t2: Type) =
             this(TUnion.getList(t1, t2))

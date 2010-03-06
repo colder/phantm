@@ -55,8 +55,28 @@ object TypeFlow {
         def join(x : Type, y : Type): Type = (x,y) match {
             case (TTop, _) => TTop
             case (_, TTop) => TTop
+
+            case (TBottom, _) => y
+            case (_, TBottom) => x
+
+            case (TAny, TUninitialized) => TTop
+            case (TUninitialized, TAny) => TTop
+
             case (TAny, _: ConcreteType) => TAny
             case (_: ConcreteType, TAny) => TAny
+
+            case (TAny, tu: TUnion) =>
+                if (!(tu.types contains TUninitialized)) {
+                    TAny
+                } else {
+                    TTop
+                }
+            case (tu: TUnion, TAny) =>
+                if (!(tu.types contains TUninitialized)) {
+                    TAny
+                } else {
+                    TTop
+                }
 
             case (TTrue, TFalse) => TBoolean
             case (TFalse, TTrue) => TBoolean
@@ -64,8 +84,6 @@ object TypeFlow {
             case (TBoolean, TTrue) => TBoolean
             case (TFalse, TBoolean) => TBoolean
             case (TBoolean, TFalse) => TBoolean
-            case (TBottom, _) => y
-            case (_, TBottom) => x
 
             case (t1, t2) if t1 == t2 => t1
 
@@ -76,6 +94,7 @@ object TypeFlow {
                 // We have a TUnion here since we are dealing
                 // with objects of different refs
                 TUnion(t1, t2)
+
             // Arrays
             case (TAnyArray, t: TArray) => TAnyArray
             case (t: TArray, TAnyArray) => TAnyArray
@@ -545,7 +564,7 @@ object TypeFlow {
                     case DIV =>
                         expOrRef(expOrRef(env, v1, TInt)._1, v2, TInt)
                     case CONCAT =>
-                        expOrRef(expOrRef(env, v1, TAny)._1, v2, TAny)
+                        (expOrRef(expOrRef(env, v1, TAny)._1, v2, TAny)._1, TString)
                     case MOD =>
                         expOrRef(expOrRef(env, v1, TInt)._1, v2, TInt)
                     case INSTANCEOF =>
