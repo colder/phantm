@@ -502,8 +502,8 @@ object TypeFlow {
                 }
             }
 
-            def typeCheckUnOP(env: TypeEnvironment, vr: Option[CFGSimpleVariable], op: CFGUnaryOperator, v1: CFGSimpleValue): (TypeEnvironment, Type) = {
-                op match {
+            def assignUnOP(env: TypeEnvironment, vr: Option[CFGSimpleVariable], op: CFGUnaryOperator, v1: CFGSimpleValue): (TypeEnvironment, Type) = {
+                val tmp = op match {
                     case BOOLEANNOT =>
                         expOrRef(env, v1, TAny)
                     case BITSIWENOT =>
@@ -519,9 +519,16 @@ object TypeFlow {
                     case SILENCE =>
                         expOrRef(env, v1, TAny)
                 }
+
+                vr match {
+                    case Some(vr) =>
+                        (tmp._1.inject(vr, tmp._2), tmp._2)
+                    case None =>
+                        tmp
+                }
             }
 
-            def typeCheckBinOP(env: TypeEnvironment, vr: Option[CFGSimpleVariable], v1: CFGSimpleValue, op: CFGBinaryOperator, v2: CFGSimpleValue): (TypeEnvironment, Type) = {
+            def assignBinOP(env: TypeEnvironment, vr: Option[CFGSimpleVariable], v1: CFGSimpleValue, op: CFGBinaryOperator, v2: CFGSimpleValue): (TypeEnvironment, Type) = {
                 val tmp = op match {
                     case PLUS =>
                         expOrRef(expOrRef(env, v1, TInt)._1, v2, TInt)
@@ -786,20 +793,20 @@ object TypeFlow {
 
                 case CFGAssignUnary(vr: CFGSimpleVariable, op, v1) =>
                     // We want to typecheck v1 according to OP
-                    typeCheckUnOP(env, Some(vr), op, v1)._1
+                    assignUnOP(env, Some(vr), op, v1)._1
 
                 case CFGAssignUnary(ca: CFGVariable, op, v1) =>
                     // We want to typecheck v1 according to OP
-                    val tmp = typeCheckUnOP(env, None, op, v1)
+                    val tmp = assignUnOP(env, None, op, v1)
                     complexAssign(tmp._1, ca, tmp._2)
 
                 case CFGAssignBinary(vr: CFGSimpleVariable, v1, op, v2) =>
                     // We want to typecheck v1/v2 according to OP
-                    typeCheckBinOP(env, Some(vr), v1, op, v2)._1
+                    assignBinOP(env, Some(vr), v1, op, v2)._1
 
                 case CFGAssignBinary(ca: CFGVariable, v1, op, v2) =>
                     // We want to typecheck v1/v2 according to OP
-                    val tmp = typeCheckBinOP(env, None, v1, op, v2)
+                    val tmp = assignBinOP(env, None, v1, op, v2)
                     complexAssign(tmp._1, ca, tmp._2)
 
                 case CFGAssign(ca: CFGVariable, ex) =>
