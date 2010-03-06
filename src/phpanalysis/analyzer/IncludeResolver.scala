@@ -100,9 +100,7 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
                         }
                     }
                 case None =>
-                    if (Main.verbosity >= 2) {
-                        Reporter.notice("Include with non trivial argument will be ignored", path)
-                    }
+                    Reporter.notice("Include with non trivial argument will be ignored", path)
                     PHPFalse()
             }
         } else {
@@ -119,7 +117,5 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
 
     if (ast.file != None) {
         IncludeResolver.includedFiles += ast.file.get
-    } else {
-        println("AST pos undef")
     }
 }

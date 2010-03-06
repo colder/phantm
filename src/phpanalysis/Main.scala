@@ -63,6 +63,7 @@ object Main {
             displayFixPoint = true
             testsActive     = true
             displayProgress = true
+            verbosity       = 3
             handleArgs(xs)
         case "--verbose" :: xs =>
             verbosity = max(verbosity, 2)

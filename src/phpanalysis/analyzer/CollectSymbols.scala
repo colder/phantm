@@ -84,6 +84,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
         for (val m <- cd.methods) {
             val ms = new MethodSymbol(cs, m.name.value, getVisibility(m.flags), typeHintToType(m.hint)).setPos(m)
             cs.registerMethod(ms)
+            ms.registerPredefVariables
             m.name.setSymbol(ms)
             for (a <- m.args) {
                 var t = typeHintToType(a.hint)
@@ -151,6 +152,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
                 }
                 name.setSymbol(fs)
                 GlobalSymbols.registerFunction(fs)
+                fs.registerPredefVariables
                 newCtx = Context(fs, None, None)
 
             case ClassDecl(name, flags, parent, interfaces, methods, static_props, props, consts) =>
@@ -244,6 +246,8 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
         }
 
         traverse(visit)
+
+        GlobalSymbols.registerPredefVariables
     }
 
 }

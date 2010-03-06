@@ -231,7 +231,7 @@ object TypeFlow {
                 case _ => t.toString
             }
             
-            map.toList.filter(_._1.toString.toList.head != '_').sort{(x,y) => x._1.uniqueID < x._1.uniqueID}.map(x => x._1+" => "+typeToString(x._2)).mkString("[ ", "; ", " ]");
+            map.toList.filter( tmp => tmp._1.toString.toList.head != '_' && tmp._1.toString != "GLOBALS").sort{(x,y) => x._1.uniqueID < x._1.uniqueID}.map(x => x._1+" => "+typeToString(x._2)).mkString("[ ", "; ", " ]");
         }
     }
 
@@ -918,9 +918,10 @@ object TypeFlow {
                 }
             }
 
-            scope.registerPredefVariables
+            //scope.registerPredefVariables
             injectPredef("_GET",     new TArray(TBottom))
             injectPredef("_POST",    new TArray(TBottom))
+            injectPredef("GLOBALS",  new TArray(TBottom))
             injectPredef("_REQUEST", new TArray(TBottom))
             injectPredef("_COOKIE",  new TArray(TBottom))
             injectPredef("_SERVER",  new TArray(TBottom))

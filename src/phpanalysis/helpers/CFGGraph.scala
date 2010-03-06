@@ -40,19 +40,29 @@ case class CFGGraphs(node: Tree) extends ASTTraversal[CheckContext](node, CheckC
 
         node match {
             case Program(stmts) =>
-                val cfg: CFG = ASTToCFG.convertAST(stmts)
+                val cfg: CFG = ASTToCFG.convertAST(stmts, Symbols.GlobalSymbols)
                 cfg.writeDottyToFile("result.cfg-"+n, "Main");
                 n = n + 1;
             case FunctionDecl(name, args, retref, hint, body) =>
-                val cfg: CFG = ASTToCFG.convertAST(List(body))
-                cfg.writeDottyToFile("result.cfg-"+n, name.value);
-                n = n + 1;
+                name.getSymbol match {
+                    case fs: Symbols.FunctionSymbol =>
+                        val cfg: CFG = ASTToCFG.convertAST(List(body), fs)
+                        cfg.writeDottyToFile("result.cfg-"+n, name.value);
+                        n = n + 1;
+                    case _ =>
+                        error("Incoherent symbol type, should be function")
+                }
 
             case ClassDecl(name, flags, parent, interfaces, methods, static_props, props, consts) =>
                 for (m <- methods) if (m.body != None) {
-                    val cfg: CFG = ASTToCFG.convertAST(List(m.body.get))
-                    cfg.writeDottyToFile("result.cfg-"+n, name.value+"::"+m.name.value);
-                    n = n + 1;
+                    m.name.getSymbol match {
+                        case ms: Symbols.MethodSymbol =>
+                            val cfg: CFG = ASTToCFG.convertAST(List(m.body.get), ms)
+                            cfg.writeDottyToFile("result.cfg-"+n, name.value+"::"+m.name.value);
+                            n = n + 1;
+                        case _ =>
+                            error("Incoherent symbol type, should be Method")
+                    }
                 }
 
             case _ =>

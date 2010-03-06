@@ -7,7 +7,7 @@ object ASTToCFG {
   import scala.collection.mutable.{Map,HashMap}
 
   /** Builds a control flow graph from a method declaration. */
-  def convertAST(statements: List[Statement]): CFG = {
+  def convertAST(statements: List[Statement], scope: Scope): CFG = {
     // Contains the entry+exit vertices for continue/break
     var gotoLabels = Map[String, Vertex]();
     var forwardGotos = Map[String, List[(Vertex, Positional)]]();
@@ -583,6 +583,19 @@ object ASTToCFG {
                     Emit.goto(cont)
             }
         case Global(vars) =>
+            var nextGlobal = cfg.newVertex
+            for (v <- vars) {
+                v match {
+                    case SimpleVariable(id) =>
+                        Emit.statementCont(CFGAssign(idFromId(id), CFGArrayEntry(CFGIdentifier(scope.lookupVariable("GLOBALS").get).setPos(id), CFGString(id.value).setPos(id)).setPos(id)).setPos(s), nextGlobal)
+                        Emit.setPC(nextGlobal)
+                        nextGlobal = cfg.newVertex
+                    case v =>
+                        if (Main.verbosity >= 2) {
+                            Reporter.notice("Non-trivial global statement ignored", v)
+                        }
+                }
+            }
             Emit.goto(cont)
         case Echo(exs) =>
             var nextEcho = cfg.newVertex
