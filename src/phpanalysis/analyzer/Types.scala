@@ -559,6 +559,6 @@ object Types {
                     TAnyObject
             }
         case u: THUnion =>
-            TUnion(typeHintToType(u.a), typeHintToType(u.b))
+            typeHintToType(u.a) union typeHintToType(u.b)
     }
 }

@@ -60,6 +60,10 @@ object TypeFlow {
 
             case (TTrue, TFalse) => TBoolean
             case (TFalse, TTrue) => TBoolean
+            case (TTrue, TBoolean) => TBoolean
+            case (TBoolean, TTrue) => TBoolean
+            case (TFalse, TBoolean) => TBoolean
+            case (TBoolean, TFalse) => TBoolean
             case (TBottom, _) => y
             case (_, TBottom) => x
 
@@ -424,14 +428,14 @@ object TypeFlow {
                         case (env, TBottom) =>
                             (env, TBottom)
                         case (env, u: TUnion) =>
-                            (env, TUnion(u.types.map { _ match {
+                            (env, (u.types.map { _ match {
                                 case TAnyObject =>
                                     TAny
                                 case or: TObjectRef =>
                                     store.lookup(or).lookupField(p)
                                 case _ =>
                                     TBottom
-                            }}))
+                            }}).reduceLeft(_ union _))
                         case (env, t) =>
                             println("Woops?? invlid type returned from expect: "+t);
                             (env, TAny)
@@ -474,7 +478,9 @@ object TypeFlow {
                             if (containsUninit(vtyp)) {
                                 notice("Potentially undefined "+kind+": "+stringRepr(v1), v1)
                             } else {
-                                notice("Potential type mismatch: expected: "+typs.toList.map{x => x.toText(env)}.mkString(" or ")+", found: "+vtyp.toText(env), v1)
+                                if (vtyp != TAny || Main.verbosity >= 2) {
+                                    notice("Potential type mismatch: expected: "+typs.toList.map{x => x.toText(env)}.mkString(" or ")+", found: "+vtyp.toText(env), v1)
+                                }
                             }
                         }
                     }
@@ -493,7 +499,7 @@ object TypeFlow {
                             (complexAssign(env, v, etyp), typs.toList.head)
 
                         case _ =>
-                            if (!silent) {
+                            if (!silent && (vtyp != TAny || Main.verbosity >= 2)) {
                                 notice("Potential type mismatch: expected: "+typs.toList.map{x => x.toText(env)}.mkString(" or ")+", found: "+vtyp.toText(env), v1)
                             }
                             (env, typs.toList.head)
@@ -699,11 +705,11 @@ object TypeFlow {
                                 assignMergeObject(from, to)
                             case (from: TObjectRef, to: TUnion) =>
                                 // We may have a union of objects here
-                                TUnion(to.types map { _ match {
+                                (to.types map { _ match {
                                     case t: TObjectRef =>
                                         assignMergeObject(from, t)
                                     case o => o
-                                }})
+                                }}).reduceLeft(_ union _)
                             case (a, b) =>
                                 // In case not both types are not arrays nor objects, we
                                 // always end up with the resulting type
@@ -826,9 +832,9 @@ object TypeFlow {
                             typeFromSV(env, v)._2 match {
                                 case u: TUnion =>
                                     if (value) {
-                                        TUnion(u.types.filter(t => t != TFalse && t != TNull))
+                                        u.types.filter(t => t != TFalse && t != TNull).map(t => if(t == TBoolean) TTrue else t).reduceLeft(_ union _)
                                     } else {
-                                        TUnion(u.types.filter(t => t != TTrue  && t != TResource))
+                                        u.types.filter(t => t != TTrue  && t != TResource).map(t => if(t == TBoolean) TFalse else t).reduceLeft(_ union _)
                                     }
                                 case t =>
                                     if (value) {
