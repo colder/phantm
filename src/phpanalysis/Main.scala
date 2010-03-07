@@ -10,6 +10,7 @@ import Math.max;
 object Main {
     var files: List[String] = Nil;
     var displaySymbols     = false;
+    var displayUsage       = false;
     var verbosity          = 1;
     var resolveIncludes    = true;
     var importAPI          = true;
@@ -25,12 +26,15 @@ object Main {
     def main(args: Array[String]): Unit = {
         if (args.length > 0) {
             handleArgs(args.toList);
-
-            if (files.length == 0) {
-                println("No file provided.")
+            if (displayUsage) {
                 usage
             } else {
-                compile(files)
+                if (files.length == 0) {
+                    println("No file provided.")
+                    usage
+                } else {
+                    compile(files)
+                }
             }
         } else {
             usage
@@ -38,6 +42,8 @@ object Main {
     }
 
     def handleArgs(args: List[String]): Unit = args match {
+        case "--help" :: xs =>
+            displayUsage = true
         case "--maindir" :: x :: xs =>
             mainDir = x
             handleArgs(xs)
@@ -179,12 +185,20 @@ object Main {
 
     def usage = {
         println("Usage:   phpanalysis [..options..] <files ...>");
-        println("Options: --symbols              Display symbols");
-        println("         --debug                Debug information");
-        println("         --verbose              Be more strict");
-        println("         --vverbose             Be nitpicking");
+        println("Options: --help                 This help");
+        println("         --maindir <maindir>    Specify main directory of the tool");
+        println("         --symbols              Display symbols");
+        println("         --showincludes         Display the list of included files");
+        println("         --noincludes           Disables includes resoltuions");
+        println("         --noapi                Do not load the main API");
+        println("         --tests                Enable internal consistency checks");
+        println("         --fixpoint             Display fixpoints");
+        println("         --debug                Display all kind of debug information");
+        println("         --verbose              Display more notices");
+        println("         --vverbose             Be nitpicking and display even more notices");
         println("         --includepath <paths>  Define paths for compile time include resolution (.:a:bb:c:..)");
-        println("         --apis <paths>         Import APIs prior to the analysis (a.xml:b.xml:...)");
+        println("         --apis <paths>         Import additional APIs (a.xml:b.xml:...)");
         println("         --progress             Display analysis progress");
+        println("         --lint                 Stop the analysis after the parsing");
     }
 }
