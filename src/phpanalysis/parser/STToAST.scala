@@ -301,7 +301,9 @@ case class STToAST(comp: Compiler, st: ParseNode) {
             case List("T_DO", "statement", "T_WHILE", "T_OPEN_BRACES", "expr", "T_CLOSE_BRACES", "T_SEMICOLON") =>
                 DoWhile(statement(child(n, 1)), expr(child(n, 4)))
             case List("T_FOR", "T_OPEN_BRACES", "for_expr", "T_SEMICOLON", "for_expr", "T_SEMICOLON", "for_expr", "T_CLOSE_BRACES", "for_statement") =>
-                val conds = for_expr(child(n, 4))
+                var conds = for_expr(child(n, 4))
+
+                if (conds == Nil) conds = List(PHPTrue().setPos(child(n, 3)))
 
                 For(Block(for_expr(child(n, 2))), conds reduceLeft { (x, y) => BooleanAnd(x,y) }, Block(for_expr(child(n, 6))), for_statement(child(n, 8)))
             case List("T_SWITCH", "T_OPEN_BRACES", "expr", "T_CLOSE_BRACES", "switch_case_list") => 
