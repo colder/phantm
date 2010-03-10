@@ -31,18 +31,19 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
     }
 
     def firstClassPass : Unit = classesToPass match {
-      case Nil => 
-      case cd :: cds2 => 
-      
-      GlobalSymbols.lookupClass(cd.name.value) match {
-        case None => {
-          firstClassPass0(cd)
+      case Nil =>
+      case cd :: cds2 =>
+          GlobalSymbols.lookupClass(cd.name.value) match {
+            case None =>
+              firstClassPass0(cd)
+            case Some(x) =>
+              Reporter.notice("Class " + x.name + " already declared (previously declared at "+x.getPos+")", cd)
+          }
+          classesToPass = cds2
           firstClassPass
-        }
-        case Some(x) => Reporter.notice("Class " + x.name + " already declared (previously declared at "+x.getPos+")", cd)
-      }
+
     }
-    
+
     def firstClassPass0(cd: ClassDecl): Unit = {
       if (classCycleDetectionSet.contains(cd)) { 
         Reporter.error("Classes " + classCycleDetectionSet.map(x => x.name.value).mkString(" -> ") + " form an inheritance cycle", cd)
@@ -71,12 +72,9 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
       }
       val cs = new ClassSymbol(cd.name.value, p, Nil).setPos(cd);
       GlobalSymbols.registerClass(cs)
-      cd.name.setSymbol(cs)
 
       classList = classList ::: List((cs,cd))
       classCycleDetectionSet -= cd
-
-      classesToPass = classesToPass.remove(_.equals(cd))
     }
 
 
@@ -85,7 +83,6 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
             val ms = new MethodSymbol(cs, m.name.value, getVisibility(m.flags), typeHintToType(m.hint)).setPos(m)
             cs.registerMethod(ms)
             ms.registerPredefVariables
-            m.name.setSymbol(ms)
             for (a <- m.args) {
                 var t = typeHintToType(a.hint)
 
@@ -158,6 +155,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
             case ClassDecl(name, flags, parent, interfaces, methods, static_props, props, consts) =>
                 GlobalSymbols.lookupClass(name.value) match {
                     case Some(cs) =>
+                        name.setSymbol(cs);
                         newCtx = Context(ctx.varScope, Some(cs), None)
                     case None => error("Woops ?!? Came across a phantom class");
                 }
@@ -172,7 +170,9 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
             case MethodDecl(name, flags, args, retref, hint, body) =>
                 (ctx.cl, ctx.iface) match {
                     case (Some(cs), _) => cs.lookupMethod(name.value, Some(cs)) match {
-                        case LookupResult(Some(ms: MethodSymbol), _, _) => newCtx = Context(ms, Some(cs), None)
+                        case LookupResult(Some(ms: MethodSymbol), _, _) =>
+                            name.setSymbol(ms)
+                            newCtx = Context(ms, Some(cs), None)
                         case _ => error("Woops?! No such method declared yet??")
                     }
                     case (None, Some(iface)) =>

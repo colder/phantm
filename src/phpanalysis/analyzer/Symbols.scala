@@ -9,11 +9,11 @@ object Symbols {
   trait Symbolic {
     self =>
 
-    private var _sym: Option[Symbol] = None
+    var opt_sym: Option[Symbol] = None
 
-    def setSymbol(sym: Symbol): self.type = { _sym = Some(sym); this }
-    def hasSymbol: Boolean = _sym != None
-    def getSymbol: Symbol = _sym match {
+    def setSymbol(sym: Symbol): self.type = { opt_sym = Some(sym); this }
+    def hasSymbol: Boolean = opt_sym != None
+    def getSymbol: Symbol = opt_sym  match {
         case Some(x) => x
         case None => scala.Predef.error("Cannot access undefined Symbol")
     }

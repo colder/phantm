@@ -612,6 +612,7 @@ object TypeFlow {
             }
 
             def complexAssign(env: TypeEnvironment, v: CFGVariable, ext: Type): TypeEnvironment = {
+                    //println("ComplexAssign: "+v+" = "+ ext)
                     var elems: List[(CFGSimpleValue, Type, Type)] = Nil;
 
                     def linearize(sv: CFGSimpleValue, checkType: Type, resultType: Type, pass: Int): Unit = {
@@ -625,21 +626,22 @@ object TypeFlow {
                                 // The check type depends on the pass (i.e. deepness)
                                 // pass == 0 means this is the most outer assign,
                                 // which only needs to be checked against AnyArray
-                                val rt = new TArray().inject(index, resultType);
-                                val ct = if (pass > 0) new TArray().inject(index, checkType) else TAnyArray;
+                                val rt = new TArray().injectAny(TBottom).inject(index, resultType);
+                                val ct = if (pass > 0) new TArray().injectAny(TBottom).inject(index, checkType) else TAnyArray;
 
                                 linearize(arr, ct, rt, pass+1)
                             case CFGObjectProperty(obj, index) =>
                                 val rt = new TObjectRef(ObjectId(sv.uniqueID, 0));
                                 store = store.initIfNotExist(rt.id, None)
-                                store.lookup(rt).injectField(index, resultType);
+                                store = store.set(rt.id, store.lookup(rt).injectField(index, resultType, false))
                                 // the check type is a different object, we create
                                 // a tmp object with negative id, and shift it by
                                 // the number of potentially used tmp objects used
                                 // for params
                                 val ct = if (pass > 0) {
-                                    store = store.initIfNotExist(ObjectId(sv.uniqueID, 1), None);
-                                    store.lookup(ObjectId(sv.uniqueID, 1)).injectField(index, checkType, false)
+                                    val id = ObjectId(sv.uniqueID, 1);
+                                    store = store.initIfNotExist(id, None);
+                                    store = store.set(id, store.lookup(id).injectField(index, checkType, false))
                                     new TObjectRef(ObjectId(sv.uniqueID, 1))
                                 } else {
                                     TAnyObject;
@@ -659,6 +661,8 @@ object TypeFlow {
                     // We lineraize the recursive structure
                     linearize(v, ext, ext, 0)
 
+                    //println(elems)
+
                     var e = env.injectStore(store)
 
                     // Let's traverse all up to the last elem (the outermost assign)
@@ -668,7 +672,7 @@ object TypeFlow {
                                 val fromRO = store.lookup(from)
                                 val toRO   = store.lookup(to)
 
-                                //println("Trying to assign-merge "+fromRO+" and "+ toRO)
+                                //println("Trying to assign-merge ("+from+")"+fromRO+" and ("+to+")"+ toRO)
 
                                 var newFields = HashMap[String, Type]() ++ fromRO.fields;
 
@@ -736,9 +740,13 @@ object TypeFlow {
                         }
 
                         val restyp = assignMerge(rt, typeFromSV(env, elem)._2)
+                        //println("Resulting type "+ elem+" : "+restyp)
+                        //println("Resulting store  : "+store)
 
                         elem match {
                             case sv: CFGSimpleVariable =>
+                                // We inject the new store
+                                e = e.injectStore(store);
                                 // Due to our deep type system, checking
                                 // the base variable should be enough
                                 e = expOrRef(e, elem, ct)._1

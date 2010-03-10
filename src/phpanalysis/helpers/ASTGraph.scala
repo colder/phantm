@@ -18,7 +18,7 @@ class ASTGraph extends Helper {
             }
     }
 
-    private def generateDotGraph(root: Trees.Program, printStream: java.io.PrintStream) {
+    def generateDotGraph(root: Trees.Program, printStream: java.io.PrintStream) {
         import phpanalysis.parser.Trees._;
         var nextId = 1;
 

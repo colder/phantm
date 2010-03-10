@@ -34,7 +34,14 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
             !once || !IncludeResolver.includedFiles.contains(p)
         }
 
-        def pathExists(p: String): Boolean = new File(p).exists
+        def pathExists(p: String): Option[String] = {
+            val f = new File(p)
+            if (f.exists) {
+                Some(f.getAbsolutePath)
+            } else {
+                None
+            }
+        }
 
         def getAST(path: String): Expression = {
             import parser.STToAST
@@ -69,9 +76,10 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
                 case Some(scalar_p) =>
                     val p = Evaluator.scalarToString(scalar_p)
                     if (p(0) == '/') {
-                        if (pathExists(p)) {
-                            if (shouldInclude(p)) {
-                                getAST(p)
+                        val realpath = pathExists(p);
+                        if (!realpath.isEmpty) {
+                            if (shouldInclude(realpath.get)) {
+                                getAST(realpath.get)
                             } else {
                                 PHPFalse()
                             }
@@ -83,14 +91,15 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
 
                         for (prefix <- Main.includePaths if foundPath == None) {
                             val fullpath = prefix+"/"+p;
-                            if (pathExists(fullpath)) {
-                                foundPath = Some(fullpath)
+                            val realpath = pathExists(fullpath);
+                            if (!realpath.isEmpty) {
+                                foundPath = Some(realpath.get)
                             }
                         }
 
                         foundPath match {
                             case Some(path) =>
-                                if (shouldInclude(p)) {
+                                if (shouldInclude(path)) {
                                     getAST(path)
                                 } else {
                                     PHPFalse()
