@@ -18,6 +18,7 @@ object Main {
     var displayFixPoint    = false;
     var displayIncludes    = false;
     var displayProgress    = false;
+    var focusOnMainFiles   = false;
     var onlyLint           = false;
     var includePaths       = List(".");
     var mainDir            = "./"
@@ -55,6 +56,9 @@ object Main {
             handleArgs(xs)
         case "--noincludes" :: xs =>
             resolveIncludes = false
+            handleArgs(xs)
+        case "--focus" :: xs =>
+            focusOnMainFiles = true
             handleArgs(xs)
         case "--noapi" :: xs =>
             importAPI = false
@@ -175,14 +179,25 @@ object Main {
                     Reporter.errorMilestone
 
                     val n = Reporter.getNoticesCount
-                    if (n > 0) {
+                    val tn = Reporter.getTotalNoticesCount
+
+                    if (focusOnMainFiles && n > 0 && tn > n) {
+                        println(n+" notice"+(if (n>1) "s" else "")+" occured in main files.")
+                        println(tn+" notice"+(if (tn>1) "s" else "")+" occured in total.")
+                    } else {
                         println(n+" notice"+(if (n>1) "s" else "")+" occured.")
                     }
                 }
             }
         } catch {
-            case Reporter.ErrorException(en, nn) =>
-                println(nn+" notice"+(if (nn>1) "s" else "")+" and "+en+" error"+(if (en>1) "s" else "")+" occured, abort.")
+            case Reporter.ErrorException(en, nn, etn, ntn) =>
+                if (focusOnMainFiles) {
+                    println(nn+" notice"+(if (nn>1) "s" else "")+" and "+en+" error"+(if (en>1) "s" else "")+" occured in main files, abort.")
+                    println(ntn+" notice"+(if (ntn>1) "s" else "")+" and "+etn+" error"+(if (etn>1) "s" else "")+" occured in total.")
+                } else {
+                    println(nn+" notice"+(if (nn>1) "s" else "")+" and "+en+" error"+(if (en>1) "s" else "")+" occured, abort.")
+
+                }
         }
     }
 
@@ -203,6 +218,7 @@ object Main {
         println("         --includepath <paths>  Define paths for compile time include resolution (.:a:bb:c:..)");
         println("         --apis <paths>         Import additional APIs (a.xml:b.xml:...)");
         println("         --progress             Display analysis progress");
+        println("         --focus                Focus on main files and ignore errors in dependencies");
         println("         --lint                 Stop the analysis after the parsing");
     }
 }

@@ -7,10 +7,13 @@ object Reporter {
     private var files = new HashMap[String, List[String]]();
     private var errorsCount = 0
     private var noticesCount = 0
+    private var totalErrorsCount = 0
+    private var totalNoticesCount = 0
     private var errors = new HashMap[Option[String], Set[(String, String, Positional, String)]];
 
     def error(msg: String) = {
         errorsCount += 1;
+        totalErrorsCount += 1;
         println("Error: "+ msg);
     }
     def error(msg: String, pos: Positional) = {
@@ -27,6 +30,8 @@ object Reporter {
     }
 
     def getNoticesCount = noticesCount
+    def getTotalNoticesCount = totalNoticesCount
+
     def notice(msg: String, pos: Positional) = {
         val notice = ("Notice: ", msg, pos, pos.getPos);
 
@@ -36,14 +41,36 @@ object Reporter {
 
         if (!errors(pos.file).contains(notice)) {
             noticesCount += 1;
+            totalNoticesCount += 1;
             errors(pos.file) += notice;
         }
     }
 
-    case class ErrorException(en: Int, nn: Int) extends RuntimeException;
+    case class ErrorException(en: Int, nn: Int, etn: Int, ntn: Int) extends RuntimeException;
 
     def errorMilestone = {
-        for (errsPerFile <- errors.values) {
+        var errorsToDisplay = if (Main.focusOnMainFiles) {
+            var errorSet = HashMap[Option[String], Set[(String, String, Positional, String)]]();
+            for ((file, errs) <- errors) {
+                if ((file != None) && (Main.files contains file.get)) {
+                    errorSet(file) = errs
+                } else {
+                    // decrement error counts
+                    for (e <- errs) {
+                        if (e._1 == "Error: ") {
+                            errorsCount -= 1;
+                        } else if (e._1 == "Notice: ") {
+                            noticesCount -= 1;
+                        }
+                    }
+
+                }
+            }
+            errorSet
+        } else {
+            errors
+        }
+        for (errsPerFile <- errorsToDisplay.values) {
             for ((p, msg, pos, _) <- errsPerFile.toList.sort{(x,y) => x._3.line < y._3.line || (x._3.line == y._3.line && x._3.col < y._3.col)}) {
                 emit(p, msg, pos)
             }
@@ -52,8 +79,10 @@ object Reporter {
         errors.clear
         if (errorsCount > 0) {
             val ec = errorsCount;
+            val tec = totalErrorsCount;
             errorsCount = 0;
-            throw new ErrorException(ec, noticesCount);
+            totalErrorsCount = 0;
+            throw new ErrorException(ec, noticesCount, tec, totalNoticesCount);
         }
     }
 
