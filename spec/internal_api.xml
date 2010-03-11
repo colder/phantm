@@ -23790,7 +23790,7 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
   </function>
 
   <function name="mysql_query">
-   <return><type name="resource" /></return>
+   <return><type name="resource" /><type name="false" /></return>
    <args>
     <arg opt="0"><type name="string" /></arg>
     <arg opt="0"><type name="resource" /></arg>
@@ -28956,6 +28956,14 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
   </function>
 
   <function name="count">
+   <return><type name="int" /></return>
+   <args>
+    <arg opt="0"><type name="mixed" /></arg>
+    <arg opt="0"><type name="int" /></arg>
+   </args>
+  </function>
+
+  <function name="sizeof">
    <return><type name="int" /></return>
    <args>
     <arg opt="0"><type name="mixed" /></arg>
