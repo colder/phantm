@@ -275,6 +275,16 @@ object TypeFlow {
                 false;
         }
 
+        def removeUninit(t: Type): Type = t match {
+            case TTop =>
+                TAny
+            case TUninitialized =>
+                TBottom
+            case tu: TUnion =>
+                tu.types.map { x => if (x == TUninitialized) TBottom else x } reduceLeft (_ union _)
+            case _ =>
+                t
+        }
         def uninitToNull(t: Type): Type = t match {
             case TTop =>
                 TAny
@@ -386,7 +396,9 @@ object TypeFlow {
                         case Some(cs) =>
                             cs.typ
                         case None =>
-                            notice("Undefined constant '" + id.value + "'", const)
+                            if (Main.verbosity > 0) {
+                                notice("Undefined constant '" + id.value + "'", const)
+                            }
                             TString
                     })
 
@@ -483,22 +495,33 @@ object TypeFlow {
                 new TObjectRef(id)
             }
 
+            def refineType(env: TypeEnvironment, vtyp: Type, etyp: Type) = {
+                // TODO: it could be smarter
+                etyp
+            }
+
             def expOrRef(env_init: TypeEnvironment, v1: CFGSimpleValue, typs: Type*): (TypeEnvironment, Type) = {
                 val tmp  = typeFromSV(env_init, v1);
                 var env  = tmp._1;
                 val vtyp = tmp._2;
+                var vtypCheck = vtyp;
                 val etyp = typs reduceLeft (_ join _)
 
-                if (TypeLattice.leq(env, vtyp, etyp)) {
-                    (env, uninitToNull(vtyp))
+                // if verbosity is == 0, we remove Uninit from all types
+                if (Main.verbosity == 0) {
+                    vtypCheck = removeUninit(vtypCheck)
+                }
+                
+                if (TypeLattice.leq(env, vtypCheck, etyp)) {
+                    (env, uninitToNull(vtypCheck))
                 } else {
                     def error(kind: String) = {
                         if (!silent) {
-                            if (containsUninit(vtyp)) {
+                            if (containsUninit(vtypCheck)) {
                                 notice("Potentially undefined "+kind+": "+stringRepr(v1), v1)
                             } else {
-                                if (vtyp != TAny || Main.verbosity >= 2) {
-                                    notice("Potential type mismatch: expected: "+typs.toList.map{x => x.toText(env)}.mkString(" or ")+", found: "+vtyp.toText(env), v1)
+                                if (vtyp != TAny || Main.verbosity > 0) {
+                                    notice("Potential type mismatch: expected: "+typs.toList.map{x => x.toText(env)}.mkString(" or ")+", found: "+vtypCheck.toText(env), v1)
                                 }
                             }
                         }
@@ -506,22 +529,21 @@ object TypeFlow {
                     v1 match {
                         case sv: CFGSimpleVariable =>
                             error("variable")
-                            (env.inject(sv, etyp), typs.toList.head)
+                            (env.inject(sv, refineType(env, vtyp, etyp)), etyp)
 
                         case v: CFGArrayEntry =>
                             error("array entry")
-                            // refine
-                            (complexAssign(env, v, etyp), typs.toList.head)
+                            (complexAssign(env, v, refineType(env, vtyp, etyp)), etyp)
 
                         case v: CFGObjectProperty =>
                             error("object property")
-                            (complexAssign(env, v, etyp), typs.toList.head)
+                            (complexAssign(env, v, refineType(env, vtyp, etyp)), etyp)
 
                         case _ =>
-                            if (!silent && (vtyp != TAny || Main.verbosity >= 2)) {
-                                notice("Potential type mismatch: expected: "+typs.toList.map{x => x.toText(env)}.mkString(" or ")+", found: "+vtyp.toText(env), v1)
+                            if (!silent && (vtyp != TAny || Main.verbosity > 0)) {
+                                notice("Potential type mismatch: expected: "+typs.toList.map{x => x.toText(env)}.mkString(" or ")+", found: "+vtypCheck.toText(env), v1)
                             }
-                            (env, typs.toList.head)
+                           (env, etyp)
 
                     }
                 }
@@ -615,7 +637,6 @@ object TypeFlow {
                     //println("##############")
                     //println("ComplexAssign: "+v+" = "+ ext)
                     var elems: List[(CFGSimpleValue, Type, Type)] = Nil;
-                    var tmpObjIds = Set[ObjectId]();
 
                     def linearize(sv: CFGSimpleValue, checkType: Type, resultType: Type, pass: Int): Unit = {
                         // Recursive function that pushes each array parts and compute types
@@ -634,7 +655,6 @@ object TypeFlow {
                                 linearize(arr, ct, rt, pass+1)
                             case CFGObjectProperty(obj, index) =>
                                 val rt = new TObjectRef(ObjectId(sv.uniqueID, 0));
-                                tmpObjIds += rt.id;
                                 store = store.initIfNotExist(rt.id, None)
                                 store = store.set(rt.id, store.lookup(rt).injectField(index, resultType, false))
                                 // the check type is a different object, we create
@@ -643,7 +663,6 @@ object TypeFlow {
                                 // for params
                                 val ct = if (pass > 0) {
                                     val id = ObjectId(sv.uniqueID, 1);
-                                    tmpObjIds += id;
                                     store = store.initIfNotExist(id, None);
                                     store = store.set(id, store.lookup(id).injectField(index, checkType, false))
                                     new TObjectRef(ObjectId(sv.uniqueID, 1))
@@ -743,10 +762,6 @@ object TypeFlow {
                         val restyp = assignMerge(rt, typeFromSV(env, elem)._2)
 
                         //println("Resulting type "+ elem+" : "+restyp)
-                        // we can now remove tmp IDS from the set
-                        for (tmpID <- tmpObjIds) {
-                            store = store.unset(tmpID);
-                        }
 
                         //println("Resulting store  : "+store)
 

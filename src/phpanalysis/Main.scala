@@ -71,6 +71,9 @@ object Main {
             displayProgress = true
             verbosity       = 3
             handleArgs(xs)
+        case "--quiet" :: xs =>
+            verbosity = 0
+            handleArgs(xs)
         case "--verbose" :: xs =>
             verbosity = max(verbosity, 2)
             handleArgs(xs)
@@ -194,6 +197,7 @@ object Main {
         println("         --tests                Enable internal consistency checks");
         println("         --fixpoint             Display fixpoints");
         println("         --debug                Display all kind of debug information");
+        println("         --quiet                Mute some errors such as uninitialized variables");
         println("         --verbose              Display more notices");
         println("         --vverbose             Be nitpicking and display even more notices");
         println("         --includepath <paths>  Define paths for compile time include resolution (.:a:bb:c:..)");
