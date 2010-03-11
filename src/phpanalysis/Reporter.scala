@@ -68,7 +68,19 @@ object Reporter {
                         var indent: String = ""
                         for(i <- 0 until pos.col) indent = indent + " ";
 
-                        println(indent+"^")
+                        val size = if (pos.line == pos.line_end) {
+                            if (pos.col_end > s.length) {
+                                s.length - pos.col
+                            } else {
+                                pos.col_end - pos.col
+                            }
+                        } else if (pos.line < pos.line_end) {
+                            s.length - pos.col
+                        } else {
+                            1
+                        }
+
+                        println(indent+(1 to size).map(i => "^").mkString)
                     case None =>
                 }
             case None =>
