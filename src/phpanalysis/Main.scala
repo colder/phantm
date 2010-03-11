@@ -192,7 +192,7 @@ object Main {
         println("         --maindir <maindir>    Specify main directory of the tool");
         println("         --symbols              Display symbols");
         println("         --showincludes         Display the list of included files");
-        println("         --noincludes           Disables includes resoltuions");
+        println("         --noincludes           Disables includes resolutions");
         println("         --noapi                Do not load the main API");
         println("         --tests                Enable internal consistency checks");
         println("         --fixpoint             Display fixpoints");

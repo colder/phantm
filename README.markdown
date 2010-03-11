@@ -6,7 +6,7 @@ phpanalysis
 Version
 -------
 
-This is a pre-alpha version. Don't be surprised if debug messages are outputted, or if many features are still missing.
+This is a early development version. Don't be surprised if debug messages are outputted, or if many features are still missing.
 
 Requirements
 ------------
@@ -14,7 +14,7 @@ In order to use this tool, you need
 
 * ant
 * Java 1.6 or higher
-* Scala 2.7.7 or higher
+* Scala 2.7.7 (2.8 is not yet supported)
 
 Also, make sure you've the $SCALA_HOME environment variable pointing to your scala distribution.
 
@@ -32,4 +32,26 @@ To run the analyzer on one of your php script, run
 
     $ ./phpanalysis <target.php>
 
-The analyser will then compile your code, and output any notice/warnings it can find about your script.
+The analyser will then compile your code, and output any notice/warnings it can find about your script. You can also use 
+
+    $ ./phpanalysis --help
+
+to see what options the tool supports:
+
+    Options: --help                 This help
+             --maindir <maindir>    Specify main directory of the tool
+             --symbols              Display symbols
+             --showincludes         Display the list of included files
+             --noincludes           Disables includes resolutions
+             --noapi                Do not load the main API
+             --tests                Enable internal consistency checks
+             --fixpoint             Display fixpoints
+             --debug                Display all kind of debug information
+             --quiet                Mute some errors such as uninitialized variables
+             --verbose              Display more notices
+             --vverbose             Be nitpicking and display even more notices
+             --includepath <paths>  Define paths for compile time include resolution (.:a:bb:c:..)
+             --apis <paths>         Import additional APIs (a.xml:b.xml:...)
+             --progress             Display analysis progress
+             --lint                 Stop the analysis after the parsing
+
