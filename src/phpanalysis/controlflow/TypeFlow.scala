@@ -612,8 +612,10 @@ object TypeFlow {
             }
 
             def complexAssign(env: TypeEnvironment, v: CFGVariable, ext: Type): TypeEnvironment = {
+                    //println("##############")
                     //println("ComplexAssign: "+v+" = "+ ext)
                     var elems: List[(CFGSimpleValue, Type, Type)] = Nil;
+                    var tmpObjIds = Set[ObjectId]();
 
                     def linearize(sv: CFGSimpleValue, checkType: Type, resultType: Type, pass: Int): Unit = {
                         // Recursive function that pushes each array parts and compute types
@@ -632,6 +634,7 @@ object TypeFlow {
                                 linearize(arr, ct, rt, pass+1)
                             case CFGObjectProperty(obj, index) =>
                                 val rt = new TObjectRef(ObjectId(sv.uniqueID, 0));
+                                tmpObjIds += rt.id;
                                 store = store.initIfNotExist(rt.id, None)
                                 store = store.set(rt.id, store.lookup(rt).injectField(index, resultType, false))
                                 // the check type is a different object, we create
@@ -640,6 +643,7 @@ object TypeFlow {
                                 // for params
                                 val ct = if (pass > 0) {
                                     val id = ObjectId(sv.uniqueID, 1);
+                                    tmpObjIds += id;
                                     store = store.initIfNotExist(id, None);
                                     store = store.set(id, store.lookup(id).injectField(index, checkType, false))
                                     new TObjectRef(ObjectId(sv.uniqueID, 1))
@@ -661,18 +665,16 @@ object TypeFlow {
                     // We lineraize the recursive structure
                     linearize(v, ext, ext, 0)
 
-                    //println(elems)
-
                     var e = env.injectStore(store)
 
                     // Let's traverse all up to the last elem (the outermost assign)
                     for ((elem, ct, rt) <- elems.init) {
-                        //println(" Checking for "+elem +"(actualType: "+typeFromSV(elem)+", checkType: "+ct+", resultType: "+rt+")");
+                        //println(" Checking for "+elem +"(actualType: "+typeFromSV(env, elem)+", checkType: "+ct+", resultType: "+rt+")");
                         def assignMergeObject(from: TObjectRef, to: TObjectRef): Type ={
                                 val fromRO = store.lookup(from)
                                 val toRO   = store.lookup(to)
 
-                                //println("Trying to assign-merge ("+from+")"+fromRO+" and ("+to+")"+ toRO)
+                                //println("Trying to assign-merge "+fromRO+" and "+ toRO)
 
                                 var newFields = HashMap[String, Type]() ++ fromRO.fields;
 
@@ -694,8 +696,7 @@ object TypeFlow {
 
                                 //println("Result: "+o)
 
-                                e = e.injectStore(e.store.set(to.id, o))
-
+                                store = store.set(to.id, o);
                                 to
                         }
                         // assignMerge will recursively merge types of recursive arrays
@@ -740,7 +741,13 @@ object TypeFlow {
                         }
 
                         val restyp = assignMerge(rt, typeFromSV(env, elem)._2)
+
                         //println("Resulting type "+ elem+" : "+restyp)
+                        // we can now remove tmp IDS from the set
+                        for (tmpID <- tmpObjIds) {
+                            store = store.unset(tmpID);
+                        }
+
                         //println("Resulting store  : "+store)
 
                         elem match {

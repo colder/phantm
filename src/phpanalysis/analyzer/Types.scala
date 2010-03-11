@@ -91,6 +91,7 @@ object Types {
             case None => error("Woops incoherent store")
         }
 
+        def unset(id: ObjectId): ObjectStore = new ObjectStore(store - id);
         def set(id: ObjectId, robj: TRealObject): ObjectStore = new ObjectStore(store.update(id, robj));
 
         def initIfNotExist(id: ObjectId, ocs: Option[ClassSymbol]) : ObjectStore = store.get(id) match {
