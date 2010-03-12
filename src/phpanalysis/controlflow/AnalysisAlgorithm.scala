@@ -70,11 +70,6 @@ class AnalysisAlgorithm[E <: Environment[E],S]
                 if (nf != oldFact) {
 
                     if (Main.testsActive) {
-                        if (pass > 2000) {
-                            println("######################################")
-                            println("PLOP: "+v)
-                            oldFact.dumpDiff(nf)
-                        }
                         if (!(oldFact checkMonotonicity nf)) {
                             println("######################################")
                             println("Monotonicity violated in: "+v)

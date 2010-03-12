@@ -30,7 +30,23 @@ object Symbols {
 
   abstract class Symbol extends Positional {
     val id: Int = ID.next
+    var overwriteable = false
+    var userland = false
     val name: String
+
+    def setOverwriteable: this.type = setOverwriteable(true)
+
+    def setOverwriteable(value: Boolean): this.type = {
+        overwriteable = value;
+        this
+    }
+
+    def setUserland: this.type = setUserland(true)
+
+    def setUserland(value: Boolean): this.type = {
+        userland = value;
+        this
+    }
   }
 
   private object ID {
@@ -91,9 +107,17 @@ object Symbols {
 
     def lookupFunction(n: String): Option[FunctionSymbol] = functions.get(n.toLowerCase)
 
-    def registerFunction(fs: FunctionSymbol) : Unit = functions.get(fs.name.toLowerCase) match {
-      case None => functions += ((fs.name.toLowerCase, fs))
-      case Some(x) => Reporter.notice("Function " + fs.name + " already declared (previously declared "+previousPos(x)+")", fs)
+    def registerFunction(fs: FunctionSymbol) : FunctionSymbol = functions.get(fs.name.toLowerCase) match {
+      case None =>
+        functions += ((fs.name.toLowerCase, fs))
+        fs
+      case Some(x) if x.overwriteable =>
+        fs.importAPIFrom(x)
+        functions += ((fs.name.toLowerCase, fs))
+        fs
+      case Some(x) =>
+        Reporter.notice("Function " + fs.name + " already declared (previously declared "+previousPos(x)+")", fs)
+        x
     }
 
     def lookupConstant(n: String): Option[ConstantSymbol] = constants.get(n)
@@ -108,9 +132,23 @@ object Symbols {
     def getConstants: List[ConstantSymbol] = constants map { x => x._2 } toList
   }
 
-  class FunctionSymbol(val name: String, val typ: Type) extends Symbol with Scope {
+  class FunctionSymbol(val name: String, var typ: Type) extends Symbol with Scope {
     val args = new HashMap[String, ArgumentSymbol]();
     var argList: List[(String, ArgumentSymbol)] = Nil;
+
+    def importAPIFrom(fs: FunctionSymbol) {
+        typ = fs.typ
+
+        if (args.size == fs.args.size) {
+            for (((_, arg1), (_, arg2)) <- argList.zip(fs.argList)) {
+                arg1.typ = arg2.typ
+                arg1.optional = arg2.optional || arg1.optional
+            }
+
+        } else {
+            //TODO
+        }
+    }
 
     def registerArgument(as: ArgumentSymbol) = args.get(as.name) match {
         case Some(x) => Reporter.error("Argument "+as.name+" already defined (previously defined "+previousPos(x)+")", as)
@@ -332,7 +370,7 @@ object Symbols {
 
   class ConstantSymbol(val name: String, val value: Option[Scalar], val typ: Type) extends Symbol
   class VariableSymbol(val name: String) extends Symbol
-  class ArgumentSymbol(override val name: String, val byref: Boolean, val optional: Boolean, val typ: Type) extends VariableSymbol(name)
+  class ArgumentSymbol(override val name: String, val byref: Boolean, var optional: Boolean, var typ: Type) extends VariableSymbol(name)
 
   def emitSummary = {
         def emitScope(s: Scope, p:String) = {

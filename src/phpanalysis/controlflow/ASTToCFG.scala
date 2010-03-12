@@ -18,6 +18,7 @@ object ASTToCFG {
     val cfg: CFG = new CFG
     val assertionsEnabled: Boolean = true
     val retval: CFGTempID = CFGTempID("retval");
+
     type Vertex = cfg.Vertex
 
     /** Creates fresh variable names on demand. */

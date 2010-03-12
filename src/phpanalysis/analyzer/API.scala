@@ -63,6 +63,8 @@ class API(file: String) {
     def load = {
         try {
             val data = XML.loadFile(file)
+            val userland = (data \ "@userland") == "yes"
+
             // classes
             for (c <- data \\ "class") {
                 val name = (c \ "@name").text
@@ -81,6 +83,7 @@ class API(file: String) {
                 }
 
                 val cs = new ClassSymbol(name, pcs, Nil).setPos(APIPos(c))
+                cs.setOverwriteable(userland).setUserland(userland)
 
                 // Register class methods
                 for (m <- c \\ "method") {
@@ -96,8 +99,11 @@ class API(file: String) {
                     val args: List[(Type, Boolean)] = ((m \ "args" \\ "arg") map { a => (elemsToType(a \ "type"), Integer.parseInt((a \ "@opt").text) > 0) }).toList
 
                     val ms = new MethodSymbol(cs, name, visibility, elemsToType(m \ "return" \ "type")).setPos(APIPos(m))
+                    ms.setOverwriteable(userland).setUserland(userland)
+
                     for ((a, i) <- args.zipWithIndex) {
                         val as = new ArgumentSymbol("arg"+i, false, a._2, a._1)
+                        as.setOverwriteable(userland).setUserland(userland)
                         ms.registerArgument(as)
                     }
                     cs.registerMethod(ms)
@@ -112,6 +118,8 @@ class API(file: String) {
                         case _ => MVPublic
                     }
                     val ps = new PropertySymbol(cs, name, visibility, elemsToType(f \ "type")).setPos(APIPos(f))
+                    ps.setOverwriteable(userland).setUserland(userland)
+
                     cs.registerStaticProperty(ps)
                 }
 
@@ -124,6 +132,8 @@ class API(file: String) {
                         case _ => MVPublic
                     }
                     val ps = new PropertySymbol(cs, name, visibility, elemsToType(f \ "type")).setPos(APIPos(f))
+                    ps.setOverwriteable(userland).setUserland(userland)
+
                     cs.registerProperty(ps)
                 }
 
@@ -131,6 +141,8 @@ class API(file: String) {
                 for (cc <- c \ "constants" \\ "constant") {
                     val name = (cc \ "@name").text;
                     val ccs = new ClassConstantSymbol(cs, name, None, elemsToType(cc \ "type")).setPos(APIPos(cc))
+                    ccs.setOverwriteable(userland).setUserland(userland)
+
                     cs.registerConstant(ccs)
                 }
 
@@ -143,8 +155,12 @@ class API(file: String) {
                 val args: List[(Node, Type, Boolean)] = ((f \ "args" \\ "arg") map { a => (a, elemsToType(a \ "type"), Integer.parseInt((a \ "@opt").text) > 0) }).toList
 
                 val fs = new FunctionSymbol(name, elemsToType(f \ "return" \ "type")).setPos(APIPos(f))
+                fs.setOverwriteable(userland).setUserland(userland)
+
                 for ((a, i) <- args.zipWithIndex) {
                     val as = new ArgumentSymbol("arg"+i, false, a._3, a._2).setPos(APIPos(a._1))
+                    as.setOverwriteable(userland).setUserland(userland)
+
                     fs.registerArgument(as)
                 }
                 GlobalSymbols.lookupFunction(name) match {
@@ -158,6 +174,8 @@ class API(file: String) {
             for (cc <- data \ "constants" \\ "constant") {
                 val name = (cc \ "@name").text;
                 val ccs = new ConstantSymbol(name, None, elemsToType(cc \ "type")).setPos(APIPos(cc))
+                ccs.setOverwriteable(userland).setUserland(userland)
+
                 GlobalSymbols.registerConstant(ccs)
             }
 
@@ -165,5 +183,10 @@ class API(file: String) {
             case e =>
                 Reporter.error("Parsing of the api file '"+file+"' failed: "+e.getMessage)
         }
+    }
+
+
+    def write = {
+
     }
 }

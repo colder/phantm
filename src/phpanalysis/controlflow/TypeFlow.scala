@@ -136,6 +136,32 @@ object TypeFlow {
 
     }
 
+    object AnnotationsStore {
+        var functions = HashMap[String, (List[TFunction], Type)]();
+
+        def collectFunctionRet(fs: FunctionSymbol, t: Type) = {
+            val newData = functions.get(fs.name) match {
+                case Some(data) =>
+                    (data._1, t)
+                case None =>
+                    (Nil, t)
+            }
+
+            functions += (fs.name -> newData)
+
+        }
+        def collectFunction(fs: FunctionSymbol, ft: TFunction) = {
+            val newData = functions.get(fs.name) match {
+                case Some(data) =>
+                    (ft :: data._1, data._2)
+                case None =>
+                    (ft :: Nil, TAny)
+            }
+
+            functions += (fs.name -> newData)
+        }
+    }
+
     class TypeEnvironment(val map: Map[CFGSimpleVariable, Type], val scope: Option[ClassSymbol], val store: ObjectStore) extends Environment[TypeEnvironment] {
         def this(scope: Option[ClassSymbol]) = {
             this(new HashMap[CFGSimpleVariable, Type], scope, new ObjectStore);
@@ -258,7 +284,7 @@ object TypeFlow {
         }
     }
 
-    case class TypeTransferFunction(silent: Boolean) extends TransferFunction[TypeEnvironment, CFGStatement] {
+    case class TypeTransferFunction(silent: Boolean, collectAnnotations: Boolean) extends TransferFunction[TypeEnvironment, CFGStatement] {
         //def notice(msg: String, pos: Positional) = if (!silent) { new Exception(msg).printStackTrace(); Reporter.notice(msg, pos) }
         //def error(msg: String, pos: Positional) = if (!silent) { new Exception(msg).printStackTrace(); Reporter.error(msg, pos) }
         def notice(msg: String, pos: Positional) = if (!silent) Reporter.notice(msg, pos)
@@ -355,6 +381,16 @@ object TypeFlow {
                 case fcall @ CFGFunctionCall(id, args) =>
                     GlobalSymbols.lookupFunction(id.value) match {
                         case Some(fs) =>
+                                if (collectAnnotations) {
+                                    var nEnv = env;
+
+                                    val ft = new TFunction(args.map(a => {
+                                            val res = typeFromSV(nEnv, a)
+                                            nEnv = res._1
+                                            (res._2, false)}), TBottom)
+
+                                    AnnotationsStore.collectFunction(fs, ft);
+                                }
                                 checkFCalls(env, fcall.params, List(functionSymbolToFunctionType(fs)), fcall)
                         case None =>
                             // handle special functions
@@ -374,6 +410,9 @@ object TypeFlow {
                             val ro = store.lookup(or);
                             ro.lookupMethod(mid.value, env.scope) match {
                                 case Some(mt) =>
+                                    if (collectAnnotations) {
+                                        // Create a FunctionType and add it to the list of potential prototypes
+                                    }
                                     checkFCalls(env, args, List(mt), mcall)
                                 case None =>
                                     // Check for magic __call ?
@@ -1017,7 +1056,7 @@ object TypeFlow {
             val bottomEnv = BaseTypeEnvironment;
             val baseEnv   = setupEnvironment;
 
-            val aa = new AnalysisAlgorithm[TypeEnvironment, CFGStatement](TypeTransferFunction(true), bottomEnv, baseEnv, cfg)
+            val aa = new AnalysisAlgorithm[TypeEnvironment, CFGStatement](TypeTransferFunction(true, false), bottomEnv, baseEnv, cfg)
 
             aa.init
             aa.computeFixpoint
@@ -1029,7 +1068,19 @@ object TypeFlow {
                 }
             }
 
-            aa.pass(TypeTransferFunction(false))
+            // Collect errors and annotations
+            aa.pass(TypeTransferFunction(false, true))
+
+            // Collect retvals
+            scope match {
+                case fs: FunctionSymbol =>
+                    // collect return value
+                    val facts = aa.getResult;
+                    val retType = facts(cfg.exit).map(CFGTempID("retval"));
+
+                    AnnotationsStore.collectFunctionRet(fs, retType)
+                case _ =>
+            }
         }
     }
 }

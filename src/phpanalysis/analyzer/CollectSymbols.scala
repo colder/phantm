@@ -131,7 +131,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
 
         node match {
             case FunctionDecl(name, args, retref, hint, body) =>
-                val fs = new FunctionSymbol(name.value, typeHintToType(hint)).setPos(name)
+                val fs = new FunctionSymbol(name.value, typeHintToType(hint)).setPos(name).setUserland
                 for (val a <- args) {
                     var t = typeHintToType(a.hint)
 
@@ -140,17 +140,17 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
                          * PHP Hack: if you pass null as default value, then null
                          * is also accepted as type
                          */
-                         t = TUnion(t, TNull)
+                         t = t union TNull
                     }
 
                     val as = new ArgumentSymbol(a.v.name.value, a.byref, a.default != None, t).setPos(a.v)
 
                     fs.registerArgument(as);
                 }
-                name.setSymbol(fs)
-                GlobalSymbols.registerFunction(fs)
                 fs.registerPredefVariables
-                newCtx = Context(fs, None, None)
+                val res = GlobalSymbols.registerFunction(fs)
+                name.setSymbol(res)
+                newCtx = Context(res, None, None)
 
             case ClassDecl(name, flags, parent, interfaces, methods, static_props, props, consts) =>
                 GlobalSymbols.lookupClass(name.value) match {

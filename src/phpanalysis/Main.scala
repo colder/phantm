@@ -23,6 +23,7 @@ object Main {
     var includePaths       = List(".");
     var mainDir            = "./"
     var apis: List[String] = Nil;
+    var exportAPIPath: Option[String] = None;
 
     def main(args: Array[String]): Unit = {
         if (args.length > 0) {
@@ -42,74 +43,80 @@ object Main {
         }
     }
 
-    def handleArgs(args: List[String]): Unit = args match {
-        case "--help" :: xs =>
-            displayUsage = true
-        case "--maindir" :: x :: xs =>
-            mainDir = x
-            handleArgs(xs)
-        case "--symbols" :: xs =>
-            displaySymbols = true
-            handleArgs(xs)
-        case "--showincludes" :: xs =>
-            displayIncludes = true
-            handleArgs(xs)
-        case "--noincludes" :: xs =>
-            resolveIncludes = false
-            handleArgs(xs)
-        case "--focus" :: xs =>
-            focusOnMainFiles = true
-            handleArgs(xs)
-        case "--noapi" :: xs =>
-            importAPI = false
-            handleArgs(xs)
-        case "--tests" :: xs =>
-            testsActive = true
-            handleArgs(xs)
-        case "--fixpoint" :: xs =>
-            displayFixPoint = true
-            handleArgs(xs)
-        case "--debug" :: xs =>
-            displayFixPoint = true
-            testsActive     = true
-            displayProgress = true
-            verbosity       = 3
-            handleArgs(xs)
-        case "--quiet" :: xs =>
-            verbosity = 0
-            handleArgs(xs)
-        case "--verbose" :: xs =>
-            verbosity = max(verbosity, 2)
-            handleArgs(xs)
-        case "--vverbose" :: xs =>
-            verbosity = max(verbosity, 3)
-            handleArgs(xs)
-        case "--includepath" :: ip :: xs =>
-            includePaths = ip.split(":").toList
-            handleArgs(xs)
-        case "--apis" :: aps :: xs =>
-            apis = aps.split(":").toList
-            handleArgs(xs)
-        case "--progress" :: xs =>
-            displayProgress = true
-            handleArgs(xs)
-        case "--lint" ::  xs =>
-            onlyLint = true
-            handleArgs(xs)
-        case x :: xs =>
-            files = files ::: x :: Nil
-            handleArgs(xs)
-        case Nil =>
+    def handleArgs(args: List[String]): Unit = {
+        if (args == Nil) return;
+        (args.head.toLowerCase :: args.tail) match {
+            case "--help" :: xs =>
+                displayUsage = true
+            case "--maindir" :: x :: xs =>
+                mainDir = x
+                handleArgs(xs)
+            case "--symbols" :: xs =>
+                displaySymbols = true
+                handleArgs(xs)
+            case "--showincludes" :: xs =>
+                displayIncludes = true
+                handleArgs(xs)
+            case "--noincludes" :: xs =>
+                resolveIncludes = false
+                handleArgs(xs)
+            case "--focus" :: xs =>
+                focusOnMainFiles = true
+                handleArgs(xs)
+            case "--noapi" :: xs =>
+                importAPI = false
+                handleArgs(xs)
+            case "--tests" :: xs =>
+                testsActive = true
+                handleArgs(xs)
+            case "--fixpoint" :: xs =>
+                displayFixPoint = true
+                handleArgs(xs)
+            case "--debug" :: xs =>
+                displayFixPoint = true
+                testsActive     = true
+                displayProgress = true
+                verbosity       = 3
+                handleArgs(xs)
+            case "--quiet" :: xs =>
+                verbosity = 0
+                handleArgs(xs)
+            case "--verbose" :: xs =>
+                verbosity = max(verbosity, 2)
+                handleArgs(xs)
+            case "--vverbose" :: xs =>
+                verbosity = max(verbosity, 3)
+                handleArgs(xs)
+            case "--includepath" :: ip :: xs =>
+                includePaths = ip.split(":").toList
+                handleArgs(xs)
+            case "--importapi" :: aps :: xs =>
+                apis = aps.split(":").toList
+                handleArgs(xs)
+            case "--exportapi" :: path :: xs =>
+                exportAPIPath = Some(path)
+                handleArgs(xs)
+            case "--progress" :: xs =>
+                displayProgress = true
+                handleArgs(xs)
+            case "--lint" ::  xs =>
+                onlyLint = true
+                handleArgs(xs)
+            case x :: xs =>
+                files = files ::: args.head :: Nil
+                handleArgs(xs)
+            case Nil =>
+        }
     }
 
     def compile(files: List[String]) = {
         try {
-            if (displayProgress) println("1/9 Parsing...")
+            if (displayProgress) println("1/10 Parsing...")
             val sts = files map { f => val c = new Compiler(f); (c, c compile) }
             if (sts exists { _._2 == None} ) {
                 println("Compilation failed.")
             } else {
-                if (displayProgress) println("2/9 Simplifying...")
+                if (displayProgress) println("2/10 Simplifying...")
                 val asts = sts map { c => new STToAST(c._1, c._2.get) getAST }
                 Reporter.errorMilestone
                 var ast: Program = asts.reduceLeft {(a,b) => a combine b}
@@ -117,7 +124,7 @@ object Main {
 
                 if (!onlyLint) {
                     if (importAPI) {
-                        if (displayProgress) println("3/9 Importing APIs...")
+                        if (displayProgress) println("3/10 Importing APIs...")
                         // Load internal classes and functions into the symbol tables
                         new API(mainDir+"spec/internal_api.xml").load
 
@@ -125,14 +132,14 @@ object Main {
                             new API(api).load
                         }
                     } else {
-                        if (displayProgress) println("3/9 Importing APIs (skipped)")
+                        if (displayProgress) println("3/10 Importing APIs (skipped)")
                     }
 
                     if (resolveIncludes) {
                         ast = ConstantsResolver(ast, false).transform
                         Reporter.errorMilestone
 
-                        if (displayProgress) println("4/9 Resolving includes...")
+                        if (displayProgress) println("4/10 Resolving includes...")
                         // Run AST transformers
                         ast = IncludeResolver(ast).transform
 
@@ -143,27 +150,27 @@ object Main {
                             }
                         }
                     } else {
-                        if (displayProgress) println("4/9 Resolving and expanding (skipped)")
+                        if (displayProgress) println("4/10 Resolving and expanding (skipped)")
                     }
 
-                    if (displayProgress) println("5/9 Resolving constants...")
+                    if (displayProgress) println("5/10 Resolving constants...")
                     // Run Constants Resolver, to issue potential errors
                     ast = ConstantsResolver(ast, true).transform
                     Reporter.errorMilestone
 
-                    if (displayProgress) println("6/9 Structural checks...")
+                    if (displayProgress) println("6/10 Structural checks...")
                     // Traverse the ast to look for ovious mistakes.
                     new ASTChecks(ast) execute;
 
                     Reporter.errorMilestone
 
-                    if (displayProgress) println("7/9 Parsing annotations...")
+                    if (displayProgress) println("7/10 Parsing annotations...")
                     // Inject type information from the annotations
                     ast = new Annotations(ast).transform
 
                     Reporter.errorMilestone
 
-                    if (displayProgress) println("8/9 Symbolic checks...")
+                    if (displayProgress) println("8/10 Symbolic checks...")
                     // Collect symbols and detect obvious types errors
                     CollectSymbols(ast) execute;
                     Reporter.errorMilestone
@@ -173,9 +180,18 @@ object Main {
                         analyzer.Symbols.emitSummary
                     }
 
-                    if (displayProgress) println("9/9 Type flow analysis...")
+                    if (displayProgress) println("9/10 Type flow analysis...")
                     // Build CFGs and analyzes them
                     CFGChecks(ast) execute;
+
+                    if (!exportAPIPath.isEmpty) {
+                        if (displayProgress) println("10/10 Export Annotations...")
+
+                        // Compact collected annotations and output XML
+                        AnnotationsExport.emitXML(exportAPIPath.get)
+                    } else {
+                        if (displayProgress) println("10/10 Export Annotations (skipped)")
+                    }
                     Reporter.errorMilestone
 
                     val n = Reporter.getNoticesCount
@@ -216,9 +232,11 @@ object Main {
         println("         --verbose              Display more notices");
         println("         --vverbose             Be nitpicking and display even more notices");
         println("         --includepath <paths>  Define paths for compile time include resolution (.:a:bb:c:..)");
-        println("         --apis <paths>         Import additional APIs (a.xml:b.xml:...)");
+        println("         --importAPI <paths>    Import additional APIs (a.xml:b.xml:...)");
+        println("         --exportAPI <path>     Use the type analysis to output a likely API");
         println("         --progress             Display analysis progress");
         println("         --focus                Focus on main files and ignore errors in dependencies");
+        println("         --exportAPI <path>     Export generated API to <path>");
         println("         --lint                 Stop the analysis after the parsing");
     }
 }

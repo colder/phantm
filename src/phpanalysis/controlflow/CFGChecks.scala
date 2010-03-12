@@ -53,7 +53,6 @@ case class CFGChecks(node: Tree) extends ASTTraversal[CheckContext](node, CheckC
                                     display("Analyzing method "+cl.name+"::"+m.name.value+"...")
                                     val tfa = new TypeFlow.Analyzer(cfg, ms)
                                     tfa.analyze
-                                    cfg
                                 case _ =>
                                     error("Incoherent symbol type, should be method")
                             }

@@ -1,5 +1,6 @@
 package phpanalysis.analyzer
 import parser.Trees._
+import analyzer.Symbols._
 import scala.collection.mutable.{Map,HashMap}
 
 class Annotations(ast: Program) extends ASTTransform(ast) {
@@ -119,5 +120,80 @@ object Annotations {
         } else {
             PropertyDecl(pd.v, pd.flags, pd.default, None).setPos(pd)
         }
+    }
+}
+
+object AnnotationsExport {
+    import controlflow.TypeFlow
+    import analyzer.Types._
+    // Compacts collected annotations and exports them
+
+    def reduceFT(ft1: TFunction, ft2: TFunction): TFunction = {
+        new TFunction(ft1.args.zipAll(ft2.args, (TBottom, true), (TBottom, true)).map {
+            a => (a._1._1 union a._2._1, a._1._2 || a._2._2)
+        }, ft1.ret union ft2.ret)
+    }
+
+
+    def emitXML(path: String) = {
+        def typeToXML(typ: Type): String  = {
+            def simpleTyp(name: String) = "<type name=\""+name+"\" />"
+
+            typ match {
+                case TInt => simpleTyp("int")
+                case TBoolean => simpleTyp("bool")
+                case TTrue => simpleTyp("true")
+                case TFalse => simpleTyp("false")
+                case TFloat => simpleTyp("float")
+                case TString => simpleTyp("string")
+                case TAny => simpleTyp("any")
+                case TResource => simpleTyp("resource")
+                case TNull => simpleTyp("null")
+                case tor: TObjectRef => simpleTyp("object")
+                case TAnyObject => simpleTyp("object")
+                case tu: TUnion =>
+                    tu.types.map(typeToXML).mkString
+                case ta: TArray =>
+                    ta.globalType match {
+                        case TTop =>
+                            simpleTyp("array")
+                        case TUninitialized =>
+                            simpleTyp("array")
+                        case gt =>
+                            "<type name=\"array\">"+typeToXML(gt)+"</type>"
+                    }
+                case _ => println("Unknown Type: "+typ); simpleTyp("any")
+            }
+        }
+        val outputStream = new java.io.FileOutputStream(path);
+        val printStream  = new java.io.PrintStream(outputStream);
+
+        def emit(str: String) = printStream.println(str)
+
+        emit("<!-- Generated API -->")
+        emit("<api userland=\"yes\">")
+
+        // functions
+        emit(" <functions>")
+        for ((name, data) <- TypeFlow.AnnotationsStore.functions) {
+            GlobalSymbols.lookupFunction(name) match {
+                case Some(fs) if fs.userland =>
+                    val args = if (data._1.size > 0) (data._1 reduceLeft reduceFT).args else Nil;
+                    val ret  = data._2;
+
+                    emit("  <function name=\""+name+"\">")
+                    emit("   <return>"+typeToXML(ret)+"</return>")
+                    emit("   <args>")
+                    for (arg <- args) {
+                        emit("    <arg opt=\""+(if (arg._2) "1" else "0")+"\">"+typeToXML(arg._1)+"</arg>")
+                    }
+                    emit("   </args>")
+                    emit("  </function>")
+                case _ =>
+                    // ignore
+            }
+        }
+        emit(" </functions>")
+        emit("</api>")
     }
 }
