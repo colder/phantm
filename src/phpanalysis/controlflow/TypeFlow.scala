@@ -1070,10 +1070,6 @@ object TypeFlow {
                 }
             }
 
-            println(TypeLattice.leq(bottomEnv, new TArray().inject("foo", TInt), new TArray().setAny(TTop)))
-
-            return;
-
             // Collect errors and annotations
             aa.pass(TypeTransferFunction(false, !Main.exportAPIPath.isEmpty))
 

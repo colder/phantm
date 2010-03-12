@@ -148,9 +148,9 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
                     fs.registerArgument(as);
                 }
                 fs.registerPredefVariables
-                val res = GlobalSymbols.registerFunction(fs)
-                name.setSymbol(res)
-                newCtx = Context(res, None, None)
+                GlobalSymbols.registerFunction(fs)
+                name.setSymbol(fs)
+                newCtx = Context(fs, None, None)
 
             case ClassDecl(name, flags, parent, interfaces, methods, static_props, props, consts) =>
                 GlobalSymbols.lookupClass(name.value) match {

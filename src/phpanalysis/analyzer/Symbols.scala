@@ -107,17 +107,17 @@ object Symbols {
 
     def lookupFunction(n: String): Option[FunctionSymbol] = functions.get(n.toLowerCase)
 
-    def registerFunction(fs: FunctionSymbol) : FunctionSymbol = functions.get(fs.name.toLowerCase) match {
-      case None =>
+    def registerFunction(fs: FunctionSymbol) : Unit = {
+        functions.get(fs.name.toLowerCase) match {
+            case Some(x) =>
+                if (!x.overwriteable) {
+                    Reporter.notice("Function " + fs.name + " already declared (previously declared "+previousPos(x)+")", fs)
+                }
+                fs.importAPIFrom(x)
+            case None =>
+        }
+
         functions += ((fs.name.toLowerCase, fs))
-        fs
-      case Some(x) if x.overwriteable =>
-        fs.importAPIFrom(x)
-        functions += ((fs.name.toLowerCase, fs))
-        fs
-      case Some(x) =>
-        Reporter.notice("Function " + fs.name + " already declared (previously declared "+previousPos(x)+")", fs)
-        x
     }
 
     def lookupConstant(n: String): Option[ConstantSymbol] = constants.get(n)
