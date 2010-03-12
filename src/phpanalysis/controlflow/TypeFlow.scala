@@ -559,7 +559,7 @@ object TypeFlow {
                             if (containsUninit(vtypCheck)) {
                                 notice("Potentially undefined "+kind+": "+stringRepr(v1), v1)
                             } else {
-                                if (vtyp != TAny || Main.verbosity > 0) {
+                                if (vtypCheck != TAny || Main.verbosity > 0) {
                                     notice("Potential type mismatch: expected: "+typs.toList.map{x => x.toText(env)}.mkString(" or ")+", found: "+vtypCheck.toText(env), v1)
                                 }
                             }
@@ -579,7 +579,7 @@ object TypeFlow {
                             (complexAssign(env, v, refineType(env, vtyp, etyp)), etyp)
 
                         case _ =>
-                            if (!silent && (vtyp != TAny || Main.verbosity > 0)) {
+                            if (!silent && (vtypCheck != TAny || Main.verbosity > 0)) {
                                 notice("Potential type mismatch: expected: "+typs.toList.map{x => x.toText(env)}.mkString(" or ")+", found: "+vtypCheck.toText(env), v1)
                             }
                            (env, etyp)
