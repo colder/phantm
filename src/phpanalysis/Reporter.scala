@@ -109,7 +109,11 @@ object Reporter {
                             1
                         }
 
-                        println(indent+(1 to size).map(i => "~").mkString)
+                        if (size == 1) {
+                          println(indent+"^")
+                        } else {
+                          println(indent+(1 to size).map(i => "~").mkString)
+                        }
                     case None =>
                 }
             case None =>

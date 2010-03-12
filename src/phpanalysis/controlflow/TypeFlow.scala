@@ -732,6 +732,8 @@ object TypeFlow {
                                 val fromRO = store.lookup(from)
                                 val toRO   = store.lookup(to)
 
+                                val weak = (to.id.pos >= 0) // $this is never a weak assign since it represents only one object
+
                                 //println("Trying to assign-merge "+fromRO+" and "+ toRO)
 
                                 var newFields = HashMap[String, Type]() ++ fromRO.fields;
@@ -740,7 +742,7 @@ object TypeFlow {
 
                                 for((index, typ) <- toRO.fields) {
                                     newFields = newFields.update(index, newFields.get(index) match {
-                                        case Some(t) => pt join (t join typ) // weak assign here
+                                        case Some(t) => if (weak) t join typ else t
                                         case None => pt join typ
                                     })
                                 }

@@ -139,6 +139,10 @@ object Types {
                 ref.id == id
             case _ => false
         }
+
+        override def hashCode = {
+            id.pos*id.offset
+        }
     }
 
     // Real object type (in the store) representing a specific object of any class
@@ -367,6 +371,10 @@ object Types {
             case _ => false
         }
 
+        override def hashCode = {
+            (entries.values.foldLeft(0)((a,b) => a ^ b.hashCode)) + globalType.hashCode
+        }
+
         override def toString =
             "Array["+(entries.map(x => x._1 +" => "+ x._2).toList ::: "? => "+globalType :: Nil).mkString("; ")+"]"
     }
@@ -551,6 +559,10 @@ object Types {
         override def toText(te: TypeEnvironment)   = types.map { x => x.toText(te) }.mkString(" or ")
 
         if (types.size < 2) throw new RuntimeException("TUnion should at least be 2 types!")
+
+        override def hashCode = {
+            (types.foldLeft(0)((a,b) => a ^ b.hashCode))
+        }
     }
 
     trait Typed {
