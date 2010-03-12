@@ -1069,7 +1069,7 @@ object TypeFlow {
             }
 
             // Collect errors and annotations
-            aa.pass(TypeTransferFunction(false, true))
+            aa.pass(TypeTransferFunction(false, !Main.exportAPIPath.isEmpty))
 
             // Collect retvals
             scope match {

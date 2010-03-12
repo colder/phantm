@@ -70,7 +70,7 @@ object Reporter {
         } else {
             errors
         }
-        for (errsPerFile <- errorsToDisplay.values) {
+        for (errsPerFile <- errorsToDisplay.elements.toList.sort((a,b) => a._1.getOrElse("") < b._1.getOrElse("")).map(x => x._2)) {
             for ((p, msg, pos, _) <- errsPerFile.toList.sort{(x,y) => x._3.line < y._3.line || (x._3.line == y._3.line && x._3.col < y._3.col)}) {
                 emit(p, msg, pos)
             }
@@ -109,7 +109,7 @@ object Reporter {
                             1
                         }
 
-                        println(indent+(1 to size).map(i => "^").mkString)
+                        println(indent+(1 to size).map(i => "~").mkString)
                     case None =>
                 }
             case None =>
