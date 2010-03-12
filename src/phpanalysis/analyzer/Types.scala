@@ -196,6 +196,16 @@ object Types {
             }
         }
 
+        // Used for type constructions
+        def setAnyField(typ: Type) = {
+            this match {
+                case t: TRealClassObject =>
+                    new TRealClassObject(t.cl, fields, typ)
+                case _ =>
+                    new TRealObject(fields, typ)
+            }
+        }
+
         def injectAnyField(typ: Type) = {
             var newFields = fields;
             // When the index is unknown, we have to pollute every entries
@@ -340,6 +350,11 @@ object Types {
                     }
             }
           case _ => injectAny(typ)
+        }
+
+        // used for type constructions
+        def setAny(typ: Type): TArray = {
+            new TArray(entries, typ)
         }
 
         def injectAny(typ: Type): TArray = {

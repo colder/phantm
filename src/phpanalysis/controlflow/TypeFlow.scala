@@ -688,8 +688,8 @@ object TypeFlow {
                                 // The check type depends on the pass (i.e. deepness)
                                 // pass == 0 means this is the most outer assign,
                                 // which only needs to be checked against AnyArray
-                                val rt = new TArray().injectAny(TBottom).inject(index, resultType);
-                                val ct = if (pass > 0) new TArray().injectAny(TBottom).inject(index, checkType) else TAnyArray;
+                                val rt = new TArray().setAny(TTop).inject(index, resultType);
+                                val ct = if (pass > 0) new TArray().setAny(TTop).inject(index, checkType) else TAnyArray;
 
                                 linearize(arr, ct, rt, pass+1)
                             case CFGObjectProperty(obj, index) =>
@@ -703,7 +703,7 @@ object TypeFlow {
                                 val ct = if (pass > 0) {
                                     val id = ObjectId(sv.uniqueID, 1);
                                     store = store.initIfNotExist(id, None);
-                                    store = store.set(id, store.lookup(id).injectField(index, checkType, false))
+                                    store = store.set(id, store.lookup(id).setAnyField(TTop).injectField(index, checkType, false))
                                     new TObjectRef(ObjectId(sv.uniqueID, 1))
                                 } else {
                                     TAnyObject;
@@ -1054,7 +1054,7 @@ object TypeFlow {
             baseEnv
         }
 
-        def analyze = {
+        def analyze: Unit = {
             val bottomEnv = BaseTypeEnvironment;
             val baseEnv   = setupEnvironment;
 
@@ -1070,6 +1070,10 @@ object TypeFlow {
                 }
             }
 
+            println(TypeLattice.leq(bottomEnv, new TArray().inject("foo", TInt), new TArray().setAny(TTop)))
+
+            return;
+
             // Collect errors and annotations
             aa.pass(TypeTransferFunction(false, !Main.exportAPIPath.isEmpty))
 
@@ -1078,7 +1082,7 @@ object TypeFlow {
                 case fs: FunctionSymbol =>
                     // collect return value
                     val facts = aa.getResult;
-                    val retType = facts(cfg.exit).map(CFGTempID("retval"));
+                    val retType = facts(cfg.exit).map.getOrElse(CFGTempID("retval"), TBottom);
 
                     AnnotationsStore.collectFunctionRet(fs, retType)
                 case _ =>
