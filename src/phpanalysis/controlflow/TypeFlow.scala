@@ -27,7 +27,7 @@ object TypeFlow {
                 val classesMatch = (r1, r2) match {
                     case (r1: TRealClassObject, r2: TRealClassObject) =>
                         r1.cl isSubtypeOf r2.cl
-                    case (r1: TRealClassObject, r2: TRealObject) =>
+                    case (r1: TRealObject, r2: TRealClassObject) =>
                         false
                     case _ =>
                         true
@@ -550,7 +550,7 @@ object TypeFlow {
                 if (Main.verbosity == 0) {
                     vtypCheck = removeUninit(vtypCheck)
                 }
-                
+
                 if (TypeLattice.leq(env, vtypCheck, etyp)) {
                     (env, uninitToNull(vtypCheck))
                 } else {
