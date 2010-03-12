@@ -110,9 +110,9 @@ object Reporter {
                         }
 
                         if (size == 1) {
-                          println(indent+"^")
+                          println(indent+Console.RED+"^"+Console.RESET)
                         } else {
-                          println(indent+(1 to size).map(i => "~").mkString)
+                          println(indent+Console.RED+(1 to size).map(i => "~").mkString+Console.RESET)
                         }
                     case None =>
                 }
