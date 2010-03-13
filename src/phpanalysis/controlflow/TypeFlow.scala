@@ -918,32 +918,32 @@ object TypeFlow {
                          * if v1 is a variable that is compared against True/False
                          * we can filter incompatible values out
                          */
-                        def filter(v: CFGSimpleVariable, value: Boolean): Type = {
+                        def filter(env: TypeEnvironment, v: CFGSimpleVariable, value: Boolean): TypeEnvironment = {
                             typeFromSV(env, v)._2 match {
                                 case u: TUnion =>
-                                    if (value) {
+                                    val typ = if (value) {
                                         u.types.filter(t => t != TFalse && t != TNull).map(t => if(t == TBoolean) TTrue else t).reduceLeft(_ union _)
                                     } else {
                                         u.types.filter(t => t != TTrue  && t != TResource).map(t => if(t == TBoolean) TFalse else t).reduceLeft(_ union _)
                                     }
+
+                                    env.inject(v, typ)
                                 case t =>
                                     if (value) {
                                         if (t != TFalse && t != TNull) {
-                                            t
+                                            env.inject(v, t)
                                         } else {
                                             // we had a single incompatible type
                                             // The branch will never be taken!
-                                            notice("Redundant or incompatible check", v);
-                                            TBottom
+                                            BaseTypeEnvironment
                                         }
                                     } else {
                                         if (t != TTrue && t != TResource) {
-                                            t
+                                            env.inject(v, t)
                                         } else {
                                             // we had a single incompatible type
                                             // The branch will never be taken!
-                                            notice("Redundant or incompatible check", v);
-                                            TBottom
+                                            BaseTypeEnvironment
                                         }
                                     }
                             }
@@ -969,13 +969,13 @@ object TypeFlow {
                         }
                         (t1, op, typeFromSV(env, t2)._2) match  {
                             case (v: CFGSimpleVariable, EQUALS, TFalse)  =>
-                                env.inject(v, filter(v, false))
+                                filter(env, v, false)
                             case (v: CFGSimpleVariable, NOTEQUALS, TFalse)  =>
-                                env.inject(v, filter(v, true))
+                                filter(env, v, true)
                             case (v: CFGSimpleVariable, EQUALS, TTrue)  =>
-                                env.inject(v, filter(v, true))
+                                filter(env, v, true)
                             case (v: CFGSimpleVariable, NOTEQUALS, TTrue)  =>
-                                env.inject(v, filter(v, false))
+                                filter(env, v, false)
                             case _ =>
                                 expOrRef(expOrRef(env, v1, TAny)._1, v2, TAny)._1
                         }
@@ -1003,7 +1003,11 @@ object TypeFlow {
                 case _ => notice(node+" not yet handled", node); env
             }
 
-            newEnv.injectStore(store)
+            if (newEnv != BaseTypeEnvironment) {
+                newEnv.injectStore(store)
+            } else {
+                newEnv
+            }
         }
     }
 
@@ -1068,6 +1072,11 @@ object TypeFlow {
                 for ((v,e) <- aa.getResult.toList.sort{(x,y) => x._1.name < y._1.name}) {
                     println("      * ["+v+"] => "+e);
                 }
+            }
+
+            // Detect unreachables:
+            for (l <- aa.detectUnreachable(TypeTransferFunction(true, false))) {
+                Reporter.notice("Unreachable code", l)
             }
 
             // Collect errors and annotations

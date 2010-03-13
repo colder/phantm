@@ -24,6 +24,22 @@ class AnalysisAlgorithm[E <: Environment[E],S]
         }
     }
 
+    def detectUnreachable(transferFun: TransferFunction[E,S]): List[S] = {
+        var res : List[S] = Nil;
+
+        for (v <- cfg.V if v != cfg.entry) {
+            if (cfg.inEdges(v).forall(e => (facts(e.v1) == bottomEnv) || 
+                                           (transferFun(e.lab, facts(e.v1)) == bottomEnv))) {
+
+                for (e <- cfg.outEdges(v)) {
+                    res = e.lab :: res
+                }
+            }
+        }
+
+        res
+    }
+
     def computeFixpoint : Unit = {
         var pass = 0;
 
@@ -59,9 +75,11 @@ class AnalysisAlgorithm[E <: Environment[E],S]
                 for (e <- cfg.inEdges(v) if facts(e.v1) != bottomEnv) {
                     val propagated = transferFun(e.lab, facts(e.v1));
 
-                    newFact = newFact match {
-                        case Some(nf) => Some(nf union propagated)
-                        case None => Some(propagated)
+                    if (propagated != bottomEnv) {
+                        newFact = newFact match {
+                            case Some(nf) => Some(nf union propagated)
+                            case None => Some(propagated)
+                        }
                     }
                 }
 
