@@ -28,7 +28,8 @@ class AnalysisAlgorithm[E <: Environment[E],S]
         var res : List[S] = Nil;
 
         for (v <- cfg.V if v != cfg.entry) {
-            if (cfg.inEdges(v).forall(e => (facts(e.v1) != bottomEnv) && (transferFun(e.lab, facts(e.v1)) == bottomEnv))) {
+            if (cfg.inEdges(v).forall(e => (facts(e.v1) != bottomEnv) &&
+                                           (transferFun(e.lab, facts(e.v1)) == bottomEnv))) {
 
                 for (e <- cfg.outEdges(v)) {
                     res = e.lab :: res
