@@ -22,7 +22,7 @@ class Compiler(filename: String) {
         var continue = true;
 
         while(continue) {
-            if (comments == Nil || comments.head._1 < pos) {
+            if (comments == Nil || pos < comments.head._1) {
                 continue = false
             } else {
                 comm = Some(comments.head._2)
