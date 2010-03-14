@@ -688,7 +688,7 @@ object TypeFlow {
                                 // The check type depends on the pass (i.e. deepness)
                                 // pass == 0 means this is the most outer assign,
                                 // which only needs to be checked against AnyArray
-                                val rt = new TArray().setAny(TTop).inject(index, resultType);
+                                val rt = new TArray().inject(index, resultType).setAny(TBottom)
                                 val ct = if (pass > 0) new TArray().setAny(TTop).inject(index, checkType) else TAnyArray;
 
                                 linearize(arr, ct, rt, pass+1)
