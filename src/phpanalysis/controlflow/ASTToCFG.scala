@@ -696,6 +696,10 @@ object ASTToCFG {
                 // insert new edge with label of incoming one
                 cfg += (eIn.v1, eIn.lab, eOut.v2)
               }
+
+              if (v.in.size == 0) {
+                cfg -= (eOut.v1, eOut.lab, eOut.v2);
+              }
             }
           }
         }
