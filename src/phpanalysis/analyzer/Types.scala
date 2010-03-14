@@ -450,18 +450,18 @@ object Types {
     object TUnion {
         def apply(ts: Iterable[Type]) = {
 
-            var tlist: List[Type] = Nil
+            var tset = Set[Type]()
 
             for (t <- ts) {
-                tlist = addToList(tlist, t)
+                tset = addToSet(tset, t)
             }
 
-            if (tlist.size == 0) {
+            if (tset.size == 0) {
                 TBottom
-            } else if (tlist.size == 1) {
-                tlist.head
+            } else if (tset.size == 1) {
+                tset.toList.head
             } else {
-                new TUnion(tlist)
+                new TUnion(tset)
             }
         }
 
@@ -469,75 +469,53 @@ object Types {
             if (t1 == t2) {
                 t1
             } else {
-                new TUnion(t1, t2)
+                new TUnion(getSet(t1, t2))
             }
         }
 
-        def getList(t1: Type, t2: Type) = (t1, t2) match {
+        def getSet(t1: Type, t2: Type) = (t1, t2) match {
             case (_, tu: TUnion) =>
-                addToList(tu.types, t1)
+                addToSet(tu.types, t1)
             case (tu: TUnion, _) =>
-                addToList(tu.types, t2)
+                addToSet(tu.types, t2)
             case (_, _) =>
-                addToList(List(t1), t2)
+                addToSet(Set[Type](t1), t2)
         }
 
-        def addToList(typs: List[Type], typ: Type): List[Type] = {
-            val res = typ match {
+        def addToSet(typs: Set[Type], typ: Type): Set[Type] = {
+            val res: Set[Type] = typ match {
                 case tu: TUnion =>
-                    var res: List[Type] = typs
-                    for (t <- tu.types) {
-                        res = addToList(res, t)
+                    var res = typs;
+                    for (t <- tu.types if !(res contains t)) {
+                        res = addToSet(res, t)
                     }
                     res
                 case TBoolean =>
-                    TBoolean :: typs.filter{t => t != TFalse && t != TTrue && t != TBoolean}.toList
+                    typs.filter(t => (t != TFalse) && (t != TTrue)) + TBoolean
 
                 case TFalse =>
-                    if ((typs contains TFalse) || (typs contains TBoolean)) {
-                        typs
+                    if (typs contains TTrue) {
+                        addToSet(typs, TBoolean)
                     } else {
-                        if (typs contains TTrue) {
-                            TBoolean :: typs.filter{t => t != TTrue}.toList
-                        } else {
-                            TFalse :: typs
-                        }
+                        typs + TFalse
                     }
                 case TTrue =>
-                    if ((typs contains TTrue) || (typs contains TBoolean)) {
-                        typs
+                    if (typs contains TTrue) {
+                        addToSet(typs, TBoolean)
                     } else {
-                        if (typs contains TFalse) {
-                            TBoolean :: typs.filter{t => t != TFalse}.toList
-                        } else {
-                            TTrue :: typs
-                        }
+                        typs + TFalse
                     }
-
                 case TAnyArray =>
-                    TAnyArray :: typs.filter{! _.isInstanceOf[TArray]}.toList
+                    typs.filter(t => ! t.isInstanceOf[TArray]) + TAnyArray
 
                 case ta: TArray =>
                     if (typs contains TAnyArray) {
                         typs
                     } else {
-                        var nt: List[Type] = Nil
-                        var toAdd: Type = ta
-
-                        for (tc <- typs) tc match {
-                            case t: TArray =>
-                                toAdd = toAdd union tc
-                            case _ =>
-                                nt = tc :: nt
-                        }
-                        toAdd :: nt;
+                        typs + ta
                     }
-                case _ =>
-                    if (!(typs contains typ)) {
-                        typ :: typs
-                    } else {
-                        typs
-                    }
+                case typ =>
+                    typs + typ
             }
 
             for (t <- res) t match {
@@ -550,34 +528,22 @@ object Types {
         }
     }
 
-    class TUnion(val types: List[Type]) extends Type {
-
-        def this(t1: Type, t2: Type) =
-            this(TUnion.getList(t1, t2))
+    class TUnion(val types: Set[Type]) extends Type {
 
         override def equals(t: Any): Boolean = t match {
             case tu: TUnion =>
-                if (tu.types.size == types.size) {
-                    for (v <- types) {
-                        if (!(tu.types contains v)) {
-                            return false;
-                        }
-                    }
-                    true
-                } else {
-                    false
-                }
+                this.types == tu.types
             case _ => false
         }
 
         override def toString = types.mkString("{", ",", "}")
         override def toText(te: TypeEnvironment)   = types.map { x => x.toText(te) }.mkString(" or ")
 
-        if (types.size < 2) throw new RuntimeException("TUnion should at least be 2 types!")
-
         override def hashCode = {
             (types.foldLeft(0)((a,b) => a ^ b.hashCode))
         }
+
+        if (types.size < 2) throw new RuntimeException("TUnion should at least be 2 types!")
     }
 
     trait Typed {
