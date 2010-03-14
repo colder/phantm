@@ -48,22 +48,22 @@ object EdgeCounter {
 }
  
 abstract class LabeledDirectedGraphImp[LabelType] extends LabeledDirectedGraph[LabelType] {
- 
+
   type Vertex = VertexImp[LabelType]
   type Edge = EdgeImp[LabelType]
-  
+
   private var vertices = Set[Vertex]()
   private var edges = Set[Edge]()
 
   def V = vertices
   def E = edges
- 
+
   var counter = 0
   def newVertex = { 
     counter = counter + 1
     new Vertex("v" + counter)
   }
-  
+
   def +=(from: Vertex, lab : LabelType, to: Vertex) = {
     val edge = EdgeImp[LabelType](from, lab, to)
     edges += edge
@@ -72,7 +72,7 @@ abstract class LabeledDirectedGraphImp[LabelType] extends LabeledDirectedGraph[L
     from.out += edge
     to.in += edge
   }
-  
+
   def -=(from: Vertex, lab: LabelType, to: Vertex) = {
     val edge = EdgeImp[LabelType](from, lab, to)
     edges -= edge
