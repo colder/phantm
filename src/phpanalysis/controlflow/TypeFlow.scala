@@ -176,8 +176,9 @@ object TypeFlow {
         def inject(v: CFGSimpleVariable, typ: Type): TypeEnvironment =
             new TypeEnvironment(map + ((v, typ)), scope, store)
 
-        def injectStore(st: ObjectStore): TypeEnvironment =
+        def setStore(st: ObjectStore): TypeEnvironment = {
             new TypeEnvironment(map, scope, st)
+        }
 
         def copy: TypeEnvironment =
             new TypeEnvironment(Map[CFGSimpleVariable, Type]()++map, scope, store)
@@ -352,7 +353,7 @@ object TypeFlow {
                     expOrRef(obj, TAnyObject) match {
                         case ref: TObjectRef =>
                             val ro = env.store.lookup(ref)
-                            env = env.injectStore(env.store.set(ObjectId(cl.uniqueID, 0), ro))
+                            env = env.setStore(env.store.set(ObjectId(cl.uniqueID, 0), ro))
                             new TObjectRef(ObjectId(cl.uniqueID, 0))
                         case _ =>
                             TAnyObject
@@ -497,7 +498,7 @@ object TypeFlow {
 
             def getObject(node: CFGStatement, ocs: Option[ClassSymbol]): ObjectType = {
                 val id = ObjectId(node.uniqueID, 0);
-                env = env.injectStore(env.store.initIfNotExist(id, ocs))
+                env = env.setStore(env.store.initIfNotExist(id, ocs))
                 new TObjectRef(id)
             }
 
@@ -663,16 +664,16 @@ object TypeFlow {
                                 }
                             case CFGObjectProperty(obj, index) =>
                                 val rt = new TObjectRef(ObjectId(sv.uniqueID, 0));
-                                env = env.injectStore(env.store.initIfNotExist(rt.id, None))
-                                env = env.injectStore(env.store.set(rt.id, env.store.lookup(rt).injectField(index, resultType, false)))
+                                env = env.setStore(env.store.initIfNotExist(rt.id, None))
+                                env = env.setStore(env.store.set(rt.id, env.store.lookup(rt).injectField(index, resultType, false)))
                                 // the check type is a different object, we create
                                 // a tmp object with negative id, and shift it by
                                 // the number of potentially used tmp objects used
                                 // for params
                                 val ct = if (pass > 0) {
                                     val id = ObjectId(sv.uniqueID, 1);
-                                    env = env.injectStore(env.store.initIfNotExist(id, None))
-                                    env = env.injectStore(env.store.set(id, env.store.lookup(id).setAnyField(TTop).injectField(index, checkType, false)))
+                                    env = env.setStore(env.store.initIfNotExist(id, None))
+                                    env = env.setStore(env.store.set(id, env.store.lookup(id).setAnyField(TTop).injectField(index, checkType, false)))
                                     new TObjectRef(ObjectId(sv.uniqueID, 1))
                                 } else {
                                     TAnyObject;
@@ -723,7 +724,7 @@ object TypeFlow {
 
                                 //println("Result: "+o)
 
-                                env = env.injectStore(env.store.set(to.id, o))
+                                env = env.setStore(env.store.set(to.id, o))
                                 to
                         }
                         // assignMerge will recursively merge types of recursive arrays
@@ -841,10 +842,10 @@ object TypeFlow {
                 }
             }
 
-
             node match {
                 case CFGAssign(vr: CFGSimpleVariable, v1) =>
-                    env = env.inject(vr, typeFromSV(v1))
+                    val t = typeFromSV(v1)
+                    env = env.inject(vr, t)
 
                 case CFGAssignUnary(vr: CFGSimpleVariable, op, v1) =>
                     // We want to typecheck v1 according to OP
@@ -875,7 +876,7 @@ object TypeFlow {
                          * if v1 is a variable that is compared against True/False
                          * we can filter incompatible values out
                          */
-                        def filter(v: CFGSimpleVariable, value: Boolean): TypeEnvironment = {
+                        def filter(v: CFGSimpleVariable, value: Boolean) = {
                             typeFromSV(v) match {
                                 case u: TUnion =>
                                     val typ = if (value) {
@@ -884,23 +885,23 @@ object TypeFlow {
                                         u.types.filter(t => t != TTrue  && t != TResource).map(t => if(t == TBoolean) TFalse else t).reduceLeft(_ union _)
                                     }
 
-                                    env.inject(v, typ)
+                                    env = env.inject(v, typ)
                                 case t =>
                                     if (value) {
                                         if (t != TFalse && t != TNull) {
-                                            env.inject(v, t)
+                                            env = env.inject(v, t)
                                         } else {
                                             // we had a single incompatible type
                                             // The branch will never be taken!
-                                            BaseTypeEnvironment
+                                            env = BaseTypeEnvironment
                                         }
                                     } else {
                                         if (t != TTrue && t != TResource) {
-                                            env.inject(v, t)
+                                            env = env.inject(v, t)
                                         } else {
                                             // we had a single incompatible type
                                             // The branch will never be taken!
-                                            BaseTypeEnvironment
+                                            env = BaseTypeEnvironment
                                         }
                                     }
                             }
@@ -946,14 +947,11 @@ object TypeFlow {
                 case CFGUnset(id) =>
                     id match {
                         case v: CFGSimpleVariable =>
-                            env.inject(v, TUninitialized)
+                            env = env.inject(v, TUninitialized)
                         case _ =>
-                            env // TODO
+                            // TODO
 
                     }
-
-                case CFGSkip =>
-                    env
 
                 case ex: CFGSimpleValue =>
                     expOrRef(ex, TAny)
@@ -994,7 +992,7 @@ object TypeFlow {
             // for methods, we inject $this as its always defined
             scope match {
                 case ms: MethodSymbol =>
-                    baseEnv = baseEnv.injectStore(baseEnv.store.initIfNotExist(ObjectId(-1, 0), Some(ms.cs)))
+                    baseEnv = baseEnv.setStore(baseEnv.store.initIfNotExist(ObjectId(-1, 0), Some(ms.cs)))
                     injectPredef("this", new TObjectRef(ObjectId(-1, 0)))
                 case _ =>
             }
