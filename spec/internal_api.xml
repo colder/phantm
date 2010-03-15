@@ -30000,6 +30000,15 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
    </args>
   </function>
 
+  <function name="fputs">
+   <return><type name="int" /></return>
+   <args>
+    <arg opt="0"><type name="resource" /></arg>
+    <arg opt="0"><type name="string" /></arg>
+    <arg opt="0"><type name="int" /></arg>
+   </args>
+  </function>
+
   <function name="get_meta_tags">
    <return><type name="array" /></return>
    <args>
