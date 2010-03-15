@@ -1286,15 +1286,15 @@ case class STToAST(comp: Compiler, st: ParseNode) {
     }
 
     def identifier(n: ParseNode): Identifier = {
-        Identifier(n.tokenContent).setPos(n.line, n.column, n.file)
+        Identifier(n.tokenContent).setPos(n)
     }
 
     def varIdentifier(n: ParseNode): Identifier = {
-        Identifier(n.tokenContent.substring(1)).setPos(n.line, n.column, n.file)
+        Identifier(n.tokenContent.substring(1)).setPos(n)
     }
 
     def t_variable(n: ParseNode): SimpleVariable = {
-        SimpleVariable(Identifier(n.tokenContent.substring(1)).setPos(n.line, n.column, n.file)).setPos(n.line, n.column, n.file)
+        SimpleVariable(Identifier(n.tokenContent.substring(1)).setPos(n)).setPos(n)
     }
 
     def encaps_var_offset(n: ParseNode): Expression = {
