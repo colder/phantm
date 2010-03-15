@@ -676,6 +676,7 @@ object TypeFlow {
                     //println("##############")
                     //println("ComplexAssign: "+v+" = "+ ext)
                     var elems: List[(CFGSimpleValue, Type, Type)] = Nil;
+                    var e = env
 
                     def linearize(sv: CFGSimpleValue, checkType: Type, resultType: Type, pass: Int): Unit = {
                         // Recursive function that pushes each array parts and compute types
@@ -684,14 +685,25 @@ object TypeFlow {
                             case CFGVariableVar(v) =>
                                 linearize(v, TString, TString, pass+1)
                             case CFGArrayEntry(arr, index) =>
-                                // We always will end up with a precise array
-                                // The check type depends on the pass (i.e. deepness)
-                                // pass == 0 means this is the most outer assign,
-                                // which only needs to be checked against AnyArray
-                                val rt = new TArray().inject(index, resultType).setAny(TBottom)
-                                val ct = if (pass > 0) new TArray().setAny(TTop).inject(index, checkType) else TAnyArray;
+                                typeFromSV(env, arr)._2 match {
+                                    case TString =>
+                                        // What if we do $string[0] ?
+                                        e = expOrRef(e, index, TString, TInt)._1
 
-                                linearize(arr, ct, rt, pass+1)
+                                        val ct = TString;
+                                        val rt = TString;
+
+                                        linearize(arr, ct, rt, pass+1)
+                                    case _ =>
+                                        // We always will end up with a precise array
+                                        // The check type depends on the pass (i.e. deepness)
+                                        // pass == 0 means this is the most outer assign,
+                                        // which only needs to be checked against AnyArray
+                                        val rt = new TArray().inject(index, resultType).setAny(TBottom)
+                                        val ct = if (pass > 0) new TArray().setAny(TTop).inject(index, checkType) else TAnyArray;
+
+                                        linearize(arr, ct, rt, pass+1)
+                                }
                             case CFGObjectProperty(obj, index) =>
                                 val rt = new TObjectRef(ObjectId(sv.uniqueID, 0));
                                 store = store.initIfNotExist(rt.id, None)
@@ -723,18 +735,18 @@ object TypeFlow {
                     // We lineraize the recursive structure
                     linearize(v, ext, ext, 0)
 
-                    var e = env.injectStore(store)
+                    e = e.injectStore(store)
 
                     // Let's traverse all up to the last elem (the outermost assign)
                     for ((elem, ct, rt) <- elems.init) {
-                        //println(" Checking for "+elem +"(actualType: "+typeFromSV(env, elem)+", checkType: "+ct+", resultType: "+rt+")");
+                        //println(" Checking for "+elem +"(actualType: "+typeFromSV(e, elem)+", checkType: "+ct+", resultType: "+rt+")");
                         def assignMergeObject(from: TObjectRef, to: TObjectRef): Type ={
                                 val fromRO = store.lookup(from)
                                 val toRO   = store.lookup(to)
 
                                 val weak = (to.id.pos >= 0) // $this is never a weak assign since it represents only one object
 
-                                //println("Trying to assign-merge "+fromRO+" and "+ toRO)
+                                //        println("Trying to assign-merge "+fromRO+" and "+ toRO)
 
                                 var newFields = HashMap[String, Type]() ++ fromRO.fields;
 
@@ -743,7 +755,7 @@ object TypeFlow {
                                 for((index, typ) <- toRO.fields) {
                                     newFields = newFields.update(index, newFields.get(index) match {
                                         case Some(t) => if (weak) t join typ else t
-                                        case None => pt join typ
+                                        case None => typ
                                     })
                                 }
 
@@ -769,18 +781,17 @@ object TypeFlow {
                         var deepness = 0;
                         def assignMerge(from: Type, to: Type): Type = (from,to) match {
                             case (from: TArray, to: TArray) =>
-                                import scala.collection.mutable.HashMap
                                 import Math.max
 
                                 val pt = to.globalType union from.globalType
 
-                                val newEntries = Map[String, Type]() ++ from.entries;
+                                var newEntries = Map[String, Type]() ++ from.entries;
 
                                 for((index, typ)<- to.entries) {
-                                    newEntries(index) = newEntries.get(index) match {
-                                        case Some(t) => pt join assignMerge(t, typ)
-                                        case None => pt join typ
-                                    }
+                                    newEntries = newEntries + (index -> (newEntries.get(index) match { 
+                                        case Some(t) => assignMerge(t, typ)
+                                        case None => typ
+                                    }))
                                 }
 
                                 new TArray(newEntries, pt)
@@ -794,13 +805,17 @@ object TypeFlow {
                                         assignMergeObject(from, t)
                                     case o => o
                                 }}).reduceLeft(_ union _)
+                            case (a: TArray, b) =>
+                                // In case we're moving to an array, let's undefine the rest
+                                new TArray(a.entries, TUninitialized)
                             case (a, b) =>
                                 // In case not both types are not arrays nor objects, we
                                 // always end up with the resulting type
                                 a
                         }
 
-                        val restyp = assignMerge(rt, typeFromSV(env, elem)._2)
+                        //println("Trying to assign-merge "+rt+" and "+ typeFromSV(e, elem)._2)
+                        val restyp = assignMerge(rt, typeFromSV(e, elem)._2)
 
                         //println("Resulting type "+ elem+" : "+restyp)
 

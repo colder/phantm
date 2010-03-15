@@ -112,7 +112,7 @@ abstract class ASTTransform(p: Program) {
             case FunctionDecl(name, args, retref, hint, body) =>
                 FunctionDecl(name, args, retref, hint, trStmt(body))
             case ClassDecl(name, flags, parent, interfaces, methods, static_props, props, consts) =>
-                ClassDecl(name, flags, parent, interfaces, methods map trMethod, static_props, props, consts)
+                ClassDecl(name, flags, parent, interfaces, methods map trMethod, static_props map trProperty, props map trProperty, consts)
             case Try(body, catches) =>
                 Try(trStmt(body), catches map { c => Catch(c.cl, c.v, trStmt(c.body) )})
             case Block(stmts) =>

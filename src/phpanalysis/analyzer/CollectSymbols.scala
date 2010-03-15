@@ -100,12 +100,22 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
         }
 
         for (val p <- cd.props) {
-            val ps = new PropertySymbol(cs, p.v.value, getVisibility(p.flags), Evaluator.typeFromExpr(p.default)).setPos(p)
+            var typ = if (p.hint.isEmpty) {
+                Evaluator.typeFromExpr(p.default)
+            } else {
+                typeHintToType(p.hint.get)
+            }
+            val ps = new PropertySymbol(cs, p.v.value, getVisibility(p.flags), typ).setPos(p)
             cs.registerProperty(ps)
         }
 
         for (val p <- cd.static_props) {
-            val ps = new PropertySymbol(cs, p.v.value, getVisibility(p.flags), Evaluator.typeFromExpr(p.default)).setPos(p)
+            var typ = if (p.hint.isEmpty) {
+                Evaluator.typeFromExpr(p.default)
+            } else {
+                typeHintToType(p.hint.get)
+            }
+            val ps = new PropertySymbol(cs, p.v.value, getVisibility(p.flags), typ).setPos(p)
             cs.registerStaticProperty(ps)
         }
 
