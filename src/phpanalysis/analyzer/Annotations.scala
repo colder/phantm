@@ -53,7 +53,7 @@ object Annotations {
         extractType(str) match {
             case (str, th) =>
                 val v = str.split("[^\\$a-zA-Z0-9_]", 2).toList.head;
-                if (v.substring(0, 1) == "$") {
+                if (v.length > 0 && v.substring(0, 1) == "$") {
                     (v.substring(1), th)
                 } else {
                     (v, th)

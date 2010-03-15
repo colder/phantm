@@ -586,7 +586,6 @@ object Types {
     //                ObjectStore.getOrCreateTMP(Some(cs))
                     TAnyObject
                 case None =>
-                    println("Woops, undefined class "+id.value)
                     TAnyObject
             }
         case u: THUnion =>
