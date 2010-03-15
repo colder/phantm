@@ -368,13 +368,10 @@ object Types {
         }
 
         def merge(a2: TArray): TArray = {
-            var newEntries = Map[String, Type]() ++ entries;
+            var newEntries = Map[String, Type]()
 
-            for((index, typ)<- a2.entries) {
-                newEntries = newEntries.update(index, newEntries.get(index) match {
-                    case Some(t) => TypeLattice.join(t, typ)
-                    case None => TypeLattice.join(typ, TUninitialized)
-                })
+            for (k <- a2.entries.keySet ++ entries.keySet) {
+                newEntries = newEntries + (k -> (lookup(k) union a2.lookup(k)))
             }
 
             new TArray(newEntries, globalType union a2.globalType)

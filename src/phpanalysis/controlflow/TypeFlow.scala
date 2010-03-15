@@ -222,7 +222,7 @@ object TypeFlow {
             } else {
                 for ((v, t) <- map) {
                     if (e.map contains v) {
-                        if (t != e.map(v)) {
+                        if (t != e.map(v) && !TypeLattice.leq(this, e, t, e.map(v))) {
                             println(" "+v+" => ")
                             println("      OLD: "+t)
                             println("      NEW: "+e.map(v))
@@ -231,11 +231,13 @@ object TypeFlow {
                         println(" "+v+" not in NEW:"+t)
                     }
                 }
+                /*
                 for ((v, t) <- e.map) {
                     if (!(map contains v)) {
                         println(" "+v+" not in OLD: "+t)
                     }
                 }
+                */
             }
         }
 
