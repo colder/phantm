@@ -388,7 +388,7 @@ object Types {
         }
 
         override def toString =
-            "Array["+(entries.map(x => x._1 +" => "+ x._2).toList ::: "? => "+globalType :: Nil).mkString("; ")+"]"
+            "Array["+(entries.toList.sort((x,y) => x._1 < y._1).map(x => x._1 +" => "+ x._2).toList ::: "? => "+globalType :: Nil).mkString("; ")+"]"
     }
 
     object TAnyArray extends TArray(Map[String, Type](), TTop) {
@@ -509,7 +509,17 @@ object Types {
                     if (typs contains TAnyArray) {
                         typs
                     } else {
-                        typs + ta
+                        // if the union contains an array, we need to merge the two arrays
+                        val oar = typs.find(_.isInstanceOf[TArray])
+                        oar match {
+                            case Some(ar: TArray) =>
+                                (typs - ar) + (ar merge ta)
+                            case Some(ar) =>
+                                println("Woops, incoherent find")
+                                typs
+                            case None =>
+                                typs + ta
+                        }
                     }
                 case typ =>
                     typs + typ

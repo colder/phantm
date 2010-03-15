@@ -1,8 +1,7 @@
 package phpanalysis.controlflow
 
-abstract class Environment[E <: Environment[_]] {
+abstract class Environment[E <: Environment[_, S],S] {
     def union (env: E): E;
     def copy: E;
-    def dumpDiff (env: E): Unit;
-    def checkMonotonicity (newEnv: E): Boolean;
+    def checkMonotonicity (newEnv: E, inEdges: Iterable[(S, E)]): Unit;
 }

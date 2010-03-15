@@ -162,7 +162,7 @@ object TypeFlow {
         }
     }
 
-    class TypeEnvironment(val map: Map[CFGSimpleVariable, Type], val scope: Option[ClassSymbol], val store: ObjectStore) extends Environment[TypeEnvironment] {
+    class TypeEnvironment(val map: Map[CFGSimpleVariable, Type], val scope: Option[ClassSymbol], val store: ObjectStore) extends Environment[TypeEnvironment, CFGStatement] {
         def this(scope: Option[ClassSymbol]) = {
             this(new HashMap[CFGSimpleVariable, Type], scope, new ObjectStore);
         }
@@ -200,44 +200,34 @@ object TypeFlow {
             }
         }
 
-        def checkMonotonicity(e: TypeEnvironment): Boolean = {
-            map.forall { x =>
-                if (e.map contains x._1) {
-                    if (!TypeLattice.leq(this, e, x._2, e.map(x._1))) {
-                        false
-                    } else {
-                        true
+        def checkMonotonicity(e: TypeEnvironment, inEdges: Iterable[(CFGStatement, TypeEnvironment)]): Unit = {
+            var delim = false;
+            for ((v, t) <- map) {
+                if (e.map contains v) {
+                    if (!TypeLattice.leq(this, e, t, e.map(v))) {
+                        if (!delim) {
+                            println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+                            println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+                            delim = true;
+                        }
+                        println(" "+v+" => ")
+                        println("      OLD: "+t)
+                        println("      NEW: "+e.map(v))
+                        println(" incoming values: ")
+                        for ((cfg, e) <- inEdges) {
+                            println("   * "+cfg+" => "+e.lookup(v))
+                            println
+                        }
+                        println("@@@@@@@@@@@@@@@@@")
                     }
                 } else {
-                    false
-                }
-            }
-        }
-
-        def dumpDiff(e: TypeEnvironment): Unit = {
-            if (scope != e.scope) {
-                println("Scope diff!")
-            } else if (store != e.store) {
-                println("Store diff!")
-            } else {
-                for ((v, t) <- map) {
-                    if (e.map contains v) {
-                        if (t != e.map(v) && !TypeLattice.leq(this, e, t, e.map(v))) {
-                            println(" "+v+" => ")
-                            println("      OLD: "+t)
-                            println("      NEW: "+e.map(v))
-                        }
-                    } else {
-                        println(" "+v+" not in NEW:"+t)
+                    if (!delim) {
+                        println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+                        println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+                        delim = true;
                     }
+                    println(" "+v+" is not in NEW ?")
                 }
-                /*
-                for ((v, t) <- e.map) {
-                    if (!(map contains v)) {
-                        println(" "+v+" not in OLD: "+t)
-                    }
-                }
-                */
             }
         }
 

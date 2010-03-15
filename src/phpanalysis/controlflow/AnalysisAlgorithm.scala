@@ -2,7 +2,7 @@ package phpanalysis.controlflow
 
 import scala.collection.mutable.Set;
 
-class AnalysisAlgorithm[E <: Environment[E],S]
+class AnalysisAlgorithm[E <: Environment[E, S],S]
                (transferFun : TransferFunction[E,S],
                 bottomEnv : E,
                 baseEnv : E,
@@ -88,15 +88,7 @@ class AnalysisAlgorithm[E <: Environment[E],S]
                 if (nf != oldFact) {
 
                     if (Main.testsActive) {
-                        if (!(oldFact checkMonotonicity nf)) {
-                            println("######################################")
-                            println("Monotonicity violated in: "+v)
-                            oldFact.dumpDiff(nf)
-                            println("Incoming edges: ");
-                            for (e <- cfg.inEdges(v)) {
-                                println(" * "+e.v1+"-> ("+e.lab+") : "+facts(e.v1))
-                            }
-                        }
+                        oldFact.checkMonotonicity(nf, cfg.inEdges(v) map (e => (e.lab, facts(e.v1))))
                     }
 
                     facts = facts.update(v, nf)
