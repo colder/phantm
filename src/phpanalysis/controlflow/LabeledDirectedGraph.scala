@@ -76,8 +76,12 @@ abstract class LabeledDirectedGraphImp[LabelType] extends LabeledDirectedGraph[L
   def -=(from: Vertex, lab: LabelType, to: Vertex) = {
     val edge = EdgeImp[LabelType](from, lab, to)
     edges -= edge
-    vertices -= from
-    vertices -= to
+    if (!edges.exists(e => (e.v1 == from || e.v2 == from))) {
+        vertices -= from
+    }
+    if (!edges.exists(e => (e.v1 == to || e.v2 == to))) {
+        vertices -= to
+    }
     from.out -= edge
     to.in -= edge
   }

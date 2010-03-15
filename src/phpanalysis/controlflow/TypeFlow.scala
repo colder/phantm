@@ -320,7 +320,7 @@ object TypeFlow {
                                 TBottom
                             }
 
-                            et union t.globalType
+                            et union removeUninit(t.globalType)
                         case _ =>
                             TAny
                     }
@@ -523,6 +523,7 @@ object TypeFlow {
                             }
                         }
                     }
+
                     v1 match {
                         case sv: CFGSimpleVariable =>
                             error("variable")
