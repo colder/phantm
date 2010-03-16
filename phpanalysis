@@ -8,4 +8,4 @@ then
   FILENAME=${BASH_REMATCH[2]}
 fi
 
-scala -classpath classes:lib/cup/dist/java-cup-11a-runtime.jar phpanalysis.Main $* 2>&1 | tee ${FILENAME}--${TIMESTAMP}.out | less -eRFEX
+scala -classpath classes:lib/cup/dist/java-cup-11a-runtime.jar phpanalysis.Main $* 2>&1 | tee ${FILENAME}--${TIMESTAMP}.out | tee last.out | less -eRFEX
