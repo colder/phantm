@@ -21237,6 +21237,14 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
    </args>
   </function>
 
+  <function name="imap_listmailbox">
+   <return><type name="array" /></return>
+   <args>
+    <arg opt="0"><type name="resource" /></arg>
+    <arg opt="0"><type name="string" /></arg>
+    <arg opt="0"><type name="string" /></arg>
+   </args>
+  </function>
   <function name="imap_list">
    <return><type name="array" /></return>
    <args>
