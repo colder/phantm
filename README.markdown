@@ -1,7 +1,9 @@
-phpanalysis
+phantm - PHp ANalzer for Type Mistakes
 ======
 
-**phpanalysis** is a tool that can be used to spot various kinds of mistakes in your PHP applications
+**phantm** is a tool that can be used to spot various kinds of mistakes in your
+PHP applications. Among other things, it will perform a static analysis of the
+types used in your application, and report any potential mistakes.
 
 Version
 -------
@@ -30,11 +32,11 @@ Usage
 -----
 To run the analyzer on one of your php script, run
 
-    $ ./phpanalysis <target.php>
+    $ ./phantm <target.php>
 
 The analyser will then compile your code, and output any notice/warnings it can find about your script. You can also use 
 
-    $ ./phpanalysis --help
+    $ ./phantm --help
 
 to see what options the tool supports:
 
@@ -48,6 +50,7 @@ to see what options the tool supports:
              --fixpoint             Display fixpoints
              --debug                Display all kind of debug information
              --quiet                Mute some errors such as uninitialized variables
+             --focus                Only report the errors that occured in the main file
              --verbose              Display more notices
              --vverbose             Be nitpicking and display even more notices
              --includepath <paths>  Define paths for compile time include resolution (.:a:bb:c:..)
