@@ -208,14 +208,14 @@ object TypeFlow {
             }
         }
 
-        def checkMonotonicity(e: TypeEnvironment, inEdges: Iterable[(CFGStatement, TypeEnvironment)]): Unit = {
+        def checkMonotonicity(vrtx: Vertex, e: TypeEnvironment, inEdges: Iterable[(CFGStatement, TypeEnvironment)]): Unit = {
             var delim = false;
             for ((v, t) <- map) {
                 if (e.map contains v) {
                     if (!TypeLattice.leq(this, e, t, e.map(v))) {
                         if (!delim) {
                             println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
-                            println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+                            println("@@@@@@@@@@@@@@@@@ "+vrtx+" @@@@@@@@@@@@@@@@@@@")
                             delim = true;
                         }
                         println(" "+v+" => ")
@@ -280,15 +280,19 @@ object TypeFlow {
                 false;
         }
 
-        def removeUninit(t: Type): Type = t match {
+        def removeUninit(removeInArrays: Boolean)(t: Type): Type = t match {
             case TTop =>
                 TAny
             case TUninitialized =>
                 TBottom
             case tu: TUnion =>
-                tu.types.map { removeUninit } reduceLeft (_ union _)
+                tu.types.map { removeUninit(removeInArrays) } reduceLeft (_ union _)
             case ta: TArray =>
-                new TArray(Map[String, Type]() ++ ta.entries.map{ e => (e._1, removeUninit(e._2)) }, removeUninit(ta.globalType))
+                if (removeInArrays) {
+                    new TArray(Map[String, Type]() ++ ta.entries.map{ e => (e._1, removeUninit(removeInArrays)(e._2)) }, removeUninit(removeInArrays)(ta.globalType))
+                } else {
+                    t
+                }
             case _ =>
                 t
         }
@@ -336,7 +340,7 @@ object TypeFlow {
                                 TBottom
                             }
 
-                            et union removeUninit(t.globalType)
+                            et union removeUninit(false)(t.globalType)
                         case _ =>
                             TAny
                     }
@@ -514,9 +518,9 @@ object TypeFlow {
                 refineTypeDepthLimit(vtyp, rtyp, -1)
 
             def refineTypeDepthLimit(vtyp: Type, rtyp: Type, limit: Int): Type = {
-                println("Refining type "+vtyp+" to "+rtyp +" with limit "+limit)
+                //println("Refining type "+vtyp+" to "+rtyp +" with limit "+limit)
                 def mergeArrays(svta: TArray, ta: TArray): Type = {
-                    println("Merging "+svta+" with "+ta)
+                    //println("Merging "+svta+" with "+ta)
                     var newEntries = Map[String, Type]();
 
                     /* All entries that are in svta and not in ta will
@@ -524,10 +528,11 @@ object TypeFlow {
                      * => an existing array entry cannot be set to Uninit by
                      * a $arr[].
                      */
-                    val cleantagt = removeUninit(ta.globalType)
+                    val cleantagt = removeUninit(false)(ta.globalType)
 
                     for ((k, oldt) <- svta.entries) {
-                        newEntries = newEntries + (k -> (oldt union cleantagt))
+                        val t = oldt union cleantagt;
+                        newEntries = newEntries + (k -> t)
                     }
 
                     /*
@@ -552,7 +557,7 @@ object TypeFlow {
                     } else {
                         new TArray(newEntries, svta.globalType union ta.globalType)
                     }
-                    println("Result: "+res)
+                    //println("Result: "+res)
                     res
                 }
 
@@ -623,11 +628,11 @@ object TypeFlow {
 
                 // if verbosity is == 0, we remove Uninit from all types
                 if (Main.verbosity == 0) {
-                    vtypCheck = removeUninit(vtypCheck)
+                    vtypCheck = removeUninit(true)(vtypCheck)
                 }
 
                 if (TypeLattice.leq(env, vtypCheck, etyp)) {
-                    uninitToNull(vtypCheck)
+                    uninitToNull(vtyp)
                 } else {
                     def errorKind(kind: String) = {
                         if (!silent) {
@@ -802,7 +807,7 @@ object TypeFlow {
                         Predef.error("Woot, not complex? "+v)
                 }
                 // We can check for that type, without refining it with ct
-                println("Checking "+svar+" against "+ct)
+                //println("Checking "+svar+" against "+ct)
                 expNoRef(svar, ct)
                 // We now need to refine the type with rt
                 env = env.inject(svar, refineTypeDepthLimit(typeFromSVR(svar, false), rt, depth))
@@ -863,7 +868,7 @@ object TypeFlow {
 
             node match {
                 case CFGAssign(vr: CFGVariable, v1) =>
-                    val t = typeFromSV(v1)
+                    val t = expOrRef(v1, TAny)
                     assign(vr, t)
 
                 case CFGAssignUnary(vr: CFGVariable, op, v1) =>

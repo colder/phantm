@@ -493,12 +493,16 @@ object Types {
                 case TFalse =>
                     if (typs contains TTrue) {
                         addToSet(typs, TBoolean)
+                    } else if (typs contains TBoolean) {
+                        typs
                     } else {
                         typs + TFalse
                     }
                 case TTrue =>
-                    if (typs contains TTrue) {
+                    if (typs contains TFalse) {
                         addToSet(typs, TBoolean)
+                    } else if (typs contains TBoolean) {
+                        typs
                     } else {
                         typs + TTrue
                     }
