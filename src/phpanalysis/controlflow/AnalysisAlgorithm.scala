@@ -86,13 +86,6 @@ class AnalysisAlgorithm[E <: Environment[E, S],S]
                 val nf = newFact.getOrElse(oldFact.copy);
 
                 if (nf != oldFact) {
-                    if (v.toString == "v683") {
-                        println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
-                        println(" OLDF: "+oldFact)
-                        println(" NEWF: "+nf)
-                        println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
-                    }
-
                     if (Main.testsActive) {
                         oldFact.checkMonotonicity(v, nf, cfg.inEdges(v) map (e => (e.lab, facts(e.v1))))
                     }

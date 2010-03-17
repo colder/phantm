@@ -461,9 +461,8 @@ object TypeFlow {
                             t.lookup(ind)
                         case TBottom =>
                             TBottom
-                        case t =>
-                            println("Woops?? invlid type returned from expect: "+t);
-                            TBottom
+                        case _ =>
+                            TAny
                     }
 
                 case op @ CFGObjectProperty(obj, p) =>
@@ -485,7 +484,6 @@ object TypeFlow {
                                     TBottom
                             }}.reduceLeft(_ union _)
                         case t =>
-                            println("Woops?? invlid type returned from expect: "+t);
                             TAny
                     }
                 case CFGNextArrayEntry(arr) =>
@@ -659,7 +657,7 @@ object TypeFlow {
                             errorKind("array entry")
                             val refTyp = refineType(vtyp, etyp)
                             if (refine) {
-                                assign(v, refTyp)
+                            //    assign(v, refTyp)
                             }
                             refTyp
 
@@ -667,7 +665,7 @@ object TypeFlow {
                             errorKind("object property")
                             val refTyp = refineType(vtyp, etyp)
                             if (refine) {
-                                assign(v, refTyp)
+                            //    assign(v, refTyp)
                             }
                             refTyp
 
@@ -734,7 +732,7 @@ object TypeFlow {
                     TBoolean
             }
 
-            def assign(v: CFGVariable, ext: Type): Unit= {
+            def assign(v: CFGVariable, ext: Type): Unit = {
                 // we compute the type that the base variable should have
 
                 def computeTypes(sv: CFGSimpleValue, ct: Type, rt: Type, dn: Int): (CFGSimpleVariable, Type, Type, Int) = sv match {
