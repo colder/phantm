@@ -109,10 +109,18 @@ object Reporter {
                             1
                         }
 
-                        if (size == 1) {
-                          println(indent+Console.RED+"^"+Console.RESET)
+                        val (colorBegin, colorEnd) = if (Main.colors == "term") {
+                            (Console.RED, Console.RESET)
+                        } else if (Main.colors == "html") {
+                            ("<span style=\"color: red;\">", "</span>")
                         } else {
-                          println(indent+Console.RED+(1 to size).map(i => "~").mkString+Console.RESET)
+                            ("", "")
+                        }
+
+                        if (size == 1) {
+                          println(indent+colorBegin+"^"+colorEnd)
+                        } else {
+                          println(indent+colorBegin+(1 to size).map(i => "~").mkString+colorEnd)
                         }
                     case None =>
                 }

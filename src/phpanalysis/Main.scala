@@ -12,6 +12,7 @@ object Main {
     var displaySymbols     = false;
     var displayUsage       = false;
     var verbosity          = 1;
+    var colors             = "none";
     var resolveIncludes    = true;
     var importAPI          = true;
     var testsActive        = false;
@@ -59,6 +60,12 @@ object Main {
                 handleArgs(xs)
             case "--noincludes" :: xs =>
                 resolveIncludes = false
+                handleArgs(xs)
+            case "--termcolors" :: xs =>
+                colors = "term";
+                handleArgs(xs)
+            case "--htmlcolors" :: xs =>
+                colors = "html";
                 handleArgs(xs)
             case "--focus" :: xs =>
                 focusOnMainFiles = true
