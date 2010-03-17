@@ -324,7 +324,7 @@ object TypeFlow {
                 case CFGThis()              => getObject(node, env.scope)
                 case CFGEmptyArray()        => new TArray()
                 case CFGInstanceof(lhs, cl) => TBoolean
-                case CFGArrayNext(ar)       => TAny
+                case CFGArrayNext(ar)       => typeFromSVR(ar, refine)
                 case CFGArrayCurElement(id: CFGSimpleVariable) =>
                     env.lookup(id) match {
                         case Some(TAnyArray) =>
@@ -510,45 +510,104 @@ object TypeFlow {
                 new TObjectRef(id)
             }
 
-            def refineType(vtyp: Type, rtyp: Type): Type = {
-                //println("Refining type "+vtyp+" to "+rtyp)
+            def refineType(vtyp: Type, rtyp: Type): Type =
+                refineTypeDepthLimit(vtyp, rtyp, -1)
+
+            def refineTypeDepthLimit(vtyp: Type, rtyp: Type, limit: Int): Type = {
+                println("Refining type "+vtyp+" to "+rtyp +" with limit "+limit)
                 def mergeArrays(svta: TArray, ta: TArray): Type = {
-                    // All entries that are in svta but not in ta are left untouched
-                    // Entries that are in both are refined again
-                    var newEntries = svta.entries
+                    println("Merging "+svta+" with "+ta)
+                    var newEntries = Map[String, Type]();
+
+                    /* All entries that are in svta and not in ta will
+                     * get merged with the globaltype of ta, - TUninit.
+                     * => an existing array entry cannot be set to Uninit by
+                     * a $arr[].
+                     */
+                    val cleantagt = removeUninit(ta.globalType)
+
+                    for ((k, oldt) <- svta.entries) {
+                        newEntries = newEntries + (k -> (oldt union cleantagt))
+                    }
+
+                    /*
+                     * All entries that are in both will get refined pointwise
+                     * All entries that are only in refined type will get imported
+                     * as such
+                     */
                     for ((k, newt) <- ta.entries) newEntries.get(k) match {
                         case Some(oldt) =>
-                            // Entries contained in both need refinement as well
-                            newEntries = newEntries + (k -> refineType(oldt, newt))
+                            newEntries = newEntries + (k -> refineTypeDepthLimit(oldt, newt, limit-1))
                         case None =>
                             newEntries = newEntries + (k -> newt)
                     }
 
-                    new TArray(newEntries, svta.globalType union ta.globalType)
+                    /*
+                     * Special refinement for the global type:
+                     * If we're on the last step of merging, we use the new global type
+                     * Otherwize, we merge the global types
+                     */
+                    val res = if (limit-1 == 0) {
+                        new TArray(newEntries, ta.globalType)
+                    } else {
+                        new TArray(newEntries, svta.globalType union ta.globalType)
+                    }
+                    println("Result: "+res)
+                    res
                 }
 
-                val res = (vtyp, rtyp) match {
-                    case (svta: TArray, ta: TArray) =>
-                        // Check that the other is an array, if not, we replace
-                        // that branch
-                        mergeArrays(svta, ta)
-                    case (svtu: TUnion, ta: TArray) =>
-                        // If the union contains an array, we merge it and drop
-                        // the union otherwise, we use the resulting type
-                        val tua = svtu.types.find(x => x.isInstanceOf[TArray])
-                        tua match {
-                            case Some(svta: TArray) =>
-                                mergeArrays(svta, ta)
-                            case _ =>
-                                ta
-                        }
-                    case (_, rt) =>
-                        // In all other cases, we simply use the resulting type
-                        rt
-                }
+                if (limit == 0) {
+                    rtyp
+                } else { 
+                    val res = (vtyp, rtyp) match {
+                        case (svta: TArray, ta: TArray) =>
+                            /*
+                             * If we have two arrays, we merge them specially
+                             */
+                            mergeArrays(svta, ta)
+                        case (svtu: TUnion, ta: TArray) =>
+                            /*
+                             * If we know from the TUnion that it _could_ be an array
+                             * we use that info as well.
+                             */
+                            val tua = svtu.types.find(x => x.isInstanceOf[TArray])
+                            tua match {
+                                case Some(svta: TArray) =>
+                                    mergeArrays(svta, ta)
+                                case _ =>
+                                    ta
+                            }
+                        case (svtu: TUnion, tu: TUnion) =>
+                            /*
+                             * We got "expected x or y, found w or z".
+                             * The idea is to compute the intersection of both unions.
+                             * If empty, the best bet is the union itself
+                             */
+                            var resUnion = Set[Type]();
 
-                //println("Result: "+res)
-                res
+                            for (svt <- svtu.types) {
+                               if (TypeLattice.leq(env, svt, tu)) {
+                                   resUnion = resUnion + svt;
+                               }
+                            }
+
+                            if (resUnion.size == 0) {
+                                tu
+                            } else if (resUnion.size == 1) {
+                                resUnion.toList.head
+                            } else {
+                                TUnion(resUnion)
+                            }
+                        case (_, rt) =>
+                            /*
+                             * In other cases, we always use the result type
+                             */
+                            rt
+                    }
+
+                    //println("Result: "+res)
+                    res
+                }
             }
 
             def expNoRef(v1: CFGSimpleValue, typs: Type*): Type =
@@ -673,26 +732,26 @@ object TypeFlow {
             def assign(v: CFGVariable, ext: Type): Unit= {
                 // we compute the type that the base variable should have
 
-                def computeTypes(sv: CFGSimpleValue, ct: Type, rt: Type): (CFGSimpleVariable, Type, Type) = sv match {
+                def computeTypes(sv: CFGSimpleValue, ct: Type, rt: Type, dn: Int): (CFGSimpleVariable, Type, Type, Int) = sv match {
                     case CFGVariableVar(v) =>
-                        computeTypes(v, TString, TString)
+                        computeTypes(v, TString, TString, dn + 1)
                     case CFGArrayEntry(arr, index) =>
                         typeFromSVR(arr, false) match {
                             case TString =>
                                 // If arr is known to be a string, index must be Int
                                 expOrRef(index, TInt)
-                                computeTypes(arr, TString, TString)
+                                computeTypes(arr, TString, TString, dn + 1)
                             case to: ObjectType =>
                                 Predef.error("TODO: object[index] not yet implemented")
                             case _ =>
                                 expOrRef(index, TString, TInt)
                                 val arrayCheckType = new TArray().setAny(TTop).inject(index, ct);
                                 val arrayResType   = new TArray().inject(index, rt);
-                                computeTypes(arr, arrayCheckType, arrayResType)
+                                computeTypes(arr, arrayCheckType, arrayResType, dn + 1)
                         }
                     case CFGNextArrayEntry(arr) =>
                         val arrayResType   = new TArray().injectAny(rt);
-                        computeTypes(arr, TAnyArray, arrayResType)
+                        computeTypes(arr, TAnyArray, arrayResType, dn + 1)
                     case CFGObjectProperty(obj, prop) =>
                         // Object type used to refine
                         val objCheckRef = new TObjectRef(ObjectId(sv.uniqueID, 1));
@@ -706,46 +765,47 @@ object TypeFlow {
                         val objRef = env.store.lookup(objRefRef).injectField(prop, rt)
                         env = env.setObject(objRefRef.id, objRef)
 
-                        computeTypes(obj, objCheckRef, objRefRef)
+                        computeTypes(obj, objCheckRef, objRefRef, dn + 1)
                     case svar: CFGSimpleVariable =>
-                        (svar, ct, rt)
+                        (svar, ct, rt, dn)
                     case _ =>
                         Predef.error("Woops, unexpected CFGVariable inside checktype of!")
 
                 }
 
-                val (svar, ct, rt) = v match {
+                val (svar, ct, rt, depth) = v match {
                     case CFGArrayEntry(arr, index) =>
                         typeFromSVR(arr, false) match {
                             case TString =>
                                 expOrRef(index, TInt)
-                                computeTypes(arr, TString, TString)
+                                computeTypes(arr, TString, TString, 1)
                             case to: ObjectType =>
                                 Predef.error("TODO: object[index] not yet implemented")
                             case _ =>
                                 expOrRef(index, TInt, TString)
                                 val arrayResType   = new TArray().inject(index, ext);
-                                computeTypes(arr, TAnyArray, arrayResType)
+                                computeTypes(arr, TAnyArray, arrayResType, 1)
                         }
                     case CFGNextArrayEntry(arr) =>
                         val arrayResType   = new TArray().injectAny(ext);
-                        computeTypes(arr, TAnyArray, arrayResType)
+                        computeTypes(arr, TAnyArray, arrayResType, 1)
                     case sv: CFGSimpleVariable =>
-                        (sv, TTop, ext)
+                        (sv, TTop, ext, 0)
                     case CFGVariableVar(v) =>
-                        computeTypes(v, TString, TString)
+                        computeTypes(v, TString, TString, 0)
                     case CFGObjectProperty(obj, prop) =>
                         val objRefType = new TObjectRef(ObjectId(v.uniqueID, 0));
                         env = env.setStore(env.store.initIfNotExist(objRefType.id, None))
                         env = env.setStore(env.store.set(objRefType.id, env.store.lookup(objRefType).injectField(prop, ext)))
-                        computeTypes(obj, TAnyObject, objRefType)
+                        computeTypes(obj, TAnyObject, objRefType, 0)
                     case _ =>
                         Predef.error("Woot, not complex? "+v)
                 }
                 // We can check for that type, without refining it with ct
+                println("Checking "+svar+" against "+ct)
                 expNoRef(svar, ct)
                 // We now need to refine the type with rt
-                env = env.inject(svar, refineType(typeFromSVR(svar, false), rt))
+                env = env.inject(svar, refineTypeDepthLimit(typeFromSVR(svar, false), rt, depth))
             }
 
             def functionSymbolToFunctionType(fs: FunctionSymbol): FunctionType = {
