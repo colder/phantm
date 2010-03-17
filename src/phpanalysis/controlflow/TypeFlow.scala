@@ -626,7 +626,7 @@ object TypeFlow {
                 var vtypCheck = vtyp
                 val etyp = typs reduceLeft (_ join _)
 
-                // if verbosity is == 0, we remove Uninit from all types
+                // if verbosity is == 0, we remove Uninit from the type used in the check
                 if (Main.verbosity == 0) {
                     vtypCheck = removeUninit(true)(vtypCheck)
                 }
