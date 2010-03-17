@@ -500,7 +500,7 @@ object Types {
                     if (typs contains TTrue) {
                         addToSet(typs, TBoolean)
                     } else {
-                        typs + TFalse
+                        typs + TTrue
                     }
                 case TAnyArray =>
                     typs.filter(t => ! t.isInstanceOf[TArray]) + TAnyArray

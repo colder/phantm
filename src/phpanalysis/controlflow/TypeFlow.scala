@@ -524,7 +524,7 @@ object TypeFlow {
                             newEntries = newEntries + (k -> newt)
                     }
 
-                    new TArray(newEntries, svta.globalType)
+                    new TArray(newEntries, svta.globalType union ta.globalType)
                 }
 
                 val res = (vtyp, rtyp) match {
