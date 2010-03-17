@@ -286,17 +286,22 @@ object TypeFlow {
             case TUninitialized =>
                 TBottom
             case tu: TUnion =>
-                tu.types.map { x => if (x == TUninitialized) TBottom else x } reduceLeft (_ union _)
+                tu.types.map { removeUninit } reduceLeft (_ union _)
+            case ta: TArray =>
+                new TArray(Map[String, Type]() ++ ta.entries.map{ e => (e._1, removeUninit(e._2)) }, removeUninit(ta.globalType))
             case _ =>
                 t
         }
+
         def uninitToNull(t: Type): Type = t match {
             case TTop =>
                 TAny
             case TUninitialized =>
                 TNull
             case tu: TUnion =>
-                tu.types.map { x => if (x == TUninitialized) TNull else x } reduceLeft (_ union _)
+                tu.types.map { uninitToNull } reduceLeft (_ union _)
+            case ta: TArray =>
+                new TArray(Map[String, Type]() ++ ta.entries.map{ e => (e._1, uninitToNull(e._2)) }, uninitToNull(ta.globalType))
             case _ =>
                 t
         }
@@ -741,171 +746,6 @@ object TypeFlow {
                 expNoRef(svar, ct)
                 // We now need to refine the type with rt
                 env = env.inject(svar, refineType(typeFromSVR(svar, false), rt))
-            }
-
-            def complexAssign(v: CFGVariable, ext: Type): Unit= {
-                    println("##############")
-                    assign(v, ext)
-                    println("##############")
-                    //println("ComplexAssign: "+v+" = "+ ext)
-                    var elems: List[(CFGSimpleValue, Type, Type)] = Nil;
-
-                    def linearize(sv: CFGSimpleValue, checkType: Type, resultType: Type, pass: Int): Unit = {
-                        // Recursive function that pushes each array parts and compute types
-                        elems = (sv, checkType, resultType) :: elems;
-                        sv match {
-                            case CFGVariableVar(v) =>
-                                linearize(v, TString, TString, pass+1)
-                            case CFGArrayEntry(arr, index) =>
-                                typeFromSV(arr) match {
-                                    case TString =>
-                                        // What if we do $string[0] ?
-                                        expOrRef(index, TString, TInt)
-
-                                        val ct = TString;
-                                        val rt = TString;
-
-                                        linearize(arr, ct, rt, pass+1)
-                                    case _ =>
-                                        // We always will end up with a precise array
-                                        // The check type depends on the pass (i.e. deepness)
-                                        // pass == 0 means this is the most outer assign,
-                                        // which only needs to be checked against AnyArray
-                                        val rt = new TArray().inject(index, resultType).setAny(TBottom)
-                                        val ct = if (pass > 0) new TArray().setAny(TTop).inject(index, checkType) else TAnyArray;
-
-                                        linearize(arr, ct, rt, pass+1)
-                                }
-                            case CFGObjectProperty(obj, index) =>
-                                val rt = new TObjectRef(ObjectId(sv.uniqueID, 0));
-                                env = env.setStore(env.store.initIfNotExist(rt.id, None))
-                                env = env.setStore(env.store.set(rt.id, env.store.lookup(rt).injectField(index, resultType, false)))
-                                // the check type is a different object, we create
-                                // a tmp object with negative id, and shift it by
-                                // the number of potentially used tmp objects used
-                                // for params
-                                val ct = if (pass > 0) {
-                                    val id = ObjectId(sv.uniqueID, 1);
-                                    env = env.setStore(env.store.initIfNotExist(id, None))
-                                    env = env.setStore(env.store.set(id, env.store.lookup(id).setAnyField(TTop).injectField(index, checkType, false)))
-                                    new TObjectRef(ObjectId(sv.uniqueID, 1))
-                                } else {
-                                    TAnyObject;
-                                }
-
-                                linearize(obj, ct, rt, pass+1)
-                            case CFGNextArrayEntry(arr) =>
-                                // ditto ArrayEntry
-                                val rt = new TArray().injectAny(resultType)
-                                val ct = if (pass > 0) new TArray().injectAny(checkType) else TAnyArray;
-
-                                linearize(arr, ct, rt, pass+1)
-                            case _ =>
-                        }
-                    }
-
-                    // We lineraize the recursive structure
-                    linearize(v, ext, ext, 0)
-
-                    println("Result of linearization:")
-                    for ((elem, ct, rt) <- elems) {
-                        
-                    }
-
-                    // Let's traverse all up to the last elem (the outermost assign)
-                    for ((elem, ct, rt) <- elems.init) {
-                        //println(" Checking for "+elem +"(actualType: "+typeFromSV(e, elem)+", checkType: "+ct+", resultType: "+rt+")");
-                        def assignMergeObject(from: TObjectRef, to: TObjectRef): Type ={
-                                val fromRO = env.store.lookup(from)
-                                val toRO   = env.store.lookup(to)
-
-                                val weak = (to.id.pos >= 0) // $this is never a weak assign since it represents only one object
-
-                                //        println("Trying to assign-merge "+fromRO+" and "+ toRO)
-
-                                var newFields = HashMap[String, Type]() ++ fromRO.fields;
-
-                                val pt = toRO.globalType join fromRO.globalType
-
-                                for((index, typ) <- toRO.fields) {
-                                    newFields = newFields.update(index, newFields.get(index) match {
-                                        case Some(t) => if (weak) t join typ else t
-                                        case None => typ
-                                    })
-                                }
-
-                                val o : TRealObject = toRO match {
-                                    case o: TRealClassObject =>
-                                        new TRealClassObject(o.cl, newFields, pt)
-                                    case o: TRealObject =>
-                                        new TRealObject(newFields, pt)
-                                }
-
-                                //println("Result: "+o)
-
-                                env = env.setStore(env.store.set(to.id, o))
-                                to
-                        }
-                        // assignMerge will recursively merge types of recursive arrays
-                        // we cannot use Lattice.Join as we do not want unions.
-                        // i.e. $a['foo']['bar'] = 2; $a['foo']['bar'] =
-                        // "str"; should not end with:
-                        //    $a -> Array[foo => Array[bar => {TInt, TString}]]
-                        // but
-                        //    $a -> Array[foo => Array[bar => String]]
-                        var deepness = 0;
-                        def assignMerge(from: Type, to: Type): Type = (from,to) match {
-                            case (from: TArray, to: TArray) =>
-                                import Math.max
-
-                                val pt = to.globalType union from.globalType
-
-                                var newEntries = Map[String, Type]() ++ from.entries;
-
-                                for((index, typ)<- to.entries) {
-                                    newEntries = newEntries + (index -> (newEntries.get(index) match { 
-                                        case Some(t) => assignMerge(t, typ)
-                                        case None => typ
-                                    }))
-                                }
-
-                                new TArray(newEntries, pt)
-
-                            case (from: TObjectRef, to: TObjectRef) =>
-                                assignMergeObject(from, to)
-                            case (from: TObjectRef, to: TUnion) =>
-                                // We may have a union of objects here
-                                (to.types map { _ match {
-                                    case t: TObjectRef =>
-                                        assignMergeObject(from, t)
-                                    case o => o
-                                }}).reduceLeft(_ union _)
-                            case (a: TArray, b) =>
-                                // In case we're moving to an array, let's undefine the rest
-                                new TArray(a.entries, TUninitialized)
-                            case (a, b) =>
-                                // In case not both types are not arrays nor objects, we
-                                // always end up with the resulting type
-                                a
-                        }
-
-                        //println("Trying to assign-merge "+rt+" and "+ typeFromSV(e, elem)._2)
-                        val restyp = assignMerge(rt, typeFromSV(elem))
-
-                        //println("Resulting type "+ elem+" : "+restyp)
-
-                        //println("Resulting store  : "+store)
-
-                        elem match {
-                            case sv: CFGSimpleVariable =>
-                                // Due to our deep type system, checking
-                                // the base variable should be enough
-                                expOrRef(elem, ct)
-                                // We inject the resulting type
-                                env = env.inject(sv, restyp);
-                            case _ =>
-                        }
-                    }
             }
 
             def functionSymbolToFunctionType(fs: FunctionSymbol): FunctionType = {
