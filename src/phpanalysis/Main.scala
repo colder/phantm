@@ -225,7 +225,7 @@ object Main {
     }
 
     def usage = {
-        println("Usage:   phpanalysis [..options..] <files ...>");
+        println("Usage:   phantm [..options..] <files ...>");
         println("Options: --help                 This help");
         println("         --maindir <maindir>    Specify main directory of the tool");
         println("         --symbols              Display symbols");
