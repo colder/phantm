@@ -586,6 +586,7 @@ object TypeFlow {
                              * The idea is to compute the intersection of both unions.
                              * If empty, the best bet is the union itself
                              */
+                            /* THIS IS NOT MONOTONIC!
                             var resUnion = Set[Type]();
 
                             for (svt <- svtu.types) {
@@ -601,6 +602,8 @@ object TypeFlow {
                             } else {
                                 TUnion(resUnion)
                             }
+                            */
+                            tu
                         case (_, rt) =>
                             /*
                              * In other cases, we always use the result type
@@ -657,7 +660,7 @@ object TypeFlow {
                             errorKind("array entry")
                             val refTyp = refineType(vtyp, etyp)
                             if (refine) {
-                            //    assign(v, refTyp)
+                                assign(v, refTyp)
                             }
                             refTyp
 
@@ -665,7 +668,7 @@ object TypeFlow {
                             errorKind("object property")
                             val refTyp = refineType(vtyp, etyp)
                             if (refine) {
-                            //    assign(v, refTyp)
+                                assign(v, refTyp)
                             }
                             refTyp
 
