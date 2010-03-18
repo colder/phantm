@@ -5,3 +5,4 @@ java/phpanalysis/parser/*.bin
 lib/cup/dist/java-cup-11a.jar
 lib/cup/java/parser.java
 lib/cup/java/sym.java
+*.out
