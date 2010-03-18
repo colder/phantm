@@ -512,25 +512,29 @@ object TypeFlow {
                 new TObjectRef(id)
             }
 
-            def refineType(vtyp: Type, rtyp: Type): Type =
-                refineTypeDepthLimit(vtyp, rtyp, -1)
-
-            def refineTypeDepthLimit(vtyp: Type, rtyp: Type, limit: Int): Type = {
+            /**
+             * Merge type will merge two types during an assign.
+             * vtyp: The current type of the value
+             * rtypmerge: This type will be used to merge if it matches the kind of vtyp
+             *  i.e. $a = array("foo");
+             *       $a[1] = 2;
+             * rtypOverwr: This type will be used in case vtyp is incompatible
+             *  i.e. $a = 2;
+             *       $a[1] = 2;
+             */
+            def mergeTypes(vtyp: Type, rtypmerge: Type, rtypOverwr: Type, limit: Int): Type = {
                 //println("Refining type "+vtyp+" to "+rtyp +" with limit "+limit)
-                def mergeArrays(svta: TArray, ta: TArray): Type = {
+                def mergeArrays(svta: TArray, tamerge: TArray, taOverwr: TArray): Type = {
                     //println("Merging "+svta+" with "+ta)
                     var newEntries = Map[String, Type]();
 
                     /* All entries that are in svta and not in ta will
-                     * get merged with the globaltype of ta, - TUninit.
+                     * get merged with the globaltype of tamerge, - TUninit.
                      * => an existing array entry cannot be set to Uninit by
                      * a $arr[].
                      */
-                    val cleantagt = removeUninit(false)(ta.globalType)
-
                     for ((k, oldt) <- svta.entries) {
-                        val t = oldt union cleantagt;
-                        newEntries = newEntries + (k -> t)
+                        newEntries = newEntries + (k -> (oldt union tamerge.globalType))
                     }
 
                     /*
@@ -538,11 +542,16 @@ object TypeFlow {
                      * All entries that are only in refined type will get imported
                      * as such
                      */
-                    for ((k, newt) <- ta.entries) newEntries.get(k) match {
-                        case Some(oldt) =>
-                            newEntries = newEntries + (k -> refineTypeDepthLimit(oldt, newt, limit-1))
-                        case None =>
-                            newEntries = newEntries + (k -> newt)
+                    for ((k, newtmerge) <- tamerge.entries) {
+
+                        val newtOverwr = taOverwr.entries.getOrElse(k, Predef.error("Inconsistent merge/Overwr structure"))
+
+                        newEntries.get(k) match {
+                            case Some(oldt) =>
+                                newEntries = newEntries + (k -> mergeTypes(oldt, newtmerge, newtOverwr, limit-1))
+                            case None =>
+                                newEntries = newEntries + (k -> newtOverwr)
+                        }
                     }
 
                     /*
@@ -550,25 +559,21 @@ object TypeFlow {
                      * If we're on the last step of merging, we use the new global type
                      * Otherwize, we merge the global types
                      */
-                    val res = if (limit-1 == 0) {
-                        new TArray(newEntries, ta.globalType)
-                    } else {
-                        new TArray(newEntries, svta.globalType union ta.globalType)
-                    }
+                    val res = new TArray(newEntries, svta.globalType union tamerge.globalType)
                     //println("Result: "+res)
                     res
                 }
 
                 if (limit == 0) {
-                    rtyp
+                    rtypOverwr
                 } else { 
-                    val res = (vtyp, rtyp) match {
-                        case (svta: TArray, ta: TArray) =>
+                    val res = (vtyp, rtypmerge, rtypOverwr) match {
+                        case (svta: TArray, tamerge: TArray, taOverwr: TArray) =>
                             /*
                              * If we have two arrays, we merge them specially
                              */
-                            mergeArrays(svta, ta)
-                        case (svtu: TUnion, ta: TArray) =>
+                            mergeArrays(svta, tamerge, taOverwr)
+                        case (svtu: TUnion, ta: TArray, taOverwr: TArray) =>
                             /*
                              * If we know from the TUnion that it _could_ be an array
                              * we use that info as well.
@@ -576,39 +581,42 @@ object TypeFlow {
                             val tua = svtu.types.find(x => x.isInstanceOf[TArray])
                             tua match {
                                 case Some(svta: TArray) =>
-                                    mergeArrays(svta, ta)
+                                    mergeArrays(svta, ta, taOverwr)
                                 case _ =>
                                     ta
                             }
-                        case (svtu: TUnion, tu: TUnion) =>
+                        case (svtu: TUnion, tumerge: TUnion, _) =>
                             /*
                              * We got "expected x or y, found w or z".
                              * The idea is to compute the intersection of both unions.
                              * If empty, the best bet is the union itself
                              */
-                            /* THIS IS NOT MONOTONIC!
                             var resUnion = Set[Type]();
 
                             for (svt <- svtu.types) {
-                               if (TypeLattice.leq(env, svt, tu)) {
+                               if (TypeLattice.leq(env, svt, tumerge)) {
                                    resUnion = resUnion + svt;
                                }
                             }
 
                             if (resUnion.size == 0) {
-                                tu
+                                TBottom
                             } else if (resUnion.size == 1) {
                                 resUnion.toList.head
                             } else {
                                 TUnion(resUnion)
                             }
-                            */
-                            tu
-                        case (_, rt) =>
+                        case (svt, rtmerge, _) =>
                             /*
-                             * In other cases, we always use the result type
+                             * In other cases, we always use the smallest type
                              */
-                            rt
+                            if (TypeLattice.leq(env, svt, rtmerge)) {
+                                svt
+                            } else if (TypeLattice.leq(env, rtmerge, svt)) {
+                                rtmerge
+                            } else {
+                                TBottom
+                            }
                     }
 
                     //println("Result: "+res)
@@ -648,29 +656,29 @@ object TypeFlow {
                     }
 
                     v1 match {
-                        case sv: CFGSimpleVariable =>
+                        case v: CFGSimpleVariable =>
                             errorKind("variable")
-                            val refTyp = refineType(vtyp, etyp)
                             if (refine) {
-                                env = env.inject(sv, refTyp)
+                                mergeTypesToVar(v, etyp, false)
+                            } else {
+                                etyp
                             }
-                            refTyp
 
                         case v: CFGArrayEntry =>
                             errorKind("array entry")
-                            val refTyp = refineType(vtyp, etyp)
                             if (refine) {
-                                assign(v, refTyp)
+                                mergeTypesToVar(v, etyp, false)
+                            } else {
+                                etyp
                             }
-                            refTyp
 
                         case v: CFGObjectProperty =>
                             errorKind("object property")
-                            val refTyp = refineType(vtyp, etyp)
                             if (refine) {
-                                assign(v, refTyp)
+                                mergeTypesToVar(v, etyp, false)
+                            } else {
+                                etyp
                             }
-                            refTyp
 
                         case _ =>
                             if (!silent && (vtypCheck != TAny || Main.verbosity > 0)) {
@@ -735,83 +743,110 @@ object TypeFlow {
                     TBoolean
             }
 
-            def assign(v: CFGVariable, ext: Type): Unit = {
+            def assign(v: CFGVariable, ext: Type): Type =
+                mergeTypesToVar(v, ext, true);
+
+            def mergeTypesToVar(v: CFGVariable, ext: Type, limitDepth: Boolean): Type = {
                 // we compute the type that the base variable should have
 
-                def computeTypes(sv: CFGSimpleValue, ct: Type, rt: Type, dn: Int): (CFGSimpleVariable, Type, Type, Int) = sv match {
+                def computeTypes(sv: CFGSimpleValue, ct: Type, rtmerge: Type, rtoverwr: Type, dn: Int): (CFGSimpleVariable, Type, Type, Type, Int) = sv match {
                     case CFGVariableVar(v) =>
-                        computeTypes(v, TString, TString, dn + 1)
+                        computeTypes(v, TString, TString, TString, dn + 1)
                     case CFGArrayEntry(arr, index) =>
                         typeFromSVR(arr, false) match {
                             case TString =>
                                 // If arr is known to be a string, index must be Int
                                 expOrRef(index, TInt)
-                                computeTypes(arr, TString, TString, dn + 1)
+                                computeTypes(arr, TString, TString, TString, dn + 1)
                             case to: ObjectType =>
                                 Predef.error("TODO: object[index] not yet implemented")
                             case _ =>
                                 expOrRef(index, TString, TInt)
                                 val arrayCheckType = new TArray().setAny(TTop).inject(index, ct);
-                                val arrayResType   = new TArray().inject(index, rt);
-                                computeTypes(arr, arrayCheckType, arrayResType, dn + 1)
+                                val arrayResMergeType     = new TArray().setAny(TBottom).inject(index, rtmerge);
+                                val arrayResOverwrType   = new TArray().inject(index, rtoverwr);
+                                computeTypes(arr, arrayCheckType, arrayResMergeType, arrayResOverwrType, dn + 1)
                         }
                     case CFGNextArrayEntry(arr) =>
-                        val arrayResType   = new TArray().injectAny(rt);
-                        computeTypes(arr, TAnyArray, arrayResType, dn + 1)
+                        val arrayResMergeType     = new TArray().setAny(rtmerge);
+                        val arrayResOverwrType   = new TArray().injectAny(rtoverwr);
+                        computeTypes(arr, TAnyArray, arrayResMergeType, arrayResOverwrType, dn + 1)
                     case CFGObjectProperty(obj, prop) =>
-                        // Object type used to refine
-                        val objCheckRef = new TObjectRef(ObjectId(sv.uniqueID, 1));
+                        // Object type used on CHECK
+                        val objCheckRef = new TObjectRef(ObjectId(sv.uniqueID, 0));
                         env = env.initObjectIfNotExist(objCheckRef.id, None)
                         val objCheck = env.store.lookup(objCheckRef).setAnyField(TTop).injectField(prop, ct, false)
                         env = env.setObject(objCheckRef.id, objCheck)
 
-                        // Object type used to check
-                        val objRefRef = new TObjectRef(ObjectId(sv.uniqueID, 0));
-                        env = env.initObjectIfNotExist(objRefRef.id, None)
-                        val objRef = env.store.lookup(objRefRef).injectField(prop, rt)
-                        env = env.setObject(objRefRef.id, objRef)
+                        // Object type used on MERGE
+                        val objRefMergeRef = new TObjectRef(ObjectId(sv.uniqueID, 1));
+                        env = env.initObjectIfNotExist(objRefMergeRef.id, None)
+                        val objRefMerge = env.store.lookup(objRefMergeRef).setAnyField(TBottom).injectField(prop, rtmerge)
+                        env = env.setObject(objRefMergeRef.id, objRefMerge)
 
-                        computeTypes(obj, objCheckRef, objRefRef, dn + 1)
+                        // Object type used on OVERWRITE
+                        val objRefOverwrRef = new TObjectRef(ObjectId(sv.uniqueID, 1));
+                        env = env.initObjectIfNotExist(objRefOverwrRef.id, None)
+                        val objRefOverwr = env.store.lookup(objRefOverwrRef).injectField(prop, rtoverwr)
+                        env = env.setObject(objRefOverwrRef.id, objRefOverwr)
+
+
+                        computeTypes(obj, objCheckRef, objRefMergeRef, objRefOverwrRef, dn + 1)
                     case svar: CFGSimpleVariable =>
-                        (svar, ct, rt, dn)
+                        (svar, ct, rtmerge, rtoverwr, dn)
                     case _ =>
                         Predef.error("Woops, unexpected CFGVariable inside checktype of!")
 
                 }
 
-                val (svar, ct, rt, depth) = v match {
+                val (svar, ct, rtmerge, rtoverwr, depth) = v match {
                     case CFGArrayEntry(arr, index) =>
                         typeFromSVR(arr, false) match {
                             case TString =>
                                 expOrRef(index, TInt)
-                                computeTypes(arr, TString, TString, 1)
+                                computeTypes(arr, TString, TString, TString, 1)
                             case to: ObjectType =>
                                 Predef.error("TODO: object[index] not yet implemented")
                             case _ =>
                                 expOrRef(index, TInt, TString)
-                                val arrayResType   = new TArray().inject(index, ext);
-                                computeTypes(arr, TAnyArray, arrayResType, 1)
+                                val arrayResMergeType   = new TArray().setAny(TBottom).inject(index, ext);
+                                val arrayResOverwrType  = new TArray().inject(index, ext);
+                                computeTypes(arr, TAnyArray, arrayResMergeType, arrayResOverwrType, 1)
                         }
                     case CFGNextArrayEntry(arr) =>
-                        val arrayResType   = new TArray().injectAny(ext);
-                        computeTypes(arr, TAnyArray, arrayResType, 1)
+                        val arrayResMergeType     = new TArray().setAny(ext);
+                        val arrayResOverwrType   = new TArray().injectAny(ext);
+                        computeTypes(arr, TAnyArray, arrayResMergeType, arrayResOverwrType, 1)
                     case sv: CFGSimpleVariable =>
-                        (sv, TTop, ext, 0)
+                        (sv, TTop, ext, ext, 0)
                     case CFGVariableVar(v) =>
-                        computeTypes(v, TString, TString, 0)
+                        computeTypes(v, TString, TString, TString, 0)
                     case CFGObjectProperty(obj, prop) =>
-                        val objRefType = new TObjectRef(ObjectId(v.uniqueID, 0));
-                        env = env.setStore(env.store.initIfNotExist(objRefType.id, None))
-                        env = env.setStore(env.store.set(objRefType.id, env.store.lookup(objRefType).injectField(prop, ext)))
-                        computeTypes(obj, TAnyObject, objRefType, 0)
+                        val objRefMergeType = new TObjectRef(ObjectId(v.uniqueID, 0));
+                        env = env.initObjectIfNotExist(objRefMergeType.id, None)
+                        env = env.setObject(objRefMergeType.id, env.store.lookup(objRefMergeType).setAnyField(TBottom).injectField(prop, ext))
+
+                        val objRefOverwrType = new TObjectRef(ObjectId(v.uniqueID, 0));
+                        env = env.initObjectIfNotExist(objRefOverwrType.id, None)
+                        env = env.setObject(objRefOverwrType.id, env.store.lookup(objRefOverwrType).injectField(prop, ext))
+
+                        computeTypes(obj, TAnyObject, objRefMergeType, objRefOverwrType, 0)
                     case _ =>
                         Predef.error("Woot, not complex? "+v)
                 }
                 // We can check for that type, without refining it with ct
                 //println("Checking "+svar+" against "+ct)
                 expNoRef(svar, ct)
-                // We now need to refine the type with rt
-                env = env.inject(svar, refineTypeDepthLimit(typeFromSVR(svar, false), rt, depth))
+                // We now need to merge the types
+                val t = if (limitDepth) {
+                    mergeTypes(typeFromSVR(svar, false), rtmerge, rtoverwr, depth)
+                } else {
+                    mergeTypes(typeFromSVR(svar, false), rtmerge, rtoverwr, -1)
+                }
+
+                env = env.inject(svar, t)
+
+                t
             }
 
             def functionSymbolToFunctionType(fs: FunctionSymbol): FunctionType = {
