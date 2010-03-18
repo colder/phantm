@@ -8,10 +8,10 @@ import analyzer.Symbols._
 import analyzer.Types._
 
 object TypeFlow {
-    case object TypeLattice extends Lattice[TypeEnvironment] {
+    case object TypeLattice extends Lattice {
         type E = Type
 
-        def leq(tex: TypeEnvironment, tey: TypeEnvironment, x : Type, y : Type): Boolean = (x,y) match {
+        def leq(x : Type, y : Type): Boolean = (x,y) match {
             case (x, y) if x == y => true
 
             case (TBottom, _) => true
@@ -21,8 +21,8 @@ object TypeFlow {
             case (TFalse, TBoolean) => true
             case (t1: TObjectRef, TAnyObject) => true
             case (t1: TObjectRef, t2: TObjectRef) =>
-                val r1 = tex.store.lookup(t1)
-                val r2 = tey.store.lookup(t2)
+                val r1 = t1.realObject
+                val r2 = t2.realObject
 
                 val classesMatch = (r1, r2) match {
                     case (r1: TRealClassObject, r2: TRealClassObject) =>
@@ -33,26 +33,26 @@ object TypeFlow {
                         true
                 }
 
-                classesMatch && leq(tex, tey, r1.globalType, r2.globalType) && ((r1.fields.keySet ++ r2.fields.keySet) forall (k =>
-                    TypeLattice.leq(tex, tey, r1.lookupField(k), r1.lookupField(k))))
+                classesMatch && (r1.globalType leq r2.globalType) && ((r1.fields.keySet ++ r2.fields.keySet) forall (k =>
+                    (r1.lookupField(k) leq r1.lookupField(k))))
 
             case (t1: TArray, t2: TArray) =>
-                leq(tex, tey, t1.globalType, t2.globalType) && ((t1.entries.keySet ++ t2.entries.keySet) forall (k =>
-                    TypeLattice.leq(tex, tey, t1.lookup(k), t2.lookup(k))))
+                (t1.globalType leq t2.globalType) && ((t1.entries.keySet ++ t2.entries.keySet) forall (k =>
+                    (t1.lookup(k) leq t2.lookup(k))))
 
             case (t1: TUnion, t2: TUnion) =>
-                t1.types forall { x => t2.types.exists { y => leq(tex, tey, x, y) } }
+                t1.types forall { x => t2.types.exists { y => x leq y } }
             case (t1, t2: TUnion) =>
-                t2.types exists { x => leq(tex, tey, t1, x) }
+                t2.types exists { x => t1 leq x }
             case (t1: TUnion, t2) =>
-                t1.types forall { x => leq(tex, tey, x, t2) }
+                t1.types forall { x => x leq t2 }
             case _ => false
         }
 
         val top = TTop
         val bottom = TBottom
 
-        def join(x : Type, y : Type): Type = (x,y) match {
+        def join(x: Type, y: Type): Type = (x,y) match {
             case (TTop, _) => TTop
             case (_, TTop) => TTop
 
@@ -110,8 +110,76 @@ object TypeFlow {
             case (t1, t2) => TUnion(t1, t2)
         }
 
-        // unused
-        def meet(x : Type, y : Type) = x
+        def meet(x : Type, y : Type): Type = (x,y) match {
+            case (TTop, _) => y
+            case (_, TTop) => x
+
+            case (TBottom, _) => TBottom
+            case (_, TBottom) => TBottom
+
+            case (TAny, _: ConcreteType) => y
+            case (_: ConcreteType, TAny) => x
+
+            case (TAny, tu: TUnion) =>
+                if (!(tu.types contains TUninitialized)) {
+                    tu
+                } else {
+                    TBottom
+                }
+            case (tu: TUnion, TAny) =>
+                if (!(tu.types contains TUninitialized)) {
+                    tu
+                } else {
+                    TBottom
+                }
+
+            case (t1, t2) if t1 == t2 => t1
+
+            // Arrays
+            case (t1: TArray, t2: TArray) =>
+                var newEntries = Map[String, Type]();
+
+                for (k <- t1.entries.keySet ++ t2.entries.keySet) {
+                    newEntries = newEntries.update(k, t1.lookup(k) intersect t2.lookup(k))
+                }
+
+                new TArray(newEntries, t1.globalType intersect t2.globalType)
+
+
+            // Unions
+            case (tu1: TUnion, tu2: TUnion) =>
+                var resUnion = Set[Type]();
+
+                // we take the intersection
+                for (t1 <- tu1.types) {
+                   if (t1 leq tu2) {
+                       resUnion = resUnion + t1;
+                   }
+                }
+                for (t2 <- tu2.types) {
+                   if (t2 leq tu1) {
+                       resUnion = resUnion + t2;
+                   }
+                }
+
+                if (resUnion.size == 0) {
+                    TBottom
+                } else if (resUnion.size == 1) {
+                    resUnion.toList.head
+                } else {
+                    TUnion(resUnion)
+                }
+
+            // Arbitrary types
+            case (t1, t2) =>
+                if (t1 leq t2) {
+                    t1
+                } else if (t2 leq t1) {
+                    t2
+                } else {
+                    TBottom
+                }
+        }
     }
 
     object BaseTypeEnvironment extends TypeEnvironment(HashMap[CFGSimpleVariable, Type](), None, new ObjectStore) {
@@ -212,7 +280,7 @@ object TypeFlow {
             var delim = false;
             for ((v, t) <- map) {
                 if (e.map contains v) {
-                    if (!TypeLattice.leq(this, e, t, e.map(v))) {
+                    if (!(t leq e.map(v))) {
                         if (!delim) {
                             println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
                             println("@@@@@@@@@@@@@@@@@ "+vrtx+" @@@@@@@@@@@@@@@@@@@")
@@ -366,7 +434,7 @@ object TypeFlow {
                         case ref: TObjectRef =>
                             val ro = env.store.lookup(ref)
                             env = env.setStore(env.store.set(ObjectId(cl.uniqueID, 0), ro))
-                            new TObjectRef(ObjectId(cl.uniqueID, 0))
+                            new TObjectRef(ObjectId(cl.uniqueID, 0), env.store)
                         case _ =>
                             TAnyObject
                     }
@@ -509,7 +577,7 @@ object TypeFlow {
             def getObject(node: CFGStatement, ocs: Option[ClassSymbol]): ObjectType = {
                 val id = ObjectId(node.uniqueID, 0);
                 env = env.setStore(env.store.initIfNotExist(id, ocs))
-                new TObjectRef(id)
+                new TObjectRef(id, env.store)
             }
 
             /**
@@ -594,7 +662,7 @@ object TypeFlow {
                             var resUnion = Set[Type]();
 
                             for (svt <- svtu.types) {
-                               if (TypeLattice.leq(env, svt, tumerge)) {
+                               if (svt leq tumerge) {
                                    resUnion = resUnion + svt;
                                }
                             }
@@ -610,9 +678,9 @@ object TypeFlow {
                             /*
                              * In other cases, we always use the smallest type
                              */
-                            if (TypeLattice.leq(env, svt, rtoverwr)) {
+                            if (svt leq rtoverwr) {
                                 svt
-                            } else if (TypeLattice.leq(env, rtoverwr, svt)) {
+                            } else if (rtoverwr leq svt) {
                                 rtoverwr
                             } else {
                                 TBottom
@@ -640,7 +708,7 @@ object TypeFlow {
                     vtypCheck = removeUninit(true)(vtypCheck)
                 }
 
-                if (TypeLattice.leq(env, vtypCheck, etyp)) {
+                if (vtypCheck leq etyp) {
                     uninitToNull(vtyp)
                 } else {
                     def errorKind(kind: String) = {
@@ -649,7 +717,7 @@ object TypeFlow {
                                 notice("Potentially undefined "+kind+": "+stringRepr(v1), v1)
                             } else {
                                 if (vtypCheck != TAny || Main.verbosity > 0) {
-                                    notice("Potential type mismatch: expected: "+typs.toList.map{x => x.toText(env)}.mkString(" or ")+", found: "+vtypCheck.toText(env), v1)
+                                    notice("Potential type mismatch: expected: "+typs.toList.map(_ toText).mkString(" or ")+", found: "+vtypCheck.toText, v1)
                                 }
                             }
                         }
@@ -682,7 +750,7 @@ object TypeFlow {
 
                         case _ =>
                             if (!silent && (vtypCheck != TAny || Main.verbosity > 0)) {
-                                notice("Potential type mismatch: expected: "+typs.toList.map{x => x.toText(env)}.mkString(" or ")+", found: "+vtypCheck.toText(env), v1)
+                                notice("Potential type mismatch: expected: "+typs.toList.map(_ toText).mkString(" or ")+", found: "+vtypCheck.toText, v1)
                             }
                            etyp
 
@@ -773,19 +841,19 @@ object TypeFlow {
                         computeTypes(arr, TAnyArray, arrayResMergeType, arrayResOverwrType, dn + 1)
                     case CFGObjectProperty(obj, prop) =>
                         // Object type used on CHECK
-                        val objCheckRef = new TObjectRef(ObjectId(sv.uniqueID, 0));
+                        val objCheckRef = new TObjectRef(ObjectId(sv.uniqueID, 0), env.store);
                         env = env.initObjectIfNotExist(objCheckRef.id, None)
                         val objCheck = env.store.lookup(objCheckRef).setAnyField(TTop).injectField(prop, ct, false)
                         env = env.setObject(objCheckRef.id, objCheck)
 
                         // Object type used on MERGE
-                        val objRefMergeRef = new TObjectRef(ObjectId(sv.uniqueID, 1));
+                        val objRefMergeRef = new TObjectRef(ObjectId(sv.uniqueID, 1), env.store);
                         env = env.initObjectIfNotExist(objRefMergeRef.id, None)
                         val objRefMerge = env.store.lookup(objRefMergeRef).setAnyField(TBottom).injectField(prop, rtmerge)
                         env = env.setObject(objRefMergeRef.id, objRefMerge)
 
                         // Object type used on OVERWRITE
-                        val objRefOverwrRef = new TObjectRef(ObjectId(sv.uniqueID, 1));
+                        val objRefOverwrRef = new TObjectRef(ObjectId(sv.uniqueID, 1), env.store);
                         env = env.initObjectIfNotExist(objRefOverwrRef.id, None)
                         val objRefOverwr = env.store.lookup(objRefOverwrRef).injectField(prop, rtoverwr)
                         env = env.setObject(objRefOverwrRef.id, objRefOverwr)
@@ -822,11 +890,11 @@ object TypeFlow {
                     case CFGVariableVar(v) =>
                         computeTypes(v, TString, TString, TString, 0)
                     case CFGObjectProperty(obj, prop) =>
-                        val objRefMergeType = new TObjectRef(ObjectId(v.uniqueID, 0));
+                        val objRefMergeType = new TObjectRef(ObjectId(v.uniqueID, 0), env.store);
                         env = env.initObjectIfNotExist(objRefMergeType.id, None)
                         env = env.setObject(objRefMergeType.id, env.store.lookup(objRefMergeType).setAnyField(TBottom).injectField(prop, ext))
 
-                        val objRefOverwrType = new TObjectRef(ObjectId(v.uniqueID, 0));
+                        val objRefOverwrType = new TObjectRef(ObjectId(v.uniqueID, 0), env.store);
                         env = env.initObjectIfNotExist(objRefOverwrType.id, None)
                         env = env.setObject(objRefOverwrType.id, env.store.lookup(objRefOverwrType).injectField(prop, ext))
 
@@ -862,7 +930,7 @@ object TypeFlow {
                                 if (i >= tf.args.length) {
                                     ret = false
                                 } else {
-                                    if (!TypeLattice.leq(env, typeFromSV(fcall_params(i)), tf.args(i)._1)) {
+                                    if (!(typeFromSV(fcall_params(i)) leq tf.args(i)._1)) {
                                         //notice("Prototype mismatch because "+fcall.params(i)+"("+typeFromSV(fcall.params(i))+") </: "+args(i)._1) 
 
                                         ret = false;
@@ -1044,7 +1112,7 @@ object TypeFlow {
             scope match {
                 case ms: MethodSymbol =>
                     baseEnv = baseEnv.setStore(baseEnv.store.initIfNotExist(ObjectId(-1, 0), Some(ms.cs)))
-                    injectPredef("this", new TObjectRef(ObjectId(-1, 0)))
+                    injectPredef("this", new TObjectRef(ObjectId(-1, 0), baseEnv.store))
                 case _ =>
             }
 
