@@ -201,7 +201,7 @@ object TypeFlow {
 
                     for (k <- map.keySet ++ e.map.keySet) {
                         newmap = newmap.update(k,
-                            map.getOrElse(k, TUninitialized) union e.map.getOrElse(k, TUninitialized))
+                            map.getOrElse(k, TTop) union e.map.getOrElse(k, TTop))
                     }
 
                     new TypeEnvironment(newmap, scope, te.store union store)
@@ -452,7 +452,7 @@ object TypeFlow {
                     }
 
                 case id: CFGSimpleVariable =>
-                  env.lookup(id).getOrElse(TUninitialized)
+                  env.lookup(id).getOrElse(TTop)
 
                 case CFGArrayEntry(ar, ind) =>
                     expGeneric(ind, refine, TString, TInt)
@@ -518,12 +518,12 @@ object TypeFlow {
              * rtypmerge: This type will be used to merge if it matches the kind of vtyp
              *  i.e. $a = array("foo");
              *       $a[1] = 2;
-             * rtypOverwr: This type will be used in case vtyp is incompatible
+             * rtypoverwr: This type will be used in case vtyp is incompatible
              *  i.e. $a = 2;
              *       $a[1] = 2;
              */
-            def mergeTypes(vtyp: Type, rtypmerge: Type, rtypOverwr: Type, limit: Int): Type = {
-                //println("Refining type "+vtyp+" to "+rtyp +" with limit "+limit)
+            def mergeTypes(vtyp: Type, rtypmerge: Type, rtypoverwr: Type, limit: Int): Type = {
+                //println("Merging type "+vtyp+" to "+rtypmerge +" OR "+rtypoverwr +" with limit "+limit)
                 def mergeArrays(svta: TArray, tamerge: TArray, taOverwr: TArray): Type = {
                     //println("Merging "+svta+" with "+ta)
                     var newEntries = Map[String, Type]();
@@ -544,7 +544,7 @@ object TypeFlow {
                      */
                     for ((k, newtmerge) <- tamerge.entries) {
 
-                        val newtOverwr = taOverwr.entries.getOrElse(k, Predef.error("Inconsistent merge/Overwr structure"))
+                        val newtOverwr = taOverwr.entries.getOrElse(k, Predef.error("Inconsistent merge/overwr structure"))
 
                         newEntries.get(k) match {
                             case Some(oldt) =>
@@ -565,9 +565,9 @@ object TypeFlow {
                 }
 
                 if (limit == 0) {
-                    rtypOverwr
+                    rtypoverwr
                 } else { 
-                    val res = (vtyp, rtypmerge, rtypOverwr) match {
+                    val res = (vtyp, rtypmerge, rtypoverwr) match {
                         case (svta: TArray, tamerge: TArray, taOverwr: TArray) =>
                             /*
                              * If we have two arrays, we merge them specially
@@ -606,14 +606,14 @@ object TypeFlow {
                             } else {
                                 TUnion(resUnion)
                             }
-                        case (svt, rtmerge, _) =>
+                        case (svt, rtmerge, rtoverwr) =>
                             /*
                              * In other cases, we always use the smallest type
                              */
-                            if (TypeLattice.leq(env, svt, rtmerge)) {
+                            if (TypeLattice.leq(env, svt, rtoverwr)) {
                                 svt
-                            } else if (TypeLattice.leq(env, rtmerge, svt)) {
-                                rtmerge
+                            } else if (TypeLattice.leq(env, rtoverwr, svt)) {
+                                rtoverwr
                             } else {
                                 TBottom
                             }
