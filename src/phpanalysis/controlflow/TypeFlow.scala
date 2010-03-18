@@ -589,7 +589,7 @@ object TypeFlow {
                             /*
                              * We got "expected x or y, found w or z".
                              * The idea is to compute the intersection of both unions.
-                             * If empty, the best bet is the union itself
+                             * If empty, the best bet is TBottom
                              */
                             var resUnion = Set[Type]();
 
