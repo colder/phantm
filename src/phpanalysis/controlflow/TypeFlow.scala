@@ -381,10 +381,7 @@ object TypeFlow {
         def apply(node : CFGStatement, envInit : TypeEnvironment) : TypeEnvironment = {
             var env = envInit
 
-            def typeFromSV(sv: CFGSimpleValue): Type =
-                typeFromSVR(sv, true)
-
-            def typeFromSVR(sv: CFGSimpleValue, refine: Boolean): Type = sv match {
+            def typeFromSV(sv: CFGSimpleValue): Type = sv match {
                 case CFGLong(value)         => TInt
                 case CFGFloat(value)        => TFloat
                 case CFGString(value)       => TString
@@ -396,7 +393,7 @@ object TypeFlow {
                 case CFGThis()              => getObject(node, env.scope)
                 case CFGEmptyArray()        => new TArray()
                 case CFGInstanceof(lhs, cl) => TBoolean
-                case CFGArrayNext(ar)       => typeFromSVR(ar, refine)
+                case CFGArrayNext(ar)       => typeFromSV(ar)
                 case CFGArrayCurElement(id: CFGSimpleVariable) =>
                     env.lookup(id) match {
                         case Some(TAnyArray) =>
@@ -415,7 +412,6 @@ object TypeFlow {
                 case CFGArrayCurElement(ar) => TAny
                 case CFGArrayCurKey(ar)     => TString union TInt
                 case CFGArrayCurIsValid(ar) =>
-                    expGeneric(ar, refine, TAnyArray)
                     TBoolean
                 case CFGNew(cr, params) => cr match {
                     case parser.Trees.StaticClassRef(_, _, id) =>
@@ -430,7 +426,7 @@ object TypeFlow {
                         getObject(node, None)
                 }
                 case cl @ CFGClone(obj) =>
-                    expGeneric(obj, refine, TAnyObject) match {
+                    typeFromSV(obj) match {
                         case ref: TObjectRef =>
                             val ro = env.store.lookup(ref)
                             env = env.setStore(env.store.set(ObjectId(cl.uniqueID, 0), ro))
@@ -442,7 +438,7 @@ object TypeFlow {
                     GlobalSymbols.lookupFunction(id.value) match {
                         case Some(fs) =>
                                 if (collectAnnotations) {
-                                    val ft = new TFunction(args.map(a => (typeFromSVR(a, refine), false)), TBottom)
+                                    val ft = new TFunction(args.map(a => (typeFromSV(a), false)), TBottom)
                                     AnnotationsStore.collectFunction(fs, ft);
                                 }
                                 checkFCalls(fcall.params, List(functionSymbolToFunctionType(fs)), fcall)
@@ -457,8 +453,8 @@ object TypeFlow {
                             }
                     }
                 case mcall @ CFGMethodCall(r, mid, args) =>
-                    expGeneric(r, refine, TAnyObject) match {
-                        case (or: TObjectRef) =>
+                    typeFromSV(r) match {
+                        case or: TObjectRef =>
                             val ro = env.store.lookup(or);
                             ro.lookupMethod(mid.value, env.scope) match {
                                 case Some(mt) =>
@@ -501,7 +497,7 @@ object TypeFlow {
                     TAny // TODO
 
                 case tern @ CFGTernary(iff, then, elze) =>
-                    typeFromSVR(then, refine) union typeFromSVR(elze, refine)
+                    typeFromSV(then) union typeFromSV(elze)
 
                 case CFGCast(typ, v) =>
                     /*
@@ -523,55 +519,46 @@ object TypeFlow {
                   env.lookup(id).getOrElse(TTop)
 
                 case CFGArrayEntry(ar, ind) =>
-                    expGeneric(ind, refine, TString, TInt)
-                    expGeneric(ar, refine, TAnyArray) match {
+                    typeFromSV(ar) match {
                         case t: TArray =>
                             t.lookup(ind)
-                        case TBottom =>
-                            TBottom
                         case _ =>
-                            TAny
+                            TBottom
                     }
 
                 case op @ CFGObjectProperty(obj, p) =>
-                    expGeneric(p, refine, TString)
-                    expGeneric(obj, refine, TAnyObject) match {
+                    typeFromSV(obj) match {
                         case TAnyObject =>
-                            TAny
+                            TTop
                         case or: TObjectRef =>
                             env.store.lookup(or).lookupField(p)
-                        case TBottom =>
-                            TBottom
                         case u: TUnion =>
                             u.types.map { _ match {
                                 case TAnyObject =>
-                                    TAny
+                                    TTop
                                 case or: TObjectRef =>
                                     env.store.lookup(or).lookupField(p)
                                 case _ =>
                                     TBottom
                             }}.reduceLeft(_ union _)
-                        case t =>
-                            TAny
+                        case _ =>
+                            TBottom
                     }
                 case CFGNextArrayEntry(arr) =>
-                    expGeneric(arr, refine, TAnyArray) match {
+                    typeFromSV(arr) match {
                         case t: TArray =>
                             t.globalType
-                        case TBottom =>
-                            TBottom
                         case _ =>
-                            println("woot! this is inconsistent!")
-                            TAny
+                            TBottom
                    }
 
                 case vv @ CFGVariableVar(v) =>
                     notice("Dynamic variable ignored", vv)
-                    expGeneric(v, refine, TString);
+                    TTop
 
                 case u =>
                   println("Unknown simple value: "+u)
-                  TAny
+                  TTop
             }
 
             def getObject(node: CFGStatement, ocs: Option[ClassSymbol]): ObjectType = {
@@ -580,14 +567,8 @@ object TypeFlow {
                 new TObjectRef(id, env.store)
             }
 
-            def expNoRef(v1: CFGSimpleValue, typs: Type*): Type =
-                expGeneric(v1, false, typs: _*)
-
-            def expOrRef(v1: CFGSimpleValue, typs: Type*): Type =
-                expGeneric(v1, true, typs: _*)
-
-            def expGeneric(v1: CFGSimpleValue, refine: Boolean, typs: Type*): Type = {
-                val vtyp = typeFromSVR(v1, refine)
+            def expOrRef(v1: CFGSimpleValue, typs: Type*): Type = {
+                val vtyp = typeFromSV(v1)
                 var vtypCheck = vtyp
                 val etyp = typs reduceLeft (_ join _)
 
@@ -614,33 +595,27 @@ object TypeFlow {
                     v1 match {
                         case sv: CFGSimpleVariable =>
                             errorKind("variable")
-                            if (refine) {
-                                val t = etyp intersect vtyp
-                                env = env.inject(sv, t)
-                                t
-                            } else {
-                                etyp
-                            }
+                            val t = etyp intersect vtyp
+                            env = env.inject(sv, t)
+                            t
 
                         case v: CFGArrayEntry =>
                             errorKind("array entry")
-                            if (refine) {
-                                val t = etyp intersect vtyp
-                                env = env.inject(extractSVar(v), t)
-                                t
-                            } else {
-                                etyp
-                            }
+                            val (sv, evtyp) = getCheckType(v, etyp)
+                            val svtyp = typeFromSV(sv)
+
+                            val t = evtyp intersect svtyp
+                            env = env.inject(sv, t)
+                            t
 
                         case v: CFGObjectProperty =>
                             errorKind("object property")
-                            if (refine) {
-                                val t = etyp intersect vtyp
-                                env = env.inject(extractSVar(v), t)
-                                t
-                            } else {
-                                etyp
-                            }
+                            val (sv, evtyp) = getCheckType(v, etyp)
+                            val svtyp = typeFromSV(sv)
+
+                            val t = evtyp intersect svtyp
+                            env = env.inject(sv, t)
+                            t
 
                         case _ =>
                             if (!silent && (vtypCheck != TAny || Main.verbosity > 0)) {
@@ -705,65 +680,81 @@ object TypeFlow {
                     TBoolean
             }
 
-            def extractSVar(sv: CFGSimpleValue): CFGSimpleVariable = sv match {
+            def getCheckType(sv: CFGSimpleValue, ct: Type): (CFGSimpleVariable, Type) = sv match {
                 case CFGVariableVar(v) =>
-                    extractSVar(v)
+                    getCheckType(v, TString)
                 case CFGArrayEntry(arr, index) =>
-                    extractSVar(arr)
+                    typeFromSV(arr) match {
+                        case TString =>
+                            // If arr is known to be a string, index must be Int
+                            expOrRef(index, TInt)
+                            getCheckType(arr, TString)
+                        case to: ObjectType =>
+                            Predef.error("TODO: object[index] not yet implemented")
+                        case _ =>
+                            expOrRef(index, TString, TInt)
+                            val newct = if (ct == TTop) {
+                                TAnyArray
+                            } else {
+                                new TArray().setAny(TTop).inject(index, ct)
+                            }
+                            getCheckType(arr, newct)
+                    }
                 case CFGNextArrayEntry(arr) =>
-                    extractSVar(arr)
+                    getCheckType(arr, TAnyArray)
                 case CFGObjectProperty(obj, prop) =>
-                    extractSVar(obj)
+                    // IGNORE for now, focus on arrays
+                    Predef.error("TODO: Object->")
                 case svar: CFGSimpleVariable =>
-                    svar
+                    (svar, ct)
                 case _ =>
                     Predef.error("Woops, unexpected CFGVariable inside checktype of!")
 
             }
-            def assign(v: CFGVariable, ext: Type): Type = {
-                // we compute the type that the base variable should have
 
-                def getCheckType(sv: CFGSimpleValue, ct: Type): (CFGSimpleVariable, Type) = sv match {
+            def assign(v: CFGVariable, ext: Type): Type = {
+                val (svar, ct) = getCheckType(v, TTop)
+
+                //println("Assigning "+v+" to "+ext)
+                //println("Checking "+svar+"("+typeFromSV(svar)+") against "+ct)
+                val reft = expOrRef(svar, ct)
+                //println("After refinement: "+reft)
+
+                // Now, we need to get down in that variable and affect the type as the assign require
+                def backPatchType(sv: CFGSimpleValue, typ: Type): Type = sv match {
                     case CFGVariableVar(v) =>
-                        getCheckType(v, TString)
+                        backPatchType(v, TString)
                     case CFGArrayEntry(arr, index) =>
-                        typeFromSVR(arr, false) match {
-                            case TString =>
-                                // If arr is known to be a string, index must be Int
-                                expOrRef(index, TInt)
-                                getCheckType(arr, TString)
-                            case to: ObjectType =>
-                                Predef.error("TODO: object[index] not yet implemented")
+                        val t = typeFromSV(arr) match {
+                            case ta: TArray =>
+                                ta.inject(index, typ)
                             case _ =>
-                                expOrRef(index, TString, TInt)
-                                val newct = if (ct == TTop) {
-                                    TAnyArray
-                                } else {
-                                    new TArray().setAny(TTop).inject(index, ct)
-                                }
-                                getCheckType(arr, newct)
+                                new TArray().inject(index, typ)
                         }
+                        backPatchType(arr, t)
                     case CFGNextArrayEntry(arr) =>
-                        getCheckType(arr, TAnyArray)
+                        val t = typeFromSV(arr) match {
+                            case ta: TArray =>
+                                ta.setAny(typ union ta.globalType)
+                            case _ =>
+                                new TArray().setAny(typ union TUninitialized)
+                        }
+                        backPatchType(arr, t)
                     case CFGObjectProperty(obj, prop) =>
                         // IGNORE for now, focus on arrays
                         Predef.error("TODO: Object->")
                     case svar: CFGSimpleVariable =>
-                        (svar, ct)
+                        typ
                     case _ =>
                         Predef.error("Woops, unexpected CFGVariable inside checktype of!")
-
                 }
 
-                val (svar, ct) = getCheckType(v, TTop)
-
-                println("Checking "+svar+"("+typeFromSVR(svar, false)+") against "+ct)
-
-                val reft = expOrRef(svar, ct)
-
-                println("After refinement: "+reft)
-
-                reft
+                env = env.inject(svar, reft)
+                //println("Refined type: "+reft)
+                val rest = backPatchType(v, ext)
+                //println("Backpatched type: "+rest)
+                env = env.inject(svar, rest)
+                rest
             }
 
             def functionSymbolToFunctionType(fs: FunctionSymbol): FunctionType = {
