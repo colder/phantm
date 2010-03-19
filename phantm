@@ -8,4 +8,10 @@ then
   FILENAME=${BASH_REMATCH[2]}
 fi
 
+echo ''
+echo '       / __ \/ /_  ____ _____  / /_____ ___' 
+echo '   -- / /_/ / __ \/ __ `/ __ \/ __/ __ `__ \  --'
+echo '  -- / ____/ / / / /_/ / / / / /_/ / / / / / --'
+echo ' -- /_/   /_/ /_/\__,_/_/ /_/\__/_/ /_/ /_/ --'
+echo ''
 scala -classpath classes:lib/cup/dist/java-cup-11a-runtime.jar phpanalysis.Main $* 2>&1 | tee ${FILENAME}--${TIMESTAMP}.out | tee last.out | less -eRFEX
