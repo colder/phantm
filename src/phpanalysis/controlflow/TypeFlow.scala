@@ -21,20 +21,24 @@ object TypeFlow {
             case (TFalse, TBoolean) => true
             case (t1: TObjectRef, TAnyObject) => true
             case (t1: TObjectRef, t2: TObjectRef) =>
-                val r1 = t1.realObject
-                val r2 = t2.realObject
+                if (t1.id == t2.id) {
+                    true
+                } else {
+                    val r1 = t1.realObject
+                    val r2 = t2.realObject
 
-                val classesMatch = (r1, r2) match {
-                    case (r1: TRealClassObject, r2: TRealClassObject) =>
-                        r1.cl isSubtypeOf r2.cl
-                    case (r1: TRealObject, r2: TRealClassObject) =>
-                        false
-                    case _ =>
-                        true
+                    val classesMatch = (r1, r2) match {
+                        case (r1: TRealClassObject, r2: TRealClassObject) =>
+                            r1.cl isSubtypeOf r2.cl
+                        case (r1: TRealObject, r2: TRealClassObject) =>
+                            false
+                        case _ =>
+                            true
+                    }
+
+                    classesMatch && (r1.globalType leq r2.globalType) && ((r1.fields.keySet ++ r2.fields.keySet) forall (k =>
+                        (r1.lookupField(k) leq r1.lookupField(k))))
                 }
-
-                classesMatch && (r1.globalType leq r2.globalType) && ((r1.fields.keySet ++ r2.fields.keySet) forall (k =>
-                    (r1.lookupField(k) leq r1.lookupField(k))))
 
             case (t1: TArray, t2: TArray) =>
                 (t1.globalType leq t2.globalType) && ((t1.entries.keySet ++ t2.entries.keySet) forall (k =>
@@ -91,9 +95,12 @@ object TypeFlow {
             case (TAnyObject, t: TObjectRef) => TAnyObject
             case (t: TObjectRef, TAnyObject) => TAnyObject
             case (t1: TObjectRef, t2: TObjectRef) =>
-                // We have a TUnion here since we are dealing
-                // with objects of different refs
-                TUnion(t1, t2)
+                if (t1.id != t2.id) {
+                    // Different ids -> union
+                    TUnion(t1, t2)
+                } else {
+                    t1
+                }
 
             // Arrays
             case (TAnyArray, t: TArray) => TAnyArray
@@ -500,10 +507,6 @@ object TypeFlow {
                     typeFromSV(then) union typeFromSV(elze)
 
                 case CFGCast(typ, v) =>
-                    /*
-                     * TODO: not all cast from-to types are accepted, we could
-                     * check for those!
-                     */
                     import parser.Trees._
                     typ match {
                         case CastUnset => TNull
@@ -704,7 +707,7 @@ object TypeFlow {
                     getCheckType(arr, TAnyArray)
                 case CFGObjectProperty(obj, prop) =>
                     // IGNORE for now, focus on arrays
-                    Predef.error("TODO: Object->")
+                    getCheckType(obj, TAnyObject)
                 case svar: CFGSimpleVariable =>
                     (svar, ct)
                 case _ =>
@@ -741,8 +744,15 @@ object TypeFlow {
                         }
                         backPatchType(arr, t)
                     case CFGObjectProperty(obj, prop) =>
-                        // IGNORE for now, focus on arrays
-                        Predef.error("TODO: Object->")
+                        val t = typeFromSV(obj) match {
+                            case to: TObjectRef =>
+                                val ro = to.realObject.injectField(prop, typ union to.realObject.lookupField(prop))
+                                env = env.setObject(to.id, ro)
+                                to
+                            case _ =>
+                                TAnyObject
+                        }
+                        backPatchType(obj, t)
                     case svar: CFGSimpleVariable =>
                         typ
                     case _ =>
