@@ -21,6 +21,7 @@ object Main {
     var displayProgress    = false;
     var focusOnMainFiles   = false;
     var onlyLint           = false;
+    var onlyMain           = false;
     var includePaths       = List(".");
     var mainDir            = "./"
     var apis: List[String] = Nil;
@@ -66,6 +67,9 @@ object Main {
                 handleArgs(xs)
             case "--htmlcolors" :: xs =>
                 colors = "html";
+                handleArgs(xs)
+            case "--onlymain" :: xs =>
+                onlyMain = true
                 handleArgs(xs)
             case "--focus" :: xs =>
                 focusOnMainFiles = true
@@ -243,6 +247,7 @@ object Main {
         println("         --exportAPI <path>     Use the type analysis to output a likely API");
         println("         --progress             Display analysis progress");
         println("         --focus                Focus on main files and ignore errors in dependencies");
+        println("         --onlymain             Only do analysis on the main scope");
         println("         --exportAPI <path>     Export generated API to <path>");
         println("         --lint                 Stop the analysis after the parsing");
     }

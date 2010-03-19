@@ -29,7 +29,7 @@ case class CFGChecks(node: Tree) extends ASTTraversal[CheckContext](node, CheckC
                 tfa.analyze
 
 
-            case FunctionDecl(name, args, retref, hint, body) =>
+            case FunctionDecl(name, args, retref, hint, body) if !Main.onlyMain =>
                 name.getSymbol match {
                     case fs: Symbols.FunctionSymbol =>
                         display("Converting function "+name.value+"...")
@@ -42,7 +42,7 @@ case class CFGChecks(node: Tree) extends ASTTraversal[CheckContext](node, CheckC
                 }
 
 
-            case ClassDecl(name, flags, parent, interfaces, methods, static_props, props, consts) =>
+            case ClassDecl(name, flags, parent, interfaces, methods, static_props, props, consts) if !Main.onlyMain =>
                 name.getSymbol match {
                     case cl: Symbols.ClassSymbol =>
                         for (m <- methods) if (m.body != None) {
