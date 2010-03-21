@@ -372,8 +372,6 @@ object TypeFlow {
                 TNull
             case tu: TUnion =>
                 tu.types.map { uninitToNull } reduceLeft (_ union _)
-            case ta: TArray =>
-                new TArray(Map[String, Type]() ++ ta.entries.map{ e => (e._1, uninitToNull(e._2)) }, uninitToNull(ta.globalType))
             case _ =>
                 t
         }
@@ -578,7 +576,7 @@ object TypeFlow {
                 }
 
                 if (vtypCheck leq etyp) {
-                    uninitToNull(vtyp)
+                    vtyp
                 } else {
                     def errorKind(kind: String) = {
                         if (!silent) {
@@ -813,17 +811,17 @@ object TypeFlow {
             node match {
                 case CFGAssign(vr: CFGVariable, v1) =>
                     val t = expOrRef(v1, TAny)
-                    assign(vr, t)
+                    assign(vr, uninitToNull(t))
 
                 case CFGAssignUnary(vr: CFGVariable, op, v1) =>
                     // We want to typecheck v1 according to OP
                     val t = typeFromUnOP(op, v1);
-                    assign(vr, t)
+                    assign(vr, uninitToNull(t))
 
                 case CFGAssignBinary(vr: CFGVariable, v1, op, v2) =>
                     // We want to typecheck v1/v2 according to OP
                     val t = typeFromBinOP(v1, op, v2)
-                    assign(vr, t)
+                    assign(vr, uninitToNull(t))
 
                 case CFGAssume(v1, op, v2) => op match {
                     case LT | LEQ | GEQ | GT =>
