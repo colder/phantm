@@ -4,6 +4,7 @@
  <constants>
   <!-- internal -->
   <constant name="E_ERROR"><type name="integer" /></constant>
+  <constant name="E_DEPRECATED"><type name="integer" /></constant>
   <constant name="E_RECOVERABLE_ERROR"><type name="integer" /></constant>
   <constant name="E_WARNING"><type name="integer" /></constant>
   <constant name="E_PARSE"><type name="integer" /></constant>
@@ -29411,7 +29412,7 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
   </function>
 
   <function name="ini_set">
-   <return><type name="string" /></return>
+   <return><type name="string" /><type name="int" /></return>
    <args>
     <arg opt="0"><type name="string" /></arg>
     <arg opt="0"><type name="string" /></arg>
