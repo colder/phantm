@@ -16,14 +16,10 @@ object Types {
 
         def leq (t: Type) = TypeLattice.leq(this, t)
         def join (t: Type) = TypeLattice.join(this, t)
-        def meet (t: Type) = TypeLattice.meet(this, t)
 
         def union = join _
-        def intersect = meet _
 
         def equals(t: Type) = t == self;
-
-        def updateStore(te: ObjectStore): Type = this;
 
         def toText = toString
     }
@@ -66,6 +62,7 @@ object Types {
     case class ObjectId(val pos: Int, val offset: Int)
 
     // Stores the ref => Real Objects relashionship
+
     case class ObjectStore(val store: Map[ObjectId, TRealObject]) {
 
         def this() = this(Map[ObjectId, TRealObject]())
@@ -122,6 +119,7 @@ object Types {
         }
     }
 
+
     // Object types exposed to symbols
     abstract class ObjectType extends ConcreteType
 
@@ -150,10 +148,6 @@ object Types {
 
         override def hashCode = {
             id.pos*id.offset
-        }
-
-        override def updateStore(st: ObjectStore) = {
-            new TObjectRef(id, st)
         }
     }
 

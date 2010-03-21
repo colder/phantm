@@ -8,7 +8,7 @@ import analyzer.Symbols._
 import analyzer.Types._
 
 object TypeFlow {
-    case object TypeLattice extends Lattice {
+    case object TypeLattice extends Lattice[TypeEnvironment] {
         type E = Type
 
         def leq(x : Type, y : Type): Boolean = (x,y) match {
@@ -117,75 +117,82 @@ object TypeFlow {
             case (t1, t2) => TUnion(t1, t2)
         }
 
-        def meet(x : Type, y : Type): Type = (x,y) match {
-            case (TTop, _) => y
-            case (_, TTop) => x
+        // For meet we actually require the environment, since object types
+        // will be updated in the store
+        def meet(envInit: TypeEnvironment, x : Type, y : Type): (TypeEnvironment, Type) = {
+            var env = envInit
+            def meetTypes(x: Type, y: Type): Type = (x,y) match {
+                case (TTop, _) => y
+                case (_, TTop) => x
 
-            case (TBottom, _) => TBottom
-            case (_, TBottom) => TBottom
+                case (TBottom, _) => TBottom
+                case (_, TBottom) => TBottom
 
-            case (TAny, _: ConcreteType) => y
-            case (_: ConcreteType, TAny) => x
+                case (TAny, _: ConcreteType) => y
+                case (_: ConcreteType, TAny) => x
 
-            case (TAny, tu: TUnion) =>
-                if (!(tu.types contains TUninitialized)) {
-                    tu
-                } else {
-                    TBottom
-                }
-            case (tu: TUnion, TAny) =>
-                if (!(tu.types contains TUninitialized)) {
-                    tu
-                } else {
-                    TBottom
-                }
+                case (TAny, tu: TUnion) =>
+                    if (!(tu.types contains TUninitialized)) {
+                        tu
+                    } else {
+                        TBottom
+                    }
+                case (tu: TUnion, TAny) =>
+                    if (!(tu.types contains TUninitialized)) {
+                        tu
+                    } else {
+                        TBottom
+                    }
 
-            case (t1, t2) if t1 == t2 => t1
+                case (t1, t2) if t1 == t2 => t1
 
-            // Arrays
-            case (t1: TArray, t2: TArray) =>
-                var newEntries = Map[String, Type]();
+                // Arrays
+                case (t1: TArray, t2: TArray) =>
+                    var newEntries = Map[String, Type]();
 
-                for (k <- t1.entries.keySet ++ t2.entries.keySet) {
-                    newEntries = newEntries.update(k, t1.lookup(k) intersect t2.lookup(k))
-                }
+                    for (k <- t1.entries.keySet ++ t2.entries.keySet) {
+                        newEntries = newEntries.update(k, meetTypes(t1.lookup(k), t2.lookup(k)))
+                    }
 
-                new TArray(newEntries, t1.globalType intersect t2.globalType)
+                    new TArray(newEntries, meetTypes(t1.globalType, t2.globalType))
 
 
-            // Unions
-            case (tu1: TUnion, tu2: TUnion) =>
-                var resUnion = Set[Type]();
+                // Unions
+                case (tu1: TUnion, tu2: TUnion) =>
+                    var resUnion = Set[Type]();
 
-                // we take the intersection
-                for (t1 <- tu1.types) {
-                   if (t1 leq tu2) {
-                       resUnion = resUnion + t1;
-                   }
-                }
-                for (t2 <- tu2.types) {
-                   if (t2 leq tu1) {
-                       resUnion = resUnion + t2;
-                   }
-                }
+                    // we take the intersection
+                    for (t1 <- tu1.types) {
+                       if (t1 leq tu2) {
+                           resUnion = resUnion + t1;
+                       }
+                    }
+                    for (t2 <- tu2.types) {
+                       if (t2 leq tu1) {
+                           resUnion = resUnion + t2;
+                       }
+                    }
 
-                if (resUnion.size == 0) {
-                    TBottom
-                } else if (resUnion.size == 1) {
-                    resUnion.toList.head
-                } else {
-                    TUnion(resUnion)
-                }
+                    if (resUnion.size == 0) {
+                        TBottom
+                    } else if (resUnion.size == 1) {
+                        resUnion.toList.head
+                    } else {
+                        TUnion(resUnion)
+                    }
 
-            // Arbitrary types
-            case (t1, t2) =>
-                if (t1 leq t2) {
-                    t1
-                } else if (t2 leq t1) {
-                    t2
-                } else {
-                    TBottom
-                }
+                // Arbitrary types
+                case (t1, t2) =>
+                    if (t1 leq t2) {
+                        t1
+                    } else if (t2 leq t1) {
+                        t2
+                    } else {
+                        TBottom
+                    }
+            }
+
+            (env, meetTypes(x,y))
         }
     }
 
@@ -598,8 +605,8 @@ object TypeFlow {
                     v1 match {
                         case sv: CFGSimpleVariable =>
                             errorKind("variable")
-                            val t = etyp intersect vtyp
-                            env = env.inject(sv, t)
+                            val (tenv, t) = TypeLattice.meet(env, etyp, vtyp)
+                            env = tenv.inject(sv, t)
                             t
 
                         case v: CFGArrayEntry =>
@@ -607,8 +614,8 @@ object TypeFlow {
                             val (sv, evtyp) = getCheckType(v, etyp)
                             val svtyp = typeFromSV(sv)
 
-                            val t = evtyp intersect svtyp
-                            env = env.inject(sv, t)
+                            val (tenv, t) = TypeLattice.meet(env, etyp, vtyp)
+                            env = tenv.inject(sv, t)
                             t
 
                         case v: CFGObjectProperty =>
@@ -616,8 +623,8 @@ object TypeFlow {
                             val (sv, evtyp) = getCheckType(v, etyp)
                             val svtyp = typeFromSV(sv)
 
-                            val t = evtyp intersect svtyp
-                            env = env.inject(sv, t)
+                            val (tenv, t) = TypeLattice.meet(env, etyp, vtyp)
+                            env = tenv.inject(sv, t)
                             t
 
                         case _ =>
@@ -744,11 +751,28 @@ object TypeFlow {
                         }
                         backPatchType(arr, t)
                     case CFGObjectProperty(obj, prop) =>
+                        def updateObject(obj: TObjectRef) {
+                            val ro =
+                                if (obj.id.pos < 0) {
+                                    // $this is always using strong updates
+                                    obj.realObject.injectField(prop, typ)
+                                } else {
+                                    obj.realObject.injectField(prop, typ union obj.realObject.lookupField(prop))
+                                }
+                            env = env.setObject(obj.id, ro)
+                        }
                         val t = typeFromSV(obj) match {
                             case to: TObjectRef =>
-                                val ro = to.realObject.injectField(prop, typ union to.realObject.lookupField(prop))
-                                env = env.setObject(to.id, ro)
+                                updateObject(to)
                                 to
+                            case tu: TUnion =>
+                                for (f <- tu.types) f match {
+                                    case to: TObjectRef =>
+                                        updateObject(to)
+                                    case _ =>
+                                }
+
+                                tu
                             case _ =>
                                 TAnyObject
                         }
