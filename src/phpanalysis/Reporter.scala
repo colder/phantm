@@ -92,7 +92,6 @@ object Reporter {
             case Some(file) =>
                 getFileLine(file, pos.line) match {
                     case Some(s) =>
-                        println(s)
 
                         var indent: String = ""
                         for(i <- 0 until pos.col) indent = indent + " ";
@@ -109,19 +108,30 @@ object Reporter {
                             1
                         }
 
-                        val (colorBegin, colorEnd) = if (Main.colors == "term") {
-                            (Console.RED, Console.RESET)
-                        } else if (Main.colors == "html") {
-                            ("<span style=\"color: red;\">", "</span>")
+                        if (Main.colors != "termbg") {
+                            println(s)
+
+                            val (colorBegin, colorEnd) = if (Main.colors == "term") {
+                                (Console.RED+Console.BOLD, Console.RESET)
+                            } else if (Main.colors == "html") {
+                                ("<span style=\"color: red;\">", "</span>")
+                            } else {
+                                ("", "")
+                            }
+
+                            if (size == 1) {
+                              println(indent+colorBegin+"^"+colorEnd)
+                            } else {
+                              println(indent+colorBegin+(1 to size).map(i => "~").mkString+colorEnd)
+                            }
                         } else {
-                            ("", "")
+                            print(s.substring(0, pos.col))
+                            print(Console.RED_B)
+                            print(s.substring(pos.col, pos.col+size))
+                            print(Console.RESET)
+                            println(s.substring(pos.col+size))
                         }
 
-                        if (size == 1) {
-                          println(indent+colorBegin+"^"+colorEnd)
-                        } else {
-                          println(indent+colorBegin+(1 to size).map(i => "~").mkString+colorEnd)
-                        }
                     case None =>
                 }
             case None =>
