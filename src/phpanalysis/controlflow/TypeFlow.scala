@@ -543,8 +543,8 @@ object TypeFlow {
                     typeFromSV(ar) match {
                         case t: TArray =>
                             t.lookup(ind)
-                        case t =>
-                            t
+                        case _ =>
+                            TBottom
                     }
 
                 case op @ CFGObjectProperty(obj, p) =>
@@ -562,15 +562,15 @@ object TypeFlow {
                                 case _ =>
                                     TBottom
                             }}.reduceLeft(_ union _)
-                        case t =>
-                            t
+                        case _ =>
+                            TBottom
                     }
                 case ae @ CFGNextArrayEntry(arr) =>
                     typeFromSV(arr) match {
                         case t: TArray =>
                             t.globalType
-                        case t =>
-                            t
+                        case _ =>
+                            TBottom
                    }
 
                 case vv @ CFGVariableVar(v) =>
@@ -621,62 +621,62 @@ object TypeFlow {
             }
 
             def expOrRef(v1: CFGSimpleValue, typs: Type*): Type = {
-                val vtyp = typeFromSV(v1)
-                var vtypCheck = vtyp
                 val etyp = typs reduceLeft (_ union _)
+                val vtyp = typeFromSV(v1)
+                var vtypCheck  = vtyp
 
                 // if verbosity is == 0, we remove Uninit from the type used in the check
                 if (Main.verbosity == 0) {
                     vtypCheck = removeUninit(true)(vtypCheck)
                 }
 
-                if (leq(vtypCheck, etyp)) {
-                    vtyp
-                } else {
-                    def errorKind(kind: String) = {
+                def checkVariable(v: CFGVariable, kind: String): Type = {
+                    val (sv, svetyp) = getCheckType(v, etyp)
+                    val svvtyp = typeFromSV(sv)
+
+                    var svtypCheck  = svvtyp
+
+                    // if verbosity is == 0, we remove Uninit from the type used in the check
+                    if (Main.verbosity == 0) {
+                        svtypCheck = removeUninit(true)(svtypCheck)
+                    }
+
+                    if (leq(svtypCheck, svetyp)) {
+                        vtyp
+                    } else {
                         if (!silent) {
                             if (containsUninit(vtypCheck)) {
-                                notice("Potentially undefined "+kind+": "+stringRepr(v1), v1)
+                                notice("Potentially undefined "+kind+": "+stringRepr(v), v)
                             } else {
                                 if (vtypCheck != TAny || Main.verbosity > 0) {
-                                    typeError(v1, etyp, vtypCheck)
+                                    typeError(sv, svetyp, svvtyp)
                                 }
                             }
                         }
+                        val t = meet(svetyp, svvtyp)
+                        env = env.inject(sv, t)
+                        // we then return the type
+                        meet(etyp, vtyp)
                     }
+                }
 
-                    v1 match {
-                        case sv: CFGSimpleVariable =>
-                            errorKind("variable")
-                            val t = meet(etyp, vtyp)
-                            env = env.inject(sv, t)
-                            t
+                v1 match {
+                    case sv: CFGSimpleVariable =>
+                        checkVariable(sv, "variable")
+                    case v: CFGNextArrayEntry =>
+                        checkVariable(v, "array entry")
+                    case v: CFGArrayEntry =>
+                        checkVariable(v,"array entry")
+                    case v: CFGObjectProperty =>
+                        checkVariable(v, "object property")
+                    case v =>
+                        if (leq(vtypCheck, etyp)) {
+                            vtyp
+                        } else {
+                            typeError(v, etyp, vtypCheck)
+                        }
+                        meet(etyp, vtyp)
 
-                        case v: CFGArrayEntry =>
-                            errorKind("array entry")
-                            val (sv, evtyp) = getCheckType(v, etyp)
-                            val svtyp = typeFromSV(sv)
-
-                            val t = meet(etyp, vtyp)
-                            env = env.inject(sv, t)
-                            t
-
-                        case v: CFGObjectProperty =>
-                            errorKind("object property")
-                            val (sv, evtyp) = getCheckType(v, etyp)
-                            val svtyp = typeFromSV(sv)
-
-                            val t = meet(etyp, vtyp)
-                            env = env.inject(sv, t)
-                            t
-
-                        case _ =>
-                            if (!silent && (vtypCheck != TAny || Main.verbosity > 0)) {
-                                typeError(v1, etyp, vtypCheck)
-                            }
-                           etyp
-
-                    }
                 }
             }
 
@@ -760,8 +760,8 @@ object TypeFlow {
                     getCheckType(obj, TAnyObject)
                 case svar: CFGSimpleVariable =>
                     (svar, ct)
-                case _ =>
-                    Predef.error("Woops, unexpected CFGVariable inside checktype of!")
+                case v =>
+                    Predef.error("Woops, unexpected CFGVariable("+v+") inside checktype of!")
 
             }
 
