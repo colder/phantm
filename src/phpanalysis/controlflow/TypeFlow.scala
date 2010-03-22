@@ -601,29 +601,67 @@ object TypeFlow {
                                 }
                             }
                         case (eta: TArray, vta: TArray) =>
-                            var relevantKeys = Set[String]();
-                            val globalRelevant = !leq(vta.globalType, eta.globalType);
+                            var cancelError = false;
 
-                            // Emphasis on the differences
-                            for (k <- eta.entries.keySet ++ vta.entries.keySet) {
-                                if (!leq(vta.lookup(k), eta.lookup(k))) {
-                                    relevantKeys = relevantKeys + k
-                                }
+                            def typesDiff(et: Type, vt: Type): (String, String) = (et,vt) match {
+                                case (eta: TArray, vta: TArray) =>
+                                    var relevantKeys = Set[String]();
+
+                                    // Emphasis on the differences
+                                    for (k <- eta.entries.keySet ++ vta.entries.keySet) {
+                                        if (!leq(vta.lookup(k), eta.lookup(k))) {
+                                            relevantKeys = relevantKeys + k
+                                        }
+                                    }
+
+                                    var rhs, lhs = List[String]()
+
+                                    for (k <- relevantKeys) {
+                                        val diff = typesDiff(eta.lookup(k), vta.lookup(k))
+                                        lhs = k+" => "+diff._1 :: lhs
+                                        rhs = k+" => "+diff._2 :: rhs
+                                    }
+
+                                    if (!leq(vta.globalType, eta.globalType)) {
+                                        val diff = typesDiff(vta.globalType, eta.globalType)
+                                        lhs = "? => "+diff._1 :: lhs
+                                        rhs = "? => "+diff._2 :: rhs
+                                    }
+
+                                    if (lhs.size < eta.entries.size+1) {
+                                        lhs = "..." :: lhs;
+                                    }
+
+                                    if (rhs.size < vta.entries.size+1) {
+                                        rhs = "..." :: rhs;
+                                    }
+
+                                    (lhs.reverse.mkString("Array[", ", ", "]"), rhs.reverse.mkString("Array[", ", ", "]"))
+                                case (et, vt: TArray) =>
+                                    (et.toText(env), "Array[...]")
+
+                                case (et, vto: TObjectRef) =>
+                                    (et.toText(env), "Object[...]")
+
+                                case (eta: TArray, vt) =>
+                                    if (containsUninit(vt)) cancelError = true;
+
+                                    ("Array[...]", vt.toText(env))
+                                case (eto: TObjectRef, vt) =>
+                                    if (containsUninit(vt)) cancelError = true;
+
+                                    ("Object[...]", vt.toText(env))
+                                case _ =>
+                                    if (containsUninit(vt)) cancelError = true;
+
+                                    (et.toText(env), vt.toText(env))
                             }
 
-                            def displayArray(t: TArray): String = {
-                                var toDisplay = relevantKeys.map(k => k+" => "+t.lookup(k)).toList
-                                if (globalRelevant) {
-                                    toDisplay = toDisplay ::: List("? => "+t.globalType.toText(env))
-                                }
+                            val diff = typesDiff(eta, vta)
 
-                                if (toDisplay.size < t.entries.size+1) {
-                                    toDisplay = toDisplay ::: List("...")
-                                }
-                                "Array[" + toDisplay.mkString(", ") + "]"
+                            if (!cancelError || Main.verbosity > 0) {
+                                notice("Potential type mismatch: expected: "+diff._1+", found: "+diff._2, pos)
                             }
-
-                            notice("Potential type mismatch: expected: "+displayArray(eta)+", found: "+displayArray(vta), pos)
 
                         case (etu: TUnion, vt) =>
                             notice("Potential type mismatch: expected: "+etu.types.toList.map(_ toText(env)).mkString(" or ")+", found: "+vtyp.toText(env), pos)
