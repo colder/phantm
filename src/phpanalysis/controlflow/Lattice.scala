@@ -2,12 +2,13 @@ package phpanalysis.controlflow
 import scala.collection.Set
 
 trait PartialOrder {
+    type Env
     type E
-    def leq(x : E, y : E) : Boolean
+    def leq(envx: Env, envy: Env, x : E, y : E) : Boolean
 }
-trait Lattice[Env] extends PartialOrder {
+trait Lattice extends PartialOrder {
     val top : E                  // universal set
     val bottom : E               // empty set
-    def join(x : E, y : E) : E   // union
-    def meet(env: Env, x : E, y : E) : (Env, E)   // intersection
+    def join(envx: Env, envy: Env, x : E, y : E) : (Env, E)   // union
+    def meet(envx: Env, envy: Env, x : E, y : E) : (Env, E)   // intersection
 }

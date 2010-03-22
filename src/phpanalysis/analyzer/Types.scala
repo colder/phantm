@@ -14,14 +14,11 @@ object Types {
     sealed abstract class Type {
         self=>
 
-        def leq (t: Type) = TypeLattice.leq(this, t)
-        def join (t: Type) = TypeLattice.join(this, t)
-
-        def union = join _
-
         def equals(t: Type) = t == self;
 
-        def toText = toString
+        def union(t: Type) = TypeLattice.join(this, t)
+
+        def toText(e: TypeEnvironment) = toString
     }
 
     sealed abstract class ConcreteType extends Type;
@@ -126,18 +123,18 @@ object Types {
     // Any object, should be only used to typecheck, no symbol should be infered to this type
     object TAnyObject extends ObjectType {
         override def toString = "TAnyObject"
-        override def toText   = "any object"
+        override def toText(e: TypeEnvironment)   = "any object"
     }
     // Reference to an object in the store
-    class TObjectRef(val id: ObjectId, store: ObjectStore) extends ObjectType {
+    class TObjectRef(val id: ObjectId) extends ObjectType {
         override def toString = {
             "TObjectRef#"+id+""
         }
 
-        def realObject = store.lookup(id)
+        def realObject(e: TypeEnvironment) = e.store.lookup(id)
 
-        override def toText = {
-            realObject.toText
+        override def toText(e: TypeEnvironment) = {
+            e.store.lookup(id).toText(e)
         }
 
         override def equals(v: Any) = v match {
@@ -240,7 +237,7 @@ object Types {
             r
         }
 
-        def toText = toString
+        def toText(e: TypeEnvironment) = toString
 
         def merge(a2: TRealObject): TRealObject = {
             // Pick superclass class, and subclass methods
@@ -399,7 +396,7 @@ object Types {
 
     object TAnyArray extends TArray(Map[String, Type](), TTop) {
         override def toString = "Array[?]"
-        override def toText = "any array"
+        override def toText(e: TypeEnvironment) = "any array"
 
         override def equals(t: Any): Boolean = t match {
             case r: AnyRef =>
@@ -409,45 +406,45 @@ object Types {
     }
 
     case object TInt extends ConcreteType {
-        override def toText = "int"
+        override def toText(e: TypeEnvironment) = "int"
     }
     case object TBoolean extends ConcreteType {
-        override def toText = "boolean"
+        override def toText(e: TypeEnvironment) = "boolean"
     }
     case object TTrue extends ConcreteType {
-        override def toText = "true"
+        override def toText(e: TypeEnvironment) = "true"
     }
     case object TFalse extends ConcreteType {
-        override def toText = "false"
+        override def toText(e: TypeEnvironment) = "false"
     }
 
     case object TFloat extends ConcreteType {
-        override def toText = "float"
+        override def toText(e: TypeEnvironment) = "float"
     }
     case object TString extends ConcreteType {
-        override def toText = "string"
+        override def toText(e: TypeEnvironment) = "string"
     }
     case object TAny extends ConcreteType {
-        override def toText = "any"
+        override def toText(e: TypeEnvironment) = "any"
     }
     case object TResource extends ConcreteType {
-        override def toText = "resource"
+        override def toText(e: TypeEnvironment) = "resource"
     }
     case object TNull extends ConcreteType {
-        override def toText = "null"
+        override def toText(e: TypeEnvironment) = "null"
     }
 
     /* Special types */
     case object TTop extends Type {
-        override def toText = "top"
+        override def toText(e: TypeEnvironment) = "top"
     }
 
     case object TBottom extends Type {
-        override def toText = "bottom"
+        override def toText(e: TypeEnvironment) = "bottom"
     }
 
     case object TUninitialized extends Type {
-        override def toText = "uninitialized"
+        override def toText(e: TypeEnvironment) = "uninitialized"
     }
 
     object TUnion {
@@ -554,7 +551,7 @@ object Types {
         }
 
         override def toString = types.mkString("{", ",", "}")
-        override def toText   = types.map(t => t.toText).mkString(" or ")
+        override def toText(e: TypeEnvironment)   = types.map(t => t.toText(e)).mkString(" or ")
 
         override def hashCode = {
             (types.foldLeft(0)((a,b) => a ^ b.hashCode))
