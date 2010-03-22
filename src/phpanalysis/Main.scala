@@ -12,7 +12,7 @@ object Main {
     var displaySymbols     = false;
     var displayUsage       = false;
     var verbosity          = 1;
-    var colors             = "none";
+    var colors             = "termbg";
     var resolveIncludes    = true;
     var importAPI          = true;
     var testsActive        = false;
@@ -21,7 +21,7 @@ object Main {
     var displayProgress    = false;
     var focusOnMainFiles   = false;
     var onlyLint           = false;
-    var onlyMain           = false;
+    var typeFlowFilter     = List[String]();
     var includePaths       = List(".");
     var mainDir            = "./"
     var apis: List[String] = Nil;
@@ -62,14 +62,23 @@ object Main {
             case "--noincludes" :: xs =>
                 resolveIncludes = false
                 handleArgs(xs)
-            case "--termcolors" :: xs =>
+            case "--colors" :: "termbg" :: xs =>
+                colors = "termbg";
+                handleArgs(xs)
+            case "--colors" :: "term" :: xs =>
                 colors = "term";
                 handleArgs(xs)
-            case "--htmlcolors" :: xs =>
+            case "--colors" :: "html" :: xs =>
                 colors = "html";
                 handleArgs(xs)
-            case "--onlymain" :: xs =>
-                onlyMain = true
+            case "--colors" :: "none" :: xs =>
+                colors = "none";
+                handleArgs(xs)
+            case "--colors" :: xs =>
+                colors = "term";
+                handleArgs(xs)
+            case "--only" :: filter :: xs =>
+                typeFlowFilter = filter.replace("::", "/").split(":").map(_.replace("/", "::")).toList
                 handleArgs(xs)
             case "--focus" :: xs =>
                 focusOnMainFiles = true
@@ -232,6 +241,11 @@ object Main {
         println("Usage:   phantm [..options..] <files ...>");
         println("Options: --help                 This help");
         println("         --maindir <maindir>    Specify main directory of the tool");
+        println("         --colors <mode>        Change the way errors are displayed:");
+        println("                                Mode: none   : no colors");
+        println("                                      termbg : ANSI colors inside the code (default)");
+        println("                                      term   : ANSI colors below the code");
+        println("                                      html   : HTML colors below the code");
         println("         --symbols              Display symbols");
         println("         --showincludes         Display the list of included files");
         println("         --noincludes           Disables includes resolutions");
@@ -247,7 +261,7 @@ object Main {
         println("         --exportAPI <path>     Use the type analysis to output a likely API");
         println("         --progress             Display analysis progress");
         println("         --focus                Focus on main files and ignore errors in dependencies");
-        println("         --onlymain             Only do analysis on the main scope");
+        println("         --only <symbols>       Only do analysis on the specified bodies of code (main:func1:class1::method1:...)");
         println("         --exportAPI <path>     Export generated API to <path>");
         println("         --lint                 Stop the analysis after the parsing");
     }

@@ -13,6 +13,10 @@ case class CFGChecks(node: Tree) extends ASTTraversal[CheckContext](node, CheckC
         }
     }
 
+    def filter(name: String): Boolean = {
+        (Main.typeFlowFilter == Nil) || (Main.typeFlowFilter.contains(name))
+    }
+
     /**
      * Visit the nodes and aggregate information inside the context to provide
      * hints about obvious errors directly from the AST
@@ -21,15 +25,15 @@ case class CFGChecks(node: Tree) extends ASTTraversal[CheckContext](node, CheckC
         var newCtx = ctx;
 
         node match {
-            case Program(stmts) =>
+            case Program(stmts) if filter("main") =>
                 display("Converting main scope...")
                 val cfg: CFG = ASTToCFG.convertAST(stmts, Symbols.GlobalSymbols)
-                display("Analyzing main scope...")
+                display("Analyzing main...")
                 val tfa = new TypeFlow.Analyzer(cfg, Symbols.GlobalSymbols)
                 tfa.analyze
 
 
-            case FunctionDecl(name, args, retref, hint, body) if !Main.onlyMain =>
+            case FunctionDecl(name, args, retref, hint, body) if filter(name.value) =>
                 name.getSymbol match {
                     case fs: Symbols.FunctionSymbol =>
                         display("Converting function "+name.value+"...")
@@ -42,17 +46,19 @@ case class CFGChecks(node: Tree) extends ASTTraversal[CheckContext](node, CheckC
                 }
 
 
-            case ClassDecl(name, flags, parent, interfaces, methods, static_props, props, consts) if !Main.onlyMain =>
+            case ClassDecl(name, flags, parent, interfaces, methods, static_props, props, consts) =>
                 name.getSymbol match {
                     case cl: Symbols.ClassSymbol =>
                         for (m <- methods) if (m.body != None) {
                             m.name.getSymbol match {
                                 case ms: Symbols.MethodSymbol =>
-                                    display("Converting method "+cl.name+"::"+m.name.value+"...")
-                                    val cfg: CFG = ASTToCFG.convertAST(List(m.body.get), ms)
-                                    display("Analyzing method "+cl.name+"::"+m.name.value+"...")
-                                    val tfa = new TypeFlow.Analyzer(cfg, ms)
-                                    tfa.analyze
+                                    if (filter(cl.name+"::"+m.name.value)) {
+                                        display("Converting method "+cl.name+"::"+m.name.value+"...")
+                                        val cfg: CFG = ASTToCFG.convertAST(List(m.body.get), ms)
+                                        display("Analyzing method "+cl.name+"::"+m.name.value+"...")
+                                        val tfa = new TypeFlow.Analyzer(cfg, ms)
+                                        tfa.analyze
+                                    }
                                 case _ =>
                                     error("Incoherent symbol type, should be method")
                             }
