@@ -588,13 +588,44 @@ object TypeFlow {
                 if (vtypCheck leq etyp) {
                     vtyp
                 } else {
+                    def smartTypeError(pos: Positional, etyp: Type, vtyp: Type): Unit = (etyp, vtyp) match {
+                        case (eta: TArray, vta: TArray) =>
+                            var relevantKeys = Set[String]();
+                            val globalRelevant = !(vta.globalType leq eta.globalType);
+
+                            // Emphasis on the differences
+                            for (k <- eta.entries.keySet ++ vta.entries.keySet) {
+                                if (!(vta.lookup(k) leq eta.lookup(k))) {
+                                    relevantKeys = relevantKeys + k
+                                }
+                            }
+
+                            def displayArray(t: TArray): String = {
+                                var toDisplay = relevantKeys.map(k => k+" => "+t.lookup(k)).toList
+                                if (globalRelevant) {
+                                    toDisplay = toDisplay ::: List("? => "+t.globalType.toText)
+                                }
+
+                                if (toDisplay.size < t.entries.size+1) {
+                                    toDisplay = toDisplay ::: List("...")
+                                }
+                                "Array[" + toDisplay.mkString(", ") + "]"
+                            }
+
+                            notice("Potential type mismatch: expected: "+displayArray(eta)+", found: "+displayArray(vta), pos)
+
+                        case (etu: TUnion, vt) =>
+                            notice("Potential type mismatch: expected: "+etu.types.toList.map(_ toText).mkString(" or ")+", found: "+vtyp.toText, pos)
+                        case _ =>
+                            notice("Potential type mismatch: expected: "+etyp.toText+", found: "+vtyp.toText, pos)
+                    }
                     def errorKind(kind: String) = {
                         if (!silent) {
                             if (containsUninit(vtypCheck)) {
                                 notice("Potentially undefined "+kind+": "+stringRepr(v1), v1)
                             } else {
                                 if (vtypCheck != TAny || Main.verbosity > 0) {
-                                    notice("Potential type mismatch: expected: "+typs.toList.map(_ toText).mkString(" or ")+", found: "+vtypCheck.toText, v1)
+                                    smartTypeError(v1, etyp, vtypCheck)
                                 }
                             }
                         }
@@ -627,7 +658,7 @@ object TypeFlow {
 
                         case _ =>
                             if (!silent && (vtypCheck != TAny || Main.verbosity > 0)) {
-                                notice("Potential type mismatch: expected: "+typs.toList.map(_ toText).mkString(" or ")+", found: "+vtypCheck.toText, v1)
+                                smartTypeError(v1, etyp, vtypCheck)
                             }
                            etyp
 
