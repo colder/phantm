@@ -543,11 +543,8 @@ object TypeFlow {
                     typeFromSV(ar) match {
                         case t: TArray =>
                             t.lookup(ind)
-                        case TBottom =>
-                            TBottom
                         case t =>
-                            typeError(ar, TAnyArray, t)
-                            TBottom
+                            t
                     }
 
                 case op @ CFGObjectProperty(obj, p) =>
@@ -566,18 +563,14 @@ object TypeFlow {
                                     TBottom
                             }}.reduceLeft(_ union _)
                         case t =>
-                            typeError(obj, TAnyObject, t)
-                            TBottom
+                            t
                     }
                 case ae @ CFGNextArrayEntry(arr) =>
                     typeFromSV(arr) match {
                         case t: TArray =>
                             t.globalType
-                        case TBottom =>
-                            TBottom
                         case t =>
-                            typeError(arr, TAnyArray, t)
-                            TBottom
+                            t
                    }
 
                 case vv @ CFGVariableVar(v) =>

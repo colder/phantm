@@ -567,11 +567,11 @@ NEWLINE = ("\r"|"\n"|"\r\n")
 }
 
 <ST_IN_SCRIPTING>b?([\"]([^$\"\\]|("\\".))*[\"]) {
-    return symbol(Symbols.T_CONSTANT_ENCAPSED_STRING, "T_CONSTANT_ENCAPSED_STRING", text().substring(1, text().length()-1));
+    return symbol(Symbols.T_CONSTANT_ENCAPSED_STRING, "T_CONSTANT_ENCAPSED_STRING", text());
 }
 
 <ST_IN_SCRIPTING>b?([']([^'\\]|("\\".))*[']) {
-    return symbol(Symbols.T_CONSTANT_ENCAPSED_STRING, "T_CONSTANT_ENCAPSED_STRING", text().substring(1, text().length()-1));
+    return symbol(Symbols.T_CONSTANT_ENCAPSED_STRING, "T_CONSTANT_ENCAPSED_STRING", text());
 }
 
 <ST_IN_SCRIPTING>b?[\"] {
