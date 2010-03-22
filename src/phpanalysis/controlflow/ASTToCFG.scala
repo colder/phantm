@@ -376,15 +376,16 @@ object ASTToCFG {
 
     /** Emits a sequence of statements. */
     def stmts(sts: List[Statement], cont: Vertex): Unit = sts match {
-        case s::s2::sr => 
+        case s::s2::sr =>
             val tmp = cfg.newVertex
             stmt(s, tmp)
             stmts(s2::sr, cont)
-        case s::Nil => 
+        case s::Nil =>
             stmt(s, cont)
-        case Nil => 
+        case Nil =>
+            Emit.goto(cont)
     }
-    
+
     /** Emits a single statement. cont = where to continue after the statement */
     def stmt(s: Statement, cont: Vertex): Unit = { 
       s match {
