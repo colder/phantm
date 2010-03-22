@@ -8,7 +8,7 @@ types used in your application, and report any potential mistakes.
 Version
 -------
 
-This is a early development version. Don't be surprised if debug messages are outputted, or if many features are still missing.
+This is a early development version. Don't be surprised if many features are still missing.
 
 Requirements
 ------------
@@ -34,7 +34,7 @@ To run the analyzer on one of your php script, run
 
     $ ./phantm <target.php>
 
-The analyser will then compile your code, and output any notice/warnings it can find about your script. You can also use 
+The analyzer will then compile your code, and output any notice/warnings it can find about your script. You can also use 
 
     $ ./phantm --help
 
