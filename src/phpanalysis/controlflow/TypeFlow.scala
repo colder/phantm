@@ -357,7 +357,7 @@ object TypeFlow {
         def notice(msg: String, pos: Positional) = if (!silent) Reporter.notice(msg, pos)
         def error(msg: String, pos: Positional) = if (!silent) Reporter.error(msg, pos)
 
-        def containsUninit(t: Type) = t match {
+        def containsUninit(t: Type): Boolean = t match {
             case TTop =>
                 true
             case TUninitialized =>
@@ -588,47 +588,54 @@ object TypeFlow {
                 new TObjectRef(id)
             }
 
-            def typeError(pos: Positional, etyp: Type, vtyp: Type): Unit = (etyp, vtyp) match {
-                case (eta: TArray, vta: TArray) =>
-                    var relevantKeys = Set[String]();
-                    val globalRelevant = !leq(vta.globalType, eta.globalType);
+            def typeError(pos: Positional, etyp: Type, vtyp: Type): Unit = {
+                if (!silent) {
+                    (etyp, vtyp) match {
+                        case (et, vt) if containsUninit(vt) =>
+                            if (Main.verbosity > 0) {
+                                pos match {
+                                    case sv: CFGSimpleVariable =>
+                                        notice("Potentialy uninitialized variable", pos)
+                                    case _ =>
+                                        notice("Potentialy uninitialized value", pos)
+                                }
+                            }
+                        case (eta: TArray, vta: TArray) =>
+                            var relevantKeys = Set[String]();
+                            val globalRelevant = !leq(vta.globalType, eta.globalType);
 
-                    // Emphasis on the differences
-                    for (k <- eta.entries.keySet ++ vta.entries.keySet) {
-                        if (!leq(vta.lookup(k), eta.lookup(k))) {
-                            relevantKeys = relevantKeys + k
-                        }
+                            // Emphasis on the differences
+                            for (k <- eta.entries.keySet ++ vta.entries.keySet) {
+                                if (!leq(vta.lookup(k), eta.lookup(k))) {
+                                    relevantKeys = relevantKeys + k
+                                }
+                            }
+
+                            def displayArray(t: TArray): String = {
+                                var toDisplay = relevantKeys.map(k => k+" => "+t.lookup(k)).toList
+                                if (globalRelevant) {
+                                    toDisplay = toDisplay ::: List("? => "+t.globalType.toText(env))
+                                }
+
+                                if (toDisplay.size < t.entries.size+1) {
+                                    toDisplay = toDisplay ::: List("...")
+                                }
+                                "Array[" + toDisplay.mkString(", ") + "]"
+                            }
+
+                            notice("Potential type mismatch: expected: "+displayArray(eta)+", found: "+displayArray(vta), pos)
+
+                        case (etu: TUnion, vt) =>
+                            notice("Potential type mismatch: expected: "+etu.types.toList.map(_ toText(env)).mkString(" or ")+", found: "+vtyp.toText(env), pos)
+                        case _ =>
+                            notice("Potential type mismatch: expected: "+etyp.toText(env)+", found: "+vtyp.toText(env), pos)
                     }
-
-                    def displayArray(t: TArray): String = {
-                        var toDisplay = relevantKeys.map(k => k+" => "+t.lookup(k)).toList
-                        if (globalRelevant) {
-                            toDisplay = toDisplay ::: List("? => "+t.globalType.toText(env))
-                        }
-
-                        if (toDisplay.size < t.entries.size+1) {
-                            toDisplay = toDisplay ::: List("...")
-                        }
-                        "Array[" + toDisplay.mkString(", ") + "]"
-                    }
-
-                    notice("Potential type mismatch: expected: "+displayArray(eta)+", found: "+displayArray(vta), pos)
-
-                case (etu: TUnion, vt) =>
-                    notice("Potential type mismatch: expected: "+etu.types.toList.map(_ toText(env)).mkString(" or ")+", found: "+vtyp.toText(env), pos)
-                case _ =>
-                    notice("Potential type mismatch: expected: "+etyp.toText(env)+", found: "+vtyp.toText(env), pos)
+                }
             }
 
             def expOrRef(v1: CFGSimpleValue, typs: Type*): Type = {
                 val etyp = typs reduceLeft (_ union _)
                 val vtyp = typeFromSV(v1)
-                var vtypCheck  = vtyp
-
-                // if verbosity is == 0, we remove Uninit from the type used in the check
-                if (Main.verbosity == 0) {
-                    vtypCheck = removeUninit(true)(vtypCheck)
-                }
 
                 def checkVariable(v: CFGVariable, kind: String): Type = {
                     val (sv, svetyp) = getCheckType(v, etyp)
@@ -636,23 +643,11 @@ object TypeFlow {
 
                     var svtypCheck  = svvtyp
 
-                    // if verbosity is == 0, we remove Uninit from the type used in the check
-                    if (Main.verbosity == 0) {
-                        svtypCheck = removeUninit(true)(svtypCheck)
-                    }
-
-                    if (leq(svtypCheck, svetyp)) {
+                    if (leq(svvtyp, svetyp)) {
                         vtyp
                     } else {
-                        if (!silent) {
-                            if (containsUninit(vtypCheck)) {
-                                notice("Potentially undefined "+kind+": "+stringRepr(v), v)
-                            } else {
-                                if (vtypCheck != TAny || Main.verbosity > 0) {
-                                    typeError(sv, svetyp, svvtyp)
-                                }
-                            }
-                        }
+                        typeError(sv, svetyp, svvtyp)
+
                         val t = meet(svetyp, svvtyp)
                         env = env.inject(sv, t)
                         // we then return the type
@@ -670,10 +665,10 @@ object TypeFlow {
                     case v: CFGObjectProperty =>
                         checkVariable(v, "object property")
                     case v =>
-                        if (leq(vtypCheck, etyp)) {
+                        if (leq(vtyp, etyp)) {
                             vtyp
                         } else {
-                            typeError(v, etyp, vtypCheck)
+                            typeError(v, etyp, vtyp)
                         }
                         meet(etyp, vtyp)
 
