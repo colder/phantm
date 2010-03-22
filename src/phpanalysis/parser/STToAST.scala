@@ -472,7 +472,13 @@ case class STToAST(comp: Compiler, st: ParseNode) {
                         PHPFloat(0)
                 }
             case List("T_CONSTANT_ENCAPSED_STRING") =>
-                PHPString(child(n).tokenContent)
+                val str = child(n).tokenContent
+                val lit = if (str.substring(0,1) == "b") {
+                    str.substring(2, str.length()-1)
+                } else {
+                    str.substring(1, str.length()-1)
+                }
+                PHPString(lit)
             case List("T_LINE") =>
                 MCLine()
             case List("T_FILE") =>
