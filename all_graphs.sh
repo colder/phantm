@@ -12,8 +12,8 @@ NAME=`basename $1`
 if [ -f "result.st" ]; then
     dot -Tjpg -o ${DIST_PATH}${NAME}-ST.jpg result.st && mv result.st ${DIST_PATH}${NAME}-ST.jpg.txt
     echo "Graph saved to http://project.colder.ch/$NAME-ST.jpg"
-    dot -Tsvg -o ${DIST_PATH}${NAME}-AST.svg result.ast && mv result.ast ${DIST_PATH}${NAME}-AST.svg.txt
-    echo "Graph saved to http://project.colder.ch/$NAME-AST.svg"
+    dot -Tjpg -o ${DIST_PATH}${NAME}-AST.jpg result.ast && mv result.ast ${DIST_PATH}${NAME}-AST.jpg.txt
+    echo "Graph saved to http://project.colder.ch/$NAME-AST.jpg"
     for f in result.cfg-*; do
         if [ $f != 'result.cfg-*' ]; then
             N=`echo $f | cut -d'-' -f2`
