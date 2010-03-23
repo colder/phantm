@@ -311,7 +311,7 @@ object TypeFlow {
                         println("      NEW: "+e.map(v))
                         println(" incoming values: ")
                         for ((cfg, e) <- inEdges) {
-                            println("   * "+cfg+" => "+e.lookup(v))
+                            println("   * "+cfg+" => "+e.lookup(v)+" ===> "+TypeTransferFunction(true, false)(cfg, e).lookup(v))
                             println
                         }
                         println("@@@@@@@@@@@@@@@@@")
@@ -357,11 +357,11 @@ object TypeFlow {
         def notice(msg: String, pos: Positional) = if (!silent) Reporter.notice(msg, pos)
         def error(msg: String, pos: Positional) = if (!silent) Reporter.error(msg, pos)
 
-        def containsUninit(t: Type): Boolean = t match {
+        def possiblyUninit(t: Type): Boolean = t match {
             case TTop =>
                 true
             case TUninitialized =>
-                true
+                false
             case tu: TUnion =>
                 tu.types contains TUninitialized
             case _ =>
@@ -591,7 +591,7 @@ object TypeFlow {
             def typeError(pos: Positional, etyp: Type, vtyp: Type): Unit = {
                 if (!silent) {
                     (etyp, vtyp) match {
-                        case (et, vt) if containsUninit(vt) =>
+                        case (et, vt) if possiblyUninit(vt) =>
                             if (Main.verbosity > 0) {
                                 pos match {
                                     case sv: CFGSimpleVariable =>
@@ -600,6 +600,13 @@ object TypeFlow {
                                         notice("Potentialy uninitialized value", pos)
                                 }
                             }
+                        case (et, TUninitialized) =>
+                                pos match {
+                                    case sv: CFGSimpleVariable =>
+                                        notice("Uninitialized variable", pos)
+                                    case _ =>
+                                        notice("Uninitialized value", pos)
+                                }
                         case (eta: TArray, vta: TArray) =>
                             var cancelError = false;
 
@@ -636,7 +643,7 @@ object TypeFlow {
                                         rhs = "..." :: rhs;
                                     }
 
-                                    if (relevantKeys.forall(k => containsUninit(vta.lookup(k)))) {
+                                    if (relevantKeys.forall(k => possiblyUninit(vta.lookup(k)))) {
                                         cancelError = true
                                     }
 
@@ -648,15 +655,15 @@ object TypeFlow {
                                     (et.toText(env), "Object[...]")
 
                                 case (eta: TArray, vt) =>
-                                    if (containsUninit(vt)) cancelError = true;
+                                    if (possiblyUninit(vt)) cancelError = true;
 
                                     ("Array[...]", vt.toText(env))
                                 case (eto: TObjectRef, vt) =>
-                                    if (containsUninit(vt)) cancelError = true;
+                                    if (possiblyUninit(vt)) cancelError = true;
 
                                     ("Object[...]", vt.toText(env))
                                 case _ =>
-                                    if (containsUninit(vt)) cancelError = true;
+                                    if (possiblyUninit(vt)) cancelError = true;
 
                                     (et.toText(env), vt.toText(env))
                             }
@@ -689,6 +696,7 @@ object TypeFlow {
                         typeError(sv, svetyp, svvtyp)
 
                         val t = meet(svetyp, svvtyp)
+                        //println("== Refining "+svvtyp+" to "+t+" ("+svetyp+")")
                         env = env.inject(sv, t)
                         // we then return the type
                         meet(etyp, vtyp)
@@ -816,20 +824,18 @@ object TypeFlow {
                         val t = typeFromSV(arr) match {
                             case ta: TArray =>
                                 ta.inject(index, typ)
-                            case TBottom =>
-                                TBottom
                             case _ =>
-                                new TArray().inject(index, typ)
+                                //new TArray().inject(index, typ)
+                                TBottom
                         }
                         backPatchType(arr, t)
                     case CFGNextArrayEntry(arr) =>
                         val t = typeFromSV(arr) match {
                             case ta: TArray =>
                                 ta.setAny(typ union ta.globalType)
-                            case TBottom =>
-                                TBottom
                             case _ =>
-                                new TArray().setAny(typ union TUninitialized)
+                                //new TArray().setAny(typ union TUninitialized)
+                                TBottom
                         }
                         backPatchType(arr, t)
                     case CFGObjectProperty(obj, prop) =>
@@ -855,28 +861,54 @@ object TypeFlow {
                                 }
 
                                 tu
-                            case TBottom =>
-                                TBottom
                             case _ =>
-                                TAnyObject
+                                TBottom
                         }
                         backPatchType(obj, t)
                     case svar: CFGSimpleVariable =>
-                        typeFromSV(svar) match {
-                            case TBottom =>
-                                TBottom
-                            case _ =>
-                                typ
-                        }
+                        typ
 
                     case _ =>
                         Predef.error("Woops, unexpected CFGVariable inside checktype of!")
                 }
 
+                def limitType(typ: Type, l: Int): Type = typ match {
+                    case ta: TArray =>
+                        if (l == 0) {
+                            TAnyArray
+                        } else {
+                            new TArray(Map[String, Type]() ++ ta.entries.map(e => (e._1, limitType(e._2, l-1))), limitType(ta.globalType, l-1))
+                        }
+                    case to: TObjectRef =>
+                        if (l == 0) {
+                            TAnyObject
+                        } else {
+                            // TODO
+                            to
+                        }
+                    case tu: TUnion =>
+                        if (l == 0) {
+                            TTop
+                        } else {
+                            TUnion(tu.types.map(limitType(_, l-1)))
+                        }
+                    case t =>
+                        if (l == 0) {
+                            TTop
+                        } else {
+                            t
+                        }
+                }
+
                 env = env.inject(svar, reft)
                 //println("Refined type: "+reft)
-                val rest = backPatchType(v, ext)
+                var rest = backPatchType(v, ext)
                 //println("Backpatched type: "+rest)
+                //println("Depth: "+rest.depth(env))
+                if (rest.depth(env) > 5) {
+                    rest = limitType(rest, 5)
+                }
+                //println("Limitted: "+rest)
                 env = env.inject(svar, rest)
                 rest
             }
@@ -936,6 +968,7 @@ object TypeFlow {
 
             node match {
                 case CFGAssign(vr: CFGVariable, v1) =>
+                    //println("Assign..")
                     val t = expOrRef(v1, TAny)
                     assign(vr, uninitToNull(t))
 
@@ -954,87 +987,16 @@ object TypeFlow {
                         expOrRef(v1, TInt, TFloat)
                         expOrRef(v2, TInt, TFloat)
                     case EQUALS | IDENTICAL | NOTEQUALS | NOTIDENTICAL =>
-                        /**
-                         * Type filtering:
-                         * if v1 is a variable that is compared against True/False
-                         * we can filter incompatible values out
-                         */
-                        def filter(v: CFGSimpleVariable, value: Boolean) = {
-                            typeFromSV(v) match {
-                                case u: TUnion =>
-                                    val typ = if (value) {
-                                        u.types.filter(t => t != TFalse && t != TNull).map(t => if(t == TBoolean) TTrue else t).reduceLeft(_ union _)
-                                    } else {
-                                        u.types.filter(t => t != TTrue  && t != TResource).map(t => if(t == TBoolean) TFalse else t).reduceLeft(_ union _)
-                                    }
-
-                                    env = env.inject(v, typ)
-                                case t =>
-                                    if (value) {
-                                        if (t != TFalse && t != TNull) {
-                                            env = env.inject(v, t)
-                                        } else {
-                                            // we had a single incompatible type
-                                            // The branch will never be taken!
-                                            env = BaseTypeEnvironment
-                                        }
-                                    } else {
-                                        if (t != TTrue && t != TResource) {
-                                            env = env.inject(v, t)
-                                        } else {
-                                            // we had a single incompatible type
-                                            // The branch will never be taken!
-                                            env = BaseTypeEnvironment
-                                        }
-                                    }
-                            }
-                        }
-                        var t1 = v1;
-                        var t2 = v2;
-                        (v1, typeFromSV(v1), v2, typeFromSV(v2)) match {
-                            case (v: CFGSimpleVariable, TTrue , w: CFGSimpleVariable, _) =>
-                                // we benefit from a switch:
-                                t1 = v2;
-                                t2 = v1;
-                            case (v: CFGSimpleVariable, TFalse , w: CFGSimpleVariable, _) =>
-                                // we benefit from a switch:
-                                t1 = v2;
-                                t2 = v1;
-                            case (v: CFGSimpleVariable, _, _, _) =>
-                                // no change
-                            case (_, _, v: CFGSimpleVariable, _) =>
-                                t1 = v2;
-                                t2 = v1;
-                            case _ =>
-                                // no change, will be ignored anyway
-                        }
-                        (t1, op, typeFromSV(t2)) match  {
-                            case (v: CFGSimpleVariable, EQUALS, TFalse)  =>
-                                filter(v, false)
-                            case (v: CFGSimpleVariable, NOTEQUALS, TFalse)  =>
-                                filter(v, true)
-                            case (v: CFGSimpleVariable, EQUALS, TTrue)  =>
-                                filter(v, true)
-                            case (v: CFGSimpleVariable, NOTEQUALS, TTrue)  =>
-                                filter(v, false)
-                            case _ =>
-                                expOrRef(v1, TAny)
-                                expOrRef(v2, TAny)
-                        }
-
+                        // TODO
+                        expOrRef(v1, TAny)
+                        expOrRef(v2, TAny)
                   }
 
                 case CFGPrint(v) =>
                     expOrRef(v, TInt, TString, TAnyObject, TBoolean)
 
-                case CFGUnset(id) =>
-                    id match {
-                        case v: CFGSimpleVariable =>
-                            env = env.inject(v, TUninitialized)
-                        case _ =>
-                            // TODO
-
-                    }
+                case CFGUnset(v) =>
+                    assign(v, TUninitialized)
 
                 case ex: CFGSimpleValue =>
                     expOrRef(ex, TAny)

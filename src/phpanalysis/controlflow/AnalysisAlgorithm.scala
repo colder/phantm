@@ -69,11 +69,15 @@ class AnalysisAlgorithm[E <: Environment[E, S],S]
 
             for(v <- passWorkList) {
 
+                //println("[[[["+v+"]]]]")
+                //println("Facts: "+facts(v))
                 val oldFact : E = facts(v)
                 var newFact : Option[E] = None
 
                 for (e <- cfg.inEdges(v) if facts(e.v1) != bottomEnv) {
+                    //println("##>"+e.lab+"("+facts(e.v1)+")")
                     val propagated = transferFun(e.lab, facts(e.v1));
+                    //println("##=>"+propagated)
 
                     if (propagated != bottomEnv) {
                         newFact = newFact match {
@@ -90,6 +94,7 @@ class AnalysisAlgorithm[E <: Environment[E, S],S]
                         oldFact.checkMonotonicity(v, nf, cfg.inEdges(v) map (e => (e.lab, facts(e.v1))))
                     }
 
+                    //println("@@ Updating facts to "+nf)
                     facts = facts.update(v, nf)
 
                     for (e <- cfg.outEdges(v)) {

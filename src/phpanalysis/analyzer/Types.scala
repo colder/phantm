@@ -8,13 +8,16 @@ import parser.Trees._
 
 object Types {
     object RecProtection {
-        var objectToStringDeep = 0;
+        var objectToStringDepth = 0;
+        var objectDepthDepth = 0;
     }
 
     sealed abstract class Type {
         self=>
 
         def equals(t: Type) = t == self;
+
+        def depth(env: TypeEnvironment): Int = 1;
 
         def union(t: Type) = TypeLattice.join(this, t)
 
@@ -137,6 +140,8 @@ object Types {
             e.store.lookup(id).toText(e)
         }
 
+        override def depth(e: TypeEnvironment) = realObject(e).depth(e)
+
         override def equals(v: Any) = v match {
             case ref: TObjectRef =>
                 ref.id == id
@@ -157,6 +162,18 @@ object Types {
                 fields == ro.fields && globalType == ro.globalType
             case _ =>
                 false
+        }
+
+        def depth(e: TypeEnvironment) = {
+            RecProtection.objectDepthDepth += 1;
+            val res = if (RecProtection.objectDepthDepth > 5) {
+                5
+            } else {
+                Math.max(globalType.depth(e), fields.map(_._2.depth(e)).foldLeft(0)((a, b) => Math.max(a,b)))
+            }
+            RecProtection.objectDepthDepth -= 1;
+
+            res+1
         }
 
         def lookupField(index: CFGSimpleValue): Type = index match {
@@ -226,14 +243,14 @@ object Types {
 
 
         override def toString = {
-            RecProtection.objectToStringDeep += 1;
+            RecProtection.objectToStringDepth += 1;
             var r = "Object(?)"
-            if (RecProtection.objectToStringDeep < 2) {
+            if (RecProtection.objectToStringDepth < 2) {
                 r = r+"["+((fields.map(x => x._1 +" => "+ x._2).toList ::: "? -> "+globalType :: Nil).mkString("; "))+"]"
             } else {
                 r = r+"[...]"
             }
-            RecProtection.objectToStringDeep -= 1;
+            RecProtection.objectToStringDepth -= 1;
             r
         }
 
@@ -274,15 +291,15 @@ object Types {
                            globalType: Type) extends TRealObject(fields, globalType) {
 
         override def toString = {
-            RecProtection.objectToStringDeep += 1;
+            RecProtection.objectToStringDepth += 1;
             var r = "Object("+cl+")"
-            if (RecProtection.objectToStringDeep < 2) {
+            if (RecProtection.objectToStringDepth < 2) {
                 r = r+"["+((fields.map(x => x._1 +" => "+ x._2).toList ::: "? -> "+globalType :: Nil).mkString("; "))+"]"
                 r = r+"["+(cl.cs.methods.map(x => x._1+": "+msToTMethod(x._2)).mkString("; "))+"]"
             } else {
                 r = r+"[...]"
             }
-            RecProtection.objectToStringDeep -= 1;
+            RecProtection.objectToStringDepth -= 1;
             r
         }
 
@@ -312,6 +329,9 @@ object Types {
 
         def lookup(index: String): Type =
             entries.getOrElse(index, globalType)
+
+        override def depth(env: TypeEnvironment): Int =
+            Math.max(globalType.depth(env), entries.map(_._2.depth(env)).foldLeft(0)((a, b) => Math.max(a,b)))+1
 
         def lookup(index: CFGSimpleValue): Type = index match {
           case CFGLong(i)       => lookup(i+"")
@@ -551,6 +571,9 @@ object Types {
                 this.types == tu.types
             case _ => false
         }
+
+        override def depth(env: TypeEnvironment) =
+            types.map(_.depth(env)).reduceLeft((a, b) => Math.max(a,b))
 
         override def toString = types.mkString("{", ",", "}")
         override def toText(e: TypeEnvironment)   = types.map(t => t.toText(e)).mkString(" or ")
