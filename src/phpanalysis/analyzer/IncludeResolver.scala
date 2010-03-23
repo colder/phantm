@@ -109,11 +109,11 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
                         }
                     }
                 case None =>
-                    Reporter.notice("Include with non trivial argument will be ignored", path)
+                    Reporter.notice("Include with non trivial argument will be ignored", inc)
                     PHPFalse()
             }
         } else {
-            Reporter.error("Include nesting level too deep: "+IncludeResolver.deepNess, path)
+            Reporter.error("Include nesting level too deep: "+IncludeResolver.deepNess, inc)
             PHPFalse()
         }
 

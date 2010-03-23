@@ -130,6 +130,7 @@ object Reporter {
                             print(s.substring(pos.col, pos.col+size))
                             print(Console.RESET)
                             println(s.substring(pos.col+size))
+                            println
                         }
 
                     case None =>

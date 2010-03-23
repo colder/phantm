@@ -636,6 +636,10 @@ object TypeFlow {
                                         rhs = "..." :: rhs;
                                     }
 
+                                    if (relevantKeys.forall(k => containsUninit(vta.lookup(k)))) {
+                                        cancelError = true
+                                    }
+
                                     (lhs.reverse.mkString("Array[", ", ", "]"), rhs.reverse.mkString("Array[", ", ", "]"))
                                 case (et, vt: TArray) =>
                                     (et.toText(env), "Array[...]")
@@ -663,8 +667,6 @@ object TypeFlow {
                                 notice("Potential type mismatch: expected: "+diff._1+", found: "+diff._2, pos)
                             }
 
-                        case (etu: TUnion, vt) =>
-                            notice("Potential type mismatch: expected: "+etu.types.toList.map(_ toText(env)).mkString(" or ")+", found: "+vtyp.toText(env), pos)
                         case _ =>
                             notice("Potential type mismatch: expected: "+etyp.toText(env)+", found: "+vtyp.toText(env), pos)
                     }
@@ -814,6 +816,8 @@ object TypeFlow {
                         val t = typeFromSV(arr) match {
                             case ta: TArray =>
                                 ta.inject(index, typ)
+                            case TBottom =>
+                                TBottom
                             case _ =>
                                 new TArray().inject(index, typ)
                         }
@@ -822,6 +826,8 @@ object TypeFlow {
                         val t = typeFromSV(arr) match {
                             case ta: TArray =>
                                 ta.setAny(typ union ta.globalType)
+                            case TBottom =>
+                                TBottom
                             case _ =>
                                 new TArray().setAny(typ union TUninitialized)
                         }
@@ -849,12 +855,20 @@ object TypeFlow {
                                 }
 
                                 tu
+                            case TBottom =>
+                                TBottom
                             case _ =>
                                 TAnyObject
                         }
                         backPatchType(obj, t)
                     case svar: CFGSimpleVariable =>
-                        typ
+                        typeFromSV(svar) match {
+                            case TBottom =>
+                                TBottom
+                            case _ =>
+                                typ
+                        }
+
                     case _ =>
                         Predef.error("Woops, unexpected CFGVariable inside checktype of!")
                 }
@@ -1049,14 +1063,14 @@ object TypeFlow {
             }
 
             //scope.registerPredefVariables
-            injectPredef("_GET",     new TArray(TBottom))
-            injectPredef("_POST",    new TArray(TBottom))
-            injectPredef("GLOBALS",  new TArray(TBottom))
-            injectPredef("_REQUEST", new TArray(TBottom))
-            injectPredef("_COOKIE",  new TArray(TBottom))
-            injectPredef("_SERVER",  new TArray(TBottom))
-            injectPredef("_ENV",     new TArray(TBottom))
-            injectPredef("_SESSION", new TArray(TBottom))
+            injectPredef("_GET",     new TArray(TTop))
+            injectPredef("_POST",    new TArray(TTop))
+            injectPredef("GLOBALS",  new TArray(TTop))
+            injectPredef("_REQUEST", new TArray(TTop))
+            injectPredef("_COOKIE",  new TArray(TTop))
+            injectPredef("_SERVER",  new TArray(TTop))
+            injectPredef("_ENV",     new TArray(TTop))
+            injectPredef("_SESSION", new TArray(TTop))
 
             // for methods, we inject $this as its always defined
             scope match {

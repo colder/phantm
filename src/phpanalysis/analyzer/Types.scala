@@ -390,13 +390,15 @@ object Types {
             (entries.values.foldLeft(0)((a,b) => a ^ b.hashCode)) + globalType.hashCode
         }
 
+        override def toText(env: TypeEnvironment) =
+            "Array["+(entries.toList.sort((x,y) => x._1 < y._1).map(x => x._1 +" => "+ x._2.toText(env)).toList ::: "? => "+globalType.toText(env) :: Nil).mkString(", ")+"]"
         override def toString =
             "Array["+(entries.toList.sort((x,y) => x._1 < y._1).map(x => x._1 +" => "+ x._2).toList ::: "? => "+globalType :: Nil).mkString("; ")+"]"
     }
 
     object TAnyArray extends TArray(Map[String, Type](), TTop) {
         override def toString = "Array[?]"
-        override def toText(e: TypeEnvironment) = "any array"
+        override def toText(e: TypeEnvironment) = "Any array"
 
         override def equals(t: Any): Boolean = t match {
             case r: AnyRef =>
@@ -406,29 +408,29 @@ object Types {
     }
 
     case object TInt extends ConcreteType {
-        override def toText(e: TypeEnvironment) = "int"
+        override def toText(e: TypeEnvironment) = "Int"
     }
     case object TBoolean extends ConcreteType {
-        override def toText(e: TypeEnvironment) = "boolean"
+        override def toText(e: TypeEnvironment) = "Boolean"
     }
     case object TTrue extends ConcreteType {
-        override def toText(e: TypeEnvironment) = "true"
+        override def toText(e: TypeEnvironment) = "True"
     }
     case object TFalse extends ConcreteType {
-        override def toText(e: TypeEnvironment) = "false"
+        override def toText(e: TypeEnvironment) = "False"
     }
 
     case object TFloat extends ConcreteType {
-        override def toText(e: TypeEnvironment) = "float"
+        override def toText(e: TypeEnvironment) = "Float"
     }
     case object TString extends ConcreteType {
-        override def toText(e: TypeEnvironment) = "string"
+        override def toText(e: TypeEnvironment) = "String"
     }
     case object TAny extends ConcreteType {
-        override def toText(e: TypeEnvironment) = "any"
+        override def toText(e: TypeEnvironment) = "Any"
     }
     case object TResource extends ConcreteType {
-        override def toText(e: TypeEnvironment) = "resource"
+        override def toText(e: TypeEnvironment) = "Resource"
     }
     case object TNull extends ConcreteType {
         override def toText(e: TypeEnvironment) = "null"
@@ -436,15 +438,15 @@ object Types {
 
     /* Special types */
     case object TTop extends Type {
-        override def toText(e: TypeEnvironment) = "top"
+        override def toText(e: TypeEnvironment) = "Top"
     }
 
     case object TBottom extends Type {
-        override def toText(e: TypeEnvironment) = "bottom"
+        override def toText(e: TypeEnvironment) = "Bottom"
     }
 
     case object TUninitialized extends Type {
-        override def toText(e: TypeEnvironment) = "uninitialized"
+        override def toText(e: TypeEnvironment) = "Uninitialized"
     }
 
     object TUnion {
