@@ -185,6 +185,27 @@ object TypeFlow {
                         TUnion(resUnion)
                     }
 
+                case (tu1: TUnion, t2) =>
+                    var resUnion = Set[Type]();
+
+                    // we take the intersection
+                    for (t1 <- tu1.types) {
+                       if (leq(envx, envy, t1, t2)) {
+                           resUnion = resUnion + t1;
+                       }
+                    }
+
+                    if (resUnion.size == 0) {
+                        TBottom
+                    } else if (resUnion.size == 1) {
+                        resUnion.toList.head
+                    } else {
+                        TUnion(resUnion)
+                    }
+
+                case (t1, tu2: TUnion) =>
+                    meetTypes(tu2, t1)
+
                 // Arbitrary types
                 case (t1, t2) =>
                     if (leq(envx, envy, t1, t2)) {
@@ -824,6 +845,15 @@ object TypeFlow {
                         val t = typeFromSV(arr) match {
                             case ta: TArray =>
                                 ta.inject(index, typ)
+                            case tu: TUnion =>
+                                val typs = for (f <- tu.types) yield f match {
+                                    case ta: TArray =>
+                                        ta.inject(index, typ)
+                                    case t =>
+                                        t
+                                }
+
+                                new TUnion(typs)
                             case _ =>
                                 //new TArray().inject(index, typ)
                                 TBottom
@@ -833,6 +863,15 @@ object TypeFlow {
                         val t = typeFromSV(arr) match {
                             case ta: TArray =>
                                 ta.setAny(typ union ta.globalType)
+                            case tu: TUnion =>
+                                val typs = for (f <- tu.types) yield f match {
+                                    case ta: TArray =>
+                                        ta.setAny(typ union ta.globalType)
+                                    case t =>
+                                        t
+                                }
+
+                                new TUnion(typs)
                             case _ =>
                                 //new TArray().setAny(typ union TUninitialized)
                                 TBottom
