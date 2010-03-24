@@ -1064,9 +1064,55 @@ object TypeFlow {
                         expOrRef(v1, TInt, TFloat)
                         expOrRef(v2, TInt, TFloat)
                     case EQUALS | IDENTICAL | NOTEQUALS | NOTIDENTICAL =>
-                        // TODO
+                        def filter(v: CFGVariable, value: Boolean) = {
+                            val t = typeFromSV(v);
+
+                            if (t != TBottom) {
+                                // We don't want to generate "unreachable code"
+                                // if the type is already bottom
+                                val reft = if (value == true) {
+                                    // possible types of $v after $v == true
+                                    TInt union TFloat union TTrue union TResource union TAnyArray union TAnyObject
+                                } else {
+                                    // possible types of $v after $v == false
+                                    TFalse union TNull union TInt union TFloat union TString union TAnyArray union TUninitialized
+                                }
+
+                                val rest = meet(t, reft)
+
+                                if (rest == TBottom) {
+                                    // unreachable code
+                                    env = BaseTypeEnvironment
+                                } else {
+                                    val (sv, _) = getCheckType(v, t)
+                                    env = env.inject(sv, rest)
+                                }
+                            }
+                        }
+
                         expOrRef(v1, TAny)
                         expOrRef(v2, TAny)
+
+                        (v1, op, v2) match {
+                            case (v: CFGVariable, EQUALS | IDENTICAL, _: CFGTrue) =>
+                                filter(v, true)
+                            case (v: CFGVariable, NOTEQUALS | NOTIDENTICAL, _: CFGTrue) =>
+                                filter(v, false)
+                            case (v: CFGVariable, EQUALS | IDENTICAL, _: CFGFalse) =>
+                                filter(v, false)
+                            case (v: CFGVariable, NOTEQUALS | NOTIDENTICAL, _: CFGFalse) =>
+                                filter(v, true)
+                            case (_:CFGTrue, EQUALS | IDENTICAL, v: CFGVariable) =>
+                                filter(v, true)
+                            case (_:CFGTrue, NOTEQUALS | NOTIDENTICAL, v: CFGVariable) =>
+                                filter(v, false)
+                            case (_:CFGFalse, EQUALS | IDENTICAL, v: CFGVariable) =>
+                                filter(v, false)
+                            case (_:CFGFalse, NOTEQUALS | NOTIDENTICAL, v: CFGVariable) =>
+                                filter(v, true)
+                            case _ =>
+                                // no filtering
+                        }
                   }
 
                 case CFGPrint(v) =>
@@ -1078,7 +1124,7 @@ object TypeFlow {
                 case ex: CFGSimpleValue =>
                     expOrRef(ex, TAny)
 
-                case _ => notice(node+" not yet handled", node); env
+                case _ => notice(node+" not yet handled", node)
             }
 
             env
