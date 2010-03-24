@@ -491,6 +491,9 @@ object TypeFlow {
                         case None =>
                             // handle special functions
                             id.value.toLowerCase match {
+                                case "eval" =>
+                                    notice("eval() statements are ignored.", id)
+                                    TAny
                                 case "isset" | "empty" =>
                                     TBoolean // no need to check the args, this is a no-error function
                                 case _ =>
