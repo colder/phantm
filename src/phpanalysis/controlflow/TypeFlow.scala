@@ -451,7 +451,7 @@ object TypeFlow {
                                 TBottom
                             }
 
-                            et union removeUninit(false)(t.globalType)
+                             removeUninit(false)(et union t.globalType)
                         case _ =>
                             TAny
                     }
@@ -564,9 +564,30 @@ object TypeFlow {
                     typeFromSV(ar) match {
                         case t: TArray =>
                             t.lookup(ind)
+                        case u: TUnion =>
+                            u.types.map { _ match {
+                                case ta: TArray =>
+                                    ta.lookup(ind)
+                                case _ =>
+                                    TBottom
+                            }}.reduceLeft(_ union _)
                         case _ =>
                             TBottom
                     }
+                case ae @ CFGNextArrayEntry(arr) =>
+                    typeFromSV(arr) match {
+                        case ta: TArray =>
+                            ta.entries.foldLeft(TBottom: Type)((t, e)=> t union e._2) union ta.globalType
+                        case u: TUnion =>
+                            u.types.map { _ match {
+                                case ta: TArray =>
+                                    ta.entries.foldLeft(TBottom: Type)((t, e)=> t union e._2) union ta.globalType
+                                case _ =>
+                                    TBottom
+                            }}.reduceLeft(_ union _)
+                        case _ =>
+                            TBottom
+                   }
 
                 case op @ CFGObjectProperty(obj, p) =>
                     typeFromSV(obj) match {
@@ -586,13 +607,6 @@ object TypeFlow {
                         case _ =>
                             TBottom
                     }
-                case ae @ CFGNextArrayEntry(arr) =>
-                    typeFromSV(arr) match {
-                        case t: TArray =>
-                            t.globalType
-                        case _ =>
-                            TBottom
-                   }
 
                 case vv @ CFGVariableVar(v) =>
                     notice("Dynamic variable ignored", vv)
