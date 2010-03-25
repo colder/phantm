@@ -324,7 +324,7 @@ object ASTToCFG {
                             Emit.setPC(afterV)
                         case Isset(vs) =>
                             if (vs.length > 1) {
-                                notyet(ex); // TODO
+                                Emit.statement(CFGAssign(v, CFGFunctionCall(internalFunction("isset"), vs.map{expr(_)}).setPos(ex)).setPos(ex))
                             } else {
                                 Emit.statement(CFGAssign(v, CFGFunctionCall(internalFunction("isset"), List(expr(vs.first))).setPos(ex)).setPos(ex))
                             }
