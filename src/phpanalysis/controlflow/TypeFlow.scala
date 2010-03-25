@@ -166,42 +166,21 @@ object TypeFlow {
                     var resUnion = Set[Type]();
 
                     // we take the intersection
-                    for (t1 <- tu1.types) {
-                       if (leq(envx, envy, t1, tu2)) {
-                           resUnion = resUnion + t1;
-                       }
-                    }
-                    for (t2 <- tu2.types) {
-                       if (leq(envx, envy, t2, tu1)) {
-                           resUnion = resUnion + t2;
-                       }
+                    for (t1 <- tu1.types; t2 <- tu2.types) {
+                       resUnion = resUnion + meetTypes(t1, t2);
                     }
 
-                    if (resUnion.size == 0) {
-                        TBottom
-                    } else if (resUnion.size == 1) {
-                        resUnion.toList.head
-                    } else {
-                        TUnion(resUnion)
-                    }
+                    resUnion.foldLeft(TBottom: Type)(_ union _)
 
                 case (tu1: TUnion, t2) =>
                     var resUnion = Set[Type]();
 
                     // we take the intersection
                     for (t1 <- tu1.types) {
-                       if (leq(envx, envy, t1, t2)) {
-                           resUnion = resUnion + t1;
-                       }
+                       resUnion = resUnion + meetTypes(t1, t2);
                     }
 
-                    if (resUnion.size == 0) {
-                        TBottom
-                    } else if (resUnion.size == 1) {
-                        resUnion.toList.head
-                    } else {
-                        TUnion(resUnion)
-                    }
+                    resUnion.foldLeft(TBottom: Type)(_ union _)
 
                 case (t1, tu2: TUnion) =>
                     meetTypes(tu2, t1)
