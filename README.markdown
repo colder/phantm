@@ -66,3 +66,8 @@ to see what options the tool supports:
              --only <symbols>       Only do analysis on the specified bodies of code (main:func1:class1::method1:...)
              --exportAPI <path>     Export generated API to <path>
              --lint                 Stop the analysis after the parsingr
+
+VIM Usage
+---------
+    set makeprg=phantm\ --format\ quickfix\ %
+    set errorformat=%W%f:%l:%c\ \ Notice:\ %m
