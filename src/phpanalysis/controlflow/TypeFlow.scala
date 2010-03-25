@@ -501,7 +501,7 @@ object TypeFlow {
                                     }
                             }
                         case _ =>
-                            TBottom
+                            TTop
                     }
 
                 case const @ CFGConstant(id) =>
@@ -553,6 +553,8 @@ object TypeFlow {
                                 case _ =>
                                     TBottom
                             }}.reduceLeft(_ union _)
+                        case TAny | TTop =>
+                            TTop
                         case _ =>
                             TBottom
                     }
@@ -567,19 +569,21 @@ object TypeFlow {
                                 case _ =>
                                     TBottom
                             }}.reduceLeft(_ union _)
+                        case TAny | TTop =>
+                            TTop
                         case _ =>
                             TBottom
                    }
 
                 case op @ CFGObjectProperty(obj, p) =>
                     typeFromSV(obj) match {
-                        case TAnyObject =>
+                        case TAnyObject | TAny | TTop =>
                             TTop
                         case or: TObjectRef =>
                             env.store.lookup(or).lookupField(p)
                         case u: TUnion =>
                             u.types.map { _ match {
-                                case TAnyObject =>
+                                case TAnyObject | TAny | TTop =>
                                     TTop
                                 case or: TObjectRef =>
                                     env.store.lookup(or).lookupField(p)
@@ -873,9 +877,12 @@ object TypeFlow {
                                         t
                                 }
 
-                                new TUnion(typs)
+                                typs.foldLeft(TBottom: Type)(_ union _)
+                            case TAny =>
+                                TAny
+                            case TTop =>
+                                TTop
                             case _ =>
-                                //new TArray().inject(index, typ)
                                 TBottom
                         }
                         backPatchType(arr, t)
@@ -891,9 +898,12 @@ object TypeFlow {
                                         t
                                 }
 
-                                new TUnion(typs)
+                                typs.foldLeft(TBottom: Type)(_ union _)
+                            case TAny =>
+                                TAny
+                            case TTop =>
+                                TTop
                             case _ =>
-                                //new TArray().setAny(typ union TUninitialized)
                                 TBottom
                         }
                         backPatchType(arr, t)
@@ -920,6 +930,12 @@ object TypeFlow {
                                 }
 
                                 tu
+                            case TAnyObject =>
+                                TAnyObject
+                            case TAny =>
+                                TAny
+                            case TTop =>
+                                TTop
                             case _ =>
                                 TBottom
                         }
@@ -949,7 +965,7 @@ object TypeFlow {
                         if (l == 0) {
                             TTop
                         } else {
-                            TUnion(tu.types.map(limitType(_, l-1)))
+                            tu.types.map(limitType(_, l-1)).reduceLeft(_ union _)
                         }
                     case t =>
                         if (l == 0) {

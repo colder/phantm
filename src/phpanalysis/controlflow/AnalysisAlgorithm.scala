@@ -19,7 +19,10 @@ class AnalysisAlgorithm[E <: Environment[E, S],S]
     def pass(transferFun: TransferFunction[E,S]) = {
         for (v <- cfg.V) {
             for (e <- cfg.inEdges(v)) {
-                transferFun(e.lab, facts(e.v1))
+                // We ignore unreachable code
+                if (facts(e.v1) != bottomEnv) {
+                    transferFun(e.lab, facts(e.v1))
+                }
             }
         }
     }
