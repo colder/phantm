@@ -74,7 +74,6 @@ object Reporter {
             for ((p, msg, pos, _) <- errsPerFile.toList.sort{(x,y) => x._3.line < y._3.line || (x._3.line == y._3.line && x._3.col < y._3.col)}) {
                 emit(p, msg, pos)
             }
-            println
         }
         errors.clear
         if (errorsCount > 0) {
