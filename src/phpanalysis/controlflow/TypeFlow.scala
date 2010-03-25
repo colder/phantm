@@ -136,16 +136,16 @@ object TypeFlow {
                 case (_: ConcreteType, TAny) => x
 
                 case (TAny, tu: TUnion) =>
-                    if (!(tu.types contains TUninitialized)) {
-                        tu
+                    if (tu.types contains TUninitialized) {
+                        tu.types.filter(_ != TUninitialized).foldLeft(TBottom: Type)(_ union _)
                     } else {
-                        TBottom
+                        tu
                     }
                 case (tu: TUnion, TAny) =>
-                    if (!(tu.types contains TUninitialized)) {
-                        tu
+                    if (tu.types contains TUninitialized) {
+                        tu.types.filter(_ != TUninitialized).foldLeft(TBottom: Type)(_ union _)
                     } else {
-                        TBottom
+                        tu
                     }
 
                 case (t1, t2) if t1 == t2 => t1
@@ -1054,10 +1054,10 @@ object TypeFlow {
                                 // if the type is already bottom
                                 val reft = if (value == true) {
                                     // possible types of $v after $v == true
-                                    TInt union TFloat union TTrue union TResource union TAnyArray union TAnyObject
+                                    TInt union TFloat union TAnyArray union TString union TTrue union TResource union TAnyObject
                                 } else {
                                     // possible types of $v after $v == false
-                                    TFalse union TNull union TInt union TFloat union TString union TAnyArray union TUninitialized
+                                    TInt union TFloat union TAnyArray union TString union TFalse union TNull union TUninitialized
                                 }
 
                                 val rest = meet(t, reft)
@@ -1066,8 +1066,8 @@ object TypeFlow {
                                     // unreachable code
                                     env = BaseTypeEnvironment
                                 } else {
-                                    val (sv, _) = getCheckType(v, t)
-                                    env = env.inject(sv, rest)
+                                    val (sv, ct) = getCheckType(v, rest)
+                                    env = env.inject(sv, ct)
                                 }
                             }
                         }
@@ -1098,7 +1098,7 @@ object TypeFlow {
                   }
 
                 case CFGPrint(v) =>
-                    expOrRef(v, TInt, TString, TAnyObject, TBoolean)
+                    expOrRef(v, TAny)
 
                 case CFGUnset(v) =>
                     assign(v, TUninitialized)
