@@ -109,7 +109,9 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
                         }
                     }
                 case None =>
-                    Reporter.notice("Include with non trivial argument will be ignored", inc)
+                    if (Main.verbosity >= 0) {
+                        Reporter.notice("Include with non trivial argument will be ignored", inc)
+                    }
                     PHPFalse()
             }
         } else {
