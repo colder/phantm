@@ -611,6 +611,15 @@ object TypeFlow {
 
             def typeError(pos: Positional, etyp: Type, vtyp: Type): Unit = {
                 if (!silent) {
+                    def filterErrors(t: Type): Boolean = {
+                        if (Main.verbosity <= 0 && possiblyUninit(t)) {
+                            true
+                        } else if (Main.verbosity < 0 && t == TAny) {
+                            true
+                        } else {
+                            false
+                        }
+                    }
                     def simpleText(t: Type): String = t match {
                         case ta: TArray =>
                             "Array[...]"
@@ -658,7 +667,7 @@ object TypeFlow {
                                 rhs = "..." :: rhs;
                             }
 
-                            if (relevantKeys.forall(k => possiblyUninit(vta.lookup(k)))) {
+                            if (relevantKeys.forall(k => filterErrors(vta.lookup(k)))) {
                                 cancel = true
                             }
 
@@ -670,9 +679,9 @@ object TypeFlow {
                             ((et.toText(env), simpleText(vto)), false)
 
                         case (eta: TArray, vt) =>
-                            ((simpleText(eta), simpleText(vt)), possiblyUninit(vt))
+                            ((simpleText(eta), simpleText(vt)), filterErrors(vt))
                         case (eto: TObjectRef, vt) =>
-                            ((simpleText(eto), simpleText(vt)), possiblyUninit(vt))
+                            ((simpleText(eto), simpleText(vt)), filterErrors(vt))
                         case (etu: TUnion, vtu: TUnion) =>
                             var relevantTypes = List[String]();
 
@@ -688,11 +697,11 @@ object TypeFlow {
 
                             ((simpleText(etu), relevantTypes.reverse.mkString(" or ")), false)
                         case _ =>
-                            ((et.toText(env), vt.toText(env)), possiblyUninit(vt))
+                            ((et.toText(env), vt.toText(env)), filterErrors(vt))
                     }
 
                     (etyp, vtyp) match {
-                        case (et, vt) if possiblyUninit(vt) =>
+                        case (et, vt) if filterErrors(vt) =>
                             if (Main.verbosity > 0) {
                                 pos match {
                                     case sv: CFGSimpleVariable =>
@@ -708,17 +717,10 @@ object TypeFlow {
                                     case _ =>
                                         notice("Uninitialized value", pos)
                                 }
-                        case (eta: TArray, vta: TArray) =>
-                            val (diff, cancelError) = typesDiff(eta, vta)
-
-                            if (!cancelError || Main.verbosity > 0) {
-                                notice("Potential type mismatch: expected: "+diff._1+", found: "+diff._2, pos)
-                            }
-
                         case (et, vt) =>
                             val (diff, cancelError) = typesDiff(et, vt)
 
-                            if (!cancelError || Main.verbosity > 0) {
+                            if (!cancelError) {
                                 notice("Potential type mismatch: expected: "+diff._1+", found: "+diff._2, pos)
                             }
                     }

@@ -103,6 +103,9 @@ object Main {
             case "--quiet" :: xs =>
                 verbosity = 0
                 handleArgs(xs)
+            case "--shy" :: xs =>
+                verbosity = -1
+                handleArgs(xs)
             case "--verbose" :: xs =>
                 verbosity = max(verbosity, 2)
                 handleArgs(xs)
@@ -257,6 +260,7 @@ object Main {
         println("         --fixpoint             Display fixpoints");
         println("         --debug                Display all kind of debug information");
         println("         --quiet                Mute some errors such as uninitialized variables");
+        println("         --shy                  Psscht");
         println("         --verbose              Display more notices");
         println("         --vverbose             Be nitpicking and display even more notices");
         println("         --includepath <paths>  Define paths for compile time include resolution (.:a:bb:c:..)");
