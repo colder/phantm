@@ -982,7 +982,7 @@ object TypeFlow {
                 var rest = backPatchType(v, ext)
                 //println("Backpatched type: "+rest)
                 //println("Depth: "+rest.depth(env))
-                if (rest.depth(env) > 5) {
+                if (rest.depth(env) >= 5) {
                     rest = limitType(rest, 5)
                 }
                 //println("Limitted: "+rest)
