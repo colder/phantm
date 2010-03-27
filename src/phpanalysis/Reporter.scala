@@ -74,7 +74,6 @@ object Reporter {
             for ((p, msg, pos, _) <- errsPerFile.toList.sort{(x,y) => x._3.line < y._3.line || (x._3.line == y._3.line && x._3.col < y._3.col)}) {
                 emit(p, msg, pos)
             }
-            println
         }
         errors.clear
         if (errorsCount > 0) {
@@ -86,7 +85,7 @@ object Reporter {
         }
     }
 
-    private def emit(prefix: String, msg: String, pos: Positional) = {
+    private def emitNormal(prefix: String, msg: String, pos: Positional) = {
         println(pos.file.getOrElse("?")+":"+(if (pos.line < 0) "?" else pos.line)+"  "+prefix+msg)
         pos.file match {
             case Some(file) =>
@@ -108,12 +107,12 @@ object Reporter {
                             1
                         }
 
-                        if (Main.colors != "termbg") {
+                        if (Main.format != "termbg") {
                             println(s)
 
-                            val (colorBegin, colorEnd) = if (Main.colors == "term") {
+                            val (colorBegin, colorEnd) = if (Main.format == "term") {
                                 (Console.RED+Console.BOLD, Console.RESET)
-                            } else if (Main.colors == "html") {
+                            } else if (Main.format == "html") {
                                 ("<span style=\"color: red;\">", "</span>")
                             } else {
                                 ("", "")
@@ -137,7 +136,18 @@ object Reporter {
                 }
             case None =>
         }
+    }
 
+    private def emitQuickFix(prefix: String, msg: String, pos: Positional) = {
+        println(pos.file.getOrElse("?")+":"+(if (pos.line < 0) "?" else pos.line)+":"+(if (pos.col < 0) "?" else pos.col+1)+"  "+prefix+msg)
+    }
+
+    private def emit(prefix: String, msg: String, pos: Positional) = {
+        if (Main.format == "quickfix") {
+            emitQuickFix(prefix, msg, pos)
+        } else {
+            emitNormal(prefix, msg, pos)
+        }
     }
 
 

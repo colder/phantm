@@ -12,7 +12,7 @@ object Main {
     var displaySymbols     = false;
     var displayUsage       = false;
     var verbosity          = 1;
-    var colors             = "termbg";
+    var format             = "termbg";
     var resolveIncludes    = true;
     var importAPI          = true;
     var testsActive        = false;
@@ -62,21 +62,23 @@ object Main {
             case "--noincludes" :: xs =>
                 resolveIncludes = false
                 handleArgs(xs)
-            case "--colors" :: "termbg" :: xs =>
-                colors = "termbg";
+            case "--format" :: "termbg" :: xs =>
+                format = "termbg";
                 handleArgs(xs)
-            case "--colors" :: "term" :: xs =>
-                colors = "term";
+            case "--format" :: "term" :: xs =>
+                format = "term";
                 handleArgs(xs)
-            case "--colors" :: "html" :: xs =>
-                colors = "html";
+            case "--format" :: "html" :: xs =>
+                format = "html";
                 handleArgs(xs)
-            case "--colors" :: "none" :: xs =>
-                colors = "none";
+            case "--format" :: "quickfix" :: xs =>
+                format = "quickfix";
                 handleArgs(xs)
-            case "--colors" :: xs =>
-                colors = "term";
+            case "--format" :: "none" :: xs =>
+                format = "none";
                 handleArgs(xs)
+            case "--format" :: f :: xs =>
+                println("Invalid format "+f)
             case "--only" :: filter :: xs =>
                 typeFlowFilter = filter.replace("::", "/").split(":").map(_.replace("/", "::")).toList
                 handleArgs(xs)
@@ -100,6 +102,9 @@ object Main {
                 handleArgs(xs)
             case "--quiet" :: xs =>
                 verbosity = 0
+                handleArgs(xs)
+            case "--shy" :: xs =>
+                verbosity = -1
                 handleArgs(xs)
             case "--verbose" :: xs =>
                 verbosity = max(verbosity, 2)
@@ -241,11 +246,12 @@ object Main {
         println("Usage:   phantm [..options..] <files ...>");
         println("Options: --help                 This help");
         println("         --maindir <maindir>    Specify main directory of the tool");
-        println("         --colors <mode>        Change the way errors are displayed:");
-        println("                                Mode: none   : no colors");
-        println("                                      termbg : ANSI colors inside the code (default)");
-        println("                                      term   : ANSI colors below the code");
-        println("                                      html   : HTML colors below the code");
+        println("         --format <mode>        Change the way errors are displayed:");
+        println("                                Mode: none     : no colors");
+        println("                                      termbg   : ANSI colors inside the code (default)");
+        println("                                      term     : ANSI colors below the code");
+        println("                                      html     : HTML colors below the code");
+        println("                                      quickfix : quickfix error style");
         println("         --symbols              Display symbols");
         println("         --showincludes         Display the list of included files");
         println("         --noincludes           Disables includes resolutions");
@@ -254,6 +260,7 @@ object Main {
         println("         --fixpoint             Display fixpoints");
         println("         --debug                Display all kind of debug information");
         println("         --quiet                Mute some errors such as uninitialized variables");
+        println("         --shy                  Psscht");
         println("         --verbose              Display more notices");
         println("         --vverbose             Be nitpicking and display even more notices");
         println("         --includepath <paths>  Define paths for compile time include resolution (.:a:bb:c:..)");

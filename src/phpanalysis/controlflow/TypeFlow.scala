@@ -136,16 +136,16 @@ object TypeFlow {
                 case (_: ConcreteType, TAny) => x
 
                 case (TAny, tu: TUnion) =>
-                    if (!(tu.types contains TUninitialized)) {
-                        tu
+                    if (tu.types contains TUninitialized) {
+                        tu.types.filter(_ != TUninitialized).foldLeft(TBottom: Type)(_ union _)
                     } else {
-                        TBottom
+                        tu
                     }
                 case (tu: TUnion, TAny) =>
-                    if (!(tu.types contains TUninitialized)) {
-                        tu
+                    if (tu.types contains TUninitialized) {
+                        tu.types.filter(_ != TUninitialized).foldLeft(TBottom: Type)(_ union _)
                     } else {
-                        TBottom
+                        tu
                     }
 
                 case (t1, t2) if t1 == t2 => t1
@@ -166,42 +166,21 @@ object TypeFlow {
                     var resUnion = Set[Type]();
 
                     // we take the intersection
-                    for (t1 <- tu1.types) {
-                       if (leq(envx, envy, t1, tu2)) {
-                           resUnion = resUnion + t1;
-                       }
-                    }
-                    for (t2 <- tu2.types) {
-                       if (leq(envx, envy, t2, tu1)) {
-                           resUnion = resUnion + t2;
-                       }
+                    for (t1 <- tu1.types; t2 <- tu2.types) {
+                       resUnion = resUnion + meetTypes(t1, t2);
                     }
 
-                    if (resUnion.size == 0) {
-                        TBottom
-                    } else if (resUnion.size == 1) {
-                        resUnion.toList.head
-                    } else {
-                        TUnion(resUnion)
-                    }
+                    resUnion.foldLeft(TBottom: Type)(_ union _)
 
                 case (tu1: TUnion, t2) =>
                     var resUnion = Set[Type]();
 
                     // we take the intersection
                     for (t1 <- tu1.types) {
-                       if (leq(envx, envy, t1, t2)) {
-                           resUnion = resUnion + t1;
-                       }
+                       resUnion = resUnion + meetTypes(t1, t2);
                     }
 
-                    if (resUnion.size == 0) {
-                        TBottom
-                    } else if (resUnion.size == 1) {
-                        resUnion.toList.head
-                    } else {
-                        TUnion(resUnion)
-                    }
+                    resUnion.foldLeft(TBottom: Type)(_ union _)
 
                 case (t1, tu2: TUnion) =>
                     meetTypes(tu2, t1)
@@ -522,7 +501,7 @@ object TypeFlow {
                                     }
                             }
                         case _ =>
-                            TBottom
+                            TTop
                     }
 
                 case const @ CFGConstant(id) =>
@@ -574,6 +553,8 @@ object TypeFlow {
                                 case _ =>
                                     TBottom
                             }}.reduceLeft(_ union _)
+                        case TAny | TTop =>
+                            TTop
                         case _ =>
                             TBottom
                     }
@@ -588,19 +569,21 @@ object TypeFlow {
                                 case _ =>
                                     TBottom
                             }}.reduceLeft(_ union _)
+                        case TAny | TTop =>
+                            TTop
                         case _ =>
                             TBottom
                    }
 
                 case op @ CFGObjectProperty(obj, p) =>
                     typeFromSV(obj) match {
-                        case TAnyObject =>
+                        case TAnyObject | TAny | TTop =>
                             TTop
                         case or: TObjectRef =>
                             env.store.lookup(or).lookupField(p)
                         case u: TUnion =>
                             u.types.map { _ match {
-                                case TAnyObject =>
+                                case TAnyObject | TAny | TTop =>
                                     TTop
                                 case or: TObjectRef =>
                                     env.store.lookup(or).lookupField(p)
@@ -628,6 +611,15 @@ object TypeFlow {
 
             def typeError(pos: Positional, etyp: Type, vtyp: Type): Unit = {
                 if (!silent) {
+                    def filterErrors(t: Type): Boolean = {
+                        if (Main.verbosity <= 0 && possiblyUninit(t)) {
+                            true
+                        } else if (Main.verbosity < 0 && t == TAny) {
+                            true
+                        } else {
+                            false
+                        }
+                    }
                     def simpleText(t: Type): String = t match {
                         case ta: TArray =>
                             "Array[...]"
@@ -675,7 +667,7 @@ object TypeFlow {
                                 rhs = "..." :: rhs;
                             }
 
-                            if (relevantKeys.forall(k => possiblyUninit(vta.lookup(k)))) {
+                            if (relevantKeys.forall(k => filterErrors(vta.lookup(k)))) {
                                 cancel = true
                             }
 
@@ -687,9 +679,9 @@ object TypeFlow {
                             ((et.toText(env), simpleText(vto)), false)
 
                         case (eta: TArray, vt) =>
-                            ((simpleText(eta), simpleText(vt)), possiblyUninit(vt))
+                            ((simpleText(eta), simpleText(vt)), filterErrors(vt))
                         case (eto: TObjectRef, vt) =>
-                            ((simpleText(eto), simpleText(vt)), possiblyUninit(vt))
+                            ((simpleText(eto), simpleText(vt)), filterErrors(vt))
                         case (etu: TUnion, vtu: TUnion) =>
                             var relevantTypes = List[String]();
 
@@ -705,11 +697,11 @@ object TypeFlow {
 
                             ((simpleText(etu), relevantTypes.reverse.mkString(" or ")), false)
                         case _ =>
-                            ((et.toText(env), vt.toText(env)), possiblyUninit(vt))
+                            ((et.toText(env), vt.toText(env)), filterErrors(vt))
                     }
 
                     (etyp, vtyp) match {
-                        case (et, vt) if possiblyUninit(vt) =>
+                        case (et, vt) if filterErrors(vt) =>
                             if (Main.verbosity > 0) {
                                 pos match {
                                     case sv: CFGSimpleVariable =>
@@ -725,17 +717,10 @@ object TypeFlow {
                                     case _ =>
                                         notice("Uninitialized value", pos)
                                 }
-                        case (eta: TArray, vta: TArray) =>
-                            val (diff, cancelError) = typesDiff(eta, vta)
-
-                            if (!cancelError || Main.verbosity > 0) {
-                                notice("Potential type mismatch: expected: "+diff._1+", found: "+diff._2, pos)
-                            }
-
                         case (et, vt) =>
                             val (diff, cancelError) = typesDiff(et, vt)
 
-                            if (!cancelError || Main.verbosity > 0) {
+                            if (!cancelError) {
                                 notice("Potential type mismatch: expected: "+diff._1+", found: "+diff._2, pos)
                             }
                     }
@@ -894,9 +879,12 @@ object TypeFlow {
                                         t
                                 }
 
-                                new TUnion(typs)
+                                typs.foldLeft(TBottom: Type)(_ union _)
+                            case TAny =>
+                                TAny
+                            case TTop =>
+                                TTop
                             case _ =>
-                                //new TArray().inject(index, typ)
                                 TBottom
                         }
                         backPatchType(arr, t)
@@ -912,9 +900,12 @@ object TypeFlow {
                                         t
                                 }
 
-                                new TUnion(typs)
+                                typs.foldLeft(TBottom: Type)(_ union _)
+                            case TAny =>
+                                TAny
+                            case TTop =>
+                                TTop
                             case _ =>
-                                //new TArray().setAny(typ union TUninitialized)
                                 TBottom
                         }
                         backPatchType(arr, t)
@@ -941,6 +932,12 @@ object TypeFlow {
                                 }
 
                                 tu
+                            case TAnyObject =>
+                                TAnyObject
+                            case TAny =>
+                                TAny
+                            case TTop =>
+                                TTop
                             case _ =>
                                 TBottom
                         }
@@ -970,7 +967,7 @@ object TypeFlow {
                         if (l == 0) {
                             TTop
                         } else {
-                            TUnion(tu.types.map(limitType(_, l-1)))
+                            tu.types.map(limitType(_, l-1)).reduceLeft(_ union _)
                         }
                     case t =>
                         if (l == 0) {
@@ -985,7 +982,7 @@ object TypeFlow {
                 var rest = backPatchType(v, ext)
                 //println("Backpatched type: "+rest)
                 //println("Depth: "+rest.depth(env))
-                if (rest.depth(env) > 5) {
+                if (rest.depth(env) >= 5) {
                     rest = limitType(rest, 5)
                 }
                 //println("Limitted: "+rest)
@@ -1075,10 +1072,10 @@ object TypeFlow {
                                 // if the type is already bottom
                                 val reft = if (value == true) {
                                     // possible types of $v after $v == true
-                                    TInt union TFloat union TTrue union TResource union TAnyArray union TAnyObject
+                                    TInt union TFloat union TAnyArray union TString union TTrue union TResource union TAnyObject
                                 } else {
                                     // possible types of $v after $v == false
-                                    TFalse union TNull union TInt union TFloat union TString union TAnyArray union TUninitialized
+                                    TInt union TFloat union TAnyArray union TString union TFalse union TNull union TUninitialized
                                 }
 
                                 val rest = meet(t, reft)
@@ -1087,8 +1084,8 @@ object TypeFlow {
                                     // unreachable code
                                     env = BaseTypeEnvironment
                                 } else {
-                                    val (sv, _) = getCheckType(v, t)
-                                    env = env.inject(sv, rest)
+                                    val (sv, ct) = getCheckType(v, rest)
+                                    env = env.inject(sv, ct)
                                 }
                             }
                         }
@@ -1119,7 +1116,7 @@ object TypeFlow {
                   }
 
                 case CFGPrint(v) =>
-                    expOrRef(v, TInt, TString, TAnyObject, TBoolean)
+                    expOrRef(v, TAny)
 
                 case CFGUnset(v) =>
                     assign(v, TUninitialized)
