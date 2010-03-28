@@ -69,5 +69,9 @@ to see what options the tool supports:
 
 VIM Usage
 ---------
-    set makeprg=phantm\ --format\ quickfix\ %
-    set errorformat=%W%f:%l:%c\ \ Notice:\ %m
+        set makeprg=phantm\ --format\ quickfix\ %
+        set errorformat =%W%f:%l:%c\ \ Notice:\ %m
+        set errorformat+=%E%f:%l:%c\ \ Error:\ %m
+        set errorformat+=%-G%*\\d%m
+        set errorformat+=%-G\ %m
+        set errorformat+=%-G\ %\\*
