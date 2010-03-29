@@ -18,6 +18,8 @@ object TypeFlow {
                 case (TBottom, _) => true
                 case (_, TTop) => true
                 case (_:ConcreteType, TAny) => true
+                case (TInt, TNumeric) => true
+                case (TFloat, TNumeric) => true
                 case (TTrue, TBoolean) => true
                 case (TFalse, TBoolean) => true
                 case (t1: TObjectRef, TAnyObject) => true
@@ -86,12 +88,19 @@ object TypeFlow {
                     TTop
                 }
 
-            case (TTrue, TFalse) => TBoolean
-            case (TFalse, TTrue) => TBoolean
-            case (TTrue, TBoolean) => TBoolean
-            case (TBoolean, TTrue) => TBoolean
-            case (TFalse, TBoolean) => TBoolean
-            case (TBoolean, TFalse) => TBoolean
+            case (TFloat,   TInt)       => TNumeric
+            case (TInt,     TFloat)     => TNumeric
+            case (TNumeric, TInt)       => TNumeric
+            case (TNumeric, TFloat)     => TNumeric
+            case (TFloat,   TNumeric)   => TNumeric
+            case (TInt,     TNumeric)   => TNumeric
+
+            case (TTrue,    TFalse)     => TBoolean
+            case (TFalse,   TTrue)      => TBoolean
+            case (TTrue,    TBoolean)   => TBoolean
+            case (TBoolean, TTrue)      => TBoolean
+            case (TFalse,   TBoolean)   => TBoolean
+            case (TBoolean, TFalse)     => TBoolean
 
             case (t1, t2) if t1 == t2 => t1
 
@@ -788,16 +797,19 @@ object TypeFlow {
             }
 
             def typeFromBinOP(v1: CFGSimpleValue, op: CFGBinaryOperator, v2: CFGSimpleValue): Type = op match {
-                case PLUS | MINUS | MULT | DIV  =>
+                case PLUS | MINUS | MULT =>
                     expOrRef(v1, TInt, TFloat) match {
                         case TInt =>
                             expOrRef(v2, TInt, TFloat)
                         case TFloat =>
                             expOrRef(v2, TInt, TFloat)
-                            TFloat
                         case _ =>
                             expOrRef(v2, TInt, TFloat)
                     }
+                case DIV  =>
+                    expOrRef(v1, TInt, TFloat)
+                    expOrRef(v2, TInt, TFloat)
+                    TInt union TFloat
                 case MOD =>
                     expOrRef(v1, TInt)
                     expOrRef(v2, TInt)

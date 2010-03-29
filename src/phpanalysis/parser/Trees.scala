@@ -23,6 +23,7 @@ object Trees {
     abstract class TypeHint extends Tree
     case object THString    extends TypeHint
     case object THInt       extends TypeHint
+    case object THNumeric   extends TypeHint
     case object THBoolean   extends TypeHint
     case object THFloat     extends TypeHint
     case object THArray     extends TypeHint

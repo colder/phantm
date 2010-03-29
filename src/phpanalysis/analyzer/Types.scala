@@ -430,6 +430,13 @@ object Types {
     case object TInt extends ConcreteType {
         override def toText(e: TypeEnvironment) = "Int"
     }
+    case object TFloat extends ConcreteType {
+        override def toText(e: TypeEnvironment) = "Float"
+    }
+    case object TNumeric extends ConcreteType {
+        override def toText(e: TypeEnvironment) = "Numeric"
+    }
+
     case object TBoolean extends ConcreteType {
         override def toText(e: TypeEnvironment) = "Boolean"
     }
@@ -440,9 +447,6 @@ object Types {
         override def toText(e: TypeEnvironment) = "False"
     }
 
-    case object TFloat extends ConcreteType {
-        override def toText(e: TypeEnvironment) = "Float"
-    }
     case object TString extends ConcreteType {
         override def toText(e: TypeEnvironment) = "String"
     }
@@ -512,6 +516,27 @@ object Types {
                         res = addToSet(res, t)
                     }
                     res
+                case TNumeric =>
+                    typs.filter(t => (t != TInt) && (t != TFalse)) + TNumeric
+
+                case TInt =>
+                    if (typs contains TFloat) {
+                        addToSet(typs, TNumeric)
+                    } else if (typs contains TNumeric) {
+                        typs
+                    } else {
+                        typs + TInt
+                    }
+
+                case TFloat =>
+                    if (typs contains TInt) {
+                        addToSet(typs, TNumeric)
+                    } else if (typs contains TNumeric) {
+                        typs
+                    } else {
+                        typs + TFloat
+                    }
+
                 case TBoolean =>
                     typs.filter(t => (t != TFalse) && (t != TTrue)) + TBoolean
 
@@ -607,6 +632,7 @@ object Types {
         case THTrue => TBoolean
         case THResource => TResource
         case THInt => TInt
+        case THNumeric => TNumeric
         case THBoolean => TBoolean
         case THFloat => TFloat
         case THNull => TNull

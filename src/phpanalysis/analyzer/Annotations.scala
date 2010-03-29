@@ -40,6 +40,7 @@ object Annotations {
             case "bool" => THBoolean
             case "boolean" => THBoolean
             case "void" => THNull
+            case "numeric" => THNumeric
             case cl => THObject(StaticClassRef(NSNone, Nil, Identifier(cl)))
         }
 
@@ -141,6 +142,7 @@ object AnnotationsExport {
 
             typ match {
                 case TInt => simpleTyp("int")
+                case TNumeric => simpleTyp("numeric")
                 case TBoolean => simpleTyp("bool")
                 case TTrue => simpleTyp("true")
                 case TFalse => simpleTyp("false")
