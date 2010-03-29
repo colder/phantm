@@ -82,20 +82,7 @@ object Evaluator {
                     None
             }
         case Constant(name) =>
-            GlobalSymbols.lookupConstant(name.value) match {
-                case Some(cs) =>
-                    cs.value match {
-                        case Some(v) =>
-                            Some(v)
-                        case None =>
-                            Some(PHPString(name.value).setPos(ex))
-                    }
-                case None =>
-                    if (issueErrors) {
-                        Reporter.notice("Potentially undefined constant '"+name.value+"'", ex)
-                    }
-                    Some(PHPString(name.value).setPos(ex))
-            }
+            GlobalSymbols.lookupOrRegisterConstant(name).value
         case ClassConstant(_:StaticClassRef, _) =>
             Some(PHPString("CLASSCONSTANT").setPos(ex))
         case sc: Scalar =>
