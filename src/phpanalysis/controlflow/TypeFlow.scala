@@ -524,10 +524,7 @@ object TypeFlow {
                             TString
                     }
 
-                case const @ CFGClassConstant(cl, id) =>
-                    TAny // TODO
-
-                case const @ CFGClassProperty(cl, index) =>
+                case const @ CFGClassConstant(cs) =>
                     TAny // TODO
 
                 case mcall @ CFGStaticMethodCall(cl, id, args) =>
@@ -603,13 +600,21 @@ object TypeFlow {
                             TBottom
                     }
 
+                case vv @ CFGVariableClassConstant(cr, id) =>
+                    notice("Dynamically referenced class constants ignored", vv)
+                    TBottom
+
+                case vv @ CFGVariableClassProperty(cr, prop) =>
+                    notice("Dynamically referenced class properties ignored", vv)
+                    TBottom
+
                 case vv @ CFGVariableVar(v) =>
                     notice("Dynamic variable ignored", vv)
-                    TTop
+                    TBottom
 
                 case u =>
                   println("Unknown simple value: "+u)
-                  TTop
+                  TBottom
             }
 
             def getObject(node: CFGStatement, ocs: Option[ClassSymbol]): ObjectType = {
@@ -741,21 +746,26 @@ object TypeFlow {
                 val vtyp = typeFromSV(v1)
 
                 def checkVariable(v: CFGVariable, kind: String): Type = {
-                    val (sv, svetyp) = getCheckType(v, etyp)
-                    val svvtyp = typeFromSV(sv)
+                    val (osv, svetyp) = getCheckType(v, etyp)
+                    if (!osv.isEmpty) {
+                        val sv = osv.get
+                        val svvtyp = typeFromSV(sv)
 
-                    var svtypCheck  = svvtyp
+                        var svtypCheck  = svvtyp
 
-                    if (leq(svvtyp, svetyp)) {
-                        vtyp
+                        if (leq(svvtyp, svetyp)) {
+                            vtyp
+                        } else {
+                            typeError(sv, svetyp, svvtyp)
+
+                            val t = meet(svetyp, svvtyp)
+                            //println("== Refining "+svvtyp+" to "+t+" ("+svetyp+")")
+                            env = env.inject(sv, t)
+                            // we then return the type
+                            meet(etyp, vtyp)
+                        }
                     } else {
-                        typeError(sv, svetyp, svvtyp)
-
-                        val t = meet(svetyp, svvtyp)
-                        //println("== Refining "+svvtyp+" to "+t+" ("+svetyp+")")
-                        env = env.inject(sv, t)
-                        // we then return the type
-                        meet(etyp, vtyp)
+                        TTop
                     }
                 }
 
@@ -835,7 +845,7 @@ object TypeFlow {
                     TBoolean
             }
 
-            def getCheckType(sv: CFGSimpleValue, ct: Type): (CFGSimpleVariable, Type) = sv match {
+            def getCheckType(sv: CFGSimpleValue, ct: Type): (Option[CFGSimpleVariable], Type) = sv match {
                 case CFGVariableVar(v) =>
                     getCheckType(v, TString)
                 case CFGArrayEntry(arr, index) =>
@@ -861,145 +871,153 @@ object TypeFlow {
                     // IGNORE for now, focus on arrays
                     getCheckType(obj, TAnyObject)
                 case svar: CFGSimpleVariable =>
-                    (svar, ct)
+                    (Some(svar), ct)
+                case CFGVariableClassConstant(cr, id) =>
+                    (None, ct)
+                case CFGVariableClassProperty(cr, id) =>
+                    (None, ct)
                 case v =>
                     Predef.error("Woops, unexpected CFGVariable("+v+") inside checktype of!")
 
             }
 
             def assign(v: CFGVariable, ext: Type): Type = {
-                val (svar, ct) = getCheckType(v, TTop)
+                val (osvar, ct) = getCheckType(v, TTop)
+                if (!osvar.isEmpty) {
+                    val svar = osvar.get
+                    //println("Assigning "+v+" to "+ext)
+                    //println("Checking "+svar+"("+typeFromSV(svar)+") against "+ct)
+                    val reft = expOrRef(svar, ct)
+                    //println("After refinement: "+reft)
 
-                //println("Assigning "+v+" to "+ext)
-                //println("Checking "+svar+"("+typeFromSV(svar)+") against "+ct)
-                val reft = expOrRef(svar, ct)
-                //println("After refinement: "+reft)
+                    // Now, we need to get down in that variable and affect the type as the assign require
+                    def backPatchType(sv: CFGSimpleValue, typ: Type): Type = sv match {
+                        case CFGVariableVar(v) =>
+                            backPatchType(v, TString)
+                        case CFGArrayEntry(arr, index) =>
+                            val t = typeFromSV(arr) match {
+                                case ta: TArray =>
+                                    ta.inject(index, typ)
+                                case tu: TUnion =>
+                                    val typs = for (f <- tu.types) yield f match {
+                                        case ta: TArray =>
+                                            ta.inject(index, typ)
+                                        case t =>
+                                            t
+                                    }
 
-                // Now, we need to get down in that variable and affect the type as the assign require
-                def backPatchType(sv: CFGSimpleValue, typ: Type): Type = sv match {
-                    case CFGVariableVar(v) =>
-                        backPatchType(v, TString)
-                    case CFGArrayEntry(arr, index) =>
-                        val t = typeFromSV(arr) match {
-                            case ta: TArray =>
-                                ta.inject(index, typ)
-                            case tu: TUnion =>
-                                val typs = for (f <- tu.types) yield f match {
-                                    case ta: TArray =>
-                                        ta.inject(index, typ)
-                                    case t =>
-                                        t
-                                }
+                                    typs.foldLeft(TBottom: Type)(_ union _)
+                                case TAny =>
+                                    TAny
+                                case TTop =>
+                                    TTop
+                                case _ =>
+                                    TBottom
+                            }
+                            backPatchType(arr, t)
+                        case CFGNextArrayEntry(arr) =>
+                            val t = typeFromSV(arr) match {
+                                case ta: TArray =>
+                                    ta.setAny(typ union ta.globalType)
+                                case tu: TUnion =>
+                                    val typs = for (f <- tu.types) yield f match {
+                                        case ta: TArray =>
+                                            ta.setAny(typ union ta.globalType)
+                                        case t =>
+                                            t
+                                    }
 
-                                typs.foldLeft(TBottom: Type)(_ union _)
-                            case TAny =>
-                                TAny
-                            case TTop =>
-                                TTop
-                            case _ =>
-                                TBottom
-                        }
-                        backPatchType(arr, t)
-                    case CFGNextArrayEntry(arr) =>
-                        val t = typeFromSV(arr) match {
-                            case ta: TArray =>
-                                ta.setAny(typ union ta.globalType)
-                            case tu: TUnion =>
-                                val typs = for (f <- tu.types) yield f match {
-                                    case ta: TArray =>
-                                        ta.setAny(typ union ta.globalType)
-                                    case t =>
-                                        t
-                                }
+                                    typs.foldLeft(TBottom: Type)(_ union _)
+                                case TAny =>
+                                    TAny
+                                case TTop =>
+                                    TTop
+                                case _ =>
+                                    TBottom
+                            }
+                            backPatchType(arr, t)
+                        case CFGObjectProperty(obj, prop) =>
+                            def updateObject(obj: TObjectRef) {
+                                val ro =
+                                    if (obj.id.pos < 0) {
+                                        // $this is always using strong updates
+                                        obj.realObject(env).injectField(prop, typ)
+                                    } else {
+                                        obj.realObject(env).injectField(prop, typ union obj.realObject(env).lookupField(prop))
+                                    }
+                                env = env.setObject(obj.id, ro)
+                            }
+                            val t = typeFromSV(obj) match {
+                                case to: TObjectRef =>
+                                    updateObject(to)
+                                    to
+                                case tu: TUnion =>
+                                    for (f <- tu.types) f match {
+                                        case to: TObjectRef =>
+                                            updateObject(to)
+                                        case _ =>
+                                    }
 
-                                typs.foldLeft(TBottom: Type)(_ union _)
-                            case TAny =>
-                                TAny
-                            case TTop =>
-                                TTop
-                            case _ =>
-                                TBottom
-                        }
-                        backPatchType(arr, t)
-                    case CFGObjectProperty(obj, prop) =>
-                        def updateObject(obj: TObjectRef) {
-                            val ro =
-                                if (obj.id.pos < 0) {
-                                    // $this is always using strong updates
-                                    obj.realObject(env).injectField(prop, typ)
-                                } else {
-                                    obj.realObject(env).injectField(prop, typ union obj.realObject(env).lookupField(prop))
-                                }
-                            env = env.setObject(obj.id, ro)
-                        }
-                        val t = typeFromSV(obj) match {
-                            case to: TObjectRef =>
-                                updateObject(to)
-                                to
-                            case tu: TUnion =>
-                                for (f <- tu.types) f match {
-                                    case to: TObjectRef =>
-                                        updateObject(to)
-                                    case _ =>
-                                }
+                                    tu
+                                case TAnyObject =>
+                                    TAnyObject
+                                case TAny =>
+                                    TAny
+                                case TTop =>
+                                    TTop
+                                case _ =>
+                                    TBottom
+                            }
+                            backPatchType(obj, t)
+                        case svar: CFGSimpleVariable =>
+                            typ
 
-                                tu
-                            case TAnyObject =>
+                        case _ =>
+                            Predef.error("Woops, unexpected CFGVariable inside checktype of!")
+                    }
+
+                    def limitType(typ: Type, l: Int): Type = typ match {
+                        case ta: TArray =>
+                            if (l == 0) {
+                                TAnyArray
+                            } else {
+                                new TArray(Map[String, Type]() ++ ta.entries.map(e => (e._1, limitType(e._2, l-1))), limitType(ta.globalType, l-1))
+                            }
+                        case to: TObjectRef =>
+                            if (l == 0) {
                                 TAnyObject
-                            case TAny =>
-                                TAny
-                            case TTop =>
+                            } else {
+                                // TODO
+                                to
+                            }
+                        case tu: TUnion =>
+                            if (l == 0) {
                                 TTop
-                            case _ =>
-                                TBottom
-                        }
-                        backPatchType(obj, t)
-                    case svar: CFGSimpleVariable =>
-                        typ
+                            } else {
+                                tu.types.map(limitType(_, l-1)).reduceLeft(_ union _)
+                            }
+                        case t =>
+                            if (l == 0) {
+                                TTop
+                            } else {
+                                t
+                            }
+                    }
 
-                    case _ =>
-                        Predef.error("Woops, unexpected CFGVariable inside checktype of!")
+                    env = env.inject(svar, reft)
+                    //println("Refined type: "+reft)
+                    var rest = backPatchType(v, ext)
+                    //println("Backpatched type: "+rest)
+                    //println("Depth: "+rest.depth(env))
+                    if (rest.depth(env) >= 5) {
+                        rest = limitType(rest, 5)
+                    }
+                    //println("Limitted: "+rest)
+                    env = env.inject(svar, rest)
+                    rest
+                } else {
+                    ext
                 }
-
-                def limitType(typ: Type, l: Int): Type = typ match {
-                    case ta: TArray =>
-                        if (l == 0) {
-                            TAnyArray
-                        } else {
-                            new TArray(Map[String, Type]() ++ ta.entries.map(e => (e._1, limitType(e._2, l-1))), limitType(ta.globalType, l-1))
-                        }
-                    case to: TObjectRef =>
-                        if (l == 0) {
-                            TAnyObject
-                        } else {
-                            // TODO
-                            to
-                        }
-                    case tu: TUnion =>
-                        if (l == 0) {
-                            TTop
-                        } else {
-                            tu.types.map(limitType(_, l-1)).reduceLeft(_ union _)
-                        }
-                    case t =>
-                        if (l == 0) {
-                            TTop
-                        } else {
-                            t
-                        }
-                }
-
-                env = env.inject(svar, reft)
-                //println("Refined type: "+reft)
-                var rest = backPatchType(v, ext)
-                //println("Backpatched type: "+rest)
-                //println("Depth: "+rest.depth(env))
-                if (rest.depth(env) >= 5) {
-                    rest = limitType(rest, 5)
-                }
-                //println("Limitted: "+rest)
-                env = env.inject(svar, rest)
-                rest
             }
 
             def functionSymbolToFunctionType(fs: FunctionSymbol): FunctionType = {
@@ -1096,8 +1114,10 @@ object TypeFlow {
                                     // unreachable code
                                     env = BaseTypeEnvironment
                                 } else {
-                                    val (sv, ct) = getCheckType(v, rest)
-                                    env = env.inject(sv, ct)
+                                    val (osv, ct) = getCheckType(v, rest)
+                                    if (!osv.isEmpty) {
+                                        env = env.inject(osv.get, ct)
+                                    }
                                 }
                             }
                         }

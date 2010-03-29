@@ -140,7 +140,14 @@ object ASTToCFG {
         case NextArrayEntry(array) => CFGNextArrayEntry(expr(array)).setPos(v)
         case ObjectProperty(obj, property) => CFGObjectProperty(expr(obj), CFGString(property.value).setPos(property)).setPos(v)
         case DynamicObjectProperty(obj, property) => CFGObjectProperty(expr(obj), expr(property)).setPos(v)
-        case ClassProperty(cl, property) => CFGClassProperty(cl, expr(property)).setPos(v)
+        case ClassProperty(cl, property) =>
+            // We try to resolve the class symbol, if so, we return a
+            // static class property, otherwise it will be dynamic
+            (cl, property) match {
+                // TODO
+                case _ =>
+                    CFGVariableClassProperty(cl, expr(property)).setPos(v)
+            }
     }
 
     /** Transforms an identifier from the AST to one for the CFG. */
@@ -161,7 +168,11 @@ object ASTToCFG {
       case Constant(c) =>
         Some(CFGConstant(c).setPos(ex))
       case ClassConstant(c, i) =>
-        Some(CFGClassConstant(c, i).setPos(ex))
+            c match {
+                // TODO
+                case _ =>
+                    Some(CFGVariableClassConstant(c, i).setPos(ex))
+            }
       case PHPInteger(v) =>
         Some(CFGLong(v).setPos(ex))
       case PHPFloat(v) =>
@@ -348,7 +359,11 @@ object ASTToCFG {
                             Emit.statement(CFGAssign(v, CFGConstant(id).setPos(ex)).setPos(ex))
 
                         case ClassConstant(cl, id) =>
-                            Emit.statement(CFGAssign(v, CFGClassConstant(cl, id).setPos(ex)).setPos(ex))
+                            cl match {
+                                // TODO
+                                case _ =>
+                                    Emit.statement(CFGAssign(v, CFGVariableClassConstant(cl, id).setPos(ex)).setPos(ex))
+                            }
 
                         case Cast(typ, e) =>
                             Emit.statement(CFGAssign(v, CFGCast(typ, expr(e)).setPos(ex)).setPos(ex))

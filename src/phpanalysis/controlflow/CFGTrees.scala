@@ -56,11 +56,13 @@ object CFGTrees {
 
   /** Used to represent intermediate values (fresh identifiers). */
   case class CFGTempID(value: String) extends CFGSimpleVariable
+  case class CFGClassProperty(symbol: PropertySymbol) extends CFGSimpleVariable
+
   case class CFGVariableVar(v: CFGSimpleValue) extends CFGVariable
   case class CFGArrayEntry(arr: CFGSimpleValue, index: CFGSimpleValue) extends CFGVariable
   case class CFGNextArrayEntry(arr: CFGSimpleValue) extends CFGVariable
   case class CFGObjectProperty(obj: CFGSimpleValue, index: CFGSimpleValue) extends CFGVariable
-  case class CFGClassProperty(cl: ClassRef, index: CFGSimpleValue) extends CFGVariable
+  case class CFGVariableClassProperty(cl: ClassRef, index: CFGSimpleValue) extends CFGVariable
 
   case class CFGLong(value: Long) extends CFGSimpleValue
   case class CFGFloat(value: Float) extends CFGSimpleValue
@@ -80,7 +82,8 @@ object CFGTrees {
   case class CFGArrayCurIsValid(ar: CFGSimpleValue) extends CFGSimpleValue
 
   case class CFGConstant(name: Identifier) extends CFGSimpleValue
-  case class CFGClassConstant(cl: ClassRef, name: Identifier) extends CFGSimpleValue
+  case class CFGClassConstant(cs: ClassConstantSymbol) extends CFGSimpleValue
+  case class CFGVariableClassConstant(cl: ClassRef, name: Identifier) extends CFGSimpleValue
 
   case class CFGTernary(cond: CFGSimpleValue,
                          then: CFGSimpleValue,
@@ -151,7 +154,8 @@ object CFGTrees {
       case CFGMethodCall(r, mid, p) => r + "->" + mid.value + p.mkString("(", ", ", ")")
       case CFGFunctionCall(fid, p) => fid.value + p.mkString("(", ", ", ")")
       case CFGConstant(cid) => cid.value
-      case CFGClassConstant(cl, cid) => cl + "::" + cid.value
+      case CFGClassConstant(cs) => cs.cs.name + "::" + cs.name
+      case CFGVariableClassConstant(cl, cid) => cl + "::" + cid.value
       case CFGTernary(i, then, elze) => i + " ? " + then + " : " + elze
       case CFGAssign(v, e) => v + assOp + e
       case CFGCast(to, e) => "("+to+")" + e
@@ -184,7 +188,8 @@ object CFGTrees {
       case CFGArrayEntry(arr, index) => arr+"["+index+"]"
       case CFGNextArrayEntry(arr) => arr+"[]"
       case CFGObjectProperty(obj, prop) => obj+"->"+prop;
-      case CFGClassProperty(cl, prop) => cl+"::"+prop;
+      case CFGClassProperty(sym) => sym.cs.name+"::$"+sym.name;
+      case CFGVariableClassProperty(cl, prop) => cl+"::$"+prop;
     }
   }
 }
