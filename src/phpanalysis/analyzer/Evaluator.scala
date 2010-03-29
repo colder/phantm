@@ -13,12 +13,12 @@ object Evaluator {
     }
 
     def typeFromExpr(e: Expression): Type = e match {
-        case PHPTrue() => TTrue
-        case PHPFalse() => TFalse
+        case PHPTrue() => TBoolean
+        case PHPFalse() => TBoolean
         case PHPInteger(_) => TInt
         case PHPFloat(_) => TFloat
         case PHPString(_) => TString
-        case PHPNull() => TNull
+        case PHPNull() => TAny
         case MCFile() => TString
         case MCLine() => TString
         case MCDir() => TString

@@ -833,7 +833,7 @@ object TypeFlow {
                             expOrRef(index, TInt)
                             getCheckType(arr, TString)
                         case to: ObjectType =>
-                            Predef.error("TODO: object[index] not yet implemented")
+                            getCheckType(arr, TAny)
                         case _ =>
                             expOrRef(index, TString, TInt)
                             val newct = if (ct == TTop) {

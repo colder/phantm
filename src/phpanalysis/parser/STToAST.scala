@@ -530,16 +530,26 @@ case class STToAST(comp: Compiler, st: ParseNode) {
     }
 
     def non_empty_static_array_pair_list(n: ParseNode): List[(Option[Expression], Expression, Boolean)] = {
-        childrenNames(n) match {
-            case List("non_empty_static_array_pair_list", "T_COMMA", "static_expr", "T_DOUBLE_ARROW", "static_expr") =>
-                non_empty_static_array_pair_list(child(n, 0)) ::: List((Some(static_expr(child(n, 2))), static_expr(child(n, 4)), false))
-            case List("non_empty_static_array_pair_list", "T_COMMA", "static_expr") =>
-                non_empty_static_array_pair_list(child(n, 0)) ::: List((None, static_expr(child(n, 2)), false))
-            case List("static_expr", "T_DOUBLE_ARROW", "static_expr") =>
-                List((Some(static_expr(child(n, 0))), static_expr(child(n, 2)), false))
-            case List("static_expr") =>
-                List((None, static_expr(child(n, 0)), false))
+        var res : List[(Option[Expression], Expression, Boolean)] = Nil
+        var cur = n;
+        var continue = true;
+        while (continue) {
+            childrenNames(cur) match {
+                case List("non_empty_static_array_pair_list", "T_COMMA", "static_expr", "T_DOUBLE_ARROW", "static_expr") =>
+                    res = (Some(static_expr(child(cur, 2))), static_expr(child(cur, 4)), false) :: res
+                    cur = child(cur, 0)
+                case List("non_empty_static_array_pair_list", "T_COMMA", "static_expr") =>
+                    res = (None, static_expr(child(cur, 2)), false) :: res
+                    cur = child(cur, 0)
+                case List("static_expr", "T_DOUBLE_ARROW", "static_expr") =>
+                    res = (Some(static_expr(child(cur, 0))), static_expr(child(cur, 2)), false) :: res
+                    continue = false
+                case List("static_expr") =>
+                    res = (None, static_expr(child(cur, 0)), false) :: res
+                    continue = false
+            }
         }
+        res.reverse
     }
 
     def global_var_list(n: ParseNode): List[Variable] = {

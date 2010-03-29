@@ -31,32 +31,37 @@ trait Positional {
     def setPos(p: ParseNode): self.type = {
         import Math.max
 
-        var didSet = false;
-        var l_end = -1;
-        var c_end = -1;
-
-        def lookUp(p: ParseNode): Unit = {
-            if (p.isToken) {
-                if (!didSet) {
-                    setPos(p.line, p.column, p.file)
-                    didSet = true
-                }
-
-                l_end = max(p.line, l_end);
-                c_end = max(p.column+p.tokenContent.length, c_end);
+        // First, we get the left-most token
+        var pLeft = p
+        var continue = true;
+        while (continue && !pLeft.isToken) {
+            val lst = pLeft.children()
+            if (lst.size() == 0) {
+                continue = false
             } else {
-                val it = p.children().listIterator();
-                while (it.hasNext) {
-                    lookUp(it.next);
-                }
+                pLeft = pLeft.children().get(0);
             }
         }
-        lookUp(p)
+        line = pLeft.line
+        col = pLeft.column
+        file = Some(pLeft.file)
 
-        line_end = l_end;
-        col_end  = c_end;
+        // Then, we get the right-most token
+        var pRight = p
+        continue = true;
+        while (continue && !pRight.isToken) {
+            val lst = pRight.children()
+            if (lst.size() == 0) {
+                continue = false
+            } else {
+                pRight = lst.get(lst.size()-1);
+            }
+        }
 
-        if (!didSet) println("Woops, no position found for "+p.name)
+        line_end = pRight.line
+        col_end = pRight.column+pRight.tokenContent.length
+
+
         this
     }
 

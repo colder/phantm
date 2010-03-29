@@ -603,8 +603,8 @@ object Types {
     def typeHintToType(th: TypeHint): Type = th match {
         case THString => TString
         case THAny => TAny
-        case THFalse => TFalse
-        case THTrue => TTrue
+        case THFalse => TBoolean
+        case THTrue => TBoolean
         case THResource => TResource
         case THInt => TInt
         case THBoolean => TBoolean

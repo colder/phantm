@@ -31546,16 +31546,16 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
   <function name="implode">
    <return><type name="string" /></return>
    <args>
-    <arg opt="0"><type name="string" /></arg>
-    <arg opt="0"><type name="mixed" /></arg>
+    <arg opt="0"><type name="array" /><type name="string" /></arg>
+    <arg opt="0"><type name="array" /><type name="string" /></arg>
    </args>
   </function>
 
   <function name="join">
    <return><type name="string" /></return>
    <args>
-    <arg opt="0"><type name="array" /></arg>
-    <arg opt="0"><type name="string" /></arg>
+    <arg opt="0"><type name="string" /><type name="array" /></arg>
+    <arg opt="0"><type name="string" /><type name="array" /></arg>
    </args>
   </function>
 
@@ -32084,6 +32084,27 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
   </function>
 
   <function name="is_long">
+   <return><type name="bool" /></return>
+   <args>
+    <arg opt="0"><type name="mixed" /></arg>
+   </args>
+  </function>
+
+  <function name="is_double">
+   <return><type name="bool" /></return>
+   <args>
+    <arg opt="0"><type name="mixed" /></arg>
+   </args>
+  </function>
+
+  <function name="is_integer">
+   <return><type name="bool" /></return>
+   <args>
+    <arg opt="0"><type name="mixed" /></arg>
+   </args>
+  </function>
+
+  <function name="is_int">
    <return><type name="bool" /></return>
    <args>
     <arg opt="0"><type name="mixed" /></arg>
