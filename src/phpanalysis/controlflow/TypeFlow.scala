@@ -798,22 +798,22 @@ object TypeFlow {
 
             def typeFromBinOP(v1: CFGSimpleValue, op: CFGBinaryOperator, v2: CFGSimpleValue): Type = op match {
                 case PLUS | MINUS | MULT =>
-                    expOrRef(v1, TInt, TFloat) match {
+                    expOrRef(v1, TNumeric) match {
                         case TInt =>
-                            expOrRef(v2, TInt, TFloat)
+                            expOrRef(v2, TNumeric)
                         case TFloat =>
-                            expOrRef(v2, TInt, TFloat)
+                            expOrRef(v2, TNumeric)
                         case _ =>
-                            expOrRef(v2, TInt, TFloat)
+                            expOrRef(v2, TNumeric)
                     }
                 case DIV  =>
-                    expOrRef(v1, TInt, TFloat)
-                    expOrRef(v2, TInt, TFloat)
-                    TInt union TFloat
+                    expOrRef(v1, TNumeric)
+                    expOrRef(v2, TNumeric)
+                    TNumeric
                 case MOD =>
-                    expOrRef(v1, TInt)
-                    expOrRef(v2, TInt)
-                    TInt
+                    expOrRef(v1, TNumeric)
+                    expOrRef(v2, TNumeric)
+                    TNumeric
                 case CONCAT =>
                     expOrRef(v1, TAny)
                     expOrRef(v2, TAny)
@@ -1073,8 +1073,8 @@ object TypeFlow {
 
                 case CFGAssume(v1, op, v2) => op match {
                     case LT | LEQ | GEQ | GT =>
-                        expOrRef(v1, TInt, TFloat)
-                        expOrRef(v2, TInt, TFloat)
+                        expOrRef(v1, TNumeric)
+                        expOrRef(v2, TNumeric)
                     case EQUALS | IDENTICAL | NOTEQUALS | NOTIDENTICAL =>
                         def filter(v: CFGVariable, value: Boolean) = {
                             val t = typeFromSV(v);
@@ -1084,10 +1084,10 @@ object TypeFlow {
                                 // if the type is already bottom
                                 val reft = if (value == true) {
                                     // possible types of $v after $v == true
-                                    TInt union TFloat union TAnyArray union TString union TTrue union TResource union TAnyObject
+                                    TNumeric union TAnyArray union TString union TTrue union TResource union TAnyObject
                                 } else {
                                     // possible types of $v after $v == false
-                                    TInt union TFloat union TAnyArray union TString union TFalse union TNull union TUninitialized
+                                    TNumeric union TAnyArray union TString union TFalse union TNull union TUninitialized
                                 }
 
                                 val rest = meet(t, reft)
