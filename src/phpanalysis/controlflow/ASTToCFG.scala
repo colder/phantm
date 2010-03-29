@@ -286,15 +286,20 @@ object ASTToCFG {
                     case Some(stmt) => stmt.setPos(ex); Emit.statement(stmt)
                     case _ => ex match {
                         case ExpandArray(vars, e) =>
-                            v = FreshVariable("array").setPos(ex);
-                            Emit.statement(CFGAssign(v, expr(e)).setPos(ex));
-                            for((vv, i) <- vars.zipWithIndex) {
-                                vv match {
-                                    case Some(vv) =>
-                                        Emit.statement(CFGAssign(varFromVar(vv), CFGArrayEntry(v, CFGLong(i).setPos(vv)).setPos(vv)).setPos(ex))
-                                    case None =>
+                            val v = expr(e);
+                            def assignListItem(vars: List[Option[Variable]], from: CFGSimpleValue): Unit = {
+                                for((vv, i) <- vars.zipWithIndex) {
+                                    vv match {
+                                        case Some(vv: ListVar) =>
+                                            assignListItem(vv.vars, CFGArrayEntry(from, CFGLong(i).setPos(vv)).setPos(vv))
+                                        case Some(vv) =>
+                                            Emit.statement(CFGAssign(varFromVar(vv), CFGArrayEntry(from, CFGLong(i).setPos(vv)).setPos(vv)).setPos(ex))
+                                        case None =>
+                                    }
                                 }
                             }
+                            assignListItem(vars, v)
+                            retval = Some(v)
                         case Assign(va, value, byref) =>
                             v = varFromVar(va);
                             Emit.statement(exprStore(v, value));

@@ -139,6 +139,9 @@ object Trees {
     case class DynamicObjectProperty(obj: Expression, property: Expression) extends Variable
     case class ClassProperty(cl: ClassRef, property: Variable) extends Variable
 
+    // Special for list(list(..)..)
+    case class ListVar(vars: List[Option[Variable]]) extends Variable
+
     case class ExpandArray(vars: List[Option[Variable]], expr: Expression) extends Expression
     case class Assign(vari: Variable, value: Expression, byref: Boolean) extends Expression
     case class Clone(obj: Expression) extends Expression

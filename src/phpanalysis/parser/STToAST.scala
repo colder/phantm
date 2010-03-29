@@ -935,8 +935,7 @@ case class STToAST(comp: Compiler, st: ParseNode) {
             case List("variable") =>
                 Some(variable_w(child(n)))
             case List("T_LIST", "T_OPEN_BRACES",  "assignment_list", "T_CLOSE_BRACES") =>
-                println("TODO: Nested list statements are not supported yet");
-                None
+                Some(ListVar(assignment_list(child(n, 2))).setPos(child(n, 0)))
             case List() =>
                 None
         }
