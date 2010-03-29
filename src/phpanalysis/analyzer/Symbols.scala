@@ -1,7 +1,7 @@
 package phpanalysis.analyzer
 
 import scala.collection.mutable.HashMap
-import parser.Trees.Scalar
+import parser.Trees._
 import Types._
 
 
@@ -121,6 +121,22 @@ object Symbols {
     }
 
     def lookupConstant(n: String): Option[ConstantSymbol] = constants.get(n)
+
+    def lookupOrRegisterConstant(id: Identifier): ConstantSymbol = {
+        lookupConstant(id.value) match {
+            case Some(cs) => cs
+            case None =>
+                // In case of an undefined constant, PHP falls back to its name as string value
+                if (Main.verbosity > 0) {
+                    Reporter.notice("Potentially undefined constant", id)
+                }
+                val cs = new ConstantSymbol(id.value, Some(PHPString(id.value)), TString)
+
+                registerConstant(cs)
+
+                cs
+        }
+    }
 
     def registerConstant(cs: ConstantSymbol) : Unit = constants.get(cs.name) match {
       case None => constants += ((cs.name, cs))

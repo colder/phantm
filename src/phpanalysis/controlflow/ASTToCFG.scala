@@ -165,8 +165,8 @@ object ASTToCFG {
     def alreadySimple(ex: Expression): Option[CFGSimpleValue] = ex match {
       case v: Variable =>
         Some(varFromVar(v))
-      case Constant(c) =>
-        Some(CFGConstant(c).setPos(ex))
+      case Constant(id) =>
+        Some(CFGConstant(GlobalSymbols.lookupOrRegisterConstant(id)).setPos(ex))
       case ClassConstant(c, i) =>
             c match {
                 // TODO
@@ -356,7 +356,7 @@ object ASTToCFG {
                             }
 
                         case Constant(id) =>
-                            Emit.statement(CFGAssign(v, CFGConstant(id).setPos(ex)).setPos(ex))
+                            Emit.statement(CFGAssign(v, CFGConstant(GlobalSymbols.lookupOrRegisterConstant(id)).setPos(ex)).setPos(ex))
 
                         case ClassConstant(cl, id) =>
                             cl match {

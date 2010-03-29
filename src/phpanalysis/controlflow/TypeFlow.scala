@@ -513,16 +513,8 @@ object TypeFlow {
                             TTop
                     }
 
-                case const @ CFGConstant(id) =>
-                    GlobalSymbols.lookupConstant(id.value) match {
-                        case Some(cs) =>
-                            cs.typ
-                        case None =>
-                            if (Main.verbosity > 0) {
-                                notice("Undefined constant '" + id.value + "'", const)
-                            }
-                            TString
-                    }
+                case CFGConstant(cs) =>
+                    cs.typ
 
                 case const @ CFGClassConstant(cs) =>
                     TAny // TODO
