@@ -50,6 +50,10 @@ object Unserializer {
             v
         }
 
+        def getVal(i: Int): UValue = {
+            valueStore(i-1)
+        }
+
         def consumeInt : Int = {
             var buf = "";
             while(chars.head >= '0' && chars.head <= '9') {
@@ -130,11 +134,13 @@ object Unserializer {
                     chars = cs
                     val r = consumeInt;
                     chars = chars.tail // consume the extra ";"
+                    println("Object ref pointing to:"+getVal(r))
                     regVal(UObjRef(r))
                 case 'R' :: ':' :: cs =>
                     chars = cs
                     val r = consumeInt;
                     chars = chars.tail // consume the extra ";"
+                    println("Real ref pointing to:"+getVal(r))
                     regVal(URealRef(r))
                 case c =>
                     throw new UnserializeException("Invalid serialized sequence: '"+c.mkString+"'")
