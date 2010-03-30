@@ -63,13 +63,13 @@ object CFGTrees {
   case class CFGNextArrayEntry(arr: CFGSimpleValue) extends CFGVariable
   case class CFGObjectProperty(obj: CFGSimpleValue, index: CFGSimpleValue) extends CFGVariable
   case class CFGVariableClassProperty(cl: ClassRef, index: CFGSimpleValue) extends CFGVariable
+  case class CFGNone() extends CFGVariable
 
   case class CFGLong(value: Long) extends CFGSimpleValue
   case class CFGFloat(value: Float) extends CFGSimpleValue
   case class CFGString(value: String) extends CFGSimpleValue
   case class CFGTrue() extends CFGSimpleValue
   case class CFGAny() extends CFGSimpleValue
-  case class CFGNone() extends CFGSimpleValue
   case class CFGFalse() extends CFGSimpleValue
   case class CFGNull() extends CFGSimpleValue
   case class CFGThis() extends CFGSimpleValue

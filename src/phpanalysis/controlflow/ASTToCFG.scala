@@ -69,6 +69,12 @@ object ASTToCFG {
       }
     }
 
+    val scopeClassSymbol : Option[ClassSymbol] = scope match {
+        case cs: ClassSymbol =>
+            Some(cs)
+        case _ =>
+            None
+    }
 
     /** Generates the part of the graph corresponding to the branching on a conditional expression */
     def condExpr(ex: Expression, falseCont: Vertex, trueCont: Vertex): Unit = {
@@ -145,15 +151,9 @@ object ASTToCFG {
             // static class property, otherwise it will be dynamic
             val res = (cl, property) match {
                 case (StaticClassRef(_, _, cid), SimpleVariable(pid)) =>
-                    GlobalSymbols.lookupClass(cid.value) match {
-                        case Some(cl) =>
-                            val ocs = scope match {
-                                case cs: ClassSymbol =>
-                                    Some(cs)
-                                case _ =>
-                                    None
-                            }
-                            cl.lookupStaticProperty(pid.value, ocs) match {
+                    cid.getSymbol match {
+                        case cs: ClassSymbol =>
+                            cs.lookupStaticProperty(pid.value, scopeClassSymbol) match {
                                 case LookupResult(Some(ps), _, _) =>
                                     Some(CFGClassProperty(ps).setPos(v))
                                 case _ =>
@@ -162,17 +162,14 @@ object ASTToCFG {
                                     }
                                     None
                             }
-                        case None =>
-                            if (Main.verbosity > 0) {
-                                Reporter.notice("Undefined class '"+cid.value+"'", cid)
-                            }
+                        case _ =>
                             None
                     }
                 case _ =>
-                    None
+                    Some(CFGVariableClassProperty(cl, expr(property)).setPos(v))
             }
 
-            res.getOrElse(CFGVariableClassProperty(cl, expr(property)).setPos(v))
+            res.getOrElse(CFGNone().setPos(v))
     }
 
     /** Transforms an identifier from the AST to one for the CFG. */
@@ -195,8 +192,8 @@ object ASTToCFG {
       case ClassConstant(c, i) =>
             c match {
                 case StaticClassRef(_, _, cid) =>
-                    val ocs = GlobalSymbols.lookupClass(cid.value) match {
-                        case Some(cs) =>
+                    val occ = cid.getSymbol match {
+                        case cs: ClassSymbol =>
                             cs.lookupConstant(i.value) match {
                                 case Some(ccs) =>
                                     Some(CFGClassConstant(ccs).setPos(ex))
@@ -206,14 +203,14 @@ object ASTToCFG {
                                     }
                                     None
                             }
-                        case None =>
+                        case _ =>
                             if (Main.verbosity > 0) {
                                 Reporter.notice("Undefined class '"+cid.value+"'", cid)
                             }
                             None
                     }
 
-                    Some(ocs.getOrElse(CFGNone().setPos(ex)))
+                    Some(occ.getOrElse(CFGNone().setPos(ex)))
                 case _ =>
                     Some(CFGVariableClassConstant(c, i).setPos(ex))
             }

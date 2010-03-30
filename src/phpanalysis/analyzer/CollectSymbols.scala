@@ -221,13 +221,9 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
                                         case None =>
                                             Reporter.error("Class '"+cs.name+"' has no parent", id);
                                     }
-                                } else if (id.value == "static") {
-                                    // can't do much with that, it's runtime dependant
-                                    // setting symbol of self..
-                                    id.setSymbol(cs)
                                 }
                             case None =>
-                                if (id.value == "self" || id.value == "parent" || id.value == "static") {
+                                if (id.value == "self" || id.value == "parent") {
                                     Reporter.error(id.value+" cannot be used outside of a class definition", id);
                                 }
                         }

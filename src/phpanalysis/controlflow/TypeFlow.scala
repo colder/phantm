@@ -868,6 +868,8 @@ object TypeFlow {
                     (None, ct)
                 case CFGVariableClassProperty(cr, id) =>
                     (None, ct)
+                case CFGNone() =>
+                    (None, ct)
                 case v =>
                     Predef.error("Woops, unexpected CFGVariable("+v+") inside checktype of!")
 
