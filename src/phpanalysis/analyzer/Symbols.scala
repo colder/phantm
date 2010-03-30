@@ -130,7 +130,7 @@ object Symbols {
                 if (Main.verbosity > 0) {
                     Reporter.notice("Potentially undefined constant", id)
                 }
-                val cs = new ConstantSymbol(id.value, Some(PHPString(id.value).setPos(id)), TString)
+                val cs = new ConstantSymbol(id.value, Some(PHPString(id.value)), TString)
 
                 registerConstant(cs)
 

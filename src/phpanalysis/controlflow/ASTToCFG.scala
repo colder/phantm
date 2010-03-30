@@ -143,11 +143,36 @@ object ASTToCFG {
         case ClassProperty(cl, property) =>
             // We try to resolve the class symbol, if so, we return a
             // static class property, otherwise it will be dynamic
-            (cl, property) match {
-                // TODO
+            val res = (cl, property) match {
+                case (StaticClassRef(_, _, cid), SimpleVariable(pid)) =>
+                    GlobalSymbols.lookupClass(cid.value) match {
+                        case Some(cl) =>
+                            val ocs = scope match {
+                                case cs: ClassSymbol =>
+                                    Some(cs)
+                                case _ =>
+                                    None
+                            }
+                            cl.lookupStaticProperty(pid.value, ocs) match {
+                                case LookupResult(Some(ps), _, _) =>
+                                    Some(CFGClassProperty(ps).setPos(v))
+                                case _ =>
+                                    if (Main.verbosity > 0) {
+                                        Reporter.notice("Undefined class property '"+cid.value+"::$"+pid.value+"'", pid)
+                                    }
+                                    None
+                            }
+                        case None =>
+                            if (Main.verbosity > 0) {
+                                Reporter.notice("Undefined class '"+cid.value+"'", cid)
+                            }
+                            None
+                    }
                 case _ =>
-                    CFGVariableClassProperty(cl, expr(property)).setPos(v)
+                    None
             }
+
+            res.getOrElse(CFGVariableClassProperty(cl, expr(property)).setPos(v))
     }
 
     /** Transforms an identifier from the AST to one for the CFG. */
@@ -169,7 +194,6 @@ object ASTToCFG {
         Some(CFGConstant(GlobalSymbols.lookupOrRegisterConstant(id)).setPos(ex))
       case ClassConstant(c, i) =>
             c match {
-                // TODO
                 case _ =>
                     Some(CFGVariableClassConstant(c, i).setPos(ex))
             }

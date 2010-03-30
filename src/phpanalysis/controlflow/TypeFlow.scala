@@ -1196,7 +1196,13 @@ object TypeFlow {
                         baseEnv = baseEnv.inject(CFGIdentifier(sym), sym.typ)
                     }
                 case _ =>
+            }
 
+            // we inject vars for static class properties
+            for (val cs <- GlobalSymbols.getClasses) {
+                for (val ps <- cs.getStaticProperties) {
+                    baseEnv = baseEnv.inject(CFGClassProperty(ps), ps.typ)
+                }
             }
 
             baseEnv
