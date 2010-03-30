@@ -517,7 +517,7 @@ object TypeFlow {
                     cs.typ
 
                 case const @ CFGClassConstant(cs) =>
-                    TAny // TODO
+                    cs.typ
 
                 case mcall @ CFGStaticMethodCall(cl, id, args) =>
                     TAny // TODO

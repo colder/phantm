@@ -194,6 +194,26 @@ object ASTToCFG {
         Some(CFGConstant(GlobalSymbols.lookupOrRegisterConstant(id)).setPos(ex))
       case ClassConstant(c, i) =>
             c match {
+                case StaticClassRef(_, _, cid) =>
+                    val ocs = GlobalSymbols.lookupClass(cid.value) match {
+                        case Some(cs) =>
+                            cs.lookupConstant(i.value) match {
+                                case Some(ccs) =>
+                                    Some(CFGClassConstant(ccs).setPos(ex))
+                                case None =>
+                                    if (Main.verbosity > 0) {
+                                        Reporter.notice("Undefined class constant '"+cid.value+"::"+i.value+"'", i)
+                                    }
+                                    None
+                            }
+                        case None =>
+                            if (Main.verbosity > 0) {
+                                Reporter.notice("Undefined class '"+cid.value+"'", cid)
+                            }
+                            None
+                    }
+
+                    Some(ocs.getOrElse(CFGNone().setPos(ex)))
                 case _ =>
                     Some(CFGVariableClassConstant(c, i).setPos(ex))
             }
