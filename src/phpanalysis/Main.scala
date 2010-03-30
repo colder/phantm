@@ -25,6 +25,7 @@ object Main {
     var includePaths       = List(".");
     var mainDir            = "./"
     var apis: List[String] = Nil;
+    var dumps: List[String] = Nil;
     var exportAPIPath: Option[String] = None;
 
     def main(args: Array[String]): Unit = {
@@ -115,6 +116,9 @@ object Main {
             case "--includepath" :: ip :: xs =>
                 includePaths = ip.split(":").toList
                 handleArgs(xs)
+            case "--importdump" :: paths :: xs =>
+                dumps = paths.split(":").toList
+                handleArgs(xs)
             case "--importapi" :: aps :: xs =>
                 apis = aps.split(":").toList
                 handleArgs(xs)
@@ -136,6 +140,13 @@ object Main {
 
     def compile(files: List[String]) = {
         try {
+            // Lets try the unserializer
+            if (dumps != Nil) {
+                for (dump <- dumps) {
+                    println(Unserializer.fromDump(dump))
+                }
+            }
+
             if (displayProgress) println("1/10 Parsing...")
             val sts = files map { f => val c = new Compiler(f); (c, c compile) }
             if (sts exists { _._2 == None} ) {
@@ -265,6 +276,7 @@ object Main {
         println("         --vverbose             Be nitpicking and display even more notices");
         println("         --includepath <paths>  Define paths for compile time include resolution (.:a:bb:c:..)");
         println("         --importAPI <paths>    Import additional APIs (a.xml:b.xml:...)");
+        println("         --importDUMP <paths>   Import dump files (a.xml:b.xml:...)");
         println("         --exportAPI <path>     Use the type analysis to output a likely API");
         println("         --progress             Display analysis progress");
         println("         --focus                Focus on main files and ignore errors in dependencies");

@@ -12,14 +12,14 @@ function phantm_dumpanddie(array $vars) {
     $file = $bt[0]['file'];
     $line = $bt[0]['line'];
 
-    $path = dirname(__FILE__)."/".basename($file)."--".date('d-m-y--H\hi\ms').".dump";
+    $path = basename($file)."--".date('d-m-y--H\hi\ms').".dump";
     $fh = fopen($path, "w");
     fwrite($fh, "# Dumped state of ".$file." at line ".$line." \n");
     fwrite($fh, "# Date: ".date("r")."\n");
     fwrite($fh, serialize($vars));
     fclose($fh);
 
-    copy($path, dirname(__FILE__)."/last.dump");
+    copy($path, "last.dump");
 
     exit("\n--- phantm: Done recording state, shutting down ---\n");
 }
