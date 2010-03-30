@@ -14,7 +14,7 @@ function phantm_dumpanddie(array $vars) {
 
     $path = dirname(__FILE__)."/".basename($file)."--".date('d-m-y--H\hi\ms').".dump";
     $fh = fopen($path, "w");
-    fwrite($fh, "# Dumped ".$file." at line ".$line." \n");
+    fwrite($fh, "# Dumped state of ".$file." at line ".$line." \n");
     fwrite($fh, "# Date: ".date("r")."\n");
     fwrite($fh, serialize($vars));
     fclose($fh);
