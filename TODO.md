@@ -1,7 +1,7 @@
 TODO Items
 ======
 
-This is a list of the general TODO items that needs to remain to be done in phantm:
+This is a list of the general TODO items that should be done for phantm:
 
 * Attach constants symbols when possible, graceful check for symbols
 * Analyze catch blocks
@@ -9,4 +9,5 @@ This is a list of the general TODO items that needs to remain to be done in phan
 * Support for interfaces analysis
 * Support for static methods
 * Improved prototype resolver
+* ...
 
