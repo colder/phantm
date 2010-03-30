@@ -11,3 +11,4 @@ lib/cup/java/parser.java
 lib/cup/java/sym.java
 lib/cup/dist
 *.out
+*.dump
