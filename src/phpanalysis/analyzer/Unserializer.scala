@@ -110,7 +110,7 @@ object Unserializer {
                     val size = consumeInt
                     chars = chars.drop(2) // consume the extra ":{"
                     for (e <- 1 to size) {
-                        val k = regVal(unser)
+                        val k = unser
                         val v = regVal(unser)
                         map += (k -> v)
                     }
@@ -123,7 +123,7 @@ object Unserializer {
                     val size = consumeInt
                     chars = chars.drop(2) // consume the extra ":{"
                     for (e <- 1 to size) {
-                        val k = regVal(unser)
+                        val k = unser
                         val v = regVal(unser)
                         map += (k -> v)
                     }
