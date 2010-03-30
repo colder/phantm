@@ -21,5 +21,5 @@ function phantm_dumpanddie(array $vars) {
 
     copy($path, dirname(__FILE__)."/last.dump");
 
-    exit("\n--- phantm: Done recording state, shutting down ---");
+    exit("\n--- phantm: Done recording state, shutting down ---\n");
 }
