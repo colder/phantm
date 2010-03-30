@@ -1,8 +1,13 @@
 classes
+benchs
 java/phpanalysis/parser/*.java
 java/phpanalysis/parser/*.bin
-**/.*.sw?
+*/*/*/*.sw?
+*/*/*.sw?
+*/*.sw?
+*.sw?
 lib/cup/dist/java-cup-11a.jar
 lib/cup/java/parser.java
 lib/cup/java/sym.java
+lib/cup/dist
 *.out
