@@ -75,6 +75,7 @@ object Symbols {
     def registerPredefVariables = {
         registerVariable(new VariableSymbol("GLOBALS"))
         registerVariable(new VariableSymbol("_GET"))
+        registerVariable(new VariableSymbol("_FILES"))
         registerVariable(new VariableSymbol("_POST"))
         registerVariable(new VariableSymbol("_ENV"))
         registerVariable(new VariableSymbol("_COOKIE"))

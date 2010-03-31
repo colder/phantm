@@ -4,6 +4,7 @@ import CFGTrees._
 import scala.collection.immutable.HashMap
 import scala.collection.immutable.HashSet
 import scala.collection.immutable.Map
+import parser.Trees.Identifier
 import analyzer.Symbols._
 import analyzer.Types._
 
@@ -468,6 +469,14 @@ object TypeFlow {
                         case _ =>
                             TAnyObject
                     }
+                case CFGFunctionCall(Identifier("phantm_dumpanddie"), args) =>
+                    if (Main.dumpedData != Nil) {
+                        for (unser <- Main.dumpedData) {
+                            env = unser.importToEnv(env)
+                        }
+                    }
+                    TBottom
+
                 case fcall @ CFGFunctionCall(id, args) =>
                     GlobalSymbols.lookupFunction(id.value) match {
                         case Some(fs) =>
@@ -1180,6 +1189,7 @@ object TypeFlow {
             injectPredef("_REQUEST", new TArray(TTop))
             injectPredef("_COOKIE",  new TArray(TTop))
             injectPredef("_SERVER",  new TArray(TTop))
+            injectPredef("_FILES",   new TArray(TTop))
             injectPredef("_ENV",     new TArray(TTop))
             injectPredef("_SESSION", new TArray(TTop))
 
@@ -1204,6 +1214,13 @@ object TypeFlow {
             for (val cs <- GlobalSymbols.getClasses) {
                 for (val ps <- cs.getStaticProperties) {
                     baseEnv = baseEnv.inject(CFGClassProperty(ps), ps.typ)
+                }
+            }
+
+            // Lets try the unserializer
+            if (Main.dumpedData != Nil) {
+                for (unser <- Main.dumpedData) {
+                    baseEnv = unser.importToEnv(baseEnv)
                 }
             }
 

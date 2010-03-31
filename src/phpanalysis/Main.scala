@@ -24,8 +24,9 @@ object Main {
     var typeFlowFilter     = List[String]();
     var includePaths       = List(".");
     var mainDir            = "./"
-    var apis: List[String] = Nil;
-    var dumps: List[String] = Nil;
+    var apis               = List[String]();
+    var dumps              = List[String]();
+    var dumpedData         = List[Unserializer]();
     var exportAPIPath: Option[String] = None;
 
     def main(args: Array[String]): Unit = {
@@ -140,19 +141,13 @@ object Main {
 
     def compile(files: List[String]) = {
         try {
-            // Lets try the unserializer
-            if (dumps != Nil) {
-                for (dump <- dumps) {
-                    println(Unserializer.fromDump(dump))
-                }
-            }
 
-            if (displayProgress) println("1/10 Parsing...")
+            if (displayProgress) println("1/11 Parsing...")
             val sts = files map { f => val c = new Compiler(f); (c, c compile) }
             if (sts exists { _._2 == None} ) {
                 println("Compilation failed.")
             } else {
-                if (displayProgress) println("2/10 Simplifying...")
+                if (displayProgress) println("2/11 Simplifying...")
                 val asts = sts map { c => new STToAST(c._1, c._2.get) getAST }
                 Reporter.errorMilestone
                 var ast: Program = asts.reduceLeft {(a,b) => a combine b}
@@ -160,7 +155,7 @@ object Main {
 
                 if (!onlyLint) {
                     if (importAPI) {
-                        if (displayProgress) println("3/10 Importing APIs...")
+                        if (displayProgress) println("3/11 Importing APIs...")
                         // Load internal classes and functions into the symbol tables
                         new API(mainDir+"spec/internal_api.xml").load
 
@@ -168,14 +163,14 @@ object Main {
                             new API(api).load
                         }
                     } else {
-                        if (displayProgress) println("3/10 Importing APIs (skipped)")
+                        if (displayProgress) println("3/11 Importing APIs (skipped)")
                     }
 
                     if (resolveIncludes) {
                         ast = ConstantsResolver(ast, false).transform
                         Reporter.errorMilestone
 
-                        if (displayProgress) println("4/10 Resolving includes...")
+                        if (displayProgress) println("4/11 Resolving includes...")
                         // Run AST transformers
                         ast = IncludeResolver(ast).transform
 
@@ -186,27 +181,27 @@ object Main {
                             }
                         }
                     } else {
-                        if (displayProgress) println("4/10 Resolving and expanding (skipped)")
+                        if (displayProgress) println("4/11 Resolving and expanding (skipped)")
                     }
 
-                    if (displayProgress) println("5/10 Resolving constants...")
+                    if (displayProgress) println("5/11 Resolving constants...")
                     // Run Constants Resolver, to issue potential errors
                     ast = ConstantsResolver(ast, true).transform
                     Reporter.errorMilestone
 
-                    if (displayProgress) println("6/10 Structural checks...")
+                    if (displayProgress) println("6/11 Structural checks...")
                     // Traverse the ast to look for ovious mistakes.
                     new ASTChecks(ast) execute;
 
                     Reporter.errorMilestone
 
-                    if (displayProgress) println("7/10 Parsing annotations...")
+                    if (displayProgress) println("7/11 Parsing annotations...")
                     // Inject type information from the annotations
                     ast = new Annotations(ast).transform
 
                     Reporter.errorMilestone
 
-                    if (displayProgress) println("8/10 Symbolic checks...")
+                    if (displayProgress) println("8/11 Symbolic checks...")
                     // Collect symbols and detect obvious types errors
                     CollectSymbols(ast) execute;
                     Reporter.errorMilestone
@@ -216,17 +211,26 @@ object Main {
                         analyzer.Symbols.emitSummary
                     }
 
-                    if (displayProgress) println("9/10 Type flow analysis...")
+                    if (dumps != Nil) {
+                        if (displayProgress) println("9/11 Importing dumped state...")
+                        for (dump <- dumps) {
+                            dumpedData = Unserializer.fromDump(dump) :: dumpedData
+                        }
+                    } else {
+                        if (displayProgress) println("9/11 Importing dumped state (skipped)")
+                    }
+
+                    if (displayProgress) println("10/11 Type flow analysis...")
                     // Build CFGs and analyzes them
                     CFGChecks(ast) execute;
 
                     if (!exportAPIPath.isEmpty) {
-                        if (displayProgress) println("10/10 Export Annotations...")
+                        if (displayProgress) println("11/11 Export Annotations...")
 
                         // Compact collected annotations and output XML
                         AnnotationsExport.emitXML(exportAPIPath.get)
                     } else {
-                        if (displayProgress) println("10/10 Export Annotations (skipped)")
+                        if (displayProgress) println("11/11 Export Annotations (skipped)")
                     }
                     Reporter.errorMilestone
 
