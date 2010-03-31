@@ -10,13 +10,16 @@ class UnserializeException(msg: String) extends Exception(msg)
 
 sealed abstract class UValue;
 
-case class UArray(entries: Map[UValue, UValue]) extends UValue
-case class UObject(classname: String, entries: Map[UValue, UValue]) extends UValue
+case class UArray(var entries: Map[UValue, UValue]) extends UValue
+case class UObject(classname: String, var entries: Map[UValue, UValue]) extends UValue
 case class UString(str: String) extends UValue
 case class UInt(str: Int) extends UValue
 case class UFloat(str: Float) extends UValue
 case class UObjRef(i: Int) extends UValue
 case class URealRef(i: Int) extends UValue
+case object UNull extends UValue
+case object UFalse extends UValue
+case object UTrue extends UValue
 
 object Unserializer {
     def fromDump(path: String): Unserializer = {
@@ -26,14 +29,10 @@ object Unserializer {
 }
 
 class Unserializer(content: String) {
-    var valueStore : List[UValue] = Nil
+    // allocate the first for the outer array
+    var valueStore : List[UValue] = List(UNull)
     var chars = content.toList
     var result: UValue = unser(true)
-
-    def updateVal(pos: Int, v: UValue): UValue = {
-        valueStore = valueStore.take(pos) ::: List(v) ::: valueStore.drop(pos+1)
-        v
-    }
 
     def regVal(v: UValue): UValue = {
         valueStore = valueStore ::: List(v)
@@ -41,7 +40,7 @@ class Unserializer(content: String) {
     }
 
     def getVal(i: Int): UValue = {
-        valueStore(i-1)
+        valueStore(i)
     }
 
     //def importToEnv(env: TypeEnvironment): TypeEnvironment = {
@@ -56,6 +55,9 @@ class Unserializer(content: String) {
         var recursionLimit = 0
 
         def uValueToType(v: UValue): Type = v match {
+            case UFalse => TFalse
+            case UTrue => TTrue
+            case UNull => TNull
             case UInt(i) => TInt
             case UString(i) => TString
             case UFloat(i) => TFloat
@@ -98,6 +100,7 @@ class Unserializer(content: String) {
                 var env = envInit
                 for ((k, v) <- entries) {
                     val key = uValueToKey(k)
+                    val typ = uValueToType(v)
                     val sym = GlobalSymbols.lookupVariable(key) match {
                         case Some(vs) =>
                             vs
@@ -107,7 +110,8 @@ class Unserializer(content: String) {
                             vs
                     }
 
-                    env = env.inject(CFGIdentifier(sym), uValueToType(v))
+                    env = env.inject(CFGIdentifier(sym), typ)
+                    println("Setting "+key+" => "+typ)
                 }
                 env
             case _ =>
@@ -144,6 +148,14 @@ class Unserializer(content: String) {
 
     def unser(r: Boolean): UValue = {
         chars match {
+            case 'N' :: ';' :: cs =>
+                chars = cs
+                regVal(UNull)
+            case 'b' :: ':' :: cs =>
+                chars = cs
+                val v = consumeInt
+                chars = chars.tail // consume the ;
+                regVal(if (v > 0) UTrue else UFalse)
             case 'i' :: ':' :: cs =>
                 chars = cs
                 val v = consumeInt
@@ -153,7 +165,7 @@ class Unserializer(content: String) {
                 chars = cs
                 val v = consumeFloat
                 chars = chars.tail // consume the ;
-                if (r) regVal(UFloat(v)) else UFloat(v)
+                regVal(UFloat(v))
             case 's' :: ':' :: cs =>
                 // s:<size>:"...";
                 chars = cs
@@ -170,8 +182,8 @@ class Unserializer(content: String) {
                 val cname = consumeString(cnsize)
                 chars = chars.tail // consume the :
 
-                regVal(UObject(cname, map))
-                val i = valueStore.size-1
+                val obj = UObject(cname, map)
+                regVal(obj)
 
                 val size = consumeInt
                 chars = chars.drop(2) // consume the extra ":{"
@@ -182,12 +194,13 @@ class Unserializer(content: String) {
                 }
                 chars = chars.tail // consume the extra "}"
 
-                updateVal(i, UObject(cname, map))
+                obj.entries = map
+                obj
             case 'a' :: ':' :: cs =>
                 var map = Map[UValue, UValue]();
 
-                regVal(UArray(map))
-                val i = valueStore.size-1;
+                val arr = UArray(map)
+                regVal(arr)
 
                 chars = cs
                 val size = consumeInt
@@ -199,7 +212,8 @@ class Unserializer(content: String) {
                 }
                 chars = chars.tail // consume the extra "}"
 
-                updateVal(i, UArray(map))
+                arr.entries = map
+                arr
             case 'r' :: ':' :: cs =>
                 chars = cs
                 val r = consumeInt;
@@ -209,7 +223,7 @@ class Unserializer(content: String) {
                 chars = cs
                 val r = consumeInt;
                 chars = chars.tail // consume the extra ";"
-                regVal(URealRef(r))
+                URealRef(r)
             case c =>
                 throw new UnserializeException("Invalid serialized sequence: '"+c.mkString+"'")
         }

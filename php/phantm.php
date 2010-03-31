@@ -12,14 +12,40 @@ function phantm_dumpanddie(array $vars) {
     $file = $bt[0]['file'];
     $line = $bt[0]['line'];
 
+    // remap global entries to superglobals
+    $vars['GLOBALS']['GLOBALS']  = &$vars['GLOBALS'];
+    $vars['GLOBALS']['_GET']     = &$vars['_GET'];
+    $vars['GLOBALS']['_POST']    = &$vars['_POST'];
+    $vars['GLOBALS']['_REQUEST'] = &$vars['_REQUEST'];
+    $vars['GLOBALS']['_COOKIE']  = &$vars['_COOKIE'];
+    $vars['GLOBALS']['_SESSION'] = &$vars['_SESSION'];
+    $vars['GLOBALS']['_FILES']   = &$vars['_FILES'];
+    $vars['GLOBALS']['_ENV']     = &$vars['_ENV'];
+    $vars['GLOBALS']['_SERVER']  = &$vars['_SERVER'];
+
+    if (ini_get('register_long_arrays')) {
+        $vars['HTTP_GET_VARS']       = &$vars['_GET'];
+        $vars['HTTP_POST_VARS']      = &$vars['_POST'];
+        $vars['HTTP_ENV_VARS']       = &$vars['_ENV'];
+        $vars['HTTP_COOKIE_VARS']    = &$vars['_COOKIE'];
+        $vars['HTTP_SERVER_VARS']    = &$vars['_SERVER'];
+        $vars['GLOBALS']['HTTP_GET_VARS']       = &$vars['_GET'];
+        $vars['GLOBALS']['HTTP_POST_VARS']      = &$vars['_POST'];
+        $vars['GLOBALS']['HTTP_ENV_VARS']       = &$vars['_ENV'];
+        $vars['GLOBALS']['HTTP_COOKIE_VARS']    = &$vars['_COOKIE'];
+        $vars['GLOBALS']['HTTP_SERVER_VARS']    = &$vars['_SERVER'];
+    }
+
+    $vars['GLOBALS'] = array();
+
     $path = basename($file)."--".date('d-m-y--H\hi\ms').".dump";
     $fh = fopen($path, "w");
-    fwrite($fh, "# Dumped state of ".$file." at line ".$line." \n");
+    fwrite($fh, "# Dumped state of ".$file." at line ".$line."  \n");
     fwrite($fh, "# Date: ".date("r")."\n");
     fwrite($fh, serialize($vars));
     fclose($fh);
 
     copy($path, "last.dump");
 
-    exit("\n--- phantm: Done recording state, shutting down ---\n");
+    exit("\n--- phantm: Done recording state to ".$path.", shutting down ---\n");
 }
