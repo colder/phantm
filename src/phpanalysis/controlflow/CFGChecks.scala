@@ -14,7 +14,9 @@ case class CFGChecks(node: Tree) extends ASTTraversal[CheckContext](node, CheckC
     }
 
     def filter(name: String): Boolean = {
-        ((Main.typeFlowFilter == Nil) || (Main.typeFlowFilter.contains(name))) && (name != "phantm_dumpanddie")
+        ((Main.typeFlowFilter == Nil) || (Main.typeFlowFilter.contains(name))) &&
+        (name != "phantm_dumpanddie") &&
+        (name != "phantm_incl")
     }
 
     /**

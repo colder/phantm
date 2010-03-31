@@ -1,6 +1,8 @@
 package phpanalysis.analyzer
 import parser.Trees._
 import java.io.File
+import scala.io.Source
+import java.io.File
 import scala.collection.mutable.Set;
 
 object IncludeResolver {
@@ -15,7 +17,41 @@ object IncludeResolver {
     def end = {
         deepNess -= 1;
     }
+
+    var inclsInstr = Map[(String, Int), Set[String]]();
+
+    def importIncludes(files: List[String]) = {
+        for (incl <- files) {
+            for (l <- Source.fromFile(new File(incl)).getLines) {
+                var chars = l.toList
+
+                def consumeInt : Int = {
+                    var buf = "";
+                    while(chars.head >= '0' && chars.head <= '9') {
+                        buf += chars.head
+                        chars = chars.tail
+                    }
+
+                    buf.toInt
+                }
+
+                val size = consumeInt
+                chars = chars.tail // :
+                val file = chars.take(size).mkString
+                chars = chars.drop(size+1); // path:
+                val line = consumeInt
+                chars = chars.tail // :
+                val pathsize = consumeInt
+                chars = chars.tail // :
+                val path = chars.take(pathsize).mkString
+
+                inclsInstr += ((file, line) -> (inclsInstr.getOrElse((file, line), Set[String]()) + path))
+
+            }
+        }
+    }
 }
+
 
 case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
 
@@ -72,7 +108,28 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
         IncludeResolver.begin
 
         val result = if (IncludeResolver.deepNess < 20) {
-            Evaluator.staticEval(path, false) match {
+            val eval = Evaluator.staticEval(path, false)
+            val pathres = (eval, path) match {
+                case (Some(scal), _) =>
+                    Some(scal)
+                case (None, fc @ FunctionCall(StaticFunctionRef(_, _, Identifier("phantm_incl")), _)) =>
+                    // probably instrumentalized, let's check if the position can be found
+                    val absPath = if (inc.file.isEmpty) "?" else new File(inc.file.get).getAbsolutePath;
+                    IncludeResolver.inclsInstr.get((absPath, inc.line)) match {
+                        case Some(paths) =>
+                            if (paths.size > 1) {
+                                if (Main.verbosity >= 0) {
+                                    Reporter.notice("Include statement including more than one file!", inc)
+                                }
+                            }
+                            Some(PHPString(paths.toList.head).setPos(fc))
+                        case None =>
+                            None
+                    }
+                case _ =>
+                    None
+            }
+            pathres match {
                 case Some(scalar_p) =>
                     val p = Evaluator.scalarToString(scalar_p)
                     if (p(0) == '/') {

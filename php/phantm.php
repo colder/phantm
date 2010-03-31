@@ -7,6 +7,30 @@
  *
  * Call it like that: phantm_dumpanddie(get_defined_vars());
  */
+function phantm_incl($path) {
+
+    if (isset($GLOBALS['__phantm_fh_path'])) {
+        $p = $GLOBALS['__phantm_fh_path'];
+    } else {
+        $p = basename($_SERVER['SCRIPT_FILENAME'])."--".date('d-m-y--H\hi\ms').".incl";
+        $GLOBALS['__phantm_fh_path'] = $p;
+    }
+
+    $fh = fopen($p, "a");
+
+    $bt = debug_backtrace();
+    $file = $bt[0]['file'];
+    $line = $bt[0]['line'];
+
+    fwrite($fh, strlen($file).":".$file.":".$line.":".strlen($path).":".$path."\n");
+
+    fclose($fh);
+
+    copy($p, "last.incl");
+
+    return $path;
+}
+
 function phantm_dumpanddie(array $vars) {
     $bt = debug_backtrace();
     $file = $bt[0]['file'];
@@ -38,7 +62,7 @@ function phantm_dumpanddie(array $vars) {
 
     $vars['GLOBALS'] = array();
 
-    $path = basename($file)."--".date('d-m-y--H\hi\ms').".dump";
+    $path = basename(basename($_SERVER['SCRIPT_FILENAME']))."--".date('d-m-y--H\hi\ms').".dump";
     $fh = fopen($path, "w");
     fwrite($fh, "# Dumped state of ".$file." at line ".$line."  \n");
     fwrite($fh, "# Date: ".date("r")."\n");

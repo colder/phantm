@@ -117,6 +117,9 @@ object Main {
             case "--includepath" :: ip :: xs =>
                 includePaths = ip.split(":").toList
                 handleArgs(xs)
+            case "--importincludes" :: paths :: xs =>
+                IncludeResolver.importIncludes(paths.split(":").toList)
+                handleArgs(xs)
             case "--importdump" :: paths :: xs =>
                 dumps = paths.split(":").toList
                 handleArgs(xs)
