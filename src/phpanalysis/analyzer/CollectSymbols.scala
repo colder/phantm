@@ -1,5 +1,6 @@
-package phpanalysis.analyzer;
+package phpanalysis.analyzer
 
+import phpanalysis.Reporter
 import phpanalysis.parser.Trees._
 import phpanalysis.analyzer.Symbols._
 import phpanalysis.analyzer.Types._
@@ -79,7 +80,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
 
 
     def secondClassPass(cd: ClassDecl, cs: ClassSymbol): Unit = {
-        for (val m <- cd.methods) {
+        for (m <- cd.methods) {
             val ms = new MethodSymbol(cs, m.name.value, getVisibility(m.flags), typeHintToType(m.hint)).setPos(m)
             cs.registerMethod(ms)
             ms.registerPredefVariables
@@ -99,7 +100,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
             }
         }
 
-        for (val p <- cd.props) {
+        for (p <- cd.props) {
             var typ = if (p.hint.isEmpty) {
                 Evaluator.typeFromExpr(p.default)
             } else {
@@ -109,7 +110,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
             cs.registerProperty(ps)
         }
 
-        for (val p <- cd.static_props) {
+        for (p <- cd.static_props) {
             var typ = if (p.hint.isEmpty) {
                 Evaluator.typeFromExpr(p.default)
             } else {
@@ -119,7 +120,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
             cs.registerStaticProperty(ps)
         }
 
-        for (val c <- cd.consts) {
+        for (c <- cd.consts) {
             val ccs = c.value match {
                 case sc: Scalar => 
                     new ClassConstantSymbol(cs, c.v.value, Some(sc), Evaluator.typeFromExpr(c.value)).setPos(c)
@@ -142,7 +143,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
         node match {
             case FunctionDecl(name, args, retref, hint, body) =>
                 val fs = new FunctionSymbol(name.value, typeHintToType(hint)).setPos(name).setUserland
-                for (val a <- args) {
+                for(a <- args) {
                     var t = typeHintToType(a.hint)
 
                     if (a.default == Some(PHPNull)) {
@@ -247,7 +248,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
         traverse(visitClasses)
 
         firstClassPass;
-        for (val c <- classList) {
+        for(c <- classList) {
             secondClassPass(c._2, c._1);
         }
 

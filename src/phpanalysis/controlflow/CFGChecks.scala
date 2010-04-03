@@ -2,6 +2,7 @@ package phpanalysis.controlflow;
 
 import phpanalysis.parser.Trees._;
 import phpanalysis.analyzer._;
+import phpanalysis.Main;
 
 case class CheckContext();
 

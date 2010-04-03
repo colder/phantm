@@ -1,7 +1,8 @@
-package phpanalysis.helpers;
+package phpanalysis.helpers
 
-import phpanalysis.parser._;
-import java.io._;
+import phpanalysis._
+import phpanalysis.parser._
+import java.io._
 
 class STGraph extends Helper {
 

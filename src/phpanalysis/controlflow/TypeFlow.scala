@@ -4,9 +4,10 @@ import CFGTrees._
 import scala.collection.immutable.HashMap
 import scala.collection.immutable.HashSet
 import scala.collection.immutable.Map
-import parser.Trees.Identifier
-import analyzer.Symbols._
-import analyzer.Types._
+import phpanalysis._
+import phpanalysis.parser.Trees.Identifier
+import phpanalysis.analyzer.Symbols._
+import phpanalysis.analyzer.Types._
 
 object TypeFlow {
     case object TypeLattice {
@@ -123,7 +124,7 @@ object TypeFlow {
                 var newEntries = Map[String, Type]();
 
                 for (k <- t1.entries.keySet ++ t2.entries.keySet) {
-                    newEntries = newEntries.update(k, t1.lookup(k) union t2.lookup(k))
+                    newEntries = newEntries.updated(k, t1.lookup(k) union t2.lookup(k))
                 }
 
                 new TArray(newEntries, t1.globalType union t2.globalType)
@@ -165,7 +166,7 @@ object TypeFlow {
                     var newEntries = Map[String, Type]();
 
                     for (k <- t1.entries.keySet ++ t2.entries.keySet) {
-                        newEntries = newEntries.update(k, meetTypes(t1.lookup(k), t2.lookup(k)))
+                        newEntries = newEntries.updated(k, meetTypes(t1.lookup(k), t2.lookup(k)))
                     }
 
                     new TArray(newEntries, meetTypes(t1.globalType, t2.globalType))
@@ -298,7 +299,7 @@ object TypeFlow {
                     var newmap = Map[CFGSimpleVariable, Type]();
 
                     for (k <- map.keySet ++ e.map.keySet) {
-                        newmap = newmap.update(k,
+                        newmap = newmap.updated(k,
                             map.getOrElse(k, TTop) union e.map.getOrElse(k, TTop))
                     }
 
@@ -357,7 +358,7 @@ object TypeFlow {
                 case _ => t.toString
             }
             
-            map.toList.filter( tmp => tmp._1.toString.toList.head != '_' && tmp._1.toString != "GLOBALS").sort{(x,y) => x._1.uniqueID < x._1.uniqueID}.map(x => x._1+" => "+typeToString(x._2)).mkString("[ ", "; ", " ]");
+            map.toList.filter( tmp => tmp._1.toString.toList.head != '_' && tmp._1.toString != "GLOBALS").sortWith{(x,y) => x._1.uniqueID < x._1.uniqueID}.map(x => x._1+" => "+typeToString(x._2)).mkString("[ ", "; ", " ]");
         }
     }
 
@@ -1055,7 +1056,7 @@ object TypeFlow {
                             error("Unmatched function prototype '("+fcall_params.map(x => typeFromSV(x)).mkString(", ")+")', candidates are:\n    "+syms.mkString(",\n    "), pos)
                             TBottom
                         } else {
-                            syms.first match {
+                            syms.head match {
                                 case tf: TFunction =>
                                     for (i <- fcall_params.indices) {
                                         if (i >= tf.args.length) {
@@ -1211,8 +1212,8 @@ object TypeFlow {
             }
 
             // we inject vars for static class properties
-            for (val cs <- GlobalSymbols.getClasses) {
-                for (val ps <- cs.getStaticProperties) {
+            for(cs <- GlobalSymbols.getClasses) {
+                for(ps <- cs.getStaticProperties) {
                     baseEnv = baseEnv.inject(CFGClassProperty(ps), ps.typ)
                 }
             }
@@ -1238,7 +1239,7 @@ object TypeFlow {
 
             if (Main.displayFixPoint) {
                 println("     - Fixpoint:");
-                for ((v,e) <- aa.getResult.toList.sort{(x,y) => x._1.name < y._1.name}) {
+                for ((v,e) <- aa.getResult.toList.sortWith{(x,y) => x._1.name < y._1.name}) {
                     println("      * ["+v+"] => "+e);
                 }
             }

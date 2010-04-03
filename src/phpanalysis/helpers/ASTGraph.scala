@@ -1,8 +1,9 @@
-package phpanalysis.helpers;
+package phpanalysis.helpers
 
-import phpanalysis.analyzer.IncludeResolver;
-import phpanalysis.parser._;
-import java.io._;
+import phpanalysis._
+import phpanalysis.parser._
+import phpanalysis.analyzer.IncludeResolver
+import java.io._
 
 class ASTGraph extends Helper {
 

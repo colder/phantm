@@ -1,7 +1,8 @@
 package phpanalysis.analyzer
 
 import scala.collection.mutable.HashMap
-import parser.Trees._
+import phpanalysis.parser.Trees._
+import phpanalysis._
 import Types._
 
 
@@ -391,28 +392,28 @@ object Symbols {
 
   def emitSummary = {
         def emitScope(s: Scope, p:String) = {
-            for (val v <- s.getVariables) {
+            for(v <- s.getVariables) {
                 println(p+"$"+v.name+"@"+v.id+"")
             }
         }
-        for (val cs <- GlobalSymbols.getClasses) {
+        for(cs <- GlobalSymbols.getClasses) {
             print("Class "+cs.name+"@"+cs.id)
             cs.parent match {
                 case Some(pcs) => println(" extends "+pcs.name+"@"+pcs.id+" {");
                 case None => println(" {");
             }
-            for (val cs <- cs.getConstants) {
+            for(cs <- cs.getConstants) {
                 println("  const "+cs.name+"@"+cs.id);
             }
-            for (val ps <- cs.getStaticProperties) {
+            for(ps <- cs.getStaticProperties) {
                 println("  static "+ps.visibility+" $"+ps.name+"@"+ps.id);
             }
 
-            for (val ps <- cs.getProperties) {
+            for(ps <- cs.getProperties) {
                 println("  "+ps.visibility+" $"+ps.name+"@"+ps.id);
             }
 
-            for (val ms <- cs.getMethods) {
+            for(ms <- cs.getMethods) {
                 println("  "+ms.visibility+" function "+ms.name+"@"+ms.id+" "+(ms.getArguments.map { x => "$"+x.name+"@"+x.id } mkString("(", ", ", ")"))+" {");
                 emitScope(ms, "    ");
                 println("  }");
@@ -420,7 +421,7 @@ object Symbols {
             println("}")
         }
 
-        for (val fs <- GlobalSymbols.getFunctions) {
+        for(fs <- GlobalSymbols.getFunctions) {
             println("function "+fs.name+"@"+fs.id+" "+(fs.getArguments.map { x => "$"+x.name+"@"+x.id } mkString("(", ", ", ")"))+"{");
             emitScope(fs, "  ");
             println("  }");

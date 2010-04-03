@@ -1,6 +1,7 @@
 package phpanalysis.analyzer
-import parser.Trees._
-import java.io.File
+import phpanalysis._
+import phpanalysis.parser.Trees._
+
 import scala.io.Source
 import java.io.File
 import scala.collection.mutable.Set;
@@ -22,7 +23,7 @@ object IncludeResolver {
 
     def importIncludes(files: List[String]) = {
         for (incl <- files) {
-            for (l <- Source.fromFile(new File(incl)).getLines) {
+            for (l <- Source.fromFile(new File(incl)).getLines("\n")) {
                 var chars = l.toList
 
                 def consumeInt : Int = {
@@ -80,7 +81,7 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
         }
 
         def getAST(path: String): Expression = {
-            import parser.STToAST
+            import phpanalysis.parser.STToAST
 
             IncludeResolver.includedFiles += path
 

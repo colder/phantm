@@ -1,7 +1,9 @@
 // This class transforms a Syntax Tree to an Abstract Syntax Tree
 package phpanalysis.parser;
 
-import phpanalysis.parser.Trees._;
+import phpanalysis._
+import phpanalysis.parser.Trees._
+import phpanalysis.{Compiler,Position}
 
 case class STToAST(comp: Compiler, st: ParseNode) {
 
@@ -962,7 +964,7 @@ case class STToAST(comp: Compiler, st: ParseNode) {
     // Derive $a->foo->bar[]->gee->stuff()->bla into an expression
     def deriveOAList(baseex: Expression, oaList: List[ObjectAccess]) = {
         var ex = baseex
-        for(val oa <- oaList) {
+        for(oa <- oaList) {
             oa match {
                 case OAIdentifier(id) => ex = ObjectProperty(ex, id).setPos(id)
                 case OAArray(array, indexes) =>
@@ -971,7 +973,7 @@ case class STToAST(comp: Compiler, st: ParseNode) {
                             ex = ObjectProperty(ex, name).setPos(id)
                         case _ =>
                     }
-                    for (val id <- indexes) id match {
+                    for(id <- indexes) id match {
                         case Some(i) => ex = ArrayEntry(ex, i).setPos(ex)
                         case None => ex = NextArrayEntry(ex).setPos(ex)
                     }
@@ -980,7 +982,7 @@ case class STToAST(comp: Compiler, st: ParseNode) {
                     case OAIdentifier(id) => ex = MethodCall(ex, StaticMethodRef(id).setPos(id), args).setPos(id)
                     case OAExpression(e)  => ex = MethodCall(ex, DynamicMethodRef(e).setPos(e), args).setPos(ex)
                     case OAArray(array, indexes) =>  {
-                        for (val id <- indexes) id match {
+                        for(id <- indexes) id match {
                             case Some(i) => ex = ArrayEntry(ex, i).setPos(ex)
                             case None => ex = NextArrayEntry(ex).setPos(ex)
                         }

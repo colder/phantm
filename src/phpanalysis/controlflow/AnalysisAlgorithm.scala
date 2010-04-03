@@ -1,5 +1,6 @@
 package phpanalysis.controlflow
 
+import phpanalysis.Main;
 import scala.collection.mutable.Set;
 
 class AnalysisAlgorithm[E <: Environment[E, S],S]
@@ -52,7 +53,7 @@ class AnalysisAlgorithm[E <: Environment[E, S],S]
             println("      * Analyzing CFG ("+cfg.V.size+" vertices, "+cfg.E.size+" edges)")
         }
 
-        facts = facts.update(cfg.entry, baseEnv)
+        facts = facts.updated(cfg.entry, baseEnv)
 
         for (e <- cfg.outEdges(cfg.entry)) {
             workList += e.v2
@@ -98,7 +99,7 @@ class AnalysisAlgorithm[E <: Environment[E, S],S]
                     }
 
                     //println("@@ Updating facts to "+nf)
-                    facts = facts.update(v, nf)
+                    facts = facts.updated(v, nf)
 
                     for (e <- cfg.outEdges(v)) {
                         workList += e.v2;
@@ -110,7 +111,7 @@ class AnalysisAlgorithm[E <: Environment[E, S],S]
     }
 
     def dumpFacts = {
-        for ((v,e) <- facts.toList.sort{(x,y) => x._1.name < y._1.name}) {
+        for ((v,e) <- facts.toList.sortWith{(x,y) => x._1.name < y._1.name}) {
             println("  "+v+" => "+e)
         }
     }

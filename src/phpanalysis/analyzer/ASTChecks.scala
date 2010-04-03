@@ -1,6 +1,7 @@
 package phpanalysis.analyzer;
 
 import phpanalysis.parser.Trees._;
+import phpanalysis.{Main,Reporter};
 
 case class CheckContext(topLevel: Boolean, inCond: Boolean);
 
@@ -58,7 +59,7 @@ case class ASTChecks(node: Tree, context: CheckContext) extends ASTTraversal[Che
 
             // check for call-time pass-by-ref
             case FunctionCall(ref, args) if Main.verbosity >= 2 => {
-                for (val arg <- args) if (arg.forceref) {
+                for (arg <- args) if (arg.forceref) {
                     Reporter.notice("Usage of call-time pass-by-ref is deprecated and should be avoided", arg)
                 }
             }
@@ -68,13 +69,13 @@ case class ASTChecks(node: Tree, context: CheckContext) extends ASTTraversal[Che
             }
 
             case MethodCall(obj, ref, args) if Main.verbosity >= 2 => {
-                for (val arg <- args) if (arg.forceref) {
+                for (arg <- args) if (arg.forceref) {
                     Reporter.notice("Usage of call-time pass-by-ref is deprecated and should be avoided", arg)
                 }
             }
 
             case StaticMethodCall(classref, ref, args) if Main.verbosity >= 2 => {
-                for (val arg <- args) if (arg.forceref) {
+                for (arg <- args) if (arg.forceref) {
                     Reporter.notice("Usage of call-time pass-by-ref is deprecated and should be avoided", arg)
                 }
             }

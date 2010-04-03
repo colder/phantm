@@ -1,8 +1,9 @@
 package phpanalysis.controlflow
+import phpanalysis.analyzer.Symbols._
+import phpanalysis.parser.Trees._
+import phpanalysis.Positional
 
 object CFGTrees {
-  import analyzer.Symbols._
-  import parser.Trees._
 
   sealed abstract class CFGTree extends Positional {
     override def toString = stringRepr(this)

@@ -1,5 +1,5 @@
 package phpanalysis.analyzer
-import parser.Trees._
+import phpanalysis.parser.Trees._
 
 abstract class ASTTransform(p: Program) {
     def transform: Program = {

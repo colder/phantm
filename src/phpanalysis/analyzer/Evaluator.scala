@@ -1,8 +1,8 @@
 package phpanalysis.analyzer
 
-import analyzer.Symbols.GlobalSymbols
-import parser.Trees._
-import analyzer.Types._
+import Symbols.GlobalSymbols
+import Types._
+import phpanalysis.parser.Trees._
 import java.io.File
 
 object Evaluator {

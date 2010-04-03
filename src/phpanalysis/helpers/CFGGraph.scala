@@ -1,9 +1,10 @@
-package phpanalysis.helpers;
+package phpanalysis.helpers
 
-import phpanalysis.controlflow._;
-import phpanalysis.analyzer._;
-import phpanalysis.parser.Trees._;
-import phpanalysis.parser.STToAST;
+import phpanalysis._
+import phpanalysis.controlflow._
+import phpanalysis.analyzer._
+import phpanalysis.parser.Trees._
+import phpanalysis.parser.STToAST
 
 class CFGGraph extends Helper {
 

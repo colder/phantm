@@ -1,10 +1,11 @@
 package phpanalysis.controlflow
- 
+import phpanalysis._
+import phpanalysis.parser.Trees._
+import phpanalysis.analyzer.Symbols._
+import CFGTrees._
+import scala.collection.mutable.{Map,HashMap}
+
 object ASTToCFG {
-  import parser.Trees._
-  import analyzer.Symbols._
-  import CFGTrees._
-  import scala.collection.mutable.{Map,HashMap}
 
   /** Builds a control flow graph from a method declaration. */
   def convertAST(statements: List[Statement], scope: Scope): CFG = {
@@ -321,7 +322,7 @@ object ASTToCFG {
             }
     }
 
-    def internalFunction(name: String): parser.Trees.Identifier = {
+    def internalFunction(name: String): Identifier = {
         GlobalSymbols.lookupFunction(name) match {
             case Some(s) => Identifier(name).setSymbol(s)
             case None => Identifier(name);
@@ -383,7 +384,7 @@ object ASTToCFG {
                             if (vs.length > 1) {
                                 Emit.statement(CFGAssign(v, CFGFunctionCall(internalFunction("isset"), vs.map{expr(_)}).setPos(ex)).setPos(ex))
                             } else {
-                                Emit.statement(CFGAssign(v, CFGFunctionCall(internalFunction("isset"), List(expr(vs.first))).setPos(ex)).setPos(ex))
+                                Emit.statement(CFGAssign(v, CFGFunctionCall(internalFunction("isset"), List(expr(vs.head))).setPos(ex)).setPos(ex))
                             }
                         case Array(values) =>
                             Emit.statement(CFGAssign(v, CFGEmptyArray().setPos(ex)).setPos(ex))
@@ -576,7 +577,7 @@ object ASTToCFG {
 
             Emit.setPC(curCaseV);
             // First, we put the statements in place:
-            for (val c <- cases) c match {
+            for(c <- cases) c match {
                 case (None, ts) =>
                     default = Some(Emit.getPC)
 
@@ -598,7 +599,7 @@ object ASTToCFG {
 
             // Then, we link to conditions
             Emit.setPC(beginSwitchV)
-            for (val c <- conds) c match {
+            for(c <- conds) c match {
                 case (ex, v) => 
                     condExpr(Equal(input, ex), nextCondV, v)
                     Emit.setPC(nextCondV)

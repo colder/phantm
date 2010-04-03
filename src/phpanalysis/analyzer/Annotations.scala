@@ -1,6 +1,6 @@
 package phpanalysis.analyzer
-import parser.Trees._
-import analyzer.Symbols._
+import phpanalysis.parser.Trees._
+import Symbols._
 import scala.collection.mutable.{Map,HashMap}
 
 class Annotations(ast: Program) extends ASTTransform(ast) {
@@ -125,8 +125,8 @@ object Annotations {
 }
 
 object AnnotationsExport {
-    import controlflow.TypeFlow
-    import analyzer.Types._
+    import phpanalysis.controlflow.TypeFlow
+    import phpanalysis.analyzer.Types._
     // Compacts collected annotations and exports them
 
     def reduceFT(ft1: TFunction, ft2: TFunction): TFunction = {

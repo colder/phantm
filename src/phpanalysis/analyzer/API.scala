@@ -1,7 +1,8 @@
 package phpanalysis.analyzer
 
 import collection.mutable.HashMap
-import parser.Trees._
+import phpanalysis.{Positional,Reporter}
+import phpanalysis.parser.Trees._
 import Symbols._
 import Types._
 import scala.xml._

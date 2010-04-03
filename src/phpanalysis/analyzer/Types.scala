@@ -2,9 +2,9 @@ package phpanalysis.analyzer;
 import Symbols._
 import scala.collection.immutable.{Map, Set}
 
-import controlflow.TypeFlow._
-import controlflow.CFGTrees._
-import parser.Trees._
+import phpanalysis.controlflow.TypeFlow._
+import phpanalysis.controlflow.CFGTrees._
+import phpanalysis.parser.Trees._
 
 object Types {
     object RecProtection {
@@ -95,7 +95,7 @@ object Types {
         }
 
         def unset(id: ObjectId): ObjectStore = new ObjectStore(store - id);
-        def set(id: ObjectId, robj: TRealObject): ObjectStore = new ObjectStore(store.update(id, robj));
+        def set(id: ObjectId, robj: TRealObject): ObjectStore = new ObjectStore(store.updated(id, robj));
 
         def initIfNotExist(id: ObjectId, ocs: Option[ClassSymbol]) : ObjectStore = store.get(id) match {
             case Some(_) =>
@@ -105,7 +105,7 @@ object Types {
                 val rot = ocs match {
                     case Some(cs) =>
                         // construct a default object for this class
-                        new TRealClassObject(new TClass(cs), Map[String,Type]() ++ cs.properties.mapElements[Type] { x => x.typ }, TUninitialized)
+                        new TRealClassObject(new TClass(cs), Map[String,Type]() ++ cs.properties.mapValues[Type] { x => x.typ }, TUninitialized)
                     case None =>
                         // No class => any object
                         new TRealObject(Map[String,Type](), TUninitialized)
@@ -115,7 +115,7 @@ object Types {
         }
 
         override def toString = {
-            store.toList.sort{(x,y) => x._1.pos < x._1.pos}.map(x => "("+x._1.pos+","+x._1.offset+") => "+x._2).mkString("{ ", "; ", " }");
+            store.toList.sortWith{(x,y) => x._1.pos < x._1.pos}.map(x => "("+x._1.pos+","+x._1.offset+") => "+x._2).mkString("{ ", "; ", " }");
         }
     }
 
@@ -169,7 +169,7 @@ object Types {
             val res = if (RecProtection.objectDepthDepth > 5) {
                 5
             } else {
-                Math.max(globalType.depth(e), fields.map(_._2.depth(e)).foldLeft(0)((a, b) => Math.max(a,b)))
+                globalType.depth(e).max(fields.map(_._2.depth(e)).foldLeft(0)((a, b) => a.max(b)))
             }
             RecProtection.objectDepthDepth -= 1;
 
@@ -207,7 +207,7 @@ object Types {
 
 
         def injectField(index: String, typ: Type, weak: Boolean): TRealObject = {
-            val newFields = fields.update(index, if (weak) typ union lookupField(index) else typ)
+            val newFields = fields.updated(index, if (weak) typ union lookupField(index) else typ)
             this match {
                 case t: TRealClassObject =>
                     new TRealClassObject(t.cl, newFields, globalType)
@@ -230,7 +230,7 @@ object Types {
             var newFields = fields;
             // When the index is unknown, we have to pollute every entries
             for ((i,t) <- fields) {
-                newFields = newFields.update(i,t union typ)
+                newFields = newFields.updated(i,t union typ)
             }
 
             this match {
@@ -274,7 +274,7 @@ object Types {
             var newFields = Map[String, Type]();
 
             for (index <- (fields.keySet ++ a2.fields.keySet)) {
-                newFields = newFields.update(index, lookupField(index) union a2.lookupField(index))
+                newFields = newFields.updated(index, lookupField(index) union a2.lookupField(index))
             }
 
             newcl match {
@@ -331,7 +331,7 @@ object Types {
             entries.getOrElse(index, globalType)
 
         override def depth(env: TypeEnvironment): Int =
-            Math.max(globalType.depth(env), entries.map(_._2.depth(env)).foldLeft(0)((a, b) => Math.max(a,b)))+1
+            globalType.depth(env).max(entries.map(_._2.depth(env)).foldLeft(0)(_ max _))+1
 
         def lookup(index: CFGSimpleValue): Type = index match {
           case CFGLong(i)       => lookup(i+"")
@@ -399,9 +399,9 @@ object Types {
         }
 
         override def toText(env: TypeEnvironment) =
-            "Array["+(entries.toList.sort((x,y) => x._1 < y._1).map(x => x._1 +" => "+ x._2.toText(env)).toList ::: "? => "+globalType.toText(env) :: Nil).mkString(", ")+"]"
+            "Array["+(entries.toList.sortWith((x,y) => x._1 < y._1).map(x => x._1 +" => "+ x._2.toText(env)).toList ::: "? => "+globalType.toText(env) :: Nil).mkString(", ")+"]"
         override def toString =
-            "Array["+(entries.toList.sort((x,y) => x._1 < y._1).map(x => x._1 +" => "+ x._2).toList ::: "? => "+globalType :: Nil).mkString("; ")+"]"
+            "Array["+(entries.toList.sortWith((x,y) => x._1 < y._1).map(x => x._1 +" => "+ x._2).toList ::: "? => "+globalType :: Nil).mkString("; ")+"]"
     }
 
     object TAnyArray extends TArray(Map[String, Type](), TTop) {
@@ -586,7 +586,7 @@ object Types {
         }
 
         override def depth(env: TypeEnvironment) =
-            types.map(_.depth(env)).reduceLeft((a, b) => Math.max(a,b))
+            types.map(_.depth(env)).reduceLeft(_ max _)
 
         override def toString = types.mkString("{", ",", "}")
         override def toText(e: TypeEnvironment)   = types.map(t => t.toText(e)).mkString(" or ")

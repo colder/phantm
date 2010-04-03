@@ -1,7 +1,8 @@
-package phpanalysis.parser;
+package phpanalysis.parser
 
-import phpanalysis.Positional;
-import phpanalysis.analyzer.Symbols.Symbolic;
+import phpanalysis.Positional
+import phpanalysis.Commented
+import phpanalysis.analyzer.Symbols.Symbolic
 
 // todo, namespaces
 object Trees {

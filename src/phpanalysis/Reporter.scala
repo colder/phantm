@@ -70,8 +70,8 @@ object Reporter {
         } else {
             errors
         }
-        for (errsPerFile <- errorsToDisplay.elements.toList.sort((a,b) => a._1.getOrElse("") < b._1.getOrElse("")).map(x => x._2)) {
-            for ((p, msg, pos, _) <- errsPerFile.toList.sort{(x,y) => x._3.line < y._3.line || (x._3.line == y._3.line && x._3.col < y._3.col)}) {
+        for (errsPerFile <- errorsToDisplay.iterator.toList.sortWith((a,b) => a._1.getOrElse("") < b._1.getOrElse("")).map(x => x._2)) {
+            for ((p, msg, pos, _) <- errsPerFile.toList.sortWith{(x,y) => x._3.line < y._3.line || (x._3.line == y._3.line && x._3.col < y._3.col)}) {
                 emit(p, msg, pos)
             }
         }

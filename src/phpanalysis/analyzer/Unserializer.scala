@@ -3,8 +3,8 @@ import Symbols._
 import Types._
 import io.Source
 import java.io.File
-import controlflow.TypeFlow._
-import controlflow.CFGTrees.CFGIdentifier
+import phpanalysis.controlflow.TypeFlow._
+import phpanalysis.controlflow.CFGTrees.CFGIdentifier
 
 class UnserializeException(msg: String) extends Exception(msg)
 
@@ -23,7 +23,7 @@ case object UTrue extends UValue
 
 object Unserializer {
     def fromDump(path: String): Unserializer = {
-        val content = Source.fromFile(new File(path)).getLines
+        val content = Source.fromFile(new File(path)).getLines("\n")
         new Unserializer(content.drop(2).reduceLeft(_+_))
     }
 }
