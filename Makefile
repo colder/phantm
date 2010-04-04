@@ -32,7 +32,7 @@ javafiles:
 	javac -cp lib/cup/dist/java-cup-11a-runtime.jar -d classes/ `find java -name "*.java"`
 
 scalafiles:
-	@ ant
+	@ ant jar
 
 test:
 	scala -verbose -classpath classes phpanalysis.Main tests/*.php

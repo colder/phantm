@@ -1,5 +1,6 @@
 classes
 benchs
+builds
 java/phpanalysis/parser/*.java
 java/phpanalysis/parser/*.bin
 */*/*/*.sw?
