@@ -73,6 +73,24 @@ BUILD
   </target>
 
 <!-- ===========================================================================
+JAR
+============================================================================ -->
+
+
+  <target name="jar" depends="build">
+     <delete file="builds/latest.jar"/>
+     <delete file="builds/MANIFEST.MF"/>
+     <manifest file="builds/MANIFEST.MF">
+        <attribute name="Built-By" value="${user.name}"/>
+    </manifest>
+      <jar destfile="builds/latest.jar"
+           basedir="classes"
+           includes="**/*.class"
+           manifest="builds/MANIFEST.MF"
+           />
+  </target>
+
+<!-- ===========================================================================
 CLEAN
 ============================================================================ -->
 
