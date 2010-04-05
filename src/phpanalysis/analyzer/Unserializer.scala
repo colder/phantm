@@ -58,9 +58,9 @@ class Unserializer(content: String) {
             case UFalse => TFalse
             case UTrue => TTrue
             case UNull => TNull
-            case UInt(i) => TInt
-            case UString(i) => TString
-            case UFloat(i) => TFloat
+            case UInt(i) => TIntLit(i)
+            case UString(v) => TStringLit(v)
+            case UFloat(f) => TFloatLit(f)
             case UObject(cl, entries) => TAnyObject
             case UArray(entries) =>
                 var res = Map[String, Type]()
