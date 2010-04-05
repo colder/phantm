@@ -493,7 +493,12 @@ object Types {
             if (t1 == t2) {
                 t1
             } else {
-                new TUnion(getSet(t1, t2))
+                val s = getSet(t1, t2)
+                s.size match {
+                    case 0 => TBottom
+                    case 1 => s.toList.head
+                    case _ => new TUnion(s)
+                }
             }
         }
 

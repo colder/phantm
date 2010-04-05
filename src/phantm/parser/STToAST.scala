@@ -1361,24 +1361,40 @@ case class STToAST(comp: Compiler, st: ParseNode) {
     }
 
     def non_empty_array_pair_list(n: ParseNode): List[(Option[Expression], Expression, Boolean)] = {
-        childrenNames(n) match {
-            case List("non_empty_array_pair_list", "T_COMMA", "expr", "T_DOUBLE_ARROW", "expr") =>
-                non_empty_array_pair_list(child(n, 0)) ::: List((Some(expr(child(n, 2))), expr(child(n, 4)), false))
-            case List("non_empty_array_pair_list", "T_COMMA", "expr") =>
-                non_empty_array_pair_list(child(n, 0)) ::: List((None, expr(child(n, 2)), false))
-            case List("non_empty_array_pair_list", "T_COMMA", "expr", "T_DOUBLE_ARROW", "T_BITWISE_AND", "variable") =>
-                non_empty_array_pair_list(child(n, 0)) ::: List((Some(expr(child(n, 2))), variable(child(n, 5)), true))
-            case List("non_empty_array_pair_list", "T_COMMA", "T_BITWISE_AND", "variable") =>
-                non_empty_array_pair_list(child(n, 0)) ::: List((None, variable(child(n, 3)), true))
-            case List("expr", "T_DOUBLE_ARROW", "expr") =>
-                List((Some(expr(child(n, 0))), expr(child(n, 2)), false))
-            case List("expr") =>
-                List((None, expr(child(n, 0)), false))
-            case List("expr", "T_DOUBLE_ARROW", "T_BITWISE_AND", "variable") =>
-                List((Some(expr(child(n, 0))), variable(child(n, 3)), true))
-            case List("T_BITWISE_AND", "variable") =>
-                List((None, variable(child(n, 1)), true))
+        var res = List[(Option[Expression], Expression, Boolean)]()
+        var c = n
+        var continue = true
+
+        while(continue) {
+            childrenNames(c) match {
+                case List("non_empty_array_pair_list", "T_COMMA", "expr", "T_DOUBLE_ARROW", "expr") =>
+                    res = (Some(expr(child(c, 2))), expr(child(c, 4)), false) :: res
+                    c = child(c, 0)
+                case List("non_empty_array_pair_list", "T_COMMA", "expr") =>
+                    res = (None, expr(child(c, 2)), false) :: res
+                    c = child(c, 0)
+                case List("non_empty_array_pair_list", "T_COMMA", "expr", "T_DOUBLE_ARROW", "T_BITWISE_AND", "variable") =>
+                    res = (Some(expr(child(c, 2))), variable(child(c, 5)), true) :: res
+                    c = child(c, 0)
+                case List("non_empty_array_pair_list", "T_COMMA", "T_BITWISE_AND", "variable") =>
+                    res = (None, variable(child(c, 3)), true) :: res
+                    c = child(c, 0)
+                case List("expr", "T_DOUBLE_ARROW", "expr") =>
+                    res = (Some(expr(child(c, 0))), expr(child(c, 2)), false) :: res
+                    continue = false
+                case List("expr") =>
+                    res = (None, expr(child(c, 0)), false) :: res
+                    continue = false
+                case List("expr", "T_DOUBLE_ARROW", "T_BITWISE_AND", "variable") =>
+                    res = (Some(expr(child(c, 0))), variable(child(c, 3)), true) :: res
+                    continue = false
+                case List("T_BITWISE_AND", "variable") =>
+                    res = (None, variable(child(c, 1)), true) :: res
+                    continue = false
+            }
         }
+
+        res
     }
 
     def exit_expr(n: ParseNode): Option[Expression] = {
