@@ -415,14 +415,26 @@ object Types {
         }
     }
 
+    sealed abstract class TNumericLit extends ConcreteType
+
+    case object TNumeric extends ConcreteType {
+        override def toText(e: TypeEnvironment) = "Numeric"
+    }
+
     case object TInt extends ConcreteType {
         override def toText(e: TypeEnvironment) = "Int"
     }
+
+    case class TIntLit(value: Long) extends TNumericLit {
+        override def toText(e: TypeEnvironment) = value+""
+    }
+
     case object TFloat extends ConcreteType {
         override def toText(e: TypeEnvironment) = "Float"
     }
-    case object TNumeric extends ConcreteType {
-        override def toText(e: TypeEnvironment) = "Numeric"
+
+    case class TFloatLit(value: Float) extends TNumericLit {
+        override def toText(e: TypeEnvironment) = "f"+value
     }
 
     case object TBoolean extends ConcreteType {
@@ -438,6 +450,11 @@ object Types {
     case object TString extends ConcreteType {
         override def toText(e: TypeEnvironment) = "String"
     }
+
+    case class TStringLit(value: String) extends ConcreteType {
+        override def toText(e: TypeEnvironment) = "\""+value+"\""
+    }
+
     case object TAny extends ConcreteType {
         override def toText(e: TypeEnvironment) = "Any"
     }
@@ -504,8 +521,19 @@ object Types {
                         res = addToSet(res, t)
                     }
                     res
+
+                case TString =>
+                    typs.filter(!_.isInstanceOf[TStringLit]) + TString
+
+                case t: TStringLit =>
+                    if (typs contains TString) {
+                        typs
+                    } else {
+                        typs + t
+                    }
+
                 case TNumeric =>
-                    typs.filter(t => (t != TInt) && (t != TFalse)) + TNumeric
+                    typs.filter(t => (t != TInt) && (t != TFalse) && (!t.isInstanceOf[TNumericLit])) + TNumeric
 
                 case TInt =>
                     if (typs contains TFloat) {
@@ -513,7 +541,7 @@ object Types {
                     } else if (typs contains TNumeric) {
                         typs
                     } else {
-                        typs + TInt
+                        typs.filter(t => !t.isInstanceOf[TIntLit]) + TInt
                     }
 
                 case TFloat =>
@@ -522,7 +550,21 @@ object Types {
                     } else if (typs contains TNumeric) {
                         typs
                     } else {
-                        typs + TFloat
+                        typs.filter(t => !t.isInstanceOf[TFloatLit]) + TFloat
+                    }
+
+                case t: TIntLit =>
+                    if ((typs contains TInt) || (typs contains TNumeric)) {
+                        typs
+                    } else {
+                        typs + t
+                    }
+
+                case t: TFloatLit =>
+                    if ((typs contains TFloat) || (typs contains TNumeric)) {
+                        typs
+                    } else {
+                        typs + t
                     }
 
                 case TBoolean =>

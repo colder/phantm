@@ -20,6 +20,10 @@ object TypeFlow {
                 case (TBottom, _) => true
                 case (_, TTop) => true
                 case (_:ConcreteType, TAny) => true
+                case (_:TStringLit, TString) => true
+                case (_:TIntLit, TInt) => true
+                case (_:TFloatLit, TFloat) => true
+                case (_:TNumericLit, TNumeric) => true
                 case (TInt, TNumeric) => true
                 case (TFloat, TNumeric) => true
                 case (TTrue, TBoolean) => true
@@ -89,6 +93,14 @@ object TypeFlow {
                 } else {
                     TTop
                 }
+
+            case (TNumeric, _:TNumericLit) => TNumeric
+            case (_:TNumericLit, TNumeric) => TNumeric
+
+            case (_:TFloatLit, TFloat)  => TFloat
+            case (TFloat, _:TFloatLit)  => TFloat
+            case (_:TIntLit, TInt)      => TInt
+            case (TInt, _:TIntLit)      => TInt
 
             case (TFloat,   TInt)       => TNumeric
             case (TInt,     TFloat)     => TNumeric
@@ -418,9 +430,9 @@ object TypeFlow {
             }
 
             def typeFromSV(sv: CFGSimpleValue): Type = sv match {
-                case CFGLong(value)         => TInt
-                case CFGFloat(value)        => TFloat
-                case CFGString(value)       => TString
+                case CFGLong(value)         => TIntLit(value)
+                case CFGFloat(value)        => TFloatLit(value)
+                case CFGString(value)       => TStringLit(value)
                 case CFGTrue()              => TTrue
                 case CFGFalse()             => TFalse
                 case CFGAny()               => TAny
