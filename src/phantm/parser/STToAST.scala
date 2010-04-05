@@ -1,9 +1,9 @@
 // This class transforms a Syntax Tree to an Abstract Syntax Tree
-package phpanalysis.parser;
+package phantm.parser;
 
-import phpanalysis._
-import phpanalysis.parser.Trees._
-import phpanalysis.{Compiler,Position}
+import phantm._
+import phantm.parser.Trees._
+import phantm.{Compiler,Position}
 
 case class STToAST(comp: Compiler, st: ParseNode) {
 

@@ -1,13 +1,13 @@
-package phpanalysis.controlflow
+package phantm.controlflow
 
 import CFGTrees._
 import scala.collection.immutable.HashMap
 import scala.collection.immutable.HashSet
 import scala.collection.immutable.Map
-import phpanalysis._
-import phpanalysis.parser.Trees.Identifier
-import phpanalysis.analyzer.Symbols._
-import phpanalysis.analyzer.Types._
+import phantm._
+import phantm.parser.Trees.Identifier
+import phantm.analyzer.Symbols._
+import phantm.analyzer.Types._
 
 object TypeFlow {
     case object TypeLattice {

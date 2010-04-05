@@ -1,6 +1,6 @@
-package phpanalysis.controlflow
+package phantm.controlflow
 
-import phpanalysis.Main;
+import phantm.Main;
 import scala.collection.mutable.Set;
 
 class AnalysisAlgorithm[E <: Environment[E, S],S]

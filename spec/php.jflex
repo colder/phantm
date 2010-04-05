@@ -2,7 +2,7 @@
  * PHP 5.3 JFlex specification file
  * Based on a php4 version from Nenad Jovanovic */
 
-package phpanalysis.parser;
+package phantm.parser;
 
 import java.util.*;
 import java_cup.runtime.*;

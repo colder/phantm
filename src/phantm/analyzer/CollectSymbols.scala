@@ -1,9 +1,9 @@
-package phpanalysis.analyzer
+package phantm.analyzer
 
-import phpanalysis.Reporter
-import phpanalysis.parser.Trees._
-import phpanalysis.analyzer.Symbols._
-import phpanalysis.analyzer.Types._
+import phantm.Reporter
+import phantm.parser.Trees._
+import phantm.analyzer.Symbols._
+import phantm.analyzer.Types._
 
 import scala.collection.mutable.HashSet
 import scala.collection.mutable.HashMap

@@ -1,7 +1,7 @@
-package phpanalysis.controlflow
-import phpanalysis.analyzer.Symbols._
-import phpanalysis.parser.Trees._
-import phpanalysis.Positional
+package phantm.controlflow
+import phantm.analyzer.Symbols._
+import phantm.parser.Trees._
+import phantm.Positional
 
 object CFGTrees {
 

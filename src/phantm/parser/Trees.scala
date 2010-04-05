@@ -1,8 +1,8 @@
-package phpanalysis.parser
+package phantm.parser
 
-import phpanalysis.Positional
-import phpanalysis.Commented
-import phpanalysis.analyzer.Symbols.Symbolic
+import phantm.Positional
+import phantm.Commented
+import phantm.analyzer.Symbols.Symbolic
 
 // todo, namespaces
 object Trees {

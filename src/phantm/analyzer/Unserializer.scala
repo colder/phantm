@@ -1,10 +1,10 @@
-package phpanalysis.analyzer;
+package phantm.analyzer;
 import Symbols._
 import Types._
 import io.Source
 import java.io.File
-import phpanalysis.controlflow.TypeFlow._
-import phpanalysis.controlflow.CFGTrees.CFGIdentifier
+import phantm.controlflow.TypeFlow._
+import phantm.controlflow.CFGTrees.CFGIdentifier
 
 class UnserializeException(msg: String) extends Exception(msg)
 

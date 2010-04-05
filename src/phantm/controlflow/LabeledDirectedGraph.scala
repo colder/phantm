@@ -1,4 +1,4 @@
-package phpanalysis.controlflow
+package phantm.controlflow
  
 /** Mutable Directed Graph with Labels */
 abstract trait LabeledDirectedGraph[LabelType] {

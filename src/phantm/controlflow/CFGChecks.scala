@@ -1,8 +1,8 @@
-package phpanalysis.controlflow;
+package phantm.controlflow;
 
-import phpanalysis.parser.Trees._;
-import phpanalysis.analyzer._;
-import phpanalysis.Main;
+import phantm.parser.Trees._;
+import phantm.analyzer._;
+import phantm.Main;
 
 case class CheckContext();
 

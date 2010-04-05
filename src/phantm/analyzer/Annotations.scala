@@ -1,5 +1,5 @@
-package phpanalysis.analyzer
-import phpanalysis.parser.Trees._
+package phantm.analyzer
+import phantm.parser.Trees._
 import Symbols._
 import scala.collection.mutable.{Map,HashMap}
 
@@ -125,8 +125,8 @@ object Annotations {
 }
 
 object AnnotationsExport {
-    import phpanalysis.controlflow.TypeFlow
-    import phpanalysis.analyzer.Types._
+    import phantm.controlflow.TypeFlow
+    import phantm.analyzer.Types._
     // Compacts collected annotations and exports them
 
     def reduceFT(ft1: TFunction, ft2: TFunction): TFunction = {

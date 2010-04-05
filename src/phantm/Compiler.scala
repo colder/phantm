@@ -1,11 +1,11 @@
-package phpanalysis;
+package phantm;
 
-import phpanalysis.parser._;
+import phantm.parser._;
 import scala.collection.mutable.HashMap;
 import java.io._;
 
 class Compiler(filename: String) {
-    type LexerComment = phpanalysis.parser.Lexer#Comment;
+    type LexerComment = phantm.parser.Lexer#Comment;
     case class Position(_line: Int, _col: Int, _file: String) extends Positional {
         col  = _col;
         line = _line;

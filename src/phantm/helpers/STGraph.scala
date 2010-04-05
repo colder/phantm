@@ -1,7 +1,7 @@
-package phpanalysis.helpers
+package phantm.helpers
 
-import phpanalysis._
-import phpanalysis.parser._
+import phantm._
+import phantm.parser._
 import java.io._
 
 class STGraph extends Helper {

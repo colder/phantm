@@ -1,8 +1,8 @@
-package phpanalysis.helpers
+package phantm.helpers
 
-import phpanalysis._
-import phpanalysis.parser._
-import phpanalysis.analyzer.IncludeResolver
+import phantm._
+import phantm.parser._
+import phantm.analyzer.IncludeResolver
 import java.io._
 
 class ASTGraph extends Helper {
@@ -20,7 +20,7 @@ class ASTGraph extends Helper {
     }
 
     def generateDotGraph(root: Trees.Program, printStream: java.io.PrintStream) {
-        import phpanalysis.parser.Trees._;
+        import phantm.parser.Trees._;
         var nextId = 1;
 
         def emit(str: String) = printStream.print(str);
@@ -41,7 +41,7 @@ class ASTGraph extends Helper {
         def elements(p:Product) = (0 until p.productArity).map(p.productElement(_))
 
         def dotPrint(o: Any, pid: Int): Unit = {
-            import phpanalysis.parser.Trees._;
+            import phantm.parser.Trees._;
             o match {
                 case Some(n) => dotPrint(n, pid)
                 case None =>

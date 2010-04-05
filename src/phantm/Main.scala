@@ -1,9 +1,9 @@
-package phpanalysis;
+package phantm;
 
-import phpanalysis.parser._;
-import phpanalysis.analyzer._;
-import phpanalysis.controlflow._;
-import phpanalysis.parser.Trees.Program;
+import phantm.parser._;
+import phantm.analyzer._;
+import phantm.controlflow._;
+import phantm.parser.Trees.Program;
 import java.io._;
 
 object Main {

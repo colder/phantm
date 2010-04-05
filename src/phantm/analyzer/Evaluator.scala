@@ -1,8 +1,8 @@
-package phpanalysis.analyzer
+package phantm.analyzer
 
 import Symbols.GlobalSymbols
 import Types._
-import phpanalysis.parser.Trees._
+import phantm.parser.Trees._
 import java.io.File
 
 object Evaluator {

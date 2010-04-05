@@ -1,6 +1,6 @@
-package phpanalysis.analyzer;
+package phantm.analyzer;
 
-import phpanalysis.parser.Trees.Tree;
+import phantm.parser.Trees.Tree;
 
 abstract class ASTTraversal[ContextType](root: Tree, initCtx: ContextType) {
 

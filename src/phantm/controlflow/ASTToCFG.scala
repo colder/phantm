@@ -1,7 +1,7 @@
-package phpanalysis.controlflow
-import phpanalysis._
-import phpanalysis.parser.Trees._
-import phpanalysis.analyzer.Symbols._
+package phantm.controlflow
+import phantm._
+import phantm.parser.Trees._
+import phantm.analyzer.Symbols._
 import CFGTrees._
 import scala.collection.mutable.{Map,HashMap}
 

@@ -1,6 +1,6 @@
-package phpanalysis.analyzer
-import phpanalysis._
-import phpanalysis.parser.Trees._
+package phantm.analyzer
+import phantm._
+import phantm.parser.Trees._
 
 import scala.io.Source
 import java.io.File
@@ -81,7 +81,7 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
         }
 
         def getAST(path: String): Expression = {
-            import phpanalysis.parser.STToAST
+            import phantm.parser.STToAST
 
             IncludeResolver.includedFiles += path
 

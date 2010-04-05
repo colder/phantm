@@ -1,5 +1,5 @@
-package phpanalysis;
-import phpanalysis.parser.ParseNode;
+package phantm;
+import phantm.parser.ParseNode;
 
 trait Commented {
     self =>

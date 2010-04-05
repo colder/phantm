@@ -1,10 +1,10 @@
-package phpanalysis.helpers
+package phantm.helpers
 
-import phpanalysis._
-import phpanalysis.controlflow._
-import phpanalysis.analyzer._
-import phpanalysis.parser.Trees._
-import phpanalysis.parser.STToAST
+import phantm._
+import phantm.controlflow._
+import phantm.analyzer._
+import phantm.parser.Trees._
+import phantm.parser.STToAST
 
 class CFGGraph extends Helper {
 

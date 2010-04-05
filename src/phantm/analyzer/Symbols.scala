@@ -1,8 +1,8 @@
-package phpanalysis.analyzer
+package phantm.analyzer
 
 import scala.collection.mutable.HashMap
-import phpanalysis.parser.Trees._
-import phpanalysis._
+import phantm.parser.Trees._
+import phantm._
 import Types._
 
 

@@ -1,4 +1,4 @@
-package phpanalysis;
+package phantm;
 
 case class JavaListIteratorWrapper[A](iter:java.util.Iterator[A])
 {

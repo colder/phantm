@@ -1,7 +1,7 @@
-package phpanalysis.analyzer;
+package phantm.analyzer;
 
-import phpanalysis.parser.Trees._;
-import phpanalysis.{Main,Reporter};
+import phantm.parser.Trees._;
+import phantm.{Main,Reporter};
 
 case class CheckContext(topLevel: Boolean, inCond: Boolean);
 

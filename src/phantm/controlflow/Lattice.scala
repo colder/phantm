@@ -1,4 +1,4 @@
-package phpanalysis.controlflow
+package phantm.controlflow
 import scala.collection.Set
 
 trait PartialOrder {

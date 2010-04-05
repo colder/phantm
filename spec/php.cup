@@ -3,7 +3,7 @@
  * Initially based on a php4 version from Nenad Jovanovic
  */
 
-package phpanalysis.parser;
+package phantm.parser;
 
 import java_cup.runtime.*;
 import java.util.Stack;

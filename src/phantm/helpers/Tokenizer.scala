@@ -1,6 +1,6 @@
-package phpanalysis.helpers;
+package phantm.helpers;
 
-import phpanalysis.parser._;
+import phantm.parser._;
 import java.io._;
 
 class Tokenizer extends Helper{

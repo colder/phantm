@@ -1,8 +1,8 @@
-package phpanalysis.analyzer
+package phantm.analyzer
 
 import collection.mutable.HashMap
-import phpanalysis.{Positional,Reporter}
-import phpanalysis.parser.Trees._
+import phantm.{Positional,Reporter}
+import phantm.parser.Trees._
 import Symbols._
 import Types._
 import scala.xml._

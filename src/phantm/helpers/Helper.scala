@@ -1,4 +1,4 @@
-package phpanalysis.helpers;
+package phantm.helpers;
 
 trait Helper {
     def generate(input: String, output: String): Unit = {

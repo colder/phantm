@@ -1,10 +1,10 @@
-package phpanalysis.analyzer;
+package phantm.analyzer;
 import Symbols._
 import scala.collection.immutable.{Map, Set}
 
-import phpanalysis.controlflow.TypeFlow._
-import phpanalysis.controlflow.CFGTrees._
-import phpanalysis.parser.Trees._
+import phantm.controlflow.TypeFlow._
+import phantm.controlflow.CFGTrees._
+import phantm.parser.Trees._
 
 object Types {
     object RecProtection {

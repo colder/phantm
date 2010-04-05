@@ -1,4 +1,4 @@
-package phpanalysis.helpers;
+package phantm.helpers;
 
 object Main {
     // Defaults params

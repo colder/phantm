@@ -1,8 +1,8 @@
-package phpanalysis.analyzer
+package phantm.analyzer
 import Symbols._
 import Types.TAny
-import phpanalysis.{Reporter,Main}
-import phpanalysis.parser.Trees._
+import phantm.{Reporter,Main}
+import phantm.parser.Trees._
 import scala.collection.mutable.Map
 
 case class ConstantsResolver(ast: Program, issueErrors: Boolean) extends ASTTransform(ast) {
