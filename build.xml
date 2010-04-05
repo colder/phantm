@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<project name="phpanalysis" default="build" basedir=".">
+<project name="phantm" default="build" basedir=".">
 
   <property environment="env"/>
 
@@ -80,12 +80,12 @@ JAR
 
 
   <target name="jar" depends="build">
-     <delete file="builds/latest.jar"/>
+     <delete file="builds/phantm.jar"/>
      <delete file="builds/MANIFEST.MF"/>
      <manifest file="builds/MANIFEST.MF">
         <attribute name="Built-By" value="${user.name}"/>
     </manifest>
-      <jar destfile="builds/latest.jar"
+      <jar destfile="builds/phantm.jar"
            basedir="classes"
            includes="**/*.class"
            manifest="builds/MANIFEST.MF"
