@@ -563,13 +563,15 @@ object TypeFlow {
                   env.lookup(id).getOrElse(TTop)
 
                 case ae @ CFGArrayEntry(ar, ind) =>
+                    val indtyp = typeFromSV(ind)
+
                     typeFromSV(ar) match {
                         case t: TArray =>
-                            t.lookup(ind)
+                            t.lookupByType(indtyp)
                         case u: TUnion =>
                             u.types.map { _ match {
                                 case ta: TArray =>
-                                    ta.lookup(ind)
+                                    ta.lookupByType(indtyp)
                                 case _ =>
                                     TBottom
                             }}.reduceLeft(_ union _)
@@ -761,6 +763,7 @@ object TypeFlow {
 
                 def checkVariable(v: CFGVariable, kind: String): Type = {
                     val (osv, svetyp) = getCheckType(v, etyp)
+
                     if (!osv.isEmpty) {
                         val sv = osv.get
                         val svvtyp = typeFromSV(sv)
@@ -870,12 +873,21 @@ object TypeFlow {
                             getCheckType(arr, TString)
                         case to: ObjectType =>
                             getCheckType(arr, TAny)
-                        case _ =>
+                        case t =>
                             expOrRef(index, TString, TInt)
                             val newct = if (ct == TTop) {
                                 TAnyArray
                             } else {
-                                new TArray().setAny(TTop).inject(index, ct)
+                                typeFromSV(index) match {
+                                    case TStringLit(v) =>
+                                        new TArray().setAny(TTop).inject(v, ct)
+                                    case TIntLit(v) =>
+                                        new TArray().setAny(TTop).inject(v+"", ct)
+                                    case TFloatLit(v) =>
+                                        new TArray().setAny(TTop).inject(v.toInt+"", ct)
+                                    case _ =>
+                                        new TArray().setAny(ct)
+                                }
                             }
                             getCheckType(arr, newct)
                     }
@@ -911,13 +923,15 @@ object TypeFlow {
                         case CFGVariableVar(v) =>
                             backPatchType(v, TString)
                         case CFGArrayEntry(arr, index) =>
+                            val indtyp = typeFromSV(index)
+
                             val t = typeFromSV(arr) match {
                                 case ta: TArray =>
-                                    ta.inject(index, typ)
+                                    ta.injectByType(indtyp, typ)
                                 case tu: TUnion =>
                                     val typs = for (f <- tu.types) yield f match {
                                         case ta: TArray =>
-                                            ta.inject(index, typ)
+                                            ta.injectByType(indtyp, typ)
                                         case t =>
                                             t
                                     }
@@ -1171,6 +1185,8 @@ object TypeFlow {
 
                 case ex: CFGSimpleValue =>
                     expOrRef(ex, TAny)
+
+                case CFGSkip =>
 
                 case _ => notice(node+" not yet handled", node)
             }

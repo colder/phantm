@@ -330,37 +330,30 @@ object Types {
         def lookup(index: String): Type =
             entries.getOrElse(index, globalType)
 
+        def lookupByType(typ: Type): Type = typ match {
+            case TIntLit(v) => lookup(v+"")
+            case TFloatLit(v) => lookup(v.toInt+"")
+            case TStringLit(v) => lookup(v)
+            case tu: TUnion =>
+                (tu.types.map { lookupByType(_) }).reduceLeft(_ union _)
+            case _ => globalType
+        }
+
+        def injectByType(indtyp: Type, typ: Type): TArray = indtyp match {
+            case TIntLit(v) => inject(v+"", typ)
+            case TFloatLit(v) => inject(v.toInt+"", typ)
+            case TStringLit(v) => inject(v, typ)
+            case tu: TUnion =>
+                val weaktype = typ union globalType
+                tu.types.foldLeft(this){ _.injectByType(_, weaktype) }
+            case _ => injectAny(typ)
+        }
+
         override def depth(env: TypeEnvironment): Int =
             globalType.depth(env).max(entries.map(_._2.depth(env)).foldLeft(0)(_ max _))+1
 
-        def lookup(index: CFGSimpleValue): Type = index match {
-          case CFGLong(i)       => lookup(i+"")
-          case CFGString(index) => lookup(index)
-          case CFGConstant(cs) =>
-            cs.value match {
-                case Some(v) =>
-                    lookup(Evaluator.scalarToString(v))
-                case None =>
-                    globalType
-            }
-
-          case _ => globalType
-        }
-
-        def inject(index: String, typ: Type): TArray =
+        def inject(index: String, typ: Type): TArray = {
             new TArray(entries + (index -> typ), globalType)
-
-        def inject(index: CFGSimpleValue, typ: Type): TArray = index match {
-          case CFGLong(i)       => inject(i+"", typ)
-          case CFGString(index) => inject(index, typ)
-          case CFGConstant(cs) =>
-            cs.value match {
-                case Some(v) =>
-                    inject(Evaluator.scalarToString(v), typ)
-                case None =>
-                    injectAny(typ)
-            }
-          case _ => injectAny(typ)
         }
 
         // used for type constructions
@@ -426,7 +419,7 @@ object Types {
     }
 
     case class TIntLit(value: Long) extends TNumericLit {
-        override def toText(e: TypeEnvironment) = value+""
+        override def toText(e: TypeEnvironment) = "Int("+value+")"
     }
 
     case object TFloat extends ConcreteType {
@@ -434,7 +427,7 @@ object Types {
     }
 
     case class TFloatLit(value: Float) extends TNumericLit {
-        override def toText(e: TypeEnvironment) = "f"+value
+        override def toText(e: TypeEnvironment) = "Float("+value+")"
     }
 
     case object TBoolean extends ConcreteType {
@@ -452,7 +445,7 @@ object Types {
     }
 
     case class TStringLit(value: String) extends ConcreteType {
-        override def toText(e: TypeEnvironment) = "\""+value+"\""
+        override def toText(e: TypeEnvironment) = "String("+value+")"
     }
 
     case object TAny extends ConcreteType {

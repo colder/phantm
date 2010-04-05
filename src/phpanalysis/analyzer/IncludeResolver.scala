@@ -125,6 +125,9 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
                             }
                             Some(PHPString(paths.toList.head).setPos(fc))
                         case None =>
+                            if (Main.verbosity >= 0) {
+                                Reporter.notice("No runtime information found for this include location", inc)
+                            }
                             None
                     }
                 case _ =>
