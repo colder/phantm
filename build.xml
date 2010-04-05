@@ -69,6 +69,8 @@ BUILD
       classpathref="build.classpath"
       unchecked="on"
       deprecation="on"
+      force="yes"
+      addparams="-make:transitive -dependencyfile ${build.dir}/.scala_dependencies"
     />
   </target>
 
