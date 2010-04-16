@@ -7,6 +7,7 @@
   <!-- Prevents system classpath from being used -->
   <property name="build.sysclasspath" value="ignore"/>
 
+
 <!-- ===========================================================================
 PROPERTIES
 ============================================================================ -->
@@ -18,6 +19,11 @@ PROPERTIES
   <!-- the following properties can be set in the above property file -->
   <property name="scala.dir" value="${env.SCALA_HOME}"/>
   <property name="build.dir" value="classes"/>
+  <property name="release.dir" value="releases"/>
+  <property name="lib.dir" value="lib"/>
+  <property name="main.class" value="Main"/>
+
+  <property name="proguard.jar" value="${lib.dir}/proguard.jar" />
 
 <!-- ===========================================================================
 INITIALISATION
@@ -78,18 +84,40 @@ BUILD
 JAR
 ============================================================================ -->
 
-
-  <target name="jar" depends="build">
+ <target name="jar" depends="build">
      <delete file="builds/phantm.jar"/>
-     <delete file="builds/MANIFEST.MF"/>
-     <manifest file="builds/MANIFEST.MF">
-        <attribute name="Built-By" value="${user.name}"/>
-    </manifest>
-      <jar destfile="builds/phantm.jar"
-           basedir="classes"
-           includes="**/*.class"
-           manifest="builds/MANIFEST.MF"
-           />
+     <jar destfile="builds/phantm.jar"
+          basedir="classes"
+          includes="**/*.class"
+          />
+  </target>
+
+<!-- ===========================================================================
+RELEASE
+============================================================================ -->
+
+  <target name="release" description="Make a (no-source) release." depends="jar">
+      <mkdir dir="${release.dir}"/>
+
+      <java jar="${proguard.jar}" fork="true">
+       <arg value="
+          -injars             ${build.dir}
+          -injars             ${scala-library.jar}
+          -injars             lib/cup/dist/java-cup-11a-runtime.jar
+          -outjars            ${release.dir}/latest.jar
+          -libraryjars        ${java.home}/lib/rt.jar
+          -ignorewarnings
+          -dontwarn
+          -dontobfuscate
+          -dontoptimize
+          -dontpreverify
+          -verbose
+
+          -keep public class ${main.class} {
+              public static void main(java.lang.String[]);
+          } 
+          " />
+      </java>
   </target>
 
 <!-- ===========================================================================
