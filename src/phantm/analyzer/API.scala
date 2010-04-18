@@ -34,22 +34,45 @@ class API(file: String) {
     }
 
     def elemToType(elem: Node): Type = (elem \ "@name").text.toLowerCase match {
-        case "string" => TString
+        case "string" => elem.attribute("value") match {
+            case Some(s) =>
+                TStringLit(s.head.text)
+            case None =>
+                TString
+        }
+        case "long" | "int" | "integer" => elem.attribute("value") match {
+            case Some(s) =>
+                TIntLit(s.head.text.toInt)
+            case None =>
+                TInt
+        }
+        case "float" | "double" => elem.attribute("value") match {
+            case Some(s) =>
+                TFloatLit(s.head.text.toFloat)
+            case None =>
+                TFloat
+        }
         case "mixed" => TAny
-        case "long" => TInt
-        case "int" => TInt
         case "false" => TFalse
         case "true" => TTrue
         case "null" => TNull
-        case "number" => TInt
-        case "integer" => TInt
-        case "float" => TFloat
-        case "double" => TFloat
+        case "number" => TNumeric
         case "array" =>
-            if ((elem \ "type").length > 0) {
-                new TArray(elemsToType(elem \ "type"))
-            } else {
+            var anyelem: Type = TTop
+            var elems = Map[String, Type]()
+
+            for (el <- (elem \ "elem")) {
+                elems += (((el \ "@key").text) -> elemsToType(el \ "type"))
+            }
+
+            for (el <- (elem \ "anyelem")) {
+                anyelem = elemsToType(el \ "type")
+            }
+
+            if (elems.size == 0 && anyelem == TTop) {
                 TAnyArray
+            } else {
+                new TArray(elems, anyelem)
             }
         case "object" =>
             TAnyObject
