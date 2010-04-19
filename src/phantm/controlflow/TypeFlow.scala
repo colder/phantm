@@ -824,22 +824,18 @@ object TypeFlow {
             }
 
             def typeFromBinOP(v1: CFGSimpleValue, op: CFGBinaryOperator, v2: CFGSimpleValue): Type = op match {
-                case PLUS | MINUS | MULT =>
-                    expOrRef(v1, TNumeric) match {
-                        case TInt =>
-                            expOrRef(v2, TNumeric)
-                        case TFloat =>
-                            expOrRef(v2, TNumeric)
-                        case _ =>
-                            expOrRef(v2, TNumeric)
+                case PLUS =>
+                    val t1 = typeFromSV(v1)
+
+                    if (leq(t1, TAnyArray)) {
+                        expOrRef(v2, TAnyArray)
+                    } else {
+                        expOrRef(v1, TNumeric)
+                        expOrRef(v2, TNumeric)
                     }
-                case DIV  =>
-                    expOrRef(v1, TNumeric)
+                case MINUS | MULT | DIV | MOD =>
                     expOrRef(v2, TNumeric)
-                    TNumeric
-                case MOD =>
                     expOrRef(v1, TNumeric)
-                    expOrRef(v2, TNumeric)
                     TNumeric
                 case CONCAT =>
                     expOrRef(v1, TAny)
