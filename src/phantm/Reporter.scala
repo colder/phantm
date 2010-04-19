@@ -32,6 +32,12 @@ object Reporter {
     def getNoticesCount = noticesCount
     def getTotalNoticesCount = totalNoticesCount
 
+    def notice(msg: String) = {
+        noticesCount += 1;
+        totalNoticesCount += 1;
+        println("Notice: "+ msg);
+    }
+
     def notice(msg: String, pos: Positional) = {
         val notice = ("Notice: ", msg, pos, pos.getPos);
 

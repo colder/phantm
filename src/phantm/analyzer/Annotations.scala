@@ -2,6 +2,7 @@ package phantm.analyzer
 import phantm.parser.Trees._
 import Types._
 import Symbols._
+import phantm.Reporter
 import scala.util.parsing.combinator.syntactical.StandardTokenParsers
 
 class Annotations(ast: Program) extends ASTTransform(ast) {
@@ -20,10 +21,12 @@ class Annotations(ast: Program) extends ASTTransform(ast) {
 }
 
 object AnnotationsParser extends StandardTokenParsers {
-    lexical.delimiters += ("[", "]", ",", "=>", "$", "?", "|")
+    lexical.delimiters += ("[", "]", ",", "=>", "$", "?", "|", "#", "=")
     lexical.reserved   += ("string", "mixed", "long", "int", "false", "true", "null",
                            "number", "integer", "float", "double", "array", "object",
                            "resource", "bool", "boolean", "void", "numeric")
+
+    var typedefs = Map[String, Type]();
 
     def array: Parser[TArray] =
         "array" ~ "[" ~> repsep(arrayentry, ",") <~ "]" ^^ { 
@@ -64,7 +67,11 @@ object AnnotationsParser extends StandardTokenParsers {
         "resource" ^^^ TResource |
         "bool" ^^^ TBoolean |
         "void" ^^^ TNull |
-        "numeric" ^^^ TNumeric
+        "numeric" ^^^ TNumeric |
+        "#" ~> ident ^^ { i => typedefs.getOrElse(i.toString, {
+            Reporter.notice("Undefined typedef '"+ i.toString+"'")
+            TBottom
+        })}
 
     def utyp: Parser[Type] =
         typ ~ rep("|" ~> typ) ^^ { case t ~ ts => TUnion(t :: ts) }
@@ -72,8 +79,14 @@ object AnnotationsParser extends StandardTokenParsers {
     def variable: Parser[String] =
         "$" ~> ident ^^ (_.toString)
 
+    def typedef: Parser[(String, Type)] =
+        ident ~ "=" ~ utyp ^^ { case i ~ "=" ~ t => (i.toString, t) }
+
     def typVar: Parser[(String, Type)] =
         utyp ~ variable ^^ { case t ~ v => (v, t) }
+
+
+    // Parsing helpers
 
     def strToType(str: String): Option[Type] = {
         val s = new lexical.Scanner(str);
@@ -85,6 +98,15 @@ object AnnotationsParser extends StandardTokenParsers {
         val s = new lexical.Scanner(str);
         val r = typVar(s)
         if (r.isEmpty) None else Some(r.get)
+    }
+
+    def importTypeDef(str: String): Unit = {
+        val s = new lexical.Scanner(str)
+        val r = typedef(s)
+        if (!r.isEmpty) {
+            val (name, t) = r.get
+            typedefs += (name -> t)
+        }
     }
 
 }
@@ -103,6 +125,15 @@ object Annotations {
             }
         }
         res
+    }
+
+    def parseTypeDefs(comment: String) = {
+        val lines = comment.split("\n").toList
+
+        for (l <- filterLines(lines, "@typedef")) {
+            AnnotationsParser.importTypeDef(l)
+        }
+
     }
 
     def returnTH(lines: List[String]): Option[TypeHint] = {

@@ -47,6 +47,12 @@ class Compiler(filename: String) {
             }
 
             comments = comments.reverse
+
+            // We import and define typedefs
+            for (c <- comments) {
+                analyzer.Annotations.parseTypeDefs(c._2)
+            }
+
             Some(r)
 
          } catch {
