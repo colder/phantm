@@ -13,7 +13,8 @@ case class ConstantsResolver(ast: Program, issueErrors: Boolean) extends ASTTran
                 case None =>
                     Evaluator.staticEval(expr, issueErrors) match {
                         case Some(v) =>
-                            val cs = new ConstantSymbol(name, Some(v), Evaluator.typeFromExpr(v))
+                            val cs = new ConstantSymbol(name, Some(v))
+                            cs.typ = Evaluator.typeFromExpr(v)
 
                             GlobalSymbols.registerConstant(cs)
                         case None =>
@@ -22,7 +23,7 @@ case class ConstantsResolver(ast: Program, issueErrors: Boolean) extends ASTTran
                             }
 
                             if(issueErrors) {
-                                val cs = new ConstantSymbol(name, None, TAny)
+                                val cs = new ConstantSymbol(name, None)
                                 GlobalSymbols.registerConstant(cs)
                             }
                     }

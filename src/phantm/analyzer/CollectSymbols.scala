@@ -81,7 +81,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
 
     def secondClassPass(cd: ClassDecl, cs: ClassSymbol): Unit = {
         for (m <- cd.methods) {
-            val ms = new MethodSymbol(cs, m.name.value, getVisibility(m.flags), typeHintToType(m.hint)).setPos(m)
+            val ms = new MethodSymbol(cs, m.name.value, getVisibility(m.flags)).setPos(m)
             cs.registerMethod(ms)
             ms.registerPredefVariables
             for (a <- m.args) {
@@ -95,9 +95,11 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
                      t = TUnion(t, TNull)
                 }
 
-                val as = new ArgumentSymbol(a.v.name.value, a.byref, a.default != None, t).setPos(a.v)
+                val as = new ArgumentSymbol(a.v.name.value, a.byref, a.default != None).setPos(a.v)
+                as.typ = t
                 ms.registerArgument(as);
             }
+            ms.registerFType(TFunction(ms.argList.map { a => (a._2.typ, a._2.optional) }, typeHintToType(m.hint)))
         }
 
         for (p <- cd.props) {
@@ -106,7 +108,8 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
             } else {
                 typeHintToType(p.hint.get)
             }
-            val ps = new PropertySymbol(cs, p.v.value, getVisibility(p.flags), typ).setPos(p)
+            val ps = new PropertySymbol(cs, p.v.value, getVisibility(p.flags)).setPos(p)
+            ps.typ = typ
             cs.registerProperty(ps)
         }
 
@@ -116,18 +119,19 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
             } else {
                 typeHintToType(p.hint.get)
             }
-            val ps = new PropertySymbol(cs, p.v.value, getVisibility(p.flags), typ).setPos(p)
+            val ps = new PropertySymbol(cs, p.v.value, getVisibility(p.flags)).setPos(p)
+            ps.typ = typ
             cs.registerStaticProperty(ps)
         }
 
         for (c <- cd.consts) {
             val ccs = c.value match {
                 case sc: Scalar => 
-                    new ClassConstantSymbol(cs, c.v.value, Some(sc), Evaluator.typeFromExpr(c.value)).setPos(c)
+                    new ClassConstantSymbol(cs, c.v.value, Some(sc)).setPos(c)
                 case _ =>
-                    new ClassConstantSymbol(cs, c.v.value, None, Evaluator.typeFromExpr(c.value)).setPos(c)
+                    new ClassConstantSymbol(cs, c.v.value, None).setPos(c)
             }
-
+            ccs.typ = Evaluator.typeFromExpr(c.value)
             cs.registerConstant(ccs)
         }
     }
@@ -142,7 +146,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
 
         node match {
             case FunctionDecl(name, args, retref, hint, body) =>
-                val fs = new FunctionSymbol(name.value, typeHintToType(hint)).setPos(name).setUserland
+                val fs = new FunctionSymbol(name.value).setPos(name).setUserland
                 for(a <- args) {
                     var t = typeHintToType(a.hint)
 
@@ -154,10 +158,12 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
                          t = t union TNull
                     }
 
-                    val as = new ArgumentSymbol(a.v.name.value, a.byref, a.default != None, t).setPos(a.v)
+                    val as = new ArgumentSymbol(a.v.name.value, a.byref, a.default != None).setPos(a.v)
+                    as.typ = t
 
                     fs.registerArgument(as);
                 }
+                fs.registerFType(new TFunction(fs.argList.map { a => (a._2.typ, a._2.optional) }, typeHintToType(hint)))
                 fs.registerPredefVariables
                 GlobalSymbols.registerFunction(fs)
                 name.setSymbol(fs)

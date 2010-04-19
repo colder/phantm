@@ -4,6 +4,8 @@ import phantm.parser._;
 import scala.collection.mutable.HashMap;
 import java.io._;
 
+import analyzer.SourceAnnotations.{Parser => AnnotationsParser}
+
 class Compiler(filename: String) {
     type LexerComment = phantm.parser.Lexer#Comment;
     case class Position(_line: Int, _col: Int, _file: String) extends Positional {
@@ -50,7 +52,7 @@ class Compiler(filename: String) {
 
             // We import and define typedefs
             for (c <- comments) {
-                analyzer.Annotations.parseTypeDefs(c._2)
+                AnnotationsParser.importTypeDefs(c._2)
             }
 
             Some(r)

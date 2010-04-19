@@ -132,7 +132,8 @@ object Symbols {
                 if (Main.verbosity > 0) {
                     Reporter.notice("Potentially undefined constant", id)
                 }
-                val cs = new ConstantSymbol(id.value, Some(PHPString(id.value)), TString)
+                val cs = new ConstantSymbol(id.value, Some(PHPString(id.value)))
+                cs.typ = TString
 
                 registerConstant(cs)
 
@@ -150,12 +151,12 @@ object Symbols {
     def getConstants: List[ConstantSymbol] = constants map { x => x._2 } toList
   }
 
-  class FunctionSymbol(val name: String, var typ: Type) extends Symbol with Scope {
+  class FunctionSymbol(val name: String) extends Symbol with Scope with FunctionTypeAnnotation {
     val args = new HashMap[String, ArgumentSymbol]();
     var argList: List[(String, ArgumentSymbol)] = Nil;
 
     def importAPIFrom(fs: FunctionSymbol) {
-        typ = fs.typ
+        annotateFromFT(fs)
 
         if (args.size == fs.args.size) {
             for (((_, arg1), (_, arg2)) <- argList.zip(fs.argList)) {
@@ -213,18 +214,24 @@ object Symbols {
     override def stricterThan(o: MemberVisibility) = o == MVPublic
   }
 
-  class MethodSymbol(val cs: ClassSymbol, name: String, val visibility: MemberVisibility, typ: Type) extends FunctionSymbol(name, typ) {
+  class MethodSymbol(val cs: ClassSymbol,
+                     name: String,
+                     val visibility: MemberVisibility) extends FunctionSymbol(name) {
+
     override def registerPredefVariables = {
         super.registerPredefVariables
         registerVariable(new VariableSymbol("this"))
     }
 
   }
-  class PropertySymbol(val cs: ClassSymbol, name: String, val visibility: MemberVisibility, val typ: Type) extends VariableSymbol(name);
-  class ClassConstantSymbol(val cs: ClassSymbol,  name: String, value: Option[Scalar], typ: Type) extends ConstantSymbol(name, value, typ);
+  class PropertySymbol(val cs: ClassSymbol,
+                       name: String,
+                       val visibility: MemberVisibility) extends VariableSymbol(name) with TypeAnnotation;
 
-  class IfaceMethodSymbol(val cs: IfaceSymbol, name: String, typ: Type, val visibility: MemberVisibility) extends FunctionSymbol(name, typ);
-  class IfaceConstantSymbol(val cs: IfaceSymbol,  name: String, value: Option[Scalar], typ: Type) extends ConstantSymbol(name, value, typ);
+  class ClassConstantSymbol(val cs: ClassSymbol,  name: String, value: Option[Scalar]) extends ConstantSymbol(name, value);
+
+  class IfaceMethodSymbol(val cs: IfaceSymbol, name: String, typ: Type, val visibility: MemberVisibility) extends FunctionSymbol(name);
+  class IfaceConstantSymbol(val cs: IfaceSymbol,  name: String, value: Option[Scalar]) extends ConstantSymbol(name, value);
 
   case class LookupResult[T](ms: Option[T], visibError: Option[MemberVisibility], staticClash: Boolean) {
       def isError = ms == None || visibError != None
@@ -386,9 +393,9 @@ object Symbols {
 
   }
 
-  class ConstantSymbol(val name: String, val value: Option[Scalar], val typ: Type) extends Symbol
+  class ConstantSymbol(val name: String, val value: Option[Scalar]) extends Symbol with TypeAnnotation
   class VariableSymbol(val name: String) extends Symbol
-  class ArgumentSymbol(override val name: String, val byref: Boolean, var optional: Boolean, var typ: Type) extends VariableSymbol(name)
+  class ArgumentSymbol(override val name: String, val byref: Boolean, var optional: Boolean) extends VariableSymbol(name) with TypeAnnotation
 
   def emitSummary = {
         def emitScope(s: Scope, p:String) = {

@@ -159,10 +159,10 @@ object Main {
                     if (importAPI) {
                         if (displayProgress) println("3/11 Importing APIs...")
                         // Load internal classes and functions into the symbol tables
-                        new API(mainDir+"spec/internal_api.xml").load
+                        new API.Reader(mainDir+"spec/internal_api.xml").load
 
                         for (api <- apis) {
-                            new API(api).load
+                            new API.Reader(api).load
                         }
                     } else {
                         if (displayProgress) println("3/11 Importing APIs (skipped)")
@@ -197,13 +197,7 @@ object Main {
 
                     Reporter.errorMilestone
 
-                    if (displayProgress) println("7/11 Parsing annotations...")
-                    // Inject type information from the annotations
-                    ast = new Annotations(ast).transform
-
-                    Reporter.errorMilestone
-
-                    if (displayProgress) println("8/11 Symbolic checks...")
+                    if (displayProgress) println("7/11 Symbolic checks...")
                     // Collect symbols and detect obvious types errors
                     CollectSymbols(ast) execute;
                     Reporter.errorMilestone
@@ -212,6 +206,9 @@ object Main {
                         // Emit summary of all symbols
                         analyzer.Symbols.emitSummary
                     }
+
+                    if (displayProgress) println("8/11 Importing Annotations...")
+                    // Complete symbols with annotations as comments
 
                     if (dumps != Nil) {
                         if (displayProgress) println("9/11 Importing dumped state...")
@@ -230,7 +227,7 @@ object Main {
                         if (displayProgress) println("11/11 Export Annotations...")
 
                         // Compact collected annotations and output XML
-                        AnnotationsExport.emitXML(exportAPIPath.get)
+                        new API.Writer(exportAPIPath.get).emitXML
                     } else {
                         if (displayProgress) println("11/11 Export Annotations (skipped)")
                     }

@@ -497,7 +497,7 @@ object TypeFlow {
                                     val ft = new TFunction(args.map(a => (typeFromSV(a), false)), TBottom)
                                     AnnotationsStore.collectFunction(fs, ft);
                                 }
-                                checkFCalls(fcall.params, List(functionSymbolToFunctionType(fs)), fcall)
+                                checkFCalls(fcall.params, fs.ftyps.toList, fcall)
                         case None =>
                             // handle special functions
                             id.value.toLowerCase match {
@@ -1044,10 +1044,6 @@ object TypeFlow {
                 } else {
                     ext
                 }
-            }
-
-            def functionSymbolToFunctionType(fs: FunctionSymbol): FunctionType = {
-                new TFunction(fs.argList.map { a => (a._2.typ, a._2.optional) }, fs.typ)
             }
 
             def checkFCalls(fcall_params: List[CFGSimpleValue], syms: List[FunctionType], pos: Positional) : Type =  {

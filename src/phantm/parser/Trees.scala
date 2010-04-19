@@ -1,12 +1,12 @@
 package phantm.parser
 
 import phantm.Positional
-import phantm.Commented
+import phantm.CommentAnnotation
 import phantm.analyzer.Symbols.Symbolic
 
 // todo, namespaces
 object Trees {
-    abstract class Tree extends Positional with Commented;
+    abstract class Tree extends Positional with CommentAnnotation;
 
     case class Program(stmts: List[Statement]) extends Tree {
         def combine(p2: Program): Program = Program(stmts ::: p2.stmts)

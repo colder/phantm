@@ -50,7 +50,8 @@ object Types {
     object TFunctionAny extends FunctionType {
         val ret = TAny
     }
-    class TFunction(val args: List[(Type, Boolean)], val ret: Type) extends FunctionType {
+
+    case class TFunction(val args: List[(Type, Boolean)], val ret: Type) extends FunctionType {
 
         override def toString = args.map{a => a match {
                 case (t, false) => t
@@ -295,7 +296,7 @@ object Types {
             var r = "Object("+cl+")"
             if (RecProtection.objectToStringDepth < 2) {
                 r = r+"["+((fields.map(x => x._1 +" => "+ x._2).toList ::: "? -> "+globalType :: Nil).mkString("; "))+"]"
-                r = r+"["+(cl.cs.methods.map(x => x._1+": "+msToTMethod(x._2)).mkString("; "))+"]"
+                r = r+"["+(cl.cs.methods.map(x => x._1+": "+x._2.ftyps.mkString("{", ",", "}")).mkString("; "))+"]"
             } else {
                 r = r+"[...]"
             }
@@ -303,16 +304,16 @@ object Types {
             r
         }
 
-        def msToTMethod(ms: MethodSymbol) = {
-            new TFunction(ms.argList.map{ x => (x._2.typ, x._2.optional)}.toList, ms.typ)
-        }
-
         override def lookupMethod(index: String, from: Option[ClassSymbol]) =
             cl.cs.lookupMethod(index, from) match {
                 case LookupResult(Some(ms), _, _) =>
                     // found method, ignore visibility errors, for now
                     // Type hints
-                    Some(msToTMethod(ms))
+                    if (ms.ftyps.size > 0) {
+                        Some(ms.ftyps.toList.head)
+                    } else {
+                        None
+                    }
 
                 case LookupResult(None, _, _) =>
                     None
