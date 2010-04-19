@@ -762,7 +762,7 @@ case class STToAST(comp: Compiler, st: ParseNode) {
             case List("variable") =>
                 variable(child(n))
             case List("variable", "T_ASSIGN", "expr") =>
-                Assign(variable_w(child(n, 0)), expr(child(n, 2)), false).setPos(child(n, 0))
+                Assign(variable_w(child(n, 0)), expr(child(n, 2)), false)
             case List("variable", "T_ASSIGN", "T_BITWISE_AND", "variable") =>
                 Assign(variable_w(child(n, 0)), variable(child(n, 3)), true)
             case List("T_NEW", "class_name_reference", "ctor_arguments") =>

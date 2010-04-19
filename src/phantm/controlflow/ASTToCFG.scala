@@ -377,8 +377,13 @@ object ASTToCFG {
                             val falseV = cfg.newVertex
                             condExpr(ex, falseV, trueV)
                             val afterV = cfg.newVertex
-                            Emit.statementBetween(falseV, CFGAssign(v, CFGFalse().setPos(ex)).setPos(ex), afterV)
-                            Emit.statementBetween(trueV, CFGAssign(v, CFGTrue().setPos(ex)).setPos(ex), afterV)
+                            // We only add assigns edges if something flows in those vertices
+                            if (cfg.inEdges(trueV).size != 0) {
+                                Emit.statementBetween(trueV, CFGAssign(v, CFGTrue().setPos(ex)).setPos(ex), afterV)
+                            }
+                            if (cfg.inEdges(falseV).size != 0) {
+                                Emit.statementBetween(falseV, CFGAssign(v, CFGFalse().setPos(ex)).setPos(ex), afterV)
+                            }
                             Emit.setPC(afterV)
                         case Isset(vs) =>
                             if (vs.length > 1) {
@@ -782,7 +787,7 @@ object ASTToCFG {
         }
     }
 
-    //fewerSkips
+    fewerSkips
     cfg
     }
 }
