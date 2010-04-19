@@ -99,7 +99,25 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
                 as.typ = t
                 ms.registerArgument(as);
             }
-            ms.registerFType(TFunction(ms.argList.map { a => (a._2.typ, a._2.optional) }, typeHintToType(m.hint)))
+
+            if (m.comment != None) {
+                val (args, ret) = SourceAnnotations.Parser.getFunctionTypes(m.comment.get)
+                var ftargs = List[(Type, Boolean)]()
+
+                for ((n, as) <- ms.argList) {
+                    if (args contains n) {
+                        ftargs = (args(n), as.optional) :: ftargs
+                    } else {
+                        ftargs = (TAny, as.optional) :: ftargs
+                    }
+                }
+
+                ms.registerFType(TFunction(ftargs.reverse, ret))
+
+            } else {
+                // TODO: Check prototypes
+                ms.registerFType(TFunction(ms.argList.map { a => (a._2.typ, a._2.optional) }, typeHintToType(m.hint)))
+            }
         }
 
         for (p <- cd.props) {
@@ -109,7 +127,14 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
                 typeHintToType(p.hint.get)
             }
             val ps = new PropertySymbol(cs, p.v.value, getVisibility(p.flags)).setPos(p)
-            ps.typ = typ
+
+            if (p.comment != None) {
+                ps.typ = SourceAnnotations.Parser.getVarType(p.comment.get)
+                println("Importing annotation:"+ps.typ)
+            } else {
+                // TODO: Check prototypes
+                ps.typ = typ
+            }
             cs.registerProperty(ps)
         }
 
@@ -119,8 +144,16 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
             } else {
                 typeHintToType(p.hint.get)
             }
+
             val ps = new PropertySymbol(cs, p.v.value, getVisibility(p.flags)).setPos(p)
-            ps.typ = typ
+
+            if (p.comment != None) {
+                ps.typ = SourceAnnotations.Parser.getVarType(p.comment.get)
+            } else {
+                // TODO: Check prototypes
+                ps.typ = typ
+            }
+
             cs.registerStaticProperty(ps)
         }
 
@@ -131,7 +164,10 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
                 case _ =>
                     new ClassConstantSymbol(cs, c.v.value, None).setPos(c)
             }
+
+            // TODO: Comment prototypes
             ccs.typ = Evaluator.typeFromExpr(c.value)
+
             cs.registerConstant(ccs)
         }
     }
@@ -145,7 +181,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
         var continue = true;
 
         node match {
-            case FunctionDecl(name, args, retref, hint, body) =>
+            case fd @ FunctionDecl(name, args, retref, hint, body) =>
                 val fs = new FunctionSymbol(name.value).setPos(name).setUserland
                 for(a <- args) {
                     var t = typeHintToType(a.hint)
@@ -163,7 +199,26 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
 
                     fs.registerArgument(as);
                 }
-                fs.registerFType(new TFunction(fs.argList.map { a => (a._2.typ, a._2.optional) }, typeHintToType(hint)))
+
+                if (fd.comment != None) {
+                    val (args, ret) = SourceAnnotations.Parser.getFunctionTypes(fd.comment.get)
+                    var ftargs = List[(Type, Boolean)]()
+
+                    for ((n, as) <- fs.argList) {
+                        if (args contains n) {
+                            ftargs = (args(n), as.optional) :: ftargs
+                        } else {
+                            ftargs = (TAny, as.optional) :: ftargs
+                        }
+                    }
+
+                    fs.registerFType(TFunction(ftargs.reverse, ret))
+                } else {
+                    // TODO: The prototypes should be checked
+                    fs.registerFType(TFunction(fs.argList.map { a => (a._2.typ, a._2.optional) }, typeHintToType(hint)))
+                }
+
+
                 fs.registerPredefVariables
                 GlobalSymbols.registerFunction(fs)
                 name.setSymbol(fs)

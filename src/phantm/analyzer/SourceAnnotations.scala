@@ -102,6 +102,35 @@ object SourceAnnotations {
             }
         }
 
+        def getAnyType(tag: String)(comment: String): Type = {
+            var ret: Type = TAny
+
+            for (l <- filterLines(comment, tag)) {
+                strToType(l) match {
+                    case Some(r) => ret = r
+                    case None =>
+                }
+            }
+
+            ret
+        }
+
+        def getReturnType = getAnyType("@return")_
+        def getVarType = getAnyType("@var")_
+
+        def getFunctionTypes(comment: String): (Map[String, Type], Type) = {
+            var args = Map[String, Type]()
+
+            for (l <- filterLines(comment, "@param")) {
+                strToVarType(l) match {
+                    case Some(r) => args += r
+                    case None =>
+                }
+            }
+
+            (args, getReturnType(comment))
+        }
+
         def importTypeDef(line: String): Unit = {
             val s = new lexical.Scanner(line)
             val r = typedef(s)
@@ -112,6 +141,5 @@ object SourceAnnotations {
         }
 
     }
-
 
 }

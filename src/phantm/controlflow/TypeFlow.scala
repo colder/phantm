@@ -518,7 +518,7 @@ object TypeFlow {
                             ro.lookupMethod(mid.value, env.scope) match {
                                 case Some(mt) =>
                                     if (collectAnnotations) {
-                                        // Create a FunctionType and add it to the list of potential prototypes
+                                        // TODO: Create a FunctionType and add it to the list of potential prototypes
                                     }
                                     checkFCalls(args, List(mt), mcall)
                                 case None =>

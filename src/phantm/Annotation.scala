@@ -13,7 +13,7 @@ trait TypeAnnotation extends Annotation {
 trait FunctionTypeAnnotation extends Annotation {
     import analyzer.Types.{FunctionType, TFunctionAny}
 
-    var ftyps = Set[FunctionType]() + TFunctionAny
+    var ftyps = Set[FunctionType]()
 
     def registerFType(ftyp: FunctionType): this.type = { ftyps += ftyp; this }
 

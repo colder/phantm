@@ -210,6 +210,7 @@ object Main {
                     if (displayProgress) println("8/11 Importing Annotations...")
                     // Complete symbols with annotations as comments
 
+
                     if (dumps != Nil) {
                         if (displayProgress) println("9/11 Importing dumped state...")
                         for (dump <- dumps) {
