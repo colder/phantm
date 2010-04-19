@@ -676,5 +676,7 @@ object Types {
             }
         case u: THUnion =>
             typeHintToType(u.a) union typeHintToType(u.b)
+        case THType(t) =>
+            t
     }
 }

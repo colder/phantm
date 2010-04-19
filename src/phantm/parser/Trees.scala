@@ -36,6 +36,7 @@ object Trees {
     case object THAnyObject extends TypeHint
     case class THUnion(a: TypeHint, b: TypeHint) extends TypeHint
     case class THObject(cl: ClassRef) extends TypeHint
+    case class THType(t: phantm.analyzer.Types.Type) extends TypeHint
 
     abstract class MemberFlag extends Tree
     case object MFAbstract extends MemberFlag

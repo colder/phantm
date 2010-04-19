@@ -1,7 +1,8 @@
 package phantm.analyzer
 import phantm.parser.Trees._
+import Types._
 import Symbols._
-import scala.collection.mutable.{Map,HashMap}
+import scala.util.parsing.combinator.syntactical.StandardTokenParsers
 
 class Annotations(ast: Program) extends ASTTransform(ast) {
     override def trMethod(md: MethodDecl): MethodDecl =
@@ -18,76 +19,104 @@ class Annotations(ast: Program) extends ASTTransform(ast) {
     }
 }
 
-object Annotations {
-    def extractType(str: String): (String, TypeHint) = {
-        val parts = str.split("[^a-zA-Z0-9_\\|\\$]", 2).toList
+object AnnotationsParser extends StandardTokenParsers {
+    lexical.delimiters += ("[", "]", ",", "=>", "$", "?", "|")
+    lexical.reserved   += ("string", "mixed", "long", "int", "false", "true", "null",
+                           "number", "integer", "float", "double", "array", "object",
+                           "resource", "bool", "boolean", "void", "numeric")
 
-        def strToTH(str: String): TypeHint = str.toLowerCase match {
-            case "string" => THString
-            case "mixed" => THAny
-            case "long" => THInt
-            case "int" => THInt
-            case "false" => THFalse
-            case "true" => THTrue
-            case "null" => THNull
-            case "number" => THInt
-            case "integer" => THInt
-            case "float" => THFloat
-            case "double" => THFloat
-            case "array" => THArray
-            case "object" => THAnyObject
-            case "resource" => THResource
-            case "bool" => THBoolean
-            case "boolean" => THBoolean
-            case "void" => THNull
-            case "numeric" => THNumeric
-            case cl => THObject(StaticClassRef(NSNone, Nil, Identifier(cl)))
-        }
+    def array: Parser[TArray] =
+        "array" ~ "[" ~> repsep(arrayentry, ",") <~ "]" ^^ { 
+            case arrentries =>
+                var global: Type = TTop
+                var entries = Map[String, Type]()
 
-        val th = parts.head.split("\\|").toList.map(strToTH).reduceRight( THUnion )
-
-
-        (parts.tail.mkString, th)
-    }
-
-    def extractTypeName(str: String): (String, TypeHint) = {
-        extractType(str) match {
-            case (str, th) =>
-                val v = str.split("[^\\$a-zA-Z0-9_]", 2).toList.head;
-                if (v.length > 0 && v.substring(0, 1) == "$") {
-                    (v.substring(1), th)
-                } else {
-                    (v, th)
+                for ((os, t) <- arrentries) {
+                    if (os.isEmpty) {
+                        global = t
+                    } else {
+                        entries += (os.get -> t)
+                    }
                 }
-        }
+
+                new TArray(entries, global)
+        } |
+        "array" ^^^ TAnyArray
+
+    def arrayentry: Parser[(Option[String], Type)] =
+        stringLit ~ "=>" ~ typ ^^ { case key ~ "=>" ~ typ => (Some(key.toString), typ) } |
+        "?" ~ "=>" ~> typ ^^ ((None, _: Type))
+
+    def typ: Parser[Type] =
+        "string" ^^^ TString |
+        "mixed" ^^^ TAny |
+        "long" ^^^ TInt |
+        "int" ^^^ TInt |
+        "false" ^^^ TFalse |
+        "true" ^^^ TTrue |
+        "null" ^^^ TNull |
+        "number" ^^^ TNumeric |
+        "integer" ^^^ TInt |
+        "float" ^^^ TFloat |
+        "double" ^^^ TFloat |
+        array |
+        "object" ^^^ TAnyObject |
+        "resource" ^^^ TResource |
+        "bool" ^^^ TBoolean |
+        "void" ^^^ TNull |
+        "numeric" ^^^ TNumeric
+
+    def utyp: Parser[Type] =
+        typ ~ rep("|" ~> typ) ^^ { case t ~ ts => TUnion(t :: ts) }
+
+    def variable: Parser[String] =
+        "$" ~> ident ^^ (_.toString)
+
+    def typVar: Parser[(String, Type)] =
+        utyp ~ variable ^^ { case t ~ v => (v, t) }
+
+    def strToType(str: String): Option[Type] = {
+        val s = new lexical.Scanner(str);
+        val r = utyp(s)
+        if (r.isEmpty) None else Some(r.get)
     }
 
+    def strToVarType(str: String): Option[(String, Type)] = {
+        val s = new lexical.Scanner(str);
+        val r = typVar(s)
+        if (r.isEmpty) None else Some(r.get)
+    }
+
+}
+
+object Annotations {
     def filterLines(lines: List[String], tag: String): List[String] = {
         lines.filter(_.indexOf(tag+" ") >= 0).map(s => s.substring(s.indexOf(tag+" ")+tag.length+1))
     }
 
     def paramsTH(lines: List[String]): Map[String, TypeHint] = {
-        val res = HashMap[String, TypeHint]();
-        for ((v, th) <- filterLines(lines, "@param") map extractTypeName) {
-            res(v) = th;
+        var res = Map[String, TypeHint]()
+        for (str <- filterLines(lines, "@param")) {
+            AnnotationsParser.strToVarType(str) match {
+                case Some((v, t)) => res += (v -> THType(t))
+                case None => /* ignore */
+            }
         }
         res
     }
 
     def returnTH(lines: List[String]): Option[TypeHint] = {
-        var res: Option[TypeHint] = None;
-        for ((v, th) <- filterLines(lines, "@return") map extractType) {
-            res = Some(th);
+        for (str <- filterLines(lines, "@return")) {
+            return AnnotationsParser.strToType(str).map(THType(_))
         }
-        res
+        return None
     }
 
     def varTH(lines: List[String]): Option[TypeHint] = {
-        var res: Option[TypeHint] = None;
-        for ((v, th) <- filterLines(lines, "@var") map extractType) {
-            res = Some(th);
+        for (str <- filterLines(lines, "@return")) {
+            return AnnotationsParser.strToType(str).map(THType(_))
         }
-        res
+        return None
     }
 
     def injectArgsHints(args: List[ArgumentDecl], hints: Map[String, TypeHint]): List[ArgumentDecl] =
