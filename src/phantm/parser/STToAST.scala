@@ -755,7 +755,7 @@ case class STToAST(comp: Compiler, st: ParseNode) {
     }
 
     def expr(n: ParseNode): Expression = {
-        val pos = new Position().setPos(child(n, 0));
+        val pos = new Position().setPos(n);
         val com = comp.getPreviousComment(pos);
 
         (childrenNames(n) match {
