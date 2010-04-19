@@ -1,31 +1,34 @@
 package phantm;
 import scala.io.Source;
-import scala.collection.mutable.{HashMap,HashSet,Set};
 
 /* The reported trait is reponsible to output formatted errors */
 object Reporter {
-    private var files = new HashMap[String, List[String]]();
+    type ErrorCheck = (String, String, String);
+    type Error = (String, String, Positional, String);
+
+    private var files = Map[String, List[String]]();
     private var errorsCount = 0
     private var noticesCount = 0
     private var totalErrorsCount = 0
     private var totalNoticesCount = 0
-    private var errors = new HashMap[Option[String], Set[(String, String, Positional, String)]];
+    private var errorsCheck = Map[Option[String], Set[ErrorCheck]]().withDefaultValue(Set[ErrorCheck]())
+    private var errors = Map[Option[String], Set[Error]]().withDefaultValue(Set[Error]())
 
     def error(msg: String) = {
         errorsCount += 1;
         totalErrorsCount += 1;
         println("Error: "+ msg);
     }
+
     def error(msg: String, pos: Positional) = {
         val error = ("Error: ", msg, pos, pos.getPos);
+        val errorCheck = ("Error: ", msg, pos.getPos);
 
-        if (errors.get(pos.file) == None) {
-            errors(pos.file) = HashSet[(String, String, Positional, String)]()
-        }
+        if (!errorsCheck(pos.file).contains(errorCheck)) {
+            errorsCheck += (pos.file -> (errorsCheck(pos.file) + errorCheck))
 
-        if (!errors(pos.file).contains(error)) {
             errorsCount += 1;
-            errors(pos.file) += error;
+            errors += (pos.file -> (errors(pos.file) + error))
         }
     }
 
@@ -40,15 +43,13 @@ object Reporter {
 
     def notice(msg: String, pos: Positional) = {
         val notice = ("Notice: ", msg, pos, pos.getPos);
+        val noticeCheck = ("Notice: ", msg, pos.getPos);
 
-        if (errors.get(pos.file) == None) {
-            errors(pos.file) = HashSet[(String, String, Positional, String)]()
-        }
+        if (!errorsCheck(pos.file).contains(noticeCheck)) {
+            errorsCheck += (pos.file -> (errorsCheck(pos.file) + noticeCheck))
 
-        if (!errors(pos.file).contains(notice)) {
             noticesCount += 1;
-            totalNoticesCount += 1;
-            errors(pos.file) += notice;
+            errors += (pos.file -> (errors(pos.file) + notice))
         }
     }
 
@@ -56,10 +57,10 @@ object Reporter {
 
     def errorMilestone = {
         var errorsToDisplay = if (Main.focusOnMainFiles) {
-            var errorSet = HashMap[Option[String], Set[(String, String, Positional, String)]]();
+            var errorSet = Map[Option[String], Set[Error]]()
             for ((file, errs) <- errors) {
                 if ((file != None) && (Main.files contains file.get)) {
-                    errorSet(file) = errs
+                    errorSet += (file -> errs)
                 } else {
                     // decrement error counts
                     for (e <- errs) {
@@ -81,7 +82,10 @@ object Reporter {
                 emit(p, msg, pos)
             }
         }
-        errors.clear
+
+        errors = Map[Option[String], Set[Error]]()
+        errorsCheck = Map[Option[String], Set[ErrorCheck]]()
+
         if (errorsCount > 0) {
             val ec = errorsCount;
             val tec = totalErrorsCount;
@@ -172,7 +176,7 @@ object Reporter {
                     line = input.readLine()
                 }
 
-                files += file -> lines.reverse
+                files += (file -> lines.reverse)
             }
             val lines = files(file)
             if (l >= lines.size || l < 0) {
