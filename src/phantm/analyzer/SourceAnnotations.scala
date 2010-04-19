@@ -8,56 +8,58 @@ import scala.util.parsing.combinator.syntactical.StandardTokenParsers
 object SourceAnnotations {
     object Parser extends StandardTokenParsers {
         lexical.delimiters += ("[", "]", ",", "=>", "$", "?", "|", "#", "=")
-        lexical.reserved   += ("string", "mixed", "long", "int", "false", "true", "null",
-                               "number", "integer", "float", "double", "array", "object",
-                               "resource", "bool", "boolean", "void", "numeric", "top",
-                               "undef", "uninit")
+        lexical.reserved += ("array", "Array")
 
         var typedefs = Map[String, Type]();
 
+        def arrentriesToArray(aes: List[(Option[String], Type)]): TArray = {
+            var global: Type = TTop
+            var entries = Map[String, Type]()
+
+            for ((os, t) <- aes) {
+                if (os.isEmpty) {
+                    global = t
+                } else {
+                    entries += (os.get -> t)
+                }
+            }
+
+            new TArray(entries, global)
+
+        }
+
+        def identToType(name: String): Type = name.toLowerCase match {
+            case "string" => TString
+            case "mixed" => TAny
+            case "long" | "int" | "integer" => TInt
+            case "true" => TTrue
+            case "false" => TFalse
+            case "bool" | "boolean" => TBoolean
+            case "null" => TNull
+            case "float" | "double" => TFloat
+            case "number" | "numeric" => TNumeric
+            case "undef" | "uninit" => TUninitialized
+            case "top" => TTop
+            case "bottom" => TBottom
+            case "void" => TNull
+            case "object" => TAnyObject
+            case "resource" => TResource
+            case _ => TAny
+        }
+
         def array: Parser[TArray] =
-            "array" ~ "[" ~> repsep(arrayentry, ",") <~ "]" ^^ { 
-                case arrentries =>
-                    var global: Type = TTop
-                    var entries = Map[String, Type]()
-
-                    for ((os, t) <- arrentries) {
-                        if (os.isEmpty) {
-                            global = t
-                        } else {
-                            entries += (os.get -> t)
-                        }
-                    }
-
-                    new TArray(entries, global)
-            } |
+            "array" ~ "[" ~> repsep(arrayentry, ",") <~ "]" ^^ { case aes => arrentriesToArray(aes) } |
+            "Array" ~ "[" ~> repsep(arrayentry, ",") <~ "]" ^^ { case aes => arrentriesToArray(aes) } |
             "array" ^^^ TAnyArray
+            "Array" ^^^ TAnyArray
 
         def arrayentry: Parser[(Option[String], Type)] =
             stringLit ~ "=>" ~ typ ^^ { case key ~ "=>" ~ typ => (Some(key.toString), typ) } |
             "?" ~ "=>" ~> typ ^^ ((None, _: Type))
 
         def typ: Parser[Type] =
-            "string" ^^^ TString |
-            "mixed" ^^^ TAny |
-            "long" ^^^ TInt |
-            "int" ^^^ TInt |
-            "false" ^^^ TFalse |
-            "true" ^^^ TTrue |
-            "null" ^^^ TNull |
-            "number" ^^^ TNumeric |
-            "integer" ^^^ TInt |
-            "float" ^^^ TFloat |
-            "double" ^^^ TFloat |
-            "top" ^^^ TTop |
-            "undef" ^^^ TUninitialized |
-            "uninit" ^^^ TUninitialized |
+            ident ^^ { i => identToType(i.toString) } |
             array |
-            "object" ^^^ TAnyObject |
-            "resource" ^^^ TResource |
-            "bool" ^^^ TBoolean |
-            "void" ^^^ TNull |
-            "numeric" ^^^ TNumeric |
             "#" ~> ident ^^ { i => typedefs.getOrElse(i.toString, {
                 Reporter.notice("Undefined typedef '"+ i.toString+"'")
                 TBottom
@@ -102,12 +104,12 @@ object SourceAnnotations {
             }
         }
 
-        def getAnyType(tag: String)(comment: String): Type = {
-            var ret: Type = TAny
+        def getAnyType(tag: String)(comment: String): Option[Type] = {
+            var ret: Option[Type] = None
 
             for (l <- filterLines(comment, tag)) {
                 strToType(l) match {
-                    case Some(r) => ret = r
+                    case Some(r) => ret = Some(r)
                     case None =>
                 }
             }
@@ -117,6 +119,7 @@ object SourceAnnotations {
 
         def getReturnType = getAnyType("@return")_
         def getVarType = getAnyType("@var")_
+        def getConstType = getAnyType("@const")_
 
         def getFunctionTypes(comment: String): (Map[String, Type], Type) = {
             var args = Map[String, Type]()
@@ -128,7 +131,7 @@ object SourceAnnotations {
                 }
             }
 
-            (args, getReturnType(comment))
+            (args, getReturnType(comment).getOrElse(TAny))
         }
 
         def importTypeDef(line: String): Unit = {

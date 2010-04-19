@@ -655,18 +655,7 @@ object Types {
     }
 
     def typeHintToType(th: TypeHint): Type = th match {
-        case THString => TString
-        case THAny => TAny
-        case THFalse => TBoolean
-        case THTrue => TBoolean
-        case THResource => TResource
-        case THInt => TInt
-        case THNumeric => TNumeric
-        case THBoolean => TBoolean
-        case THFloat => TFloat
-        case THNull => TNull
         case THArray => TAnyArray
-        case THAnyObject => TAnyObject
         case THObject(StaticClassRef(_, _, id)) =>
             GlobalSymbols.lookupClass(id.value) match {
                 case Some(cs) =>
@@ -675,9 +664,5 @@ object Types {
                 case None =>
                     TAnyObject
             }
-        case u: THUnion =>
-            typeHintToType(u.a) union typeHintToType(u.b)
-        case THType(t) =>
-            t
     }
 }

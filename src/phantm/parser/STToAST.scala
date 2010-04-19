@@ -93,7 +93,6 @@ case class STToAST(comp: Compiler, st: ParseNode) {
                                     method_modifiers(child(n, 0)),
                                     parameter_list(child(n, 5)),
                                     is_reference(child(n, 2)),
-                                    None,
                                     method_body(child(n, 7))).setPos(pos).attachComment(com);
 
                 (st._1:::List(md), st._2, st._3, st._4)
@@ -166,28 +165,28 @@ case class STToAST(comp: Compiler, st: ParseNode) {
             case List("class_variable_declaration", "T_COMMA", "T_VARIABLE") =>
                 val pos = new Position().setPos(child(n, 2))
                 val com = comp.getPreviousComment(pos);
-                val pd = PropertyDecl(varIdentifier(child(n, 2)), vm, None, None).setPos(pos).attachComment(com)
+                val pd = PropertyDecl(varIdentifier(child(n, 2)), vm, None).setPos(pos).attachComment(com)
 
                 class_variable_declaration(child(n, 0), vm) ::: List(pd)
 
             case List("class_variable_declaration", "T_COMMA", "T_VARIABLE", "T_ASSIGN", "static_expr") =>
                 val pos = new Position().setPos(child(n, 2))
                 val com = comp.getPreviousComment(pos);
-                val pd = PropertyDecl(varIdentifier(child(n, 2)), vm, Some(static_expr(child(n, 4))), None).setPos(pos).attachComment(com)
+                val pd = PropertyDecl(varIdentifier(child(n, 2)), vm, Some(static_expr(child(n, 4)))).setPos(pos).attachComment(com)
 
                 class_variable_declaration(child(n, 0), vm) ::: List(pd)
 
             case List("T_VARIABLE") =>
                 val pos = new Position().setPos(child(n, 0))
                 val com = comp.getPreviousComment(pos);
-                val pd = PropertyDecl(varIdentifier(child(n, 0)), vm, None, None).setPos(pos).attachComment(com)
+                val pd = PropertyDecl(varIdentifier(child(n, 0)), vm, None).setPos(pos).attachComment(com)
 
                 List(pd)
 
             case List("T_VARIABLE", "T_ASSIGN", "static_expr") =>
                 val pos = new Position().setPos(child(n, 0))
                 val com = comp.getPreviousComment(pos);
-                val pd = PropertyDecl(varIdentifier(child(n, 0)), vm, Some(static_expr(child(n, 2))), None).setPos(pos).attachComment(com)
+                val pd = PropertyDecl(varIdentifier(child(n, 0)), vm, Some(static_expr(child(n, 2)))).setPos(pos).attachComment(com)
 
                 List(pd)
         }
@@ -751,7 +750,7 @@ case class STToAST(comp: Compiler, st: ParseNode) {
                 val pos = new Position().setPos(child(n, 2));
                 val com = comp.getPreviousComment(pos);
 
-                FunctionDecl(identifier(child(n, 2)), parameter_list(child(n, 4)), is_reference(child(n, 1)), None, inner_statement_list(child(n, 7))).setPos(pos).attachComment(com)
+                FunctionDecl(identifier(child(n, 2)), parameter_list(child(n, 4)), is_reference(child(n, 1)), inner_statement_list(child(n, 7))).setPos(pos).attachComment(com)
         }
     }
 
@@ -898,7 +897,7 @@ case class STToAST(comp: Compiler, st: ParseNode) {
                 val pos = new Position().setPos(child(n, 2));
                 val com = comp.getPreviousComment(pos);
 
-                Closure(parameter_list(child(n, 3)), lexical_vars(child(n, 5)), is_reference(child(n, 1)), None, inner_statement_list(child(n, 7))).setPos(pos).attachComment(com)
+                Closure(parameter_list(child(n, 3)), lexical_vars(child(n, 5)), is_reference(child(n, 1)), inner_statement_list(child(n, 7))).setPos(pos).attachComment(com)
             case List("base_variable_with_function_calls") =>
                 base_variable_with_function_calls(child(n))
             case _ => unspecified(n)

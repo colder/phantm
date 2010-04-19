@@ -12,8 +12,8 @@ object Trees {
         def combine(p2: Program): Program = Program(stmts ::: p2.stmts)
     }
     case class ArgumentDecl(v: SimpleVariable, hint: Option[TypeHint], default: Option[Expression], byref: Boolean) extends Tree;
-    case class MethodDecl(name: Identifier, flags: List[MemberFlag], args: List[ArgumentDecl], retref: Boolean, hint: Option[TypeHint], body: Option[Statement]) extends Tree
-    case class PropertyDecl(v: Identifier, flags: List[MemberFlag], default: Option[Expression], hint: Option[TypeHint]) extends Tree;
+    case class MethodDecl(name: Identifier, flags: List[MemberFlag], args: List[ArgumentDecl], retref: Boolean, body: Option[Statement]) extends Tree
+    case class PropertyDecl(v: Identifier, flags: List[MemberFlag], default: Option[Expression]) extends Tree;
     case class ConstantDecl(v: Identifier, value: Expression) extends Tree;
 
     abstract class ClassFlag extends Tree
@@ -22,21 +22,8 @@ object Trees {
     case object CFFinal extends ClassFlag
 
     abstract class TypeHint extends Tree
-    case object THString    extends TypeHint
-    case object THInt       extends TypeHint
-    case object THNumeric   extends TypeHint
-    case object THBoolean   extends TypeHint
-    case object THFloat     extends TypeHint
     case object THArray     extends TypeHint
-    case object THFalse     extends TypeHint
-    case object THTrue      extends TypeHint
-    case object THNull      extends TypeHint
-    case object THAny       extends TypeHint
-    case object THResource  extends TypeHint
-    case object THAnyObject extends TypeHint
-    case class THUnion(a: TypeHint, b: TypeHint) extends TypeHint
     case class THObject(cl: ClassRef) extends TypeHint
-    case class THType(t: phantm.analyzer.Types.Type) extends TypeHint
 
     abstract class MemberFlag extends Tree
     case object MFAbstract extends MemberFlag
@@ -91,7 +78,7 @@ object Trees {
 
     abstract class Statement extends Tree;
 
-    case class FunctionDecl(name: Identifier, args: List[ArgumentDecl], retref: Boolean, hint: Option[TypeHint], body: Statement) extends Statement
+    case class FunctionDecl(name: Identifier, args: List[ArgumentDecl], retref: Boolean, body: Statement) extends Statement
 
     case class ClassDecl(name: Identifier,
                          flags: ClassFlag,
@@ -180,7 +167,7 @@ object Trees {
     case class Execute(value: String) extends Expression
     case class Print(value: Expression) extends Expression
     case class Eval(value: Expression) extends Expression
-    case class Closure(args: List[ArgumentDecl], imports: List[ArgumentDecl], retref: Boolean, hint: Option[TypeHint], body: Statement) extends Expression
+    case class Closure(args: List[ArgumentDecl], imports: List[ArgumentDecl], retref: Boolean, body: Statement) extends Expression
     case class Isset(vs: List[Variable]) extends Expression
     case class Empty(v: Variable) extends Expression
     case class Include(path: Expression, once: Boolean) extends Expression

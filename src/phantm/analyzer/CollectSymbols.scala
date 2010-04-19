@@ -1,6 +1,7 @@
 package phantm.analyzer
 
 import phantm.Reporter
+import phantm.Positional
 import phantm.parser.Trees._
 import phantm.analyzer.Symbols._
 import phantm.analyzer.Types._
@@ -52,7 +53,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
       }
 
       classCycleDetectionSet += cd
-      
+
       val p: Option[ClassSymbol] = cd.parent match {
         case Some(x) => GlobalSymbols.lookupClass(x.name.value) match {
           case None => {
@@ -100,59 +101,61 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
                 ms.registerArgument(as);
             }
 
-            if (m.comment != None) {
+            val t = if (m.comment != None) {
                 val (args, ret) = SourceAnnotations.Parser.getFunctionTypes(m.comment.get)
-                var ftargs = List[(Type, Boolean)]()
 
-                for ((n, as) <- ms.argList) {
+                val ftargs = for ((n, as) <- ms.argList) yield {
                     if (args contains n) {
-                        ftargs = (args(n), as.optional) :: ftargs
+                        (args(n), as.optional)
                     } else {
-                        ftargs = (TAny, as.optional) :: ftargs
+                        (TAny, as.optional)
                     }
                 }
 
-                ms.registerFType(TFunction(ftargs.reverse, ret))
-
+                TFunction(ftargs, ret)
             } else {
-                // TODO: Check prototypes
-                ms.registerFType(TFunction(ms.argList.map { a => (a._2.typ, a._2.optional) }, typeHintToType(m.hint)))
+                TFunction(Nil, TAny)
             }
+
+
+            val ftargs = for (((n, a), i) <- ms.argList.zipWithIndex) yield {
+                if (t.args.size <= i) {
+                    (a.typ, a.optional)
+                } else {
+                    (checkTypeHint(t.args(i)._1, a.typ, a), a.optional)
+                }
+            }
+            ms.registerFType(TFunction(ftargs, t.ret))
         }
 
         for (p <- cd.props) {
-            var typ = if (p.hint.isEmpty) {
-                Evaluator.typeFromExpr(p.default)
-            } else {
-                typeHintToType(p.hint.get)
-            }
+            val th = Evaluator.typeFromExpr(p.default)
+
             val ps = new PropertySymbol(cs, p.v.value, getVisibility(p.flags)).setPos(p)
 
-            if (p.comment != None) {
-                ps.typ = SourceAnnotations.Parser.getVarType(p.comment.get)
-                println("Importing annotation:"+ps.typ)
+            val t = if (p.comment != None) {
+                SourceAnnotations.Parser.getVarType(p.comment.get).getOrElse(th)
             } else {
-                // TODO: Check prototypes
-                ps.typ = typ
+                th
             }
+
+            ps.typ = checkTypeHint(t, th, p)
             cs.registerProperty(ps)
         }
 
         for (p <- cd.static_props) {
-            var typ = if (p.hint.isEmpty) {
-                Evaluator.typeFromExpr(p.default)
-            } else {
-                typeHintToType(p.hint.get)
-            }
+            val th = Evaluator.typeFromExpr(p.default)
 
             val ps = new PropertySymbol(cs, p.v.value, getVisibility(p.flags)).setPos(p)
 
-            if (p.comment != None) {
-                ps.typ = SourceAnnotations.Parser.getVarType(p.comment.get)
+            val t = if (p.comment != None) {
+                SourceAnnotations.Parser.getVarType(p.comment.get).getOrElse(th)
             } else {
-                // TODO: Check prototypes
-                ps.typ = typ
+                th
             }
+
+            ps.typ = checkTypeHint(t, th, p)
+
 
             cs.registerStaticProperty(ps)
         }
@@ -165,10 +168,28 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
                     new ClassConstantSymbol(cs, c.v.value, None).setPos(c)
             }
 
-            // TODO: Comment prototypes
-            ccs.typ = Evaluator.typeFromExpr(c.value)
+            val th = Evaluator.typeFromExpr(c.value)
+            val t = if (c.comment != None) {
+                SourceAnnotations.Parser.getConstType(c.comment.get).getOrElse(th)
+            } else {
+                th
+            }
+
+            ccs.typ = checkTypeHint(t, th, c)
 
             cs.registerConstant(ccs)
+        }
+    }
+
+    def checkTypeHint(annoType: Type, hintType: Type, pos: Positional): Type = {
+        import phantm.controlflow.TypeFlow._
+        val res = TypeLattice.meet(BaseTypeEnvironment, BaseTypeEnvironment, annoType, hintType)._2
+
+        if (res == TBottom) {
+            Reporter.notice("Annotation incompatible with type hint or default value", pos)
+            annoType
+        } else {
+            res
         }
     }
 
@@ -181,7 +202,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
         var continue = true;
 
         node match {
-            case fd @ FunctionDecl(name, args, retref, hint, body) =>
+            case fd @ FunctionDecl(name, args, retref, body) =>
                 val fs = new FunctionSymbol(name.value).setPos(name).setUserland
                 for(a <- args) {
                     var t = typeHintToType(a.hint)
@@ -200,24 +221,32 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
                     fs.registerArgument(as);
                 }
 
-                if (fd.comment != None) {
+                val t = if (fd.comment != None) {
                     val (args, ret) = SourceAnnotations.Parser.getFunctionTypes(fd.comment.get)
-                    var ftargs = List[(Type, Boolean)]()
 
-                    for ((n, as) <- fs.argList) {
+                    val ftargs = for ((n, as) <- fs.argList) yield {
                         if (args contains n) {
-                            ftargs = (args(n), as.optional) :: ftargs
+                            (args(n), as.optional)
                         } else {
-                            ftargs = (TAny, as.optional) :: ftargs
+                            (TAny, as.optional)
                         }
                     }
 
-                    fs.registerFType(TFunction(ftargs.reverse, ret))
+                    TFunction(ftargs, ret)
                 } else {
                     // TODO: The prototypes should be checked
-                    fs.registerFType(TFunction(fs.argList.map { a => (a._2.typ, a._2.optional) }, typeHintToType(hint)))
+                    TFunction(Nil, TAny)
                 }
 
+                val ftargs = for (((n, a), i) <- fs.argList.zipWithIndex) yield {
+                    if (t.args.size <= i) {
+                        (a.typ, a.optional)
+                    } else {
+                        checkTypeHint(t.args(i)._1, Evaluator.typeFromExpr(args(i).default), a)
+                        (checkTypeHint(t.args(i)._1, a.typ, a), a.optional)
+                    }
+                }
+                fs.registerFType(TFunction(ftargs, t.ret))
 
                 fs.registerPredefVariables
                 GlobalSymbols.registerFunction(fs)
@@ -239,7 +268,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
                     case None => error("Woops ?!? Came across a phantom interface");
                 }
 
-            case MethodDecl(name, flags, args, retref, hint, body) =>
+            case MethodDecl(name, flags, args, retref, body) =>
                 (ctx.cl, ctx.iface) match {
                     case (Some(cs), _) => cs.lookupMethod(name.value, Some(cs)) match {
                         case LookupResult(Some(ms: MethodSymbol), _, _) =>
