@@ -5,7 +5,8 @@ import phantm.AST.Trees._
 import Symbols._
 import Types._
 import scala.xml._
-import phantm.controlflow.TypeFlow
+
+import phantm.controlflow.AnnotationsStore
 
 object API {
     // Load an API into the symbol tables
@@ -273,7 +274,7 @@ object API {
 
             // functions
             emit(" <functions>")
-            for ((name, data) <- TypeFlow.AnnotationsStore.functions) {
+            for ((name, data) <- AnnotationsStore.functions) {
                 GlobalSymbols.lookupFunction(name) match {
                     case Some(fs) if fs.userland =>
                         val args = if (data._1.size > 0) (data._1 reduceLeft reduceFT).args else Nil;

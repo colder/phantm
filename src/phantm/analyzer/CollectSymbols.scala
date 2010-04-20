@@ -183,8 +183,10 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
     }
 
     def checkTypeHint(annoType: Type, hintType: Type, pos: Positional): Type = {
-        import phantm.controlflow.TypeFlow._
-        val res = TypeLattice.meet(BaseTypeEnvironment, BaseTypeEnvironment, annoType, hintType)._2
+        import phantm.controlflow.BaseTypeEnvironment
+        import phantm.lattice.TypeLattice
+
+        val res = TypeLattice.meet(annoType, hintType)
 
         if (res == TBottom) {
             Reporter.notice("Annotation incompatible with type hint or default value", pos)

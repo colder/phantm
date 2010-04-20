@@ -3,8 +3,8 @@ import Symbols._
 import Types._
 import io.Source
 import java.io.File
-import phantm.controlflow.TypeFlow._
 import phantm.CFG.Trees.Identifier
+import phantm.controlflow.TypeEnvironment
 
 class UnserializeException(msg: String) extends Exception(msg)
 

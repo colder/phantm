@@ -34,7 +34,7 @@ case class CFGChecks(node: Tree) extends ASTTraversal[CheckContext](node, CheckC
                 display("Converting main scope...")
                 val cfg = ASTToCFG.convertAST(stmts, Symbols.GlobalSymbols)
                 display("Analyzing main...")
-                val tfa = new TypeFlow.Analyzer(cfg, Symbols.GlobalSymbols)
+                val tfa = new TypeFlowAnalyzer(cfg, Symbols.GlobalSymbols)
                 tfa.analyze
 
 
@@ -44,7 +44,7 @@ case class CFGChecks(node: Tree) extends ASTTraversal[CheckContext](node, CheckC
                         display("Converting function "+name.value+"...")
                         val cfg = ASTToCFG.convertAST(List(body), fs)
                         display("Analyzing function "+name.value+"...")
-                        val tfa = new TypeFlow.Analyzer(cfg, fs)
+                        val tfa = new TypeFlowAnalyzer(cfg, fs)
                         tfa.analyze
                     case _ =>
                         error("Incoherent symbol type, should be function")
@@ -61,7 +61,7 @@ case class CFGChecks(node: Tree) extends ASTTraversal[CheckContext](node, CheckC
                                         display("Converting method "+cl.name+"::"+m.name.value+"...")
                                         val cfg = ASTToCFG.convertAST(List(m.body.get), ms)
                                         display("Analyzing method "+cl.name+"::"+m.name.value+"...")
-                                        val tfa = new TypeFlow.Analyzer(cfg, ms)
+                                        val tfa = new TypeFlowAnalyzer(cfg, ms)
                                         tfa.analyze
                                     }
                                 case _ =>

@@ -2,7 +2,8 @@ package phantm.analyzer;
 import Symbols._
 import scala.collection.immutable.{Map, Set}
 
-import phantm.controlflow.TypeFlow._
+import phantm.lattice.TypeLattice
+import phantm.controlflow.TypeEnvironment
 import phantm.AST.{Trees => AST}
 import phantm.CFG.{Trees => CFG}
 
