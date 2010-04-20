@@ -83,7 +83,7 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
         }
 
         def getAST(path: String): Expression = {
-            import phantm.parser.STToAST
+            import phantm.AST.STToAST
 
             IncludeResolver.includedFiles += path
 

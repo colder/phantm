@@ -1,8 +1,7 @@
 package phantm.helpers
 
 import phantm._
-import phantm.AST.Trees
-import phantm.parser.STToAST
+import phantm.AST.{Trees, STToAST}
 import phantm.analyzer.IncludeResolver
 import java.io._
 

@@ -1,11 +1,12 @@
 package phantm;
 
-import parser._
-import analyzer._
-import controlflow._
-import AST.Trees.Program
 import java.io._
-import util.Reporter
+
+import phantm.analyzer._
+import phantm.controlflow._
+import phantm.AST.Trees.Program
+import phantm.AST.STToAST
+import phantm.util.Reporter
 
 object Main {
     var files: List[String] = Nil;

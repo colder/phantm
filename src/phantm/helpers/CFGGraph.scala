@@ -6,8 +6,7 @@ import phantm.controlflow._
 import phantm.analyzer._
 import phantm.CFG.ASTToCFG
 import phantm.AST.Trees._
-import phantm.AST.ASTTraversal
-import phantm.parser.STToAST
+import phantm.AST.{ASTTraversal, STToAST}
 
 class CFGGraph extends Helper {
 
