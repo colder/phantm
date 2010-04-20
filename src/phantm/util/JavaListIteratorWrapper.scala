@@ -1,4 +1,4 @@
-package phantm;
+package phantm.util;
 
 case class JavaListIteratorWrapper[A](iter:java.util.Iterator[A])
 {

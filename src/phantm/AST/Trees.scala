@@ -1,7 +1,7 @@
 package phantm.AST
 
-import phantm.Positional
-import phantm.CommentAnnotation
+import phantm.util.Positional
+import phantm.annotations.CommentAnnotation
 import phantm.analyzer.Symbols.Symbolic
 
 // todo, namespaces

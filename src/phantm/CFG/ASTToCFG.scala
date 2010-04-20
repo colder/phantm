@@ -1,5 +1,6 @@
 package phantm.CFG
-import phantm._
+import phantm.Main
+import phantm.util.{Reporter, Positional}
 import phantm.AST.{Trees => AST}
 import phantm.CFG.{Trees => CFG}
 import phantm.analyzer.Symbols._

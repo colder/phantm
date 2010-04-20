@@ -1,10 +1,9 @@
-package phantm;
+package phantm
 
-import phantm.parser._;
-import scala.collection.mutable.HashMap;
-import java.io._;
-
-import analyzer.SourceAnnotations.{Parser => AnnotationsParser}
+import java.io._
+import phantm.parser._
+import phantm.util.{Positional, JavaListIteratorWrapper}
+import phantm.analyzer.SourceAnnotations.{Parser => AnnotationsParser}
 
 class Compiler(filename: String) {
     type LexerComment = phantm.parser.Lexer#Comment;

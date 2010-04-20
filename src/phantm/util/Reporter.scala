@@ -1,5 +1,6 @@
-package phantm;
-import scala.io.Source;
+package phantm.util
+import scala.io.Source
+import phantm.Main
 
 /* The reported trait is reponsible to output formatted errors */
 object Reporter {

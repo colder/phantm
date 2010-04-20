@@ -1,4 +1,4 @@
-package phantm;
+package phantm.util;
 import phantm.parser.ParseNode;
 
 class Position extends Positional {

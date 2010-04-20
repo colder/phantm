@@ -1,6 +1,6 @@
 package phantm.analyzer
 
-import phantm.{Positional,Reporter}
+import phantm.util.{Positional,Reporter}
 import phantm.AST.Trees._
 import Symbols._
 import Types._

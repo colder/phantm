@@ -1,6 +1,7 @@
 package phantm.helpers
 
-import phantm._
+import phantm.Compiler
+import phantm.util.Reporter
 import phantm.controlflow._
 import phantm.analyzer._
 import phantm.CFG.ASTToCFG

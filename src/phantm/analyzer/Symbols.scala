@@ -1,9 +1,11 @@
 package phantm.analyzer
 
 import scala.collection.mutable.HashMap
+import phantm.Main
 import phantm.AST.Trees._
-import phantm._
-import Types._
+import phantm.util.{Reporter, Positional}
+import phantm.annotations.{FunctionTypeAnnotation, TypeAnnotation}
+import phantm.analyzer.Types._
 
 
 object Symbols {

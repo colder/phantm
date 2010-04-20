@@ -1,7 +1,8 @@
 package phantm.analyzer
 import Symbols._
 import Types.TAny
-import phantm.{Reporter,Main}
+import phantm.Main
+import phantm.util.Reporter
 
 import phantm.AST.Trees._
 import phantm.AST.ASTTransform

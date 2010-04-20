@@ -1,7 +1,8 @@
 package phantm.helpers
 
-import phantm._
+import phantm.Compiler
 import phantm.parser._
+import phantm.util.JavaListIteratorWrapper
 import java.io._
 
 class STGraph extends Helper {

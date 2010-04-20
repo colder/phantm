@@ -1,9 +1,9 @@
-package phantm
+package phantm.annotations
 
 sealed trait Annotation
 
 trait TypeAnnotation extends Annotation {
-    import analyzer.Types.{Type, TAny}
+    import phantm.analyzer.Types.{Type, TAny}
 
     var typ: Type = TAny
 
@@ -11,7 +11,7 @@ trait TypeAnnotation extends Annotation {
 }
 
 trait FunctionTypeAnnotation extends Annotation {
-    import analyzer.Types.{FunctionType, TFunctionAny}
+    import phantm.analyzer.Types.{FunctionType, TFunctionAny}
 
     var ftyps = Set[FunctionType]()
 

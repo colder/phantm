@@ -1,5 +1,6 @@
 package phantm.analyzer
-import phantm._
+import phantm.{Main, Compiler}
+import phantm.util.Reporter
 import phantm.AST.Trees._
 import phantm.AST.ASTTransform
 

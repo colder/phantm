@@ -2,7 +2,8 @@
 package phantm.parser;
 
 import phantm.AST.Trees._
-import phantm.{Compiler,Position,Reporter,JavaListIteratorWrapper}
+import phantm.Compiler
+import phantm.util.{Position,Reporter,JavaListIteratorWrapper}
 
 case class STToAST(comp: Compiler, st: ParseNode) {
 

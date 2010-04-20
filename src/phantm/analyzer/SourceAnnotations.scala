@@ -2,7 +2,7 @@ package phantm.analyzer
 import phantm.AST._
 import Types._
 import Symbols._
-import phantm.Reporter
+import phantm.util.Reporter
 import scala.util.parsing.combinator.syntactical.StandardTokenParsers
 
 object SourceAnnotations {

@@ -1,6 +1,7 @@
 package phantm.controlflow
 
-import phantm._
+import phantm.Main
+import phantm.util.{Positional, Reporter}
 import phantm.AST.{Trees => AST}
 import phantm.CFG.ControlFlowGraph
 import phantm.CFG.Trees._
