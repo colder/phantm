@@ -3,7 +3,7 @@ package phantm.lattice
 import phantm.analyzer.Types._
 import phantm.controlflow.{TypeEnvironment, BaseTypeEnvironment}
 
-case object TypeLattice {
+case object TypeLattice extends Lattice {
     type Env = TypeEnvironment
     type E = Type
 
@@ -63,7 +63,8 @@ case object TypeLattice {
     val top = TTop
     val bottom = TBottom
 
-    def join(x: Type, y: Type): Type = (x,y) match {
+    def join(x: Type, y: Type): Type = join(BaseTypeEnvironment, BaseTypeEnvironment, x, y)._2
+    def join(envx: Env, envy: Env, x: Type, y: Type): (Env, Type) = (BaseTypeEnvironment, (x,y) match {
         case (TTop, _) => TTop
         case (_, TTop) => TTop
 
@@ -137,7 +138,7 @@ case object TypeLattice {
             new TArray(newEntries, t1.globalType union t2.globalType)
         // Unions
         case (t1, t2) => TUnion(t1, t2)
-    }
+    })
 
     // For meet we actually require the environment, since object types
     // will be updated in the store
