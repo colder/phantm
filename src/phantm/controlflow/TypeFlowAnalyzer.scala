@@ -7,7 +7,7 @@ import phantm.AST.{Trees => AST}
 import phantm.CFG.ControlFlowGraph
 import phantm.CFG.Trees._
 import phantm.symbols._
-import phantm.analyzer.Types._
+import phantm.types._
 
 case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope) {
 

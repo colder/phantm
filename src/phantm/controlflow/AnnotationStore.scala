@@ -1,7 +1,7 @@
 package phantm.controlflow
 
 import phantm.symbols._
-import phantm.analyzer.Types._
+import phantm.types._
 
 object AnnotationsStore {
     var functions = Map[String, (List[TFunction], Type)]();

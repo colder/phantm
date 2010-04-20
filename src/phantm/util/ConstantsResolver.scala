@@ -1,6 +1,7 @@
 package phantm.util
 import phantm.symbols._
-import phantm.analyzer.Types.TAny
+import phantm.types.TypeHelpers
+import phantm.types.TAny
 import phantm.Main
 
 import phantm.AST.Trees._
@@ -17,7 +18,7 @@ case class ConstantsResolver(ast: Program, issueErrors: Boolean) extends ASTTran
                     Evaluator.staticEval(expr, issueErrors) match {
                         case Some(v) =>
                             val cs = new ConstantSymbol(name, Some(v))
-                            cs.typ = Evaluator.typeFromExpr(v)
+                            cs.typ = TypeHelpers.exprToType(v)
 
                             GlobalSymbols.registerConstant(cs)
                         case None =>

@@ -1,6 +1,6 @@
-package phantm.lattice
+package phantm.types
 
-import phantm.analyzer.Types._
+import phantm.lattice.Lattice
 import phantm.controlflow.{TypeEnvironment, BaseTypeEnvironment}
 
 case object TypeLattice extends Lattice {

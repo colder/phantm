@@ -6,8 +6,7 @@ import phantm.AST.{Trees => AST}
 import phantm.CFG.ControlFlowGraph
 import phantm.CFG.Trees._
 import phantm.symbols._
-import phantm.analyzer.Types._
-import phantm.lattice.TypeLattice
+import phantm.types._
 
 case class TypeTransferFunction(silent: Boolean, collectAnnotations: Boolean) extends TransferFunction[TypeEnvironment, Statement] {
     def notice(msg: String, pos: Positional) = if (!silent) Reporter.notice(msg, pos)

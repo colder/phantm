@@ -3,7 +3,7 @@ package phantm.symbols
 import phantm.util.{Reporter, Positional, Evaluator}
 import phantm.AST.Trees._
 import phantm.AST.ASTTraversal
-import phantm.analyzer.Types._
+import phantm.types._
 import phantm.annotations.SourceAnnotations
 
 import scala.collection.mutable.HashSet
@@ -86,7 +86,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
             cs.registerMethod(ms)
             ms.registerPredefVariables
             for (a <- m.args) {
-                var t = typeHintToType(a.hint)
+                var t = TypeHelpers.typeHintToType(a.hint)
 
                 if (a.default == Some(PHPNull)) {
                     /*
@@ -129,7 +129,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
         }
 
         for (p <- cd.props) {
-            val th = Evaluator.typeFromExpr(p.default)
+            val th = TypeHelpers.exprToType(p.default)
 
             val ps = new PropertySymbol(cs, p.v.value, getVisibility(p.flags)).setPos(p)
 
@@ -139,12 +139,12 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
                 th
             }
 
-            ps.typ = defaultType(checkTypeHint(t, th, p))
+            ps.typ = defaultTypeWF(checkTypeHint(t, th, p))
             cs.registerProperty(ps)
         }
 
         for (p <- cd.static_props) {
-            val th = Evaluator.typeFromExpr(p.default)
+            val th = TypeHelpers.exprToType(p.default)
 
             val ps = new PropertySymbol(cs, p.v.value, getVisibility(p.flags)).setPos(p)
 
@@ -154,7 +154,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
                 th
             }
 
-            ps.typ = defaultType(checkTypeHint(t, th, p))
+            ps.typ = defaultTypeWF(checkTypeHint(t, th, p))
 
 
             cs.registerStaticProperty(ps)
@@ -168,7 +168,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
                     new ClassConstantSymbol(cs, c.v.value, None).setPos(c)
             }
 
-            val th = Evaluator.typeFromExpr(c.value)
+            val th = TypeHelpers.exprToType(c.value)
             val t = if (c.comment != None) {
                 SourceAnnotations.Parser.getConstType(c.comment.get).getOrElse(th)
             } else {
@@ -183,7 +183,6 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
 
     def checkTypeHint(annoType: Type, hintType: Type, pos: Positional): Type = {
         import phantm.controlflow.BaseTypeEnvironment
-        import phantm.lattice.TypeLattice
 
         val res = TypeLattice.meet(annoType, hintType)
 
@@ -205,7 +204,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
             case fd @ FunctionDecl(name, args, retref, body) =>
                 val fs = new FunctionSymbol(name.value).setPos(name).setUserland
                 for(a <- args) {
-                    var t = typeHintToType(a.hint)
+                    var t = TypeHelpers.typeHintToType(a.hint)
 
                     if (a.default == Some(PHPNull)) {
                         /*
@@ -243,7 +242,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
                         (a.typ, a.optional)
                     } else {
                         if (args(i).default != None) {
-                            val tde = Evaluator.typeFromExpr(args(i).default)
+                            val tde = TypeHelpers.exprToType(args(i).default)
                             checkTypeHint(t.args(i)._1, tde, a)
                         }
                         (checkTypeHint(t.args(i)._1, a.typ, a), a.optional)

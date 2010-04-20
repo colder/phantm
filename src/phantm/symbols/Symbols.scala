@@ -5,7 +5,7 @@ import phantm.Main
 import phantm.AST.Trees._
 import phantm.util.{Reporter, Positional}
 import phantm.annotations.{FunctionTypeAnnotation, TypeAnnotation}
-import phantm.analyzer.Types._
+import phantm.types._
 
 
 trait Symbolic {

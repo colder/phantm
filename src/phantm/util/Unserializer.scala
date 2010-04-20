@@ -1,7 +1,7 @@
 package phantm.util
 
 import phantm.symbols._
-import phantm.analyzer.Types._
+import phantm.types._
 import phantm.CFG.Trees.Identifier
 import phantm.controlflow.TypeEnvironment
 import io.Source

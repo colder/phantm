@@ -1,12 +1,12 @@
-package phantm.analyzer
+package phantm.util
 
-import phantm.util.{Positional,Reporter}
 import phantm.AST.Trees._
 import phantm.symbols._
-import Types._
+import phantm.types._
+import phantm.controlflow.AnnotationsStore
+
 import scala.xml._
 
-import phantm.controlflow.AnnotationsStore
 
 object API {
     // Load an API into the symbol tables

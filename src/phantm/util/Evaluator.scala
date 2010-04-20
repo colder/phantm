@@ -1,38 +1,11 @@
 package phantm.util
 
 import phantm.symbols.GlobalSymbols
-import phantm.analyzer.Types._
+import phantm.types._
 import phantm.AST.Trees._
 import java.io.File
 
 object Evaluator {
-
-    def typeFromExpr(oe: Option[Expression]): Type = oe match {
-        case Some(e) => typeFromExpr(e)
-        case None => TNull
-    }
-
-    def typeFromExpr(e: Expression): Type = e match {
-        case PHPTrue() => TBoolean
-        case PHPFalse() => TBoolean
-        case PHPInteger(i) => TIntLit(i)
-        case PHPFloat(f) => TFloatLit(f)
-        case PHPString(s) => TStringLit(s)
-        case PHPNull() => TNull
-        case MCFile() => TString
-        case MCLine() => TString
-        case MCDir() => TString
-        case MCClass() => TString
-        case MCFunction()  => TString
-        case MCMethod() => TString
-        case MCNamespace() => TString
-        case Minus(_, _) => TInt
-        case a: Array =>
-            //TODO
-            TAnyArray
-        case _=>
-            TAny
-    }
 
     def scalarToString(ex: Scalar) = ex match {
         case PHPTrue() =>
