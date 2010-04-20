@@ -2,12 +2,13 @@ package phantm;
 
 import java.io._
 
+import phantm.util._
 import phantm.analyzer._
-import phantm.symbols.CollectSymbols
 import phantm.controlflow._
+
+import phantm.symbols.CollectSymbols
 import phantm.AST.Trees.Program
 import phantm.AST.STToAST
-import phantm.util.Reporter
 
 object Main {
     var files: List[String] = Nil;

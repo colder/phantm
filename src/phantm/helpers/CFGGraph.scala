@@ -1,7 +1,7 @@
 package phantm.helpers
 
 import phantm.Compiler
-import phantm.util.Reporter
+import phantm.util.{Reporter,IncludeResolver}
 import phantm.controlflow._
 import phantm.analyzer._
 import phantm.CFG.ASTToCFG

@@ -2,7 +2,7 @@ package phantm.helpers
 
 import phantm._
 import phantm.AST.{Trees, STToAST}
-import phantm.analyzer.IncludeResolver
+import phantm.util.IncludeResolver
 import java.io._
 
 class ASTGraph extends Helper {

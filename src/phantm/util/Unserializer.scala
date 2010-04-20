@@ -1,10 +1,11 @@
-package phantm.analyzer;
+package phantm.util
+
 import phantm.symbols._
-import Types._
-import io.Source
-import java.io.File
+import phantm.analyzer.Types._
 import phantm.CFG.Trees.Identifier
 import phantm.controlflow.TypeEnvironment
+import io.Source
+import java.io.File
 
 class UnserializeException(msg: String) extends Exception(msg)
 
