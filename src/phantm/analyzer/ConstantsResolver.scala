@@ -2,7 +2,10 @@ package phantm.analyzer
 import Symbols._
 import Types.TAny
 import phantm.{Reporter,Main}
-import phantm.parser.Trees._
+
+import phantm.AST.Trees._
+import phantm.AST.ASTTransform
+
 import scala.collection.mutable.Map
 
 case class ConstantsResolver(ast: Program, issueErrors: Boolean) extends ASTTransform(ast) {

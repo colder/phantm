@@ -1,6 +1,6 @@
-package phantm.analyzer;
+package phantm.AST;
 
-import phantm.parser.Trees.Tree;
+import Trees.Tree;
 
 abstract class ASTTraversal[ContextType](root: Tree, initCtx: ContextType) {
 

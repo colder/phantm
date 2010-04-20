@@ -1,5 +1,5 @@
-package phantm.analyzer
-import phantm.parser.Trees._
+package phantm.AST
+import Trees._
 
 abstract class ASTTransform(p: Program) {
     def transform: Program = {

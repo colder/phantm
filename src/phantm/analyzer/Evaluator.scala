@@ -2,7 +2,7 @@ package phantm.analyzer
 
 import Symbols.GlobalSymbols
 import Types._
-import phantm.parser.Trees._
+import phantm.AST.Trees._
 import java.io.File
 
 object Evaluator {

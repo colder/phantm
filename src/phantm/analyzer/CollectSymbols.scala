@@ -2,7 +2,8 @@ package phantm.analyzer
 
 import phantm.Reporter
 import phantm.Positional
-import phantm.parser.Trees._
+import phantm.AST.Trees._
+import phantm.AST.ASTTraversal
 import phantm.analyzer.Symbols._
 import phantm.analyzer.Types._
 

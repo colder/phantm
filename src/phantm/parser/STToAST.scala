@@ -1,9 +1,8 @@
 // This class transforms a Syntax Tree to an Abstract Syntax Tree
 package phantm.parser;
 
-import phantm._
-import phantm.parser.Trees._
-import phantm.{Compiler,Position}
+import phantm.AST.Trees._
+import phantm.{Compiler,Position,Reporter,JavaListIteratorWrapper}
 
 case class STToAST(comp: Compiler, st: ParseNode) {
 

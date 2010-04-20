@@ -1,4 +1,4 @@
-package phantm.parser
+package phantm.AST
 
 import phantm.Positional
 import phantm.CommentAnnotation

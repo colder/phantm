@@ -1,7 +1,7 @@
 package phantm.analyzer
 
 import phantm.{Positional,Reporter}
-import phantm.parser.Trees._
+import phantm.AST.Trees._
 import Symbols._
 import Types._
 import scala.xml._

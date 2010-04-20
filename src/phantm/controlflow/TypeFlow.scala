@@ -5,7 +5,7 @@ import scala.collection.immutable.HashMap
 import scala.collection.immutable.HashSet
 import scala.collection.immutable.Map
 import phantm._
-import phantm.parser.Trees.Identifier
+import phantm.AST.Trees.Identifier
 import phantm.analyzer.Symbols._
 import phantm.analyzer.Types._
 
@@ -462,7 +462,7 @@ object TypeFlow {
                 case CFGArrayCurIsValid(ar) =>
                     TBoolean
                 case CFGNew(cr, params) => cr match {
-                    case parser.Trees.StaticClassRef(_, _, id) =>
+                    case AST.Trees.StaticClassRef(_, _, id) =>
                         GlobalSymbols.lookupClass(id.value) match {
                             case a @ Some(cs) =>
                                 getObject(node, a)
@@ -548,7 +548,7 @@ object TypeFlow {
                     typeFromSV(then) union typeFromSV(elze)
 
                 case CFGCast(typ, v) =>
-                    import parser.Trees._
+                    import AST.Trees._
                     typ match {
                         case CastUnset => TNull
                         case CastInt => TInt

@@ -1,6 +1,7 @@
 package phantm.analyzer;
 
-import phantm.parser.Trees._;
+import phantm.AST.Trees._;
+import phantm.AST.ASTTraversal;
 import phantm.{Main,Reporter};
 
 case class CheckContext(topLevel: Boolean, inCond: Boolean);

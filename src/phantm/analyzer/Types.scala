@@ -4,7 +4,7 @@ import scala.collection.immutable.{Map, Set}
 
 import phantm.controlflow.TypeFlow._
 import phantm.controlflow.CFGTrees._
-import phantm.parser.Trees._
+import phantm.AST.Trees._
 
 object Types {
     object RecProtection {

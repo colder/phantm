@@ -1,7 +1,7 @@
 package phantm.analyzer
 
 import scala.collection.mutable.HashMap
-import phantm.parser.Trees._
+import phantm.AST.Trees._
 import phantm._
 import Types._
 

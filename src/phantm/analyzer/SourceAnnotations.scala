@@ -1,5 +1,5 @@
 package phantm.analyzer
-import phantm.parser.Trees._
+import phantm.AST._
 import Types._
 import Symbols._
 import phantm.Reporter

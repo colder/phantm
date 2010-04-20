@@ -1,6 +1,6 @@
 package phantm.controlflow
 import phantm.analyzer.Symbols._
-import phantm.parser.Trees._
+import phantm.AST.Trees._
 import phantm.Positional
 
 object CFGTrees {

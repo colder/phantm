@@ -3,7 +3,7 @@ package phantm;
 import phantm.parser._;
 import phantm.analyzer._;
 import phantm.controlflow._;
-import phantm.parser.Trees.Program;
+import phantm.AST.Trees.Program;
 import java.io._;
 
 object Main {

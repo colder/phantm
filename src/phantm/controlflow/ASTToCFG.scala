@@ -1,6 +1,6 @@
 package phantm.controlflow
 import phantm._
-import phantm.parser.Trees._
+import phantm.AST.Trees._
 import phantm.analyzer.Symbols._
 import CFGTrees._
 import scala.collection.mutable.{Map,HashMap}

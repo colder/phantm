@@ -1,6 +1,7 @@
 package phantm.analyzer
 import phantm._
-import phantm.parser.Trees._
+import phantm.AST.Trees._
+import phantm.AST.ASTTransform
 
 import scala.io.Source
 import java.io.File

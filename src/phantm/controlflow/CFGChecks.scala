@@ -1,6 +1,7 @@
 package phantm.controlflow;
 
-import phantm.parser.Trees._;
+import phantm.AST.Trees._;
+import phantm.AST.ASTTraversal;
 import phantm.analyzer._;
 import phantm.Main;
 
