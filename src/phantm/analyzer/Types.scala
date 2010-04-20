@@ -8,6 +8,16 @@ import phantm.AST.{Trees => AST}
 import phantm.CFG.{Trees => CFG}
 
 object Types {
+    object defaultType extends TypeWideningFunction {
+        def apply(t: Type) = t match {
+            case TNull => TAny
+            case TIntLit(i) => TInt
+            case TStringLit(s) => TString
+            case TFloatLit(f) => TFloat
+            case _ => t
+        }
+    }
+
     object RecProtection {
         var objectToStringDepth = 0;
         var objectDepthDepth = 0;

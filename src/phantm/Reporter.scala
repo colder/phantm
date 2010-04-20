@@ -83,8 +83,8 @@ object Reporter {
             }
         }
 
-        errors = Map[Option[String], Set[Error]]()
-        errorsCheck = Map[Option[String], Set[ErrorCheck]]()
+        errors = Map[Option[String], Set[Error]]().withDefaultValue(Set[Error]())
+        errorsCheck = Map[Option[String], Set[ErrorCheck]]().withDefaultValue(Set[ErrorCheck]())
 
         if (errorsCount > 0) {
             val ec = errorsCount;

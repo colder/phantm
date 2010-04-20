@@ -140,7 +140,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
                 th
             }
 
-            ps.typ = checkTypeHint(t, th, p)
+            ps.typ = defaultType(checkTypeHint(t, th, p))
             cs.registerProperty(ps)
         }
 
@@ -155,7 +155,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
                 th
             }
 
-            ps.typ = checkTypeHint(t, th, p)
+            ps.typ = defaultType(checkTypeHint(t, th, p))
 
 
             cs.registerStaticProperty(ps)
@@ -189,11 +189,9 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
         val res = TypeLattice.meet(annoType, hintType)
 
         if (res == TBottom) {
-            Reporter.notice("Annotation incompatible with type hint or default value", pos)
-            annoType
-        } else {
-            res
+            Reporter.notice("Annotation("+annoType.toText(BaseTypeEnvironment)+") incompatible with type hint or default value("+hintType.toText(BaseTypeEnvironment)+")", pos)
         }
+        annoType
     }
 
     /**
@@ -245,7 +243,10 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
                     if (t.args.size <= i) {
                         (a.typ, a.optional)
                     } else {
-                        checkTypeHint(t.args(i)._1, Evaluator.typeFromExpr(args(i).default), a)
+                        if (args(i).default != None) {
+                            val tde = Evaluator.typeFromExpr(args(i).default)
+                            checkTypeHint(t.args(i)._1, tde, a)
+                        }
                         (checkTypeHint(t.args(i)._1, a.typ, a), a.optional)
                     }
                 }
