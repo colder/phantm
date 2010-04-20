@@ -68,7 +68,7 @@ BUILD
   <target name="build" depends="init">
     <echo level="verbose" message="build.dir=${build.dir}"/>
     <mkdir dir="${build.dir}"/>
-    <fsc
+    <scalac
       srcdir="${source.dir}"
       includes="**/*.scala"
       destdir="${build.dir}"
