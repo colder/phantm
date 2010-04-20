@@ -3,8 +3,8 @@ import Symbols._
 import scala.collection.immutable.{Map, Set}
 
 import phantm.controlflow.TypeFlow._
-import phantm.CFG.Trees._
-import phantm.AST.Trees._
+import phantm.AST.{Trees => AST}
+import phantm.CFG.{Trees => CFG}
 
 object Types {
     object RecProtection {
@@ -177,9 +177,9 @@ object Types {
             res+1
         }
 
-        def lookupField(index: CFGSimpleValue): Type = index match {
-          case CFGLong(i)        => lookupField(i+"")
-          case CFGString(index) => lookupField(index)
+        def lookupField(index: CFG.SimpleValue): Type = index match {
+          case CFG.PHPLong(i)        => lookupField(i+"")
+          case CFG.PHPString(index) => lookupField(index)
           case _ => globalType
         }
 
@@ -188,18 +188,18 @@ object Types {
 
         def lookupMethod(index: String, from: Option[ClassSymbol]): Option[FunctionType] = None
 
-        def lookupMethod(index: CFGSimpleValue, from: Option[ClassSymbol]): Option[FunctionType] = index match {
-            case CFGLong(i)        => lookupMethod(i+"", from)
-            case CFGString(index) => lookupMethod(index, from)
+        def lookupMethod(index: CFG.SimpleValue, from: Option[ClassSymbol]): Option[FunctionType] = index match {
+            case CFG.PHPLong(i)        => lookupMethod(i+"", from)
+            case CFG.PHPString(index) => lookupMethod(index, from)
             case _ => None
         }
 
-        def injectField(index: CFGSimpleValue, typ: Type): TRealObject =
+        def injectField(index: CFG.SimpleValue, typ: Type): TRealObject =
             injectField(index, typ, true)
 
-        def injectField(index: CFGSimpleValue, typ: Type, weak: Boolean): TRealObject = index match {
-          case CFGLong(i)       => injectField(i+"",  typ, weak)
-          case CFGString(index) => injectField(index, typ, weak)
+        def injectField(index: CFG.SimpleValue, typ: Type, weak: Boolean): TRealObject = index match {
+          case CFG.PHPLong(i)       => injectField(i+"",  typ, weak)
+          case CFG.PHPString(index) => injectField(index, typ, weak)
           case _ => injectAnyField(typ)
         }
 
@@ -649,14 +649,14 @@ object Types {
     }
 
 
-    def typeHintToType(oth: Option[TypeHint]): Type = oth match {
+    def typeHintToType(oth: Option[AST.TypeHint]): Type = oth match {
         case Some(a) => typeHintToType(a)
         case None => TAny;
     }
 
-    def typeHintToType(th: TypeHint): Type = th match {
-        case THArray => TAnyArray
-        case THObject(StaticClassRef(_, _, id)) =>
+    def typeHintToType(th: AST.TypeHint): Type = th match {
+        case AST.THArray => TAnyArray
+        case AST.THObject(AST.StaticClassRef(_, _, id)) =>
             GlobalSymbols.lookupClass(id.value) match {
                 case Some(cs) =>
     //                ObjectStore.getOrCreateTMP(Some(cs))

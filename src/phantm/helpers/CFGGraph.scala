@@ -3,7 +3,7 @@ package phantm.helpers
 import phantm._
 import phantm.controlflow._
 import phantm.analyzer._
-import phantm.CFG.{CFG, ASTToCFG}
+import phantm.CFG.ASTToCFG
 import phantm.AST.Trees._
 import phantm.AST.ASTTraversal
 import phantm.parser.STToAST
@@ -15,7 +15,6 @@ class CFGGraph extends Helper {
             c compile match {
                 case Some(node) =>
                     val ast = IncludeResolver(STToAST(c, node).getAST).transform;
-                    
                     CollectSymbols(ast) execute;
                     Reporter.errorMilestone
 
@@ -43,13 +42,13 @@ case class CFGGraphs(node: Tree) extends ASTTraversal[CheckContext](node, CheckC
 
         node match {
             case Program(stmts) =>
-                val cfg: CFG = ASTToCFG.convertAST(stmts, Symbols.GlobalSymbols)
+                val cfg = ASTToCFG.convertAST(stmts, Symbols.GlobalSymbols)
                 cfg.writeDottyToFile("result.cfg-"+n, "Main");
                 n = n + 1;
             case FunctionDecl(name, args, retref, body) =>
                 name.getSymbol match {
                     case fs: Symbols.FunctionSymbol =>
-                        val cfg: CFG = ASTToCFG.convertAST(List(body), fs)
+                        val cfg = ASTToCFG.convertAST(List(body), fs)
                         cfg.writeDottyToFile("result.cfg-"+n, name.value);
                         n = n + 1;
                     case _ =>
@@ -60,7 +59,7 @@ case class CFGGraphs(node: Tree) extends ASTTraversal[CheckContext](node, CheckC
                 for (m <- methods) if (m.body != None) {
                     m.name.getSymbol match {
                         case ms: Symbols.MethodSymbol =>
-                            val cfg: CFG = ASTToCFG.convertAST(List(m.body.get), ms)
+                            val cfg = ASTToCFG.convertAST(List(m.body.get), ms)
                             cfg.writeDottyToFile("result.cfg-"+n, name.value+"::"+m.name.value);
                             n = n + 1;
                         case _ =>

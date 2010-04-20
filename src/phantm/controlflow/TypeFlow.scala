@@ -1,8 +1,8 @@
 package phantm.controlflow
 
 import phantm._
-import phantm.AST.Trees.Identifier
-import phantm.CFG.CFG
+import phantm.AST.{Trees => AST}
+import phantm.CFG.ControlFlowGraph
 import phantm.CFG.Trees._
 import phantm.analyzer.Symbols._
 import phantm.analyzer.Types._
@@ -221,7 +221,7 @@ object TypeFlow {
         }
     }
 
-    object BaseTypeEnvironment extends TypeEnvironment(Map[CFGSimpleVariable, Type](), None, new ObjectStore) {
+    object BaseTypeEnvironment extends TypeEnvironment(Map[SimpleVariable, Type](), None, new ObjectStore) {
         override def union(e: TypeEnvironment) = {
             e
         }
@@ -269,20 +269,20 @@ object TypeFlow {
         }
     }
 
-    class TypeEnvironment(val map: Map[CFGSimpleVariable, Type], val scope: Option[ClassSymbol], val store: ObjectStore) extends Environment[TypeEnvironment, CFGStatement] {
+    class TypeEnvironment(val map: Map[SimpleVariable, Type], val scope: Option[ClassSymbol], val store: ObjectStore) extends Environment[TypeEnvironment, Statement] {
 
 
         def this(scope: Option[ClassSymbol]) = {
-            this(Map[CFGSimpleVariable, Type](), scope, new ObjectStore);
+            this(Map[SimpleVariable, Type](), scope, new ObjectStore);
         }
 
         def this() = {
-            this(Map[CFGSimpleVariable, Type](), None, new ObjectStore);
+            this(Map[SimpleVariable, Type](), None, new ObjectStore);
         }
 
-        def lookup(v: CFGSimpleVariable): Option[Type] = map.get(v)
+        def lookup(v: SimpleVariable): Option[Type] = map.get(v)
 
-        def inject(v: CFGSimpleVariable, typ: Type): TypeEnvironment =
+        def inject(v: SimpleVariable, typ: Type): TypeEnvironment =
             new TypeEnvironment(map + ((v, typ)), scope, store)
 
         def setStore(st: ObjectStore): TypeEnvironment = {
@@ -298,7 +298,7 @@ object TypeFlow {
         }
 
         def copy: TypeEnvironment =
-            new TypeEnvironment(Map[CFGSimpleVariable, Type]()++map, scope, store)
+            new TypeEnvironment(Map[SimpleVariable, Type]()++map, scope, store)
 
         def union(e: TypeEnvironment): TypeEnvironment = {
             e match {
@@ -306,7 +306,7 @@ object TypeFlow {
                     this
 
                 case te: TypeEnvironment =>
-                    var newmap = Map[CFGSimpleVariable, Type]();
+                    var newmap = Map[SimpleVariable, Type]();
 
                     for (k <- map.keySet ++ e.map.keySet) {
                         newmap = newmap.updated(k,
@@ -317,7 +317,7 @@ object TypeFlow {
             }
         }
 
-        def checkMonotonicity(vrtx: Vertex, e: TypeEnvironment, inEdges: Iterable[(CFGStatement, TypeEnvironment)]): Unit = {
+        def checkMonotonicity(vrtx: Vertex, e: TypeEnvironment, inEdges: Iterable[(Statement, TypeEnvironment)]): Unit = {
             var delim = false;
             for ((v, t) <- map) {
                 if (e.map contains v) {
@@ -372,7 +372,7 @@ object TypeFlow {
         }
     }
 
-    case class TypeTransferFunction(silent: Boolean, collectAnnotations: Boolean) extends TransferFunction[TypeEnvironment, CFGStatement] {
+    case class TypeTransferFunction(silent: Boolean, collectAnnotations: Boolean) extends TransferFunction[TypeEnvironment, Statement] {
         //def notice(msg: String, pos: Positional) = if (!silent) { new Exception(msg).printStackTrace(); Reporter.notice(msg, pos) }
         //def error(msg: String, pos: Positional) = if (!silent) { new Exception(msg).printStackTrace(); Reporter.error(msg, pos) }
         def notice(msg: String, pos: Positional) = if (!silent) Reporter.notice(msg, pos)
@@ -417,7 +417,7 @@ object TypeFlow {
                 t
         }
 
-        def apply(node : CFGStatement, envInit : TypeEnvironment) : TypeEnvironment = {
+        def apply(node : Statement, envInit : TypeEnvironment) : TypeEnvironment = {
             var env = envInit
 
             def leq(t1: Type, t2: Type) = TypeLattice.leq(env, env, t1, t2)
@@ -427,20 +427,20 @@ object TypeFlow {
                 t
             }
 
-            def typeFromSV(sv: CFGSimpleValue): Type = sv match {
-                case CFGLong(value)         => TIntLit(value)
-                case CFGFloat(value)        => TFloatLit(value)
-                case CFGString(value)       => TStringLit(value)
-                case CFGTrue()              => TTrue
-                case CFGFalse()             => TFalse
-                case CFGAny()               => TAny
-                case CFGNone()              => TBottom
-                case CFGNull()              => TNull
-                case CFGThis()              => getObject(node, env.scope)
-                case CFGEmptyArray()        => new TArray()
-                case CFGInstanceof(lhs, cl) => TBoolean
-                case CFGArrayNext(ar)       => typeFromSV(ar)
-                case CFGArrayCurElement(id: CFGSimpleVariable) =>
+            def typeFromSV(sv: SimpleValue): Type = sv match {
+                case PHPLong(value)      => TIntLit(value)
+                case PHPFloat(value)     => TFloatLit(value)
+                case PHPString(value)    => TStringLit(value)
+                case PHPTrue()           => TTrue
+                case PHPFalse()          => TFalse
+                case PHPAny()            => TAny
+                case NoVar()             => TBottom
+                case PHPNull()           => TNull
+                case PHPThis()           => getObject(node, env.scope)
+                case PHPEmptyArray()     => new TArray()
+                case Instanceof(lhs, cl) => TBoolean
+                case ArrayNext(ar)       => typeFromSV(ar)
+                case ArrayCurElement(id: SimpleVariable) =>
                     env.lookup(id) match {
                         case Some(TAnyArray) =>
                             TAny
@@ -455,12 +455,12 @@ object TypeFlow {
                         case _ =>
                             TAny
                     }
-                case CFGArrayCurElement(ar) => TAny
-                case CFGArrayCurKey(ar)     => TString union TInt
-                case CFGArrayCurIsValid(ar) =>
+                case ArrayCurElement(ar) => TAny
+                case ArrayCurKey(ar)     => TString union TInt
+                case ArrayCurIsValid(ar) =>
                     TBoolean
-                case CFGNew(cr, params) => cr match {
-                    case AST.Trees.StaticClassRef(_, _, id) =>
+                case New(cr, params) => cr match {
+                    case AST.StaticClassRef(_, _, id) =>
                         GlobalSymbols.lookupClass(id.value) match {
                             case a @ Some(cs) =>
                                 getObject(node, a)
@@ -471,7 +471,7 @@ object TypeFlow {
                     case _ =>
                         getObject(node, None)
                 }
-                case cl @ CFGClone(obj) =>
+                case cl @ Clone(obj) =>
                     typeFromSV(obj) match {
                         case ref: TObjectRef =>
                             val ro = env.store.lookup(ref)
@@ -480,7 +480,7 @@ object TypeFlow {
                         case _ =>
                             TAnyObject
                     }
-                case CFGFunctionCall(Identifier("phantm_dumpanddie"), args) =>
+                case FunctionCall(AST.Identifier("phantm_dumpanddie"), args) =>
                     if (Main.dumpedData != Nil) {
                         for (unser <- Main.dumpedData) {
                             env = unser.importToEnv(env)
@@ -488,7 +488,7 @@ object TypeFlow {
                     }
                     TBottom
 
-                case fcall @ CFGFunctionCall(id, args) =>
+                case fcall @ FunctionCall(id, args) =>
                     GlobalSymbols.lookupFunction(id.value) match {
                         case Some(fs) =>
                                 if (collectAnnotations) {
@@ -509,7 +509,7 @@ object TypeFlow {
                                     TBottom
                             }
                     }
-                case mcall @ CFGMethodCall(r, mid, args) =>
+                case mcall @ MethodCall(r, mid, args) =>
                     typeFromSV(r) match {
                         case or: TObjectRef =>
                             val ro = env.store.lookup(or);
@@ -533,34 +533,33 @@ object TypeFlow {
                             TTop
                     }
 
-                case CFGConstant(cs) =>
+                case Constant(cs) =>
                     cs.typ
 
-                case const @ CFGClassConstant(cs) =>
+                case const @ ClassConstant(cs) =>
                     cs.typ
 
-                case mcall @ CFGStaticMethodCall(cl, id, args) =>
+                case mcall @ StaticMethodCall(cl, id, args) =>
                     TAny // TODO
 
-                case tern @ CFGTernary(iff, then, elze) =>
+                case tern @ Ternary(iff, then, elze) =>
                     typeFromSV(then) union typeFromSV(elze)
 
-                case CFGCast(typ, v) =>
-                    import AST.Trees._
+                case Cast(typ, v) =>
                     typ match {
-                        case CastUnset => TNull
-                        case CastInt => TInt
-                        case CastString => TString
-                        case CastDouble => TFloat
-                        case CastArray => TAnyArray
-                        case CastBool => TBoolean
-                        case CastObject => TAnyObject
+                        case AST.CastUnset => TNull
+                        case AST.CastInt => TInt
+                        case AST.CastString => TString
+                        case AST.CastDouble => TFloat
+                        case AST.CastArray => TAnyArray
+                        case AST.CastBool => TBoolean
+                        case AST.CastObject => TAnyObject
                     }
 
-                case id: CFGSimpleVariable =>
+                case id: SimpleVariable =>
                   env.lookup(id).getOrElse(TTop)
 
-                case ae @ CFGArrayEntry(ar, ind) =>
+                case ae @ ArrayEntry(ar, ind) =>
                     val indtyp = typeFromSV(ind)
 
                     typeFromSV(ar) match {
@@ -578,7 +577,7 @@ object TypeFlow {
                         case _ =>
                             TBottom
                     }
-                case ae @ CFGNextArrayEntry(arr) =>
+                case ae @ NextArrayEntry(arr) =>
                     typeFromSV(arr) match {
                         case ta: TArray =>
                             ta.entries.foldLeft(TBottom: Type)((t, e)=> t union e._2) union ta.globalType
@@ -595,7 +594,7 @@ object TypeFlow {
                             TBottom
                    }
 
-                case op @ CFGObjectProperty(obj, p) =>
+                case op @ ObjectProperty(obj, p) =>
                     typeFromSV(obj) match {
                         case TAnyObject | TAny | TTop =>
                             TTop
@@ -614,15 +613,15 @@ object TypeFlow {
                             TBottom
                     }
 
-                case vv @ CFGVariableClassConstant(cr, id) =>
+                case vv @ VariableClassConstant(cr, id) =>
                     notice("Dynamically referenced class constants ignored", vv)
                     TBottom
 
-                case vv @ CFGVariableClassProperty(cr, prop) =>
+                case vv @ VariableClassProperty(cr, prop) =>
                     notice("Dynamically referenced class properties ignored", vv)
                     TBottom
 
-                case vv @ CFGVariableVar(v) =>
+                case vv @ VariableVar(v) =>
                     notice("Dynamic variable ignored", vv)
                     TBottom
 
@@ -631,7 +630,7 @@ object TypeFlow {
                   TBottom
             }
 
-            def getObject(node: CFGStatement, ocs: Option[ClassSymbol]): ObjectType = {
+            def getObject(node: Statement, ocs: Option[ClassSymbol]): ObjectType = {
                 val id = ObjectId(node.uniqueID, 0);
                 env = env.setStore(env.store.initIfNotExist(id, ocs))
                 new TObjectRef(id)
@@ -732,7 +731,7 @@ object TypeFlow {
                         case (et, vt) if filterErrors(vt) =>
                             if (Main.verbosity > 0) {
                                 pos match {
-                                    case sv: CFGSimpleVariable =>
+                                    case sv: SimpleVariable =>
                                         notice("Potentialy uninitialized variable", pos)
                                     case _ =>
                                         notice("Potentialy uninitialized value", pos)
@@ -740,7 +739,7 @@ object TypeFlow {
                             }
                         case (et, TUninitialized) =>
                                 pos match {
-                                    case sv: CFGSimpleVariable =>
+                                    case sv: SimpleVariable =>
                                         notice("Uninitialized variable", pos)
                                     case _ =>
                                         notice("Uninitialized value", pos)
@@ -755,11 +754,11 @@ object TypeFlow {
                 }
             }
 
-            def expOrRef(v1: CFGSimpleValue, typs: Type*): Type = {
+            def expOrRef(v1: SimpleValue, typs: Type*): Type = {
                 val etyp = typs reduceLeft (_ union _)
                 val vtyp = typeFromSV(v1)
 
-                def checkVariable(v: CFGVariable, kind: String): Type = {
+                def checkVariable(v: Variable, kind: String): Type = {
                     val (osv, svetyp) = getCheckType(v, etyp)
 
                     if (!osv.isEmpty) {
@@ -785,13 +784,13 @@ object TypeFlow {
                 }
 
                 v1 match {
-                    case sv: CFGSimpleVariable =>
+                    case sv: SimpleVariable =>
                         checkVariable(sv, "variable")
-                    case v: CFGNextArrayEntry =>
+                    case v: NextArrayEntry =>
                         checkVariable(v, "array entry")
-                    case v: CFGArrayEntry =>
+                    case v: ArrayEntry =>
                         checkVariable(v,"array entry")
-                    case v: CFGObjectProperty =>
+                    case v: ObjectProperty =>
                         checkVariable(v, "object property")
                     case v =>
                         if (leq(vtyp, etyp)) {
@@ -804,7 +803,7 @@ object TypeFlow {
                 }
             }
 
-            def typeFromUnOP(op: CFGUnaryOperator, v1: CFGSimpleValue): Type = op match {
+            def typeFromUnOP(op: UnaryOperator, v1: SimpleValue): Type = op match {
                 case BOOLEANNOT =>
                     expOrRef(v1, TAny)
                 case BITSIWENOT =>
@@ -821,7 +820,7 @@ object TypeFlow {
                     expOrRef(v1, TAny)
             }
 
-            def typeFromBinOP(v1: CFGSimpleValue, op: CFGBinaryOperator, v2: CFGSimpleValue): Type = op match {
+            def typeFromBinOP(v1: SimpleValue, op: BinaryOperator, v2: SimpleValue): Type = op match {
                 case PLUS =>
                     val t1 = typeFromSV(v1)
 
@@ -856,10 +855,10 @@ object TypeFlow {
                     TBoolean
             }
 
-            def getCheckType(sv: CFGSimpleValue, ct: Type): (Option[CFGSimpleVariable], Type) = sv match {
-                case CFGVariableVar(v) =>
+            def getCheckType(sv: SimpleValue, ct: Type): (Option[SimpleVariable], Type) = sv match {
+                case VariableVar(v) =>
                     getCheckType(v, TString)
-                case CFGArrayEntry(arr, index) =>
+                case ArrayEntry(arr, index) =>
                     typeFromSV(arr) match {
                         case TString =>
                             // If arr is known to be a string, index must be Int
@@ -885,25 +884,25 @@ object TypeFlow {
                             }
                             getCheckType(arr, newct)
                     }
-                case CFGNextArrayEntry(arr) =>
+                case NextArrayEntry(arr) =>
                     getCheckType(arr, TAnyArray)
-                case CFGObjectProperty(obj, prop) =>
+                case ObjectProperty(obj, prop) =>
                     // IGNORE for now, focus on arrays
                     getCheckType(obj, TAnyObject)
-                case svar: CFGSimpleVariable =>
+                case svar: SimpleVariable =>
                     (Some(svar), ct)
-                case CFGVariableClassConstant(cr, id) =>
+                case VariableClassConstant(cr, id) =>
                     (None, ct)
-                case CFGVariableClassProperty(cr, id) =>
+                case VariableClassProperty(cr, id) =>
                     (None, ct)
-                case CFGNone() =>
+                case NoVar() =>
                     (None, ct)
                 case v =>
-                    Predef.error("Woops, unexpected CFGVariable("+v+") inside checktype of!")
+                    Predef.error("Woops, unexpected Variable("+v+") inside checktype of!")
 
             }
 
-            def assign(v: CFGVariable, ext: Type): Type = {
+            def assign(v: Variable, ext: Type): Type = {
                 val (osvar, ct) = getCheckType(v, TTop)
                 if (!osvar.isEmpty) {
                     val svar = osvar.get
@@ -913,10 +912,10 @@ object TypeFlow {
                     //println("After refinement: "+reft)
 
                     // Now, we need to get down in that variable and affect the type as the assign require
-                    def backPatchType(sv: CFGSimpleValue, typ: Type): Type = sv match {
-                        case CFGVariableVar(v) =>
+                    def backPatchType(sv: SimpleValue, typ: Type): Type = sv match {
+                        case VariableVar(v) =>
                             backPatchType(v, TString)
-                        case CFGArrayEntry(arr, index) =>
+                        case ArrayEntry(arr, index) =>
                             val indtyp = typeFromSV(index)
 
                             val t = typeFromSV(arr) match {
@@ -939,7 +938,7 @@ object TypeFlow {
                                     TBottom
                             }
                             backPatchType(arr, t)
-                        case CFGNextArrayEntry(arr) =>
+                        case NextArrayEntry(arr) =>
                             val t = typeFromSV(arr) match {
                                 case ta: TArray =>
                                     ta.setAny(typ union ta.globalType)
@@ -960,7 +959,7 @@ object TypeFlow {
                                     TBottom
                             }
                             backPatchType(arr, t)
-                        case CFGObjectProperty(obj, prop) =>
+                        case ObjectProperty(obj, prop) =>
                             def updateObject(obj: TObjectRef) {
                                 val ro =
                                     if (obj.id.pos < 0) {
@@ -993,11 +992,11 @@ object TypeFlow {
                                     TBottom
                             }
                             backPatchType(obj, t)
-                        case svar: CFGSimpleVariable =>
+                        case svar: SimpleVariable =>
                             typ
 
                         case _ =>
-                            Predef.error("Woops, unexpected CFGVariable inside checktype of!")
+                            Predef.error("Woops, unexpected Variable inside checktype of!")
                     }
 
                     def limitType(typ: Type, l: Int): Type = typ match {
@@ -1044,7 +1043,7 @@ object TypeFlow {
                 }
             }
 
-            def checkFCalls(fcall_params: List[CFGSimpleValue], syms: List[FunctionType], pos: Positional) : Type =  {
+            def checkFCalls(fcall_params: List[SimpleValue], syms: List[FunctionType], pos: Positional) : Type =  {
                 def protoFilter(sym: FunctionType): Boolean = {
                     sym match {
                         case tf: TFunction =>
@@ -1094,27 +1093,27 @@ object TypeFlow {
             }
 
             node match {
-                case CFGAssign(vr: CFGVariable, v1) =>
+                case Assign(vr: Variable, v1) =>
                     //println("Assign..")
                     val t = expOrRef(v1, TAny)
                     assign(vr, uninitToNull(t))
 
-                case CFGAssignUnary(vr: CFGVariable, op, v1) =>
+                case AssignUnary(vr: Variable, op, v1) =>
                     // We want to typecheck v1 according to OP
                     val t = typeFromUnOP(op, v1);
                     assign(vr, uninitToNull(t))
 
-                case CFGAssignBinary(vr: CFGVariable, v1, op, v2) =>
+                case AssignBinary(vr: Variable, v1, op, v2) =>
                     // We want to typecheck v1/v2 according to OP
                     val t = typeFromBinOP(v1, op, v2)
                     assign(vr, uninitToNull(t))
 
-                case CFGAssume(v1, op, v2) => op match {
+                case Assume(v1, op, v2) => op match {
                     case LT | LEQ | GEQ | GT =>
                         expOrRef(v1, TNumeric)
                         expOrRef(v2, TNumeric)
                     case EQUALS | IDENTICAL | NOTEQUALS | NOTIDENTICAL =>
-                        def filter(v: CFGVariable, value: Boolean) = {
+                        def filter(v: Variable, value: Boolean) = {
                             val t = typeFromSV(v);
 
                             if (t != TBottom) {
@@ -1146,37 +1145,37 @@ object TypeFlow {
                         expOrRef(v2, TAny)
 
                         (v1, op, v2) match {
-                            case (v: CFGVariable, EQUALS | IDENTICAL, _: CFGTrue) =>
+                            case (v: Variable, EQUALS | IDENTICAL, _: PHPTrue) =>
                                 filter(v, true)
-                            case (v: CFGVariable, NOTEQUALS | NOTIDENTICAL, _: CFGTrue) =>
+                            case (v: Variable, NOTEQUALS | NOTIDENTICAL, _: PHPTrue) =>
                                 filter(v, false)
-                            case (v: CFGVariable, EQUALS | IDENTICAL, _: CFGFalse) =>
+                            case (v: Variable, EQUALS | IDENTICAL, _: PHPFalse) =>
                                 filter(v, false)
-                            case (v: CFGVariable, NOTEQUALS | NOTIDENTICAL, _: CFGFalse) =>
+                            case (v: Variable, NOTEQUALS | NOTIDENTICAL, _: PHPFalse) =>
                                 filter(v, true)
-                            case (_:CFGTrue, EQUALS | IDENTICAL, v: CFGVariable) =>
+                            case (_: PHPTrue, EQUALS | IDENTICAL, v: Variable) =>
                                 filter(v, true)
-                            case (_:CFGTrue, NOTEQUALS | NOTIDENTICAL, v: CFGVariable) =>
+                            case (_: PHPTrue, NOTEQUALS | NOTIDENTICAL, v: Variable) =>
                                 filter(v, false)
-                            case (_:CFGFalse, EQUALS | IDENTICAL, v: CFGVariable) =>
+                            case (_: PHPFalse, EQUALS | IDENTICAL, v: Variable) =>
                                 filter(v, false)
-                            case (_:CFGFalse, NOTEQUALS | NOTIDENTICAL, v: CFGVariable) =>
+                            case (_: PHPFalse, NOTEQUALS | NOTIDENTICAL, v: Variable) =>
                                 filter(v, true)
                             case _ =>
                                 // no filtering
                         }
                   }
 
-                case CFGPrint(v) =>
+                case Print(v) =>
                     expOrRef(v, TAny)
 
-                case CFGUnset(v) =>
+                case Unset(v) =>
                     assign(v, TUninitialized)
 
-                case ex: CFGSimpleValue =>
+                case ex: SimpleValue =>
                     expOrRef(ex, TAny)
 
-                case CFGSkip =>
+                case Skip =>
 
                 case _ => notice(node+" not yet handled", node)
             }
@@ -1185,7 +1184,7 @@ object TypeFlow {
         }
     }
 
-    case class Analyzer(cfg: CFG, scope: Scope) {
+    case class Analyzer(cfg: ControlFlowGraph, scope: Scope) {
 
         def setupEnvironment: TypeEnvironment = {
             var baseEnv   = new TypeEnvironment;
@@ -1194,7 +1193,7 @@ object TypeFlow {
             def injectPredef(name: String, typ: Type): Unit = {
                 scope.lookupVariable(name) match {
                     case Some(vs) =>
-                        baseEnv = baseEnv.inject(CFGIdentifier(vs), typ)
+                        baseEnv = baseEnv.inject(Identifier(vs), typ)
                     case None =>
                         // ignore this var
                         println("Woops, no such symbol found: "+name)
@@ -1224,7 +1223,7 @@ object TypeFlow {
             scope match {
                 case fs: FunctionSymbol =>
                     for ((name, sym) <- fs.argList) {
-                        baseEnv = baseEnv.inject(CFGIdentifier(sym), sym.typ)
+                        baseEnv = baseEnv.inject(Identifier(sym), sym.typ)
                     }
                 case _ =>
             }
@@ -1232,7 +1231,7 @@ object TypeFlow {
             // we inject vars for static class properties
             for(cs <- GlobalSymbols.getClasses) {
                 for(ps <- cs.getStaticProperties) {
-                    baseEnv = baseEnv.inject(CFGClassProperty(ps), ps.typ)
+                    baseEnv = baseEnv.inject(ClassProperty(ps), ps.typ)
                 }
             }
 
@@ -1250,7 +1249,7 @@ object TypeFlow {
             val bottomEnv = BaseTypeEnvironment;
             val baseEnv   = setupEnvironment;
 
-            val aa = new AnalysisAlgorithm[TypeEnvironment, CFGStatement](TypeTransferFunction(true, false), bottomEnv, baseEnv, cfg)
+            val aa = new AnalysisAlgorithm[TypeEnvironment, Statement](TypeTransferFunction(true, false), bottomEnv, baseEnv, cfg)
 
             aa.init
             aa.computeFixpoint
@@ -1275,7 +1274,7 @@ object TypeFlow {
                 case fs: FunctionSymbol =>
                     // collect return value
                     val facts = aa.getResult;
-                    val retType = facts(cfg.exit).map.getOrElse(CFGTempID("retval"), TBottom);
+                    val retType = facts(cfg.exit).map.getOrElse(TempID("retval"), TBottom);
 
                     AnnotationsStore.collectFunctionRet(fs, retType)
                 case _ =>

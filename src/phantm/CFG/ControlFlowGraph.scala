@@ -1,8 +1,8 @@
 package phantm.CFG
 
-import Trees.CFGStatement
+import Trees.Statement
 
-class CFG extends LabeledDirectedGraphImp[CFGStatement] {
+class ControlFlowGraph extends LabeledDirectedGraphImp[Statement] {
   val entry: Vertex = newVertex
   val exit: Vertex = newVertex
   entry.name = "entry"

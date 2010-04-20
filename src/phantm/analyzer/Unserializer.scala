@@ -4,7 +4,7 @@ import Types._
 import io.Source
 import java.io.File
 import phantm.controlflow.TypeFlow._
-import phantm.CFG.Trees.CFGIdentifier
+import phantm.CFG.Trees.Identifier
 
 class UnserializeException(msg: String) extends Exception(msg)
 
@@ -110,7 +110,7 @@ class Unserializer(content: String) {
                             vs
                     }
 
-                    env = env.inject(CFGIdentifier(sym), typ)
+                    env = env.inject(Identifier(sym), typ)
                     println("Setting "+key+" => "+typ)
                 }
                 env

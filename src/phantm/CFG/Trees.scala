@@ -1,11 +1,11 @@
 package phantm.CFG
 import phantm.analyzer.Symbols._
-import phantm.AST.Trees._
+import phantm.AST.{Trees => AST}
 import phantm.Positional
 
 object Trees {
 
-  sealed abstract class CFGTree extends Positional {
+  sealed abstract class Tree extends Positional {
     override def toString = stringRepr(this)
   }
 
@@ -16,181 +16,182 @@ object Trees {
     nextID
   }
 
-  sealed abstract class CFGStatement extends CFGTree {
+  sealed abstract class Statement extends Tree {
     self =>
     var uniqueID: Int = nextStatementID
   }
 
-  case class CFGUnset(variable: CFGVariable) extends CFGStatement
-  case class CFGAssign(variable: CFGVariable, value: CFGSimpleValue) extends CFGStatement
+  case class Unset(variable: Variable) extends Statement
+  case class Assign(variable: Variable, value: SimpleValue) extends Statement
 
-  case class CFGAssignUnary(variable: CFGVariable,
-                            unOp: CFGUnaryOperator,
-                            expr: CFGSimpleValue) extends CFGStatement
+  case class AssignUnary(variable: Variable,
+                            unOp: UnaryOperator,
+                            expr: SimpleValue) extends Statement
 
-  case class CFGAssignBinary(variable: CFGVariable,
-                             lhs: CFGSimpleValue,
-                             binOp: CFGBinaryOperator,
-                             rhs: CFGSimpleValue) extends CFGStatement
+  case class AssignBinary(variable: Variable,
+                             lhs: SimpleValue,
+                             binOp: BinaryOperator,
+                             rhs: SimpleValue) extends Statement
 
 
-  case class CFGError() extends CFGStatement {
+  case class Error() extends Statement {
     override def toString = stringRepr(this);
   }
 
-  case class CFGAssume(lhs: CFGSimpleValue, relOp: CFGRelationalOperator, rhs: CFGSimpleValue) extends CFGStatement
-  case class CFGPrint(rhs: CFGSimpleValue) extends CFGStatement
+  case class Assume(lhs: SimpleValue, relOp: RelationalOperator, rhs: SimpleValue) extends Statement
+  case class Print(rhs: SimpleValue) extends Statement
 
-  case object CFGSkip extends CFGStatement
+  case object Skip extends Statement
 
-  sealed abstract class CFGExpression extends CFGStatement
-  sealed abstract class CFGSimpleValue extends CFGExpression
-  sealed abstract class CFGVariable extends CFGSimpleValue
-  sealed abstract class CFGSimpleVariable extends CFGVariable
+  sealed abstract class Expression extends Statement
+  sealed abstract class SimpleValue extends Expression
+  sealed abstract class Variable extends SimpleValue
+  sealed abstract class SimpleVariable extends Variable
 
   /** Used to represent the identifiers from the original program. */
-  case class CFGIdentifier(symbol: VariableSymbol) extends CFGSimpleVariable with Symbolic {
+  case class Identifier(symbol: VariableSymbol) extends SimpleVariable with Symbolic {
     override def getSymbol = symbol
     override def setSymbol(s: Symbol) = this
     override def toString = stringRepr(this)
   }
 
   /** Used to represent intermediate values (fresh identifiers). */
-  case class CFGTempID(value: String) extends CFGSimpleVariable
-  case class CFGClassProperty(symbol: PropertySymbol) extends CFGSimpleVariable
+  case class TempID(value: java.lang.String) extends SimpleVariable
+  case class ClassProperty(symbol: PropertySymbol) extends SimpleVariable
 
-  case class CFGVariableVar(v: CFGSimpleValue) extends CFGVariable
-  case class CFGArrayEntry(arr: CFGSimpleValue, index: CFGSimpleValue) extends CFGVariable
-  case class CFGNextArrayEntry(arr: CFGSimpleValue) extends CFGVariable
-  case class CFGObjectProperty(obj: CFGSimpleValue, index: CFGSimpleValue) extends CFGVariable
-  case class CFGVariableClassProperty(cl: ClassRef, index: CFGSimpleValue) extends CFGVariable
-  case class CFGNone() extends CFGVariable
+  case class VariableVar(v: SimpleValue) extends Variable
+  case class ArrayEntry(arr: SimpleValue, index: SimpleValue) extends Variable
+  case class NextArrayEntry(arr: SimpleValue) extends Variable
+  case class ObjectProperty(obj: SimpleValue, index: SimpleValue) extends Variable
+  case class VariableClassProperty(cl: AST.ClassRef, index: SimpleValue) extends Variable
+  case class NoVar() extends Variable
 
-  case class CFGLong(value: Long) extends CFGSimpleValue
-  case class CFGFloat(value: Float) extends CFGSimpleValue
-  case class CFGString(value: String) extends CFGSimpleValue
-  case class CFGTrue() extends CFGSimpleValue
-  case class CFGAny() extends CFGSimpleValue
-  case class CFGFalse() extends CFGSimpleValue
-  case class CFGNull() extends CFGSimpleValue
-  case class CFGThis() extends CFGSimpleValue
-  case class CFGEmptyArray() extends CFGSimpleValue
-  case class CFGInstanceof(lhs: CFGSimpleValue, cl: ClassRef) extends CFGSimpleValue
-  case class CFGCast(to: CastType, e: CFGSimpleValue) extends CFGSimpleValue
-  case class CFGArrayNext(ar: CFGSimpleValue) extends CFGSimpleValue
-  case class CFGArrayCurElement(ar: CFGSimpleValue) extends CFGSimpleValue
-  case class CFGArrayCurKey(ar: CFGSimpleValue) extends CFGSimpleValue
-  case class CFGArrayCurIsValid(ar: CFGSimpleValue) extends CFGSimpleValue
+  case class PHPLong(value: Long) extends SimpleValue
+  case class PHPFloat(value: Float) extends SimpleValue
+  case class PHPString(value: java.lang.String) extends SimpleValue
+  case class PHPTrue() extends SimpleValue
+  case class PHPAny() extends SimpleValue
+  case class PHPFalse() extends SimpleValue
+  case class PHPNull() extends SimpleValue
+  case class PHPThis() extends SimpleValue
+  case class PHPEmptyArray() extends SimpleValue
 
-  case class CFGConstant(cs: ConstantSymbol) extends CFGSimpleValue
-  case class CFGClassConstant(cs: ClassConstantSymbol) extends CFGSimpleValue
-  case class CFGVariableClassConstant(cl: ClassRef, name: Identifier) extends CFGSimpleValue
+  case class Instanceof(lhs: SimpleValue, cl: AST.ClassRef) extends SimpleValue
+  case class Cast(to: AST.CastType, e: SimpleValue) extends SimpleValue
+  case class ArrayNext(ar: SimpleValue) extends SimpleValue
+  case class ArrayCurElement(ar: SimpleValue) extends SimpleValue
+  case class ArrayCurKey(ar: SimpleValue) extends SimpleValue
+  case class ArrayCurIsValid(ar: SimpleValue) extends SimpleValue
 
-  case class CFGTernary(cond: CFGSimpleValue,
-                         then: CFGSimpleValue,
-                         elze: CFGSimpleValue) extends CFGSimpleValue
+  case class Constant(cs: ConstantSymbol) extends SimpleValue
+  case class ClassConstant(cs: ClassConstantSymbol) extends SimpleValue
+  case class VariableClassConstant(cl: AST.ClassRef, name: AST.Identifier) extends SimpleValue
 
-  case class CFGFunctionCall(id: Identifier,
-                             params: List[CFGSimpleValue]) extends CFGSimpleValue
+  case class Ternary(cond: SimpleValue,
+                         then: SimpleValue,
+                         elze: SimpleValue) extends SimpleValue
 
-  case class CFGStaticMethodCall(cl: ClassRef,
-                                 id: Identifier,
-                                 params: List[CFGSimpleValue]) extends CFGSimpleValue
+  case class FunctionCall(id: AST.Identifier,
+                             params: List[SimpleValue]) extends SimpleValue
 
-  case class CFGMethodCall(receiver: CFGSimpleValue,
-                                 id: Identifier,
-                                 params: List[CFGSimpleValue]) extends CFGSimpleValue
+  case class StaticMethodCall(cl: AST.ClassRef,
+                                 id: AST.Identifier,
+                                 params: List[SimpleValue]) extends SimpleValue
 
-  case class CFGNew(cl: ClassRef, params: List[CFGSimpleValue]) extends CFGSimpleValue
-  case class CFGClone(obj: CFGSimpleValue) extends CFGSimpleValue
+  case class MethodCall(receiver: SimpleValue,
+                                 id: AST.Identifier,
+                                 params: List[SimpleValue]) extends SimpleValue
 
-  sealed abstract class CFGBinaryOperator
-  sealed trait CFGRelationalOperator
+  case class New(cl: AST.ClassRef, params: List[SimpleValue]) extends SimpleValue
+  case class Clone(obj: SimpleValue) extends SimpleValue
 
-  case object PLUS extends CFGBinaryOperator { override def toString = "+" }
-  case object MINUS extends CFGBinaryOperator { override def toString = "-" }
-  case object MULT extends CFGBinaryOperator { override def toString = "*" }
-  case object DIV extends CFGBinaryOperator { override def toString = "/" }
-  case object CONCAT extends CFGBinaryOperator { override def toString = "." }
-  case object MOD extends CFGBinaryOperator { override def toString = "%" }
-  case object INSTANCEOF extends CFGBinaryOperator { override def toString = "instanceof" }
+  sealed abstract class BinaryOperator
+  sealed trait RelationalOperator
 
-  case object BOOLEANAND extends CFGBinaryOperator { override def toString = "&&" }
-  case object BOOLEANOR extends CFGBinaryOperator { override def toString = "||" }
-  case object BOOLEANXOR extends CFGBinaryOperator { override def toString = "xor" }
+  case object PLUS extends BinaryOperator { override def toString = "+" }
+  case object MINUS extends BinaryOperator { override def toString = "-" }
+  case object MULT extends BinaryOperator { override def toString = "*" }
+  case object DIV extends BinaryOperator { override def toString = "/" }
+  case object CONCAT extends BinaryOperator { override def toString = "." }
+  case object MOD extends BinaryOperator { override def toString = "%" }
+  case object INSTANCEOF extends BinaryOperator { override def toString = "instanceof" }
 
-  case object BITWISEAND extends CFGBinaryOperator { override def toString = "&" }
-  case object BITWISEOR extends CFGBinaryOperator { override def toString = "|" }
-  case object BITWISEXOR extends CFGBinaryOperator { override def toString = "^" }
+  case object BOOLEANAND extends BinaryOperator { override def toString = "&&" }
+  case object BOOLEANOR extends BinaryOperator { override def toString = "||" }
+  case object BOOLEANXOR extends BinaryOperator { override def toString = "xor" }
 
-  case object SHIFTLEFT extends CFGBinaryOperator { override def toString = "<<" }
-  case object SHIFTRIGHT extends CFGBinaryOperator { override def toString = ">>" }
+  case object BITWISEAND extends BinaryOperator { override def toString = "&" }
+  case object BITWISEOR extends BinaryOperator { override def toString = "|" }
+  case object BITWISEXOR extends BinaryOperator { override def toString = "^" }
 
-  case object LT extends CFGBinaryOperator with CFGRelationalOperator { override def toString = "<" }
-  case object LEQ extends CFGBinaryOperator with CFGRelationalOperator { override def toString = "<=" }
-  case object GEQ extends CFGBinaryOperator with CFGRelationalOperator { override def toString = ">=" }
-  case object GT extends CFGBinaryOperator with CFGRelationalOperator { override def toString = ">" }
+  case object SHIFTLEFT extends BinaryOperator { override def toString = "<<" }
+  case object SHIFTRIGHT extends BinaryOperator { override def toString = ">>" }
 
-  case object EQUALS extends CFGBinaryOperator with CFGRelationalOperator { override def toString = "==" }
-  case object IDENTICAL extends CFGBinaryOperator with CFGRelationalOperator { override def toString = "===" }
-  case object NOTEQUALS extends CFGBinaryOperator with CFGRelationalOperator { override def toString = "!=" }
-  case object NOTIDENTICAL extends CFGBinaryOperator with CFGRelationalOperator { override def toString = "!==" }
+  case object LT extends BinaryOperator with RelationalOperator { override def toString = "<" }
+  case object LEQ extends BinaryOperator with RelationalOperator { override def toString = "<=" }
+  case object GEQ extends BinaryOperator with RelationalOperator { override def toString = ">=" }
+  case object GT extends BinaryOperator with RelationalOperator { override def toString = ">" }
 
-  sealed abstract class CFGUnaryOperator
-  case object BOOLEANNOT extends CFGUnaryOperator { override def toString = "!" }
-  case object BITSIWENOT extends CFGUnaryOperator { override def toString = "~" }
-  case object PREINC extends CFGUnaryOperator { override def toString = "++ (pre)" }
-  case object POSTINC extends CFGUnaryOperator { override def toString = "++ (post)" }
-  case object PREDEC extends CFGUnaryOperator { override def toString = "-- (pre)" }
-  case object POSTDEC extends CFGUnaryOperator { override def toString = "-- (post)" }
-  case object SILENCE extends CFGUnaryOperator { override def toString = "@" }
+  case object EQUALS extends BinaryOperator with RelationalOperator { override def toString = "==" }
+  case object IDENTICAL extends BinaryOperator with RelationalOperator { override def toString = "===" }
+  case object NOTEQUALS extends BinaryOperator with RelationalOperator { override def toString = "!=" }
+  case object NOTIDENTICAL extends BinaryOperator with RelationalOperator { override def toString = "!==" }
 
-  def stringRepr(tree: CFGTree): String = {
+  sealed abstract class UnaryOperator
+  case object BOOLEANNOT extends UnaryOperator { override def toString = "!" }
+  case object BITSIWENOT extends UnaryOperator { override def toString = "~" }
+  case object PREINC extends UnaryOperator { override def toString = "++ (pre)" }
+  case object POSTINC extends UnaryOperator { override def toString = "++ (post)" }
+  case object PREDEC extends UnaryOperator { override def toString = "-- (pre)" }
+  case object POSTDEC extends UnaryOperator { override def toString = "-- (post)" }
+  case object SILENCE extends UnaryOperator { override def toString = "@" }
+
+  def stringRepr(tree: Tree): String = {
     val assOp = " := "
 
     tree match {
-      case CFGAssignUnary(v, u, e) => v + assOp + u + e
-      case CFGAssignBinary(v, l, b, r) => v + assOp + l + " " + b + " " + r
-      case CFGStaticMethodCall(r, mid, p) => r + "::" + mid.value + p.mkString("(", ", ", ")")
-      case CFGMethodCall(r, mid, p) => r + "->" + mid.value + p.mkString("(", ", ", ")")
-      case CFGFunctionCall(fid, p) => fid.value + p.mkString("(", ", ", ")")
-      case CFGConstant(cs) => cs.name
-      case CFGClassConstant(cs) => cs.cs.name + "::" + cs.name
-      case CFGVariableClassConstant(cl, cid) => cl + "::" + cid.value
-      case CFGTernary(i, then, elze) => i + " ? " + then + " : " + elze
-      case CFGAssign(v, e) => v + assOp + e
-      case CFGCast(to, e) => "("+to+")" + e
-      case CFGSkip => "..."
-      case CFGAssume(l, o, r) => "[" + l + o + r + "]"
-      case CFGPrint(v) => "print("+v+")"
-      case CFGUnset(v) => "unset("+v+")"
-      case CFGString(value) => "\"" + value + "\""
-      case CFGLong(value) => value.toString
-      case CFGFloat(value) => value.toString
-      case CFGNew(tpe, params) => "new " + tpe + params.mkString("(", ", ", ")")
-      case CFGClone(obj) => "clone " + obj
-      case CFGTrue() => "true"
-      case CFGNull() => "null"
-      case CFGEmptyArray() => "array()"
-      case CFGFalse() => "false"
-      case CFGAny() => "any"
-      case CFGNone() => "none"
-      case CFGError() => "error"
-      case CFGThis() => "this"
-      case CFGArrayNext(a) => a + ".next"
-      case CFGArrayCurKey(a) => a + ".key"
-      case CFGArrayCurElement(a) => a + ".current"
-      case CFGArrayCurIsValid(a) => a + ".valid"
-      case CFGInstanceof(obj, StaticClassRef(_, _, id)) => obj + " instanceof "+id.value
-      case CFGInstanceof(obj, _) => obj + " instanceof ?"
-      case CFGIdentifier(sym) => sym.name
-      case CFGTempID(value) => value
-      case CFGVariableVar(v) => "*("+v+")"
-      case CFGArrayEntry(arr, index) => arr+"["+index+"]"
-      case CFGNextArrayEntry(arr) => arr+"[]"
-      case CFGObjectProperty(obj, prop) => obj+"->"+prop;
-      case CFGClassProperty(sym) => sym.cs.name+"::$"+sym.name;
-      case CFGVariableClassProperty(cl, prop) => cl+"::$"+prop;
+      case AssignUnary(v, u, e) => v + assOp + u + e
+      case AssignBinary(v, l, b, r) => v + assOp + l + " " + b + " " + r
+      case StaticMethodCall(r, mid, p) => r + "::" + mid.value + p.mkString("(", ", ", ")")
+      case MethodCall(r, mid, p) => r + "->" + mid.value + p.mkString("(", ", ", ")")
+      case FunctionCall(fid, p) => fid.value + p.mkString("(", ", ", ")")
+      case Constant(cs) => cs.name
+      case ClassConstant(cs) => cs.cs.name + "::" + cs.name
+      case VariableClassConstant(cl, cid) => cl + "::" + cid.value
+      case Ternary(i, then, elze) => i + " ? " + then + " : " + elze
+      case Assign(v, e) => v + assOp + e
+      case Cast(to, e) => "("+to+")" + e
+      case Skip => "..."
+      case Assume(l, o, r) => "[" + l + o + r + "]"
+      case Print(v) => "print("+v+")"
+      case Unset(v) => "unset("+v+")"
+      case PHPString(value) => "\"" + value + "\""
+      case PHPLong(value) => value.toString
+      case PHPFloat(value) => value.toString
+      case New(tpe, params) => "new " + tpe + params.mkString("(", ", ", ")")
+      case Clone(obj) => "clone " + obj
+      case PHPTrue() => "true"
+      case PHPNull() => "null"
+      case PHPEmptyArray() => "array()"
+      case PHPFalse() => "false"
+      case PHPAny() => "any"
+      case NoVar() => "none"
+      case Error() => "error"
+      case PHPThis() => "this"
+      case ArrayNext(a) => a + ".next"
+      case ArrayCurKey(a) => a + ".key"
+      case ArrayCurElement(a) => a + ".current"
+      case ArrayCurIsValid(a) => a + ".valid"
+      case Instanceof(obj, AST.StaticClassRef(_, _, id)) => obj + " instanceof "+id.value
+      case Instanceof(obj, _) => obj + " instanceof ?"
+      case Identifier(sym) => sym.name
+      case TempID(value) => value
+      case VariableVar(v) => "*("+v+")"
+      case ArrayEntry(arr, index) => arr+"["+index+"]"
+      case NextArrayEntry(arr) => arr+"[]"
+      case ObjectProperty(obj, prop) => obj+"->"+prop;
+      case ClassProperty(sym) => sym.cs.name+"::$"+sym.name;
+      case VariableClassProperty(cl, prop) => cl+"::$"+prop;
     }
   }
 }
