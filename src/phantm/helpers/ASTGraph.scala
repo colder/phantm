@@ -1,7 +1,8 @@
 package phantm.helpers
 
 import phantm._
-import phantm.AST.{Trees, STToAST}
+import phantm.ast.Trees._
+import phantm.ast.STToAST
 import phantm.util.IncludeResolver
 import java.io._
 
@@ -19,8 +20,7 @@ class ASTGraph extends Helper {
             }
     }
 
-    def generateDotGraph(root: Trees.Program, printStream: java.io.PrintStream) {
-        import phantm.AST.Trees._;
+    def generateDotGraph(root: Program, printStream: java.io.PrintStream) {
         var nextId = 1;
 
         def emit(str: String) = printStream.print(str);
@@ -41,7 +41,6 @@ class ASTGraph extends Helper {
         def elements(p:Product) = (0 until p.productArity).map(p.productElement(_))
 
         def dotPrint(o: Any, pid: Int): Unit = {
-            import phantm.AST.Trees._;
             o match {
                 case Some(n) => dotPrint(n, pid)
                 case None =>

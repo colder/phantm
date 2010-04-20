@@ -1,4 +1,4 @@
-package phantm.AST;
+package phantm.ast
 
 import Trees._
 import phantm.Compiler

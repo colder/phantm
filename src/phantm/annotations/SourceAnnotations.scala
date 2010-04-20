@@ -1,5 +1,5 @@
 package phantm.annotations
-import phantm.AST._
+import phantm.ast._
 import phantm.types._
 import phantm.symbols._
 import phantm.util.Reporter

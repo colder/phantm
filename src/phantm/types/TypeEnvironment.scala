@@ -1,9 +1,9 @@
-package phantm.controlflow
+package phantm.types
 
 import phantm.Main
-import phantm.CFG.Trees._
+import phantm.cfg.Trees._
 import phantm.symbols._
-import phantm.types._
+import phantm.dataflow.Environment
 
 class TypeEnvironment(val map: Map[SimpleVariable, Type], val scope: Option[ClassSymbol], val store: ObjectStore) extends Environment[TypeEnvironment, Statement] {
 

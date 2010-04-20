@@ -1,8 +1,7 @@
-package phantm.controlflow
+package phantm.dataflow
 
 import phantm.Main;
-import phantm.CFG.{LabeledDirectedGraphImp, VertexImp};
-import scala.collection.mutable.Set;
+import phantm.cfg.{LabeledDirectedGraphImp, VertexImp};
 
 class AnalysisAlgorithm[E <: Environment[E, S],S]
                (transferFun : TransferFunction[E,S],

@@ -1,15 +1,14 @@
-package phantm.controlflow;
+package phantm.phases;
 
-import phantm.CFG.{ASTToCFG};
-import phantm.AST.Trees._;
-import phantm.AST.ASTTraversal;
-import phantm.analyzer._;
-import phantm.Main;
-import phantm.symbols._;
+import phantm.Main
+import phantm.cfg.{ASTToCFG}
+import phantm.ast.Trees._
+import phantm.ast.ASTSimpleTraversal
+import phantm.symbols._
+import phantm.types.TypeFlowAnalyzer
 
-case class CheckContext();
 
-case class CFGChecks(node: Tree) extends ASTTraversal[CheckContext](node, CheckContext()) {
+case class TypeFlowAnalysis(node: Tree) extends ASTSimpleTraversal(node) {
 
     def display(content: String) = {
         if (Main.displayProgress) {
@@ -23,13 +22,7 @@ case class CFGChecks(node: Tree) extends ASTTraversal[CheckContext](node, CheckC
         (name != "phantm_incl")
     }
 
-    /**
-     * Visit the nodes and aggregate information inside the context to provide
-     * hints about obvious errors directly from the AST
-     */
-    def visit(node: Tree, ctx: CheckContext): (CheckContext, Boolean) = {
-        var newCtx = ctx;
-
+    def visit(node: Tree): Boolean = {
         node match {
             case Program(stmts) if filter("main") =>
                 display("Converting main scope...")
@@ -77,11 +70,11 @@ case class CFGChecks(node: Tree) extends ASTTraversal[CheckContext](node, CheckC
             case _ =>
         }
 
-        (newCtx, true)
+        true
     }
 
     def execute = {
-        traverse(visit)
+        traverse(visit _)
         if (Main.displayProgress) {
             display("All done")
             println

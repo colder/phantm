@@ -1,6 +1,6 @@
-package phantm.controlflow
+package phantm.dataflow
 
-import phantm.CFG.VertexImp;
+import phantm.cfg.VertexImp;
 
 abstract class Environment[E <: Environment[_, S],S] {
     type Env = E

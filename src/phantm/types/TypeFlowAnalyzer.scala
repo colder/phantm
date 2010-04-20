@@ -1,13 +1,14 @@
-package phantm.controlflow
+package phantm.types
 
 import phantm.Main
 import phantm.util.Reporter
 
-import phantm.AST.{Trees => AST}
-import phantm.CFG.ControlFlowGraph
-import phantm.CFG.Trees._
+import phantm.ast.{Trees => AST}
+import phantm.cfg.ControlFlowGraph
+import phantm.cfg.Trees._
 import phantm.symbols._
-import phantm.types._
+import phantm.annotations.AnnotationsStore
+import phantm.dataflow.AnalysisAlgorithm
 
 case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope) {
 

@@ -1,8 +1,8 @@
 package phantm.symbols
 
 import phantm.util.{Reporter, Positional, Evaluator}
-import phantm.AST.Trees._
-import phantm.AST.ASTTraversal
+import phantm.ast.Trees._
+import phantm.ast.ASTTraversal
 import phantm.types._
 import phantm.annotations.SourceAnnotations
 
@@ -182,8 +182,6 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
     }
 
     def checkTypeHint(annoType: Type, hintType: Type, pos: Positional): Type = {
-        import phantm.controlflow.BaseTypeEnvironment
-
         val res = TypeLattice.meet(annoType, hintType)
 
         if (res == TBottom) {

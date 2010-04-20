@@ -1,4 +1,4 @@
-package phantm.controlflow
+package phantm.annotations
 
 import phantm.symbols._
 import phantm.types._

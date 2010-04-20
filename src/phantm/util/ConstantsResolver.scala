@@ -4,8 +4,8 @@ import phantm.types.TypeHelpers
 import phantm.types.TAny
 import phantm.Main
 
-import phantm.AST.Trees._
-import phantm.AST.ASTTransform
+import phantm.ast.Trees._
+import phantm.ast.ASTTransform
 
 import scala.collection.mutable.Map
 

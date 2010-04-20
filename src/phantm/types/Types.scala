@@ -1,8 +1,7 @@
 package phantm.types;
 
-import phantm.controlflow.TypeEnvironment
-import phantm.AST.{Trees => AST}
-import phantm.CFG.{Trees => CFG}
+import phantm.ast.{Trees => AST}
+import phantm.cfg.{Trees => CFG}
 import phantm.symbols._
 
 object RecProtection {

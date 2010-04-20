@@ -1,6 +1,6 @@
 package phantm.types
 
-import phantm.AST.Trees._
+import phantm.ast.Trees._
 
 object TypeHelpers {
     def exprToType(oe: Option[Expression]): Type = oe match {

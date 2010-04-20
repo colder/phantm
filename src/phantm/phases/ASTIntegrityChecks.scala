@@ -1,13 +1,13 @@
-package phantm.analyzer
+package phantm.phases
 
-import phantm.AST.Trees._
-import phantm.AST.ASTTraversal
 import phantm.Main
+import phantm.ast.Trees._
+import phantm.ast.ASTTraversal
 import phantm.util.Reporter
 
 case class CheckContext(topLevel: Boolean, inCond: Boolean);
 
-case class ASTChecks(node: Tree, context: CheckContext) extends ASTTraversal[CheckContext](node, context) {
+case class ASTIntegrityChecks(node: Tree, context: CheckContext) extends ASTTraversal[CheckContext](node, context) {
 
     def this(node: Tree) = this(node, CheckContext(true, false))
 
@@ -32,11 +32,11 @@ case class ASTChecks(node: Tree, context: CheckContext) extends ASTTraversal[Che
                 }
             case x @ If(cond, then, elze) =>
                 // New traversals
-                ASTChecks(cond, CheckContext(false, true)).execute
-                ASTChecks(then, CheckContext(false, false)).execute
+                ASTIntegrityChecks(cond, CheckContext(false, true)).execute
+                ASTIntegrityChecks(then, CheckContext(false, false)).execute
                 elze match {
                     case Some(el) =>
-                        ASTChecks(el, CheckContext(false, false)).execute
+                        ASTIntegrityChecks(el, CheckContext(false, false)).execute
                     case None =>
                 }
 
@@ -44,10 +44,10 @@ case class ASTChecks(node: Tree, context: CheckContext) extends ASTTraversal[Che
 
             case x @ For(init, cond, step, body) =>
                 // New traversals
-                ASTChecks(init, CheckContext(false, false)).execute
-                ASTChecks(cond, CheckContext(false, true)).execute
-                ASTChecks(step, CheckContext(false, false)).execute
-                ASTChecks(body, CheckContext(false, false)).execute
+                ASTIntegrityChecks(init, CheckContext(false, false)).execute
+                ASTIntegrityChecks(cond, CheckContext(false, true)).execute
+                ASTIntegrityChecks(step, CheckContext(false, false)).execute
+                ASTIntegrityChecks(body, CheckContext(false, false)).execute
 
                 continue = false // Do not do twice
             case x: While =>

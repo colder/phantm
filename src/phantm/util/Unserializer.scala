@@ -2,8 +2,7 @@ package phantm.util
 
 import phantm.symbols._
 import phantm.types._
-import phantm.CFG.Trees.Identifier
-import phantm.controlflow.TypeEnvironment
+import phantm.cfg.Trees.Identifier
 import io.Source
 import java.io.File
 

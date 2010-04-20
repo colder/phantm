@@ -1,8 +1,8 @@
-package phantm.CFG
+package phantm.cfg
 import phantm.Main
 import phantm.util.{Reporter, Positional}
-import phantm.AST.{Trees => AST}
-import phantm.CFG.{Trees => CFG}
+import phantm.ast.{Trees => AST}
+import phantm.cfg.{Trees => CFG}
 import phantm.symbols._
 import scala.collection.mutable.{Map,HashMap}
 

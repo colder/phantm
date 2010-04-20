@@ -1,7 +1,7 @@
 package phantm.util
 import phantm.{Main, Compiler}
-import phantm.AST.Trees._
-import phantm.AST.ASTTransform
+import phantm.ast.Trees._
+import phantm.ast.ASTTransform
 
 import scala.io.Source
 import java.io.File
@@ -82,7 +82,7 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
         }
 
         def getAST(path: String): Expression = {
-            import phantm.AST.STToAST
+            import phantm.ast.STToAST
 
             IncludeResolver.includedFiles += path
 

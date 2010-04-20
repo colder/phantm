@@ -1,4 +1,4 @@
-package phantm.AST
+package phantm.ast
 import Trees._
 
 abstract class ASTTransform(p: Program) {

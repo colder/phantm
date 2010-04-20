@@ -4,9 +4,9 @@ import phantm.Compiler
 import phantm.util.{Reporter,IncludeResolver}
 import phantm.controlflow._
 import phantm.analyzer._
-import phantm.CFG.ASTToCFG
-import phantm.AST.Trees._
-import phantm.AST.{ASTTraversal, STToAST}
+import phantm.cfg.ASTToCFG
+import phantm.ast.Trees._
+import phantm.ast.{ASTTraversal, STToAST}
 import phantm.symbols._
 
 class CFGGraph extends Helper {

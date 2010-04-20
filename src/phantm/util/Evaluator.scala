@@ -2,7 +2,7 @@ package phantm.util
 
 import phantm.symbols.GlobalSymbols
 import phantm.types._
-import phantm.AST.Trees._
+import phantm.ast.Trees._
 import java.io.File
 
 object Evaluator {

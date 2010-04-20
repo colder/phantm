@@ -1,12 +1,13 @@
-package phantm.controlflow
+package phantm.types
 
 import phantm.Main
 import phantm.util.{Positional, Reporter}
-import phantm.AST.{Trees => AST}
-import phantm.CFG.ControlFlowGraph
-import phantm.CFG.Trees._
+import phantm.ast.{Trees => AST}
+import phantm.cfg.ControlFlowGraph
+import phantm.cfg.Trees._
 import phantm.symbols._
-import phantm.types._
+import phantm.annotations.AnnotationsStore
+import phantm.dataflow.TransferFunction
 
 case class TypeTransferFunction(silent: Boolean, collectAnnotations: Boolean) extends TransferFunction[TypeEnvironment, Statement] {
     def notice(msg: String, pos: Positional) = if (!silent) Reporter.notice(msg, pos)

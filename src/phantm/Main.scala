@@ -1,4 +1,4 @@
-package phantm;
+package phantm
 
 import java.io._
 
@@ -7,8 +7,8 @@ import phantm.analyzer._
 import phantm.controlflow._
 
 import phantm.symbols.CollectSymbols
-import phantm.AST.Trees.Program
-import phantm.AST.STToAST
+import phantm.ast.Trees.Program
+import phantm.ast.STToAST
 
 object Main {
     var files: List[String] = Nil;
@@ -193,7 +193,7 @@ object Main {
 
                     if (displayProgress) println("6/11 Structural checks...")
                     // Traverse the ast to look for ovious mistakes.
-                    new ASTChecks(ast) execute;
+                    new phases.ASTIntegrityChecks(ast) execute;
 
                     Reporter.errorMilestone
 
@@ -217,7 +217,7 @@ object Main {
 
                     if (displayProgress) println("10/11 Type flow analysis...")
                     // Build CFGs and analyzes them
-                    CFGChecks(ast) execute;
+                    phases.TypeFlowAnalysis(ast) execute;
 
                     if (!exportAPIPath.isEmpty) {
                         if (displayProgress) println("11/11 Export Annotations...")

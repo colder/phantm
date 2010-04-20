@@ -1,8 +1,6 @@
-package phantm.controlflow
+package phantm.types
 
-import phantm.types.Type
-import phantm.types.ObjectStore
-import phantm.CFG.Trees.SimpleVariable
+import phantm.cfg.Trees.SimpleVariable
 
 object BaseTypeEnvironment extends TypeEnvironment(Map[SimpleVariable, Type](), None, new ObjectStore) {
     override def union(e: TypeEnvironment) = {

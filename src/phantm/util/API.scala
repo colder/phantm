@@ -1,12 +1,11 @@
 package phantm.util
 
-import phantm.AST.Trees._
+import phantm.ast.Trees._
 import phantm.symbols._
 import phantm.types._
-import phantm.controlflow.AnnotationsStore
+import phantm.annotations.AnnotationsStore
 
 import scala.xml._
-
 
 object API {
     // Load an API into the symbol tables

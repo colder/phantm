@@ -1,4 +1,4 @@
-package phantm.CFG
+package phantm.cfg
 
 import Trees.Statement
 

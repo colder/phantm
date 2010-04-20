@@ -1,13 +1,23 @@
-package phantm.AST;
+package phantm.ast
 
-import Trees.Tree;
+import Trees.Tree
 
-abstract class ASTTraversal[ContextType](root: Tree, initCtx: ContextType) {
+sealed class DummyContext;
+
+abstract class ASTSimpleTraversal(root: Tree) extends ASTTraversal[DummyContext](root, new DummyContext) {
+    def traverse (visit: Tree => Boolean): Unit = {
+        def visit0(t: Tree, ctx: DummyContext): (DummyContext, Boolean) = (ctx, visit(t))
+        super.traverse(visit0)
+    }
+
+}
+
+abstract class ASTTraversal[UserDataType](root: Tree, initCtx: UserDataType) {
 
     def elements(p: Product) = (0 until p.productArity).map(p.productElement(_))
 
     /* Reduces from different structures to Trees */
-    def addRec(el: Any, ctx: ContextType): List[(Tree, ContextType)] = {
+    def addRec(el: Any, ctx: UserDataType): List[(Tree, UserDataType)] = {
         el match {
             case Some(n) =>
                 addRec(n, ctx)
@@ -26,8 +36,8 @@ abstract class ASTTraversal[ContextType](root: Tree, initCtx: ContextType) {
         }
     }
 
-    def traverse (visit: (Tree, ContextType) => (ContextType, Boolean)): Unit = {
-        var nodes: List[(Tree, ContextType)] = (root, initCtx) :: Nil;
+    def traverse (visit: (Tree, UserDataType) => (UserDataType, Boolean)): Unit = {
+        var nodes: List[(Tree, UserDataType)] = (root, initCtx) :: Nil;
 
         def traverse0: Unit = nodes match {
             case (node, ctx) :: ns => {

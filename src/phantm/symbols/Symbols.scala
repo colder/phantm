@@ -2,7 +2,7 @@ package phantm.symbols
 
 import scala.collection.mutable.HashMap
 import phantm.Main
-import phantm.AST.Trees._
+import phantm.ast.Trees._
 import phantm.util.{Reporter, Positional}
 import phantm.annotations.{FunctionTypeAnnotation, TypeAnnotation}
 import phantm.types._

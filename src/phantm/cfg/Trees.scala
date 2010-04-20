@@ -1,6 +1,6 @@
-package phantm.CFG
+package phantm.cfg
 import phantm.symbols._
-import phantm.AST.{Trees => AST}
+import phantm.ast.{Trees => AST}
 import phantm.util.Positional
 
 object Trees {
