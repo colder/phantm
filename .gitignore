@@ -1,8 +1,8 @@
 classes
 benchs
 builds
-java/phpanalysis/parser/*.java
-java/phpanalysis/parser/*.bin
+java/phantm/parser/*.java
+java/phantm/parser/*.bin
 */*/*/*.sw?
 */*/*.sw?
 */*.sw?
