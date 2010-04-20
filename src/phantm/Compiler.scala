@@ -3,7 +3,7 @@ package phantm
 import java.io._
 import phantm.parser._
 import phantm.util.{Positional, JavaListIteratorWrapper}
-import phantm.analyzer.SourceAnnotations.{Parser => AnnotationsParser}
+import phantm.annotations.SourceAnnotations.{Parser => AnnotationsParser}
 
 class Compiler(filename: String) {
     type LexerComment = phantm.parser.Lexer#Comment;

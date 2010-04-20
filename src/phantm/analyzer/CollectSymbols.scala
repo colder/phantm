@@ -5,6 +5,7 @@ import phantm.AST.Trees._
 import phantm.AST.ASTTraversal
 import phantm.analyzer.Symbols._
 import phantm.analyzer.Types._
+import phantm.annotations.SourceAnnotations
 
 import scala.collection.mutable.HashSet
 import scala.collection.mutable.HashMap
