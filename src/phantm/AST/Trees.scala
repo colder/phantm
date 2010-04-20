@@ -2,7 +2,7 @@ package phantm.AST
 
 import phantm.util.Positional
 import phantm.annotations.CommentAnnotation
-import phantm.analyzer.Symbols.Symbolic
+import phantm.symbols.Symbolic
 
 // todo, namespaces
 object Trees {

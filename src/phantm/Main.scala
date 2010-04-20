@@ -3,6 +3,7 @@ package phantm;
 import java.io._
 
 import phantm.analyzer._
+import phantm.symbols.CollectSymbols
 import phantm.controlflow._
 import phantm.AST.Trees.Program
 import phantm.AST.STToAST
@@ -10,7 +11,6 @@ import phantm.util.Reporter
 
 object Main {
     var files: List[String] = Nil;
-    var displaySymbols     = false;
     var displayUsage       = false;
     var verbosity          = 1;
     var format             = "termbg";
@@ -55,9 +55,6 @@ object Main {
                 displayUsage = true
             case "--maindir" :: x :: xs =>
                 mainDir = x
-                handleArgs(xs)
-            case "--symbols" :: xs =>
-                displaySymbols = true
                 handleArgs(xs)
             case "--showincludes" :: xs =>
                 displayIncludes = true
@@ -203,11 +200,6 @@ object Main {
                     // Collect symbols and detect obvious types errors
                     CollectSymbols(ast) execute;
                     Reporter.errorMilestone
-
-                    if (displaySymbols) {
-                        // Emit summary of all symbols
-                        analyzer.Symbols.emitSummary
-                    }
 
                     if (displayProgress) println("8/11 Importing Annotations...")
                     // Complete symbols with annotations as comments

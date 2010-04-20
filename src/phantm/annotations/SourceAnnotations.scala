@@ -1,7 +1,7 @@
 package phantm.annotations
 import phantm.AST._
 import phantm.analyzer.Types._
-import phantm.analyzer.Symbols._
+import phantm.symbols._
 import phantm.util.Reporter
 import scala.util.parsing.combinator.syntactical.StandardTokenParsers
 

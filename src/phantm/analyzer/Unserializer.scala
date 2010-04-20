@@ -1,5 +1,5 @@
 package phantm.analyzer;
-import Symbols._
+import phantm.symbols._
 import Types._
 import io.Source
 import java.io.File

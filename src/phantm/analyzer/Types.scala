@@ -1,11 +1,11 @@
 package phantm.analyzer;
-import Symbols._
 import scala.collection.immutable.{Map, Set}
 
 import phantm.lattice.TypeLattice
 import phantm.controlflow.TypeEnvironment
 import phantm.AST.{Trees => AST}
 import phantm.CFG.{Trees => CFG}
+import phantm.symbols._
 
 object Types {
     object defaultType extends TypeWideningFunction {

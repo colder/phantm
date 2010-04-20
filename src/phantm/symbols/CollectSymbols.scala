@@ -1,10 +1,10 @@
-package phantm.analyzer
+package phantm.symbols
 
 import phantm.util.{Reporter, Positional}
 import phantm.AST.Trees._
 import phantm.AST.ASTTraversal
-import phantm.analyzer.Symbols._
 import phantm.analyzer.Types._
+import phantm.analyzer.Evaluator
 import phantm.annotations.SourceAnnotations
 
 import scala.collection.mutable.HashSet

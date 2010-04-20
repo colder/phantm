@@ -2,7 +2,7 @@ package phantm.analyzer
 
 import phantm.util.{Positional,Reporter}
 import phantm.AST.Trees._
-import Symbols._
+import phantm.symbols._
 import Types._
 import scala.xml._
 

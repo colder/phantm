@@ -1,5 +1,5 @@
 package phantm.CFG
-import phantm.analyzer.Symbols._
+import phantm.symbols._
 import phantm.AST.{Trees => AST}
 import phantm.util.Positional
 

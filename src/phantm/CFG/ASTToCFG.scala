@@ -3,7 +3,7 @@ import phantm.Main
 import phantm.util.{Reporter, Positional}
 import phantm.AST.{Trees => AST}
 import phantm.CFG.{Trees => CFG}
-import phantm.analyzer.Symbols._
+import phantm.symbols._
 import scala.collection.mutable.{Map,HashMap}
 
 object ASTToCFG {

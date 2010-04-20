@@ -5,6 +5,7 @@ import phantm.AST.Trees._;
 import phantm.AST.ASTTraversal;
 import phantm.analyzer._;
 import phantm.Main;
+import phantm.symbols._;
 
 case class CheckContext();
 
@@ -32,15 +33,15 @@ case class CFGChecks(node: Tree) extends ASTTraversal[CheckContext](node, CheckC
         node match {
             case Program(stmts) if filter("main") =>
                 display("Converting main scope...")
-                val cfg = ASTToCFG.convertAST(stmts, Symbols.GlobalSymbols)
+                val cfg = ASTToCFG.convertAST(stmts, GlobalSymbols)
                 display("Analyzing main...")
-                val tfa = new TypeFlowAnalyzer(cfg, Symbols.GlobalSymbols)
+                val tfa = new TypeFlowAnalyzer(cfg, GlobalSymbols)
                 tfa.analyze
 
 
             case FunctionDecl(name, args, retref, body) if filter(name.value) =>
                 name.getSymbol match {
-                    case fs: Symbols.FunctionSymbol =>
+                    case fs: FunctionSymbol =>
                         display("Converting function "+name.value+"...")
                         val cfg = ASTToCFG.convertAST(List(body), fs)
                         display("Analyzing function "+name.value+"...")
@@ -53,10 +54,10 @@ case class CFGChecks(node: Tree) extends ASTTraversal[CheckContext](node, CheckC
 
             case ClassDecl(name, flags, parent, interfaces, methods, static_props, props, consts) =>
                 name.getSymbol match {
-                    case cl: Symbols.ClassSymbol =>
+                    case cl: ClassSymbol =>
                         for (m <- methods) if (m.body != None) {
                             m.name.getSymbol match {
-                                case ms: Symbols.MethodSymbol =>
+                                case ms: MethodSymbol =>
                                     if (filter(cl.name+"::"+m.name.value)) {
                                         display("Converting method "+cl.name+"::"+m.name.value+"...")
                                         val cfg = ASTToCFG.convertAST(List(m.body.get), ms)

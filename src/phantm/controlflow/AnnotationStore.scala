@@ -1,6 +1,6 @@
 package phantm.controlflow
 
-import phantm.analyzer.Symbols._
+import phantm.symbols._
 import phantm.analyzer.Types._
 
 object AnnotationsStore {

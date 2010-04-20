@@ -1,6 +1,6 @@
 package phantm.analyzer
 
-import Symbols.GlobalSymbols
+import phantm.symbols.GlobalSymbols
 import Types._
 import phantm.AST.Trees._
 import java.io.File

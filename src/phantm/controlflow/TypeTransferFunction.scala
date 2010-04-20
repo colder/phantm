@@ -5,7 +5,7 @@ import phantm.util.{Positional, Reporter}
 import phantm.AST.{Trees => AST}
 import phantm.CFG.ControlFlowGraph
 import phantm.CFG.Trees._
-import phantm.analyzer.Symbols._
+import phantm.symbols._
 import phantm.analyzer.Types._
 import phantm.lattice.TypeLattice
 

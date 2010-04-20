@@ -73,4 +73,12 @@ trait Positional {
         file = p.file
         this
     }
+
+    def previousPos = {
+        if (file == None) {
+            "internally"
+        } else {
+            "in "+getPos
+        }
+    }
 }

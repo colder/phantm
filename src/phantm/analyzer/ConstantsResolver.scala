@@ -1,5 +1,5 @@
 package phantm.analyzer
-import Symbols._
+import phantm.symbols._
 import Types.TAny
 import phantm.Main
 import phantm.util.Reporter

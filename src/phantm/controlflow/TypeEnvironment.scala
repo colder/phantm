@@ -2,7 +2,7 @@ package phantm.controlflow
 
 import phantm.Main
 import phantm.CFG.Trees._
-import phantm.analyzer.Symbols._
+import phantm.symbols._
 import phantm.analyzer.Types._
 import phantm.lattice.TypeLattice
 

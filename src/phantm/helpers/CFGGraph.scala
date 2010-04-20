@@ -7,6 +7,7 @@ import phantm.analyzer._
 import phantm.CFG.ASTToCFG
 import phantm.AST.Trees._
 import phantm.AST.{ASTTraversal, STToAST}
+import phantm.symbols._
 
 class CFGGraph extends Helper {
 
@@ -42,12 +43,12 @@ case class CFGGraphs(node: Tree) extends ASTTraversal[CheckContext](node, CheckC
 
         node match {
             case Program(stmts) =>
-                val cfg = ASTToCFG.convertAST(stmts, Symbols.GlobalSymbols)
+                val cfg = ASTToCFG.convertAST(stmts, GlobalSymbols)
                 cfg.writeDottyToFile("result.cfg-"+n, "Main");
                 n = n + 1;
             case FunctionDecl(name, args, retref, body) =>
                 name.getSymbol match {
-                    case fs: Symbols.FunctionSymbol =>
+                    case fs: FunctionSymbol =>
                         val cfg = ASTToCFG.convertAST(List(body), fs)
                         cfg.writeDottyToFile("result.cfg-"+n, name.value);
                         n = n + 1;
@@ -58,7 +59,7 @@ case class CFGGraphs(node: Tree) extends ASTTraversal[CheckContext](node, CheckC
             case ClassDecl(name, flags, parent, interfaces, methods, static_props, props, consts) =>
                 for (m <- methods) if (m.body != None) {
                     m.name.getSymbol match {
-                        case ms: Symbols.MethodSymbol =>
+                        case ms: MethodSymbol =>
                             val cfg = ASTToCFG.convertAST(List(m.body.get), ms)
                             cfg.writeDottyToFile("result.cfg-"+n, name.value+"::"+m.name.value);
                             n = n + 1;
