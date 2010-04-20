@@ -1,17 +1,30 @@
-package phantm.symbols
+package phantm.phases
 
 import phantm.util.{Reporter, Positional, Evaluator}
 import phantm.ast.Trees._
 import phantm.ast.ASTTraversal
 import phantm.types._
+import phantm.symbols._
 import phantm.annotations.SourceAnnotations
 
 import scala.collection.mutable.HashSet
 import scala.collection.mutable.HashMap
 
-case class Context(varScope: Scope, cl: Option[ClassSymbol], iface: Option[IfaceSymbol]);
+object SymbolsCollectionPhase extends Phase(Some(DumpsCollectionPhase)) {
 
-case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Context(GlobalSymbols, None, None)) {
+    def name = "Symbols collections"
+    def description = "Collecting symbols"
+
+    def run(ctx: PhasesContext): PhasesContext = {
+        CollectSymbols(ctx.oast.get) execute;
+        ctx
+    }
+
+}
+
+case class SymContext(varScope: Scope, cl: Option[ClassSymbol], iface: Option[IfaceSymbol]);
+
+case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, SymContext(GlobalSymbols, None, None)) {
     var classCycleDetectionSet = new HashSet[ClassDecl]
     var classesToPass = List[ClassDecl]()
     var classList: List[(ClassSymbol, ClassDecl)] = Nil
@@ -19,7 +32,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
     /**
      * Visit classes and add them to a waiting list, so they can be processed in right order
      */
-    def visitClasses(node: Tree, ctx: Context): (Context, Boolean) = {
+    def visitClasses(node: Tree, ctx: SymContext): (SymContext, Boolean) = {
         node match {
             case cl @ ClassDecl(name, flags, parent, interfaces, methods, static_props, props, consts) =>
                 classesToPass = classesToPass ::: List(cl)
@@ -194,7 +207,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
      * Visit the nodes and aggregate information inside the context to provide
      * hints about obvious errors directly from the AST
      */
-    def visit(node: Tree, ctx: Context): (Context, Boolean) = {
+    def visit(node: Tree, ctx: SymContext): (SymContext, Boolean) = {
         var newCtx = ctx;
         var continue = true;
 
@@ -251,20 +264,20 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
                 fs.registerPredefVariables
                 GlobalSymbols.registerFunction(fs)
                 name.setSymbol(fs)
-                newCtx = Context(fs, None, None)
+                newCtx = SymContext(fs, None, None)
 
             case ClassDecl(name, flags, parent, interfaces, methods, static_props, props, consts) =>
                 GlobalSymbols.lookupClass(name.value) match {
                     case Some(cs) =>
                         name.setSymbol(cs);
-                        newCtx = Context(ctx.varScope, Some(cs), None)
+                        newCtx = SymContext(ctx.varScope, Some(cs), None)
                     case None => error("Woops ?!? Came across a phantom class");
                 }
 
             case InterfaceDecl(name, parents, methods, consts) =>
                 GlobalSymbols.lookupIface(name.value) match {
                     case Some(iface) =>
-                        newCtx = Context(ctx.varScope, None, Some(iface))
+                        newCtx = SymContext(ctx.varScope, None, Some(iface))
                     case None => error("Woops ?!? Came across a phantom interface");
                 }
 
@@ -273,7 +286,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[Context](node, Contex
                     case (Some(cs), _) => cs.lookupMethod(name.value, Some(cs)) match {
                         case LookupResult(Some(ms: MethodSymbol), _, _) =>
                             name.setSymbol(ms)
-                            newCtx = Context(ms, Some(cs), None)
+                            newCtx = SymContext(ms, Some(cs), None)
                         case _ => error("Woops?! No such method declared yet??")
                     }
                     case (None, Some(iface)) =>

@@ -8,6 +8,7 @@ import phantm.cfg.ASTToCFG
 import phantm.ast.Trees._
 import phantm.ast.{ASTTraversal, STToAST}
 import phantm.symbols._
+import phantm.phases.CollectSymbols
 
 class CFGGraph extends Helper {
 

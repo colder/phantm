@@ -5,6 +5,18 @@ import phantm.ast.Trees._
 import phantm.ast.ASTTraversal
 import phantm.util.Reporter
 
+object ASTChecksPhase  extends Phase(Some(SymbolsCollectionPhase)) {
+
+    def name = "AST checks"
+    def description = "Checking AST integrity"
+
+    def run(ctx: PhasesContext): PhasesContext = {
+        new ASTIntegrityChecks(ctx.oast.get) execute;
+        ctx
+    }
+
+}
+
 case class CheckContext(topLevel: Boolean, inCond: Boolean);
 
 case class ASTIntegrityChecks(node: Tree, context: CheckContext) extends ASTTraversal[CheckContext](node, context) {

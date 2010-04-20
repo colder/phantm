@@ -6,7 +6,8 @@ import phantm.util._
 import phantm.analyzer._
 import phantm.controlflow._
 
-import phantm.symbols.CollectSymbols
+import phantm.phases._
+
 import phantm.ast.Trees.Program
 import phantm.ast.STToAST
 
@@ -143,103 +144,37 @@ object Main {
 
     def compile(files: List[String]) = {
         try {
+            var ctx = new PhasesContext().setFiles(files)
 
-            if (displayProgress) println("1/11 Parsing...")
-            val sts = files map { f => val c = new Compiler(f); (c, c compile) }
-            if (sts exists { _._2 == None} ) {
-                println("Compilation failed.")
-            } else {
-                if (displayProgress) println("2/11 Simplifying...")
-                val asts = sts map { c => new STToAST(c._1, c._2.get) getAST }
-                Reporter.errorMilestone
-                var ast: Program = asts.reduceLeft {(a,b) => a combine b}
-                Reporter.errorMilestone
+            var oph: Option[Phase] = Some(CompilationPhase)
 
-                if (!onlyLint) {
-                    if (importAPI) {
-                        if (displayProgress) println("3/11 Importing APIs...")
-                        // Load internal classes and functions into the symbol tables
-                        new API.Reader(mainDir+"spec/internal_api.xml").load
-
-                        for (api <- apis) {
-                            new API.Reader(api).load
-                        }
-                    } else {
-                        if (displayProgress) println("3/11 Importing APIs (skipped)")
+            var i = 1;
+            while(oph != None) {
+                val ph = oph.get
+                try {
+                    if (displayProgress) {
+                        println(i+": "+ph.name+"...")
                     }
-
-                    if (resolveIncludes) {
-                        ast = ConstantsResolver(ast, false).transform
+                    ctx = ph.run(ctx)
+                    Reporter.errorMilestone
+                    oph = ph.next
+                    i += 1
+                } catch {
+                    case e: PhaseException =>
+                        Reporter.error("Processing failed at phase "+i+" ("+e.ph.name+"): "+e.error)
                         Reporter.errorMilestone
-
-                        if (displayProgress) println("4/11 Resolving includes...")
-                        // Run AST transformers
-                        ast = IncludeResolver(ast).transform
-
-                        if (displayIncludes) {
-                            println("     - Files sucessfully imported:")
-                            for (f <- IncludeResolver.includedFiles) {
-                                println("       * "+f)
-                            }
-                        }
-                    } else {
-                        if (displayProgress) println("4/11 Resolving and expanding (skipped)")
-                    }
-
-                    if (displayProgress) println("5/11 Resolving constants...")
-                    // Run Constants Resolver, to issue potential errors
-                    ast = ConstantsResolver(ast, true).transform
-                    Reporter.errorMilestone
-
-                    if (displayProgress) println("6/11 Structural checks...")
-                    // Traverse the ast to look for ovious mistakes.
-                    new phases.ASTIntegrityChecks(ast) execute;
-
-                    Reporter.errorMilestone
-
-                    if (displayProgress) println("7/11 Symbolic checks...")
-                    // Collect symbols and detect obvious types errors
-                    CollectSymbols(ast) execute;
-                    Reporter.errorMilestone
-
-                    if (displayProgress) println("8/11 Importing Annotations...")
-                    // Complete symbols with annotations as comments
-
-
-                    if (dumps != Nil) {
-                        if (displayProgress) println("9/11 Importing dumped state...")
-                        for (dump <- dumps) {
-                            dumpedData = Unserializer.fromDump(dump) :: dumpedData
-                        }
-                    } else {
-                        if (displayProgress) println("9/11 Importing dumped state (skipped)")
-                    }
-
-                    if (displayProgress) println("10/11 Type flow analysis...")
-                    // Build CFGs and analyzes them
-                    phases.TypeFlowAnalysis(ast) execute;
-
-                    if (!exportAPIPath.isEmpty) {
-                        if (displayProgress) println("11/11 Export Annotations...")
-
-                        // Compact collected annotations and output XML
-                        new API.Writer(exportAPIPath.get).emitXML
-                    } else {
-                        if (displayProgress) println("11/11 Export Annotations (skipped)")
-                    }
-                    Reporter.errorMilestone
-
-                    val n = Reporter.getNoticesCount
-                    val tn = Reporter.getTotalNoticesCount
-
-                    if (focusOnMainFiles && n > 0 && tn > n) {
-                        println(n+" notice"+(if (n>1) "s" else "")+" occured in main files.")
-                        println(tn+" notice"+(if (tn>1) "s" else "")+" occured in total.")
-                    } else {
-                        println(n+" notice"+(if (n>1) "s" else "")+" occured.")
-                    }
                 }
             }
+            val n = Reporter.getNoticesCount
+            val tn = Reporter.getTotalNoticesCount
+
+            if (focusOnMainFiles && n > 0 && tn > n) {
+                println(n+" notice"+(if (n>1) "s" else "")+" occured in main files.")
+                println(tn+" notice"+(if (tn>1) "s" else "")+" occured in total.")
+            } else {
+                println(n+" notice"+(if (n>1) "s" else "")+" occured.")
+            }
+
         } catch {
             case Reporter.ErrorException(en, nn, etn, ntn) =>
                 if (focusOnMainFiles) {

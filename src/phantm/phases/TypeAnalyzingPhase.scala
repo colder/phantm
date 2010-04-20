@@ -7,6 +7,18 @@ import phantm.ast.ASTSimpleTraversal
 import phantm.symbols._
 import phantm.types.TypeFlowAnalyzer
 
+object TypeAnalyzingPhase extends Phase(Some(APIExportingPhase)) {
+
+    def name = "Typeflow analysis"
+    def description = "Analyzing types"
+
+    def run(ctx: PhasesContext): PhasesContext = {
+        TypeFlowAnalysis(ctx.oast.get) execute;
+        ctx
+    }
+
+}
+
 
 case class TypeFlowAnalysis(node: Tree) extends ASTSimpleTraversal(node) {
 
