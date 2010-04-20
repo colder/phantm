@@ -3,6 +3,7 @@ package phantm.helpers
 import phantm._
 import phantm.controlflow._
 import phantm.analyzer._
+import phantm.CFG.{CFG, ASTToCFG}
 import phantm.AST.Trees._
 import phantm.AST.ASTTraversal
 import phantm.parser.STToAST

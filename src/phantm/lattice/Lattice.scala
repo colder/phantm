@@ -1,11 +1,5 @@
-package phantm.controlflow
-import scala.collection.Set
+package phantm.lattice
 
-trait PartialOrder {
-    type Env
-    type E
-    def leq(envx: Env, envy: Env, x : E, y : E) : Boolean
-}
 trait Lattice extends PartialOrder {
     val top : E                  // universal set
     val bottom : E               // empty set

@@ -4,7 +4,7 @@ import Types._
 import io.Source
 import java.io.File
 import phantm.controlflow.TypeFlow._
-import phantm.controlflow.CFGTrees.CFGIdentifier
+import phantm.CFG.Trees.CFGIdentifier
 
 class UnserializeException(msg: String) extends Exception(msg)
 

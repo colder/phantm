@@ -1,9 +1,9 @@
-package phantm.controlflow
+package phantm.CFG
 import phantm.analyzer.Symbols._
 import phantm.AST.Trees._
 import phantm.Positional
 
-object CFGTrees {
+object Trees {
 
   sealed abstract class CFGTree extends Positional {
     override def toString = stringRepr(this)

@@ -1,5 +1,6 @@
 package phantm.controlflow;
 
+import phantm.CFG.{CFG, ASTToCFG};
 import phantm.AST.Trees._;
 import phantm.AST.ASTTraversal;
 import phantm.analyzer._;

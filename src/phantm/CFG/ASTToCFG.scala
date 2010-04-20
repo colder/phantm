@@ -1,8 +1,8 @@
-package phantm.controlflow
+package phantm.CFG
 import phantm._
 import phantm.AST.Trees._
+import phantm.CFG.Trees._
 import phantm.analyzer.Symbols._
-import CFGTrees._
 import scala.collection.mutable.{Map,HashMap}
 
 object ASTToCFG {

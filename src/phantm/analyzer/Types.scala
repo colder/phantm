@@ -3,7 +3,7 @@ import Symbols._
 import scala.collection.immutable.{Map, Set}
 
 import phantm.controlflow.TypeFlow._
-import phantm.controlflow.CFGTrees._
+import phantm.CFG.Trees._
 import phantm.AST.Trees._
 
 object Types {

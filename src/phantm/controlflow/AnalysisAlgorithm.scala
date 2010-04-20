@@ -1,6 +1,7 @@
 package phantm.controlflow
 
 import phantm.Main;
+import phantm.CFG.{LabeledDirectedGraphImp, VertexImp};
 import scala.collection.mutable.Set;
 
 class AnalysisAlgorithm[E <: Environment[E, S],S]

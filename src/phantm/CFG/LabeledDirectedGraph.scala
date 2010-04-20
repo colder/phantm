@@ -1,4 +1,4 @@
-package phantm.controlflow
+package phantm.CFG
  
 /** Mutable Directed Graph with Labels */
 abstract trait LabeledDirectedGraph[LabelType] {

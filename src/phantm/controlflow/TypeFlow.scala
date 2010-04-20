@@ -1,11 +1,9 @@
 package phantm.controlflow
 
-import CFGTrees._
-import scala.collection.immutable.HashMap
-import scala.collection.immutable.HashSet
-import scala.collection.immutable.Map
 import phantm._
 import phantm.AST.Trees.Identifier
+import phantm.CFG.CFG
+import phantm.CFG.Trees._
 import phantm.analyzer.Symbols._
 import phantm.analyzer.Types._
 
@@ -223,7 +221,7 @@ object TypeFlow {
         }
     }
 
-    object BaseTypeEnvironment extends TypeEnvironment(HashMap[CFGSimpleVariable, Type](), None, new ObjectStore) {
+    object BaseTypeEnvironment extends TypeEnvironment(Map[CFGSimpleVariable, Type](), None, new ObjectStore) {
         override def union(e: TypeEnvironment) = {
             e
         }
@@ -246,7 +244,7 @@ object TypeFlow {
     }
 
     object AnnotationsStore {
-        var functions = HashMap[String, (List[TFunction], Type)]();
+        var functions = Map[String, (List[TFunction], Type)]();
 
         def collectFunctionRet(fs: FunctionSymbol, t: Type) = {
             val newData = functions.get(fs.name) match {
@@ -275,11 +273,11 @@ object TypeFlow {
 
 
         def this(scope: Option[ClassSymbol]) = {
-            this(new HashMap[CFGSimpleVariable, Type], scope, new ObjectStore);
+            this(Map[CFGSimpleVariable, Type](), scope, new ObjectStore);
         }
 
         def this() = {
-            this(new HashMap[CFGSimpleVariable, Type], None, new ObjectStore);
+            this(Map[CFGSimpleVariable, Type](), None, new ObjectStore);
         }
 
         def lookup(v: CFGSimpleVariable): Option[Type] = map.get(v)
