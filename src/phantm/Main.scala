@@ -261,7 +261,6 @@ object Main {
         println("                                      term     : ANSI colors below the code");
         println("                                      html     : HTML colors below the code");
         println("                                      quickfix : quickfix error style");
-        println("         --symbols              Display symbols");
         println("         --showincludes         Display the list of included files");
         println("         --noincludes           Disables includes resolutions");
         println("         --noapi                Do not load the main API");
