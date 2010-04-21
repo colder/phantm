@@ -16,7 +16,7 @@ In order to use this tool, you need
 
 * ant
 * Java 1.6 or higher
-* Scala 2.7.7 (2.8 is not yet supported)
+* Scala 2.8.0 or higher
 
 Also, make sure you've the $SCALA_HOME environment variable pointing to your scala distribution.
 
