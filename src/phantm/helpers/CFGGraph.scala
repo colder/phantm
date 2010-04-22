@@ -2,8 +2,6 @@ package phantm.helpers
 
 import phantm.Compiler
 import phantm.util.{Reporter,IncludeResolver}
-import phantm.controlflow._
-import phantm.analyzer._
 import phantm.cfg.ASTToCFG
 import phantm.ast.Trees._
 import phantm.ast.{ASTTraversal, STToAST}

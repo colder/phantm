@@ -85,6 +85,7 @@ JAR
 ============================================================================ -->
 
  <target name="jar" depends="build">
+    <mkdir dir="builds"/>
      <delete file="builds/phantm.jar"/>
      <jar destfile="builds/phantm.jar"
           basedir="classes"

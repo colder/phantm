@@ -3,8 +3,6 @@ package phantm
 import java.io._
 
 import phantm.util._
-import phantm.analyzer._
-import phantm.controlflow._
 
 import phantm.phases._
 
