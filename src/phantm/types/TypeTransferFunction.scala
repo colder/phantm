@@ -199,10 +199,14 @@ case class TypeTransferFunction(silent: Boolean,
                 val indtyp = typeFromSV(ind)
 
                 typeFromSV(ar) match {
+                    case TString | _: TStringLit  if leq(indtyp, TNumeric) =>
+                        TString
                     case t: TArray =>
                         t.lookupByType(indtyp)
                     case u: TUnion =>
                         u.types.map { _ match {
+                            case TString | _: TStringLit if leq(indtyp, TNumeric) =>
+                                TString
                             case ta: TArray =>
                                 ta.lookupByType(indtyp)
                             case _ =>
@@ -496,7 +500,7 @@ case class TypeTransferFunction(silent: Boolean,
                 getCheckType(v, TString)
             case ArrayEntry(arr, index) =>
                 typeFromSV(arr) match {
-                    case TString =>
+                    case TString | _ :TStringLit =>
                         // If arr is known to be a string, index must be Int
                         expOrRef(index, TInt)
                         getCheckType(arr, TString)
