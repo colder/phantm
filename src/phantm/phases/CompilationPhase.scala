@@ -3,6 +3,8 @@ package phantm.phases
 import phantm.Compiler
 import phantm.ast.STToAST
 
+
+
 object CompilationPhase extends Phase(Some(APIImportationPhase)) {
     def name = "Compilation"
     def description = "Generating AST"

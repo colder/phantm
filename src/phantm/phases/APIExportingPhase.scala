@@ -1,15 +1,14 @@
 package phantm.phases
 
-import phantm.Main
-import phantm.util.API
+import phantm.util.{API, Reporter}
 
 object APIExportingPhase extends Phase(None) {
     def name = "API exportation"
     def description = "exporting API to XML files"
 
-    def run(ctx: PhasesContext): PhasesContext = {
-        if (!Main.exportAPIPath.isEmpty) {
-            new API.Writer(Main.exportAPIPath.get).emitXML
+    def run(reporter: Reporter, ctx: PhasesContext): PhasesContext = {
+        if (!ctx.settings.exportAPIPath.isEmpty) {
+            new API.Writer(ctx.settings.exportAPIPath.get).emitXML
         }
         ctx
     }

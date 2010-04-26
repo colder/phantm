@@ -9,8 +9,8 @@ object DumpsCollectionPhase extends Phase(Some(TypeAnalyzingPhase)) {
     def description = "Collecting and importing dumps"
 
     def run(ctx: PhasesContext): PhasesContext = {
-        if (Main.dumps != Nil) {
-            for (dump <- Main.dumps) {
+        if (ctx.settings.dumps != Nil) {
+            for (dump <- ctx.settings.dumps) {
                 Main.dumpedData = Unserializer.fromDump(dump) :: Main.dumpedData
             }
         }

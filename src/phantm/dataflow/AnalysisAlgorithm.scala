@@ -1,12 +1,13 @@
 package phantm.dataflow
 
-import phantm.Main;
+import phantm.Settings;
 import phantm.cfg.{LabeledDirectedGraphImp, VertexImp};
 
 class AnalysisAlgorithm[E <: Environment[E, S],S]
                (transferFun : TransferFunction[E,S],
                 bottomEnv : E,
                 baseEnv : E,
+                settings: Settings,
                 cfg : LabeledDirectedGraphImp[S])
 {
     type Vertex = VertexImp[S]
@@ -49,7 +50,7 @@ class AnalysisAlgorithm[E <: Environment[E, S],S]
 
         var workList = Set[Vertex]();
 
-        if (Main.displayProgress) {
+        if (settings.displayProgress) {
             println("      * Analyzing CFG ("+cfg.V.size+" vertices, "+cfg.E.size+" edges)")
         }
 
@@ -62,7 +63,7 @@ class AnalysisAlgorithm[E <: Environment[E, S],S]
         while (workList.size > 0) {
             pass += 1
 
-            if (Main.displayProgress) {
+            if (settings.displayProgress) {
               println("      * Pass "+pass+" ("+workList.size+" nodes to propagate)...")
             }
 
@@ -94,7 +95,7 @@ class AnalysisAlgorithm[E <: Environment[E, S],S]
                 val nf = newFact.getOrElse(oldFact.copy);
 
                 if (nf != oldFact) {
-                    if (Main.testsActive) {
+                    if (settings.testsActive) {
                         oldFact.checkMonotonicity(v, nf, cfg.inEdges(v) map (e => (e.lab, facts(e.v1))))
                     }
 

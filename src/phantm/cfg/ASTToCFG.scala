@@ -1,5 +1,5 @@
 package phantm.cfg
-import phantm.Main
+import phantm.Settings
 import phantm.util.{Reporter, Positional}
 import phantm.ast.{Trees => AST}
 import phantm.cfg.{Trees => CFG}
@@ -9,7 +9,7 @@ import scala.collection.mutable.{Map,HashMap}
 object ASTToCFG {
 
   /** Builds a control flow graph from a method declaration. */
-  def convertAST(statements: List[AST.Statement], scope: Scope): ControlFlowGraph = {
+  def convertAST(statements: List[AST.Statement], scope: Scope, settings: Settings): ControlFlowGraph = {
     // Contains the entry+exit vertices for continue/break
     var gotoLabels = Map[String, Vertex]();
     var forwardGotos = Map[String, List[(Vertex, Positional)]]();
@@ -159,7 +159,7 @@ object ASTToCFG {
                                 case LookupResult(Some(ps), _, _) =>
                                     Some(CFG.ClassProperty(ps).setPos(v))
                                 case _ =>
-                                    if (Main.verbosity > 0) {
+                                    if (settings.verbosity > 0) {
                                         Reporter.notice("Undefined class property '"+cid.value+"::$"+pid.value+"'", pid)
                                     }
                                     None
@@ -200,13 +200,13 @@ object ASTToCFG {
                                 case Some(ccs) =>
                                     Some(CFG.ClassConstant(ccs).setPos(ex))
                                 case None =>
-                                    if (Main.verbosity > 0) {
+                                    if (settings.verbosity > 0) {
                                         Reporter.notice("Undefined class constant '"+cid.value+"::"+i.value+"'", i)
                                     }
                                     None
                             }
                         case _ =>
-                            if (Main.verbosity > 0) {
+                            if (settings.verbosity > 0) {
                                 Reporter.notice("Undefined class '"+cid.value+"'", cid)
                             }
                             None
@@ -662,7 +662,7 @@ object ASTToCFG {
                         Emit.setPC(nextGlobal)
                         nextGlobal = cfg.newVertex
                     case v =>
-                        if (Main.verbosity >= 2) {
+                        if (settings.verbosity >= 2) {
                             Reporter.notice("Non-trivial global statement ignored", v)
                         }
                 }

@@ -181,8 +181,6 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
             PHPFalse()
         }
 
-        Reporter.errorMilestone
-
         IncludeResolver.end
 
         result

@@ -1,7 +1,7 @@
 package phantm.phases
 
 import phantm.Main
-import phantm.util.{ConstantsResolver, IncludeResolver, Reporter}
+import phantm.util.{ConstantsResolver, IncludeResolver}
 
 object IncludesConstantsResolutionPhase extends Phase(Some(SymbolsCollectionPhase)) {
     def name = "Resolving includes"
@@ -11,13 +11,8 @@ object IncludesConstantsResolutionPhase extends Phase(Some(SymbolsCollectionPhas
         var newCtx = ctx
 
         newCtx = newCtx.setAST(ConstantsResolver(newCtx.oast.get, false).transform)
-        Reporter.errorMilestone
-
         newCtx = newCtx.setAST(IncludeResolver(newCtx.oast.get).transform)
-        Reporter.errorMilestone
-
         newCtx = newCtx.setAST(ConstantsResolver(newCtx.oast.get, false).transform)
-        Reporter.errorMilestone
 
         if (Main.displayIncludes) {
             println("     - Files sucessfully imported:")

@@ -10,29 +10,14 @@ import phantm.ast.Trees.Program
 import phantm.ast.STToAST
 
 object Main {
-    var files: List[String] = Nil;
-    var displayUsage       = false;
-    var verbosity          = 1;
-    var format             = "termbg";
-    var resolveIncludes    = true;
-    var importAPI          = true;
-    var testsActive        = false;
-    var displayFixPoint    = false;
-    var displayIncludes    = false;
-    var displayProgress    = false;
-    var focusOnMainFiles   = false;
-    var onlyLint           = false;
-    var typeFlowFilter     = List[String]();
-    var includePaths       = List(".");
-    var mainDir            = "./"
-    var apis               = List[String]();
-    var dumps              = List[String]();
-    var dumpedData         = List[Unserializer]();
-    var exportAPIPath: Option[String] = None;
+    var settings = Settings()
+    var displayUsage = false
+    var files = List[String]()
 
     def main(args: Array[String]): Unit = {
         if (args.length > 0) {
-            handleArgs(args.toList);
+            handleArgs(args.toList)
+
             if (displayUsage) {
                 usage
             } else {
@@ -40,7 +25,9 @@ object Main {
                     println("No file provided.")
                     usage
                 } else {
-                    compile(files)
+                    val rep = new Reporter(settings, files)
+                    Reporter.set(rep)
+                    new PhasesRunner(rep).run(new PhasesContext(files = files, settings = settings))
                 }
             }
         } else {
@@ -48,140 +35,94 @@ object Main {
         }
     }
 
-    def handleArgs(args: List[String]): Unit = {
+    def handleArgs(args: List[String]): Unit= {
         if (args == Nil) return;
         (args.head.toLowerCase :: args.tail) match {
             case "--help" :: xs =>
                 displayUsage = true
             case "--maindir" :: x :: xs =>
-                mainDir = x
+                settings = settings.copy(mainDir = x)
                 handleArgs(xs)
             case "--showincludes" :: xs =>
-                displayIncludes = true
+                settings = settings.copy(displayIncludes = true)
                 handleArgs(xs)
             case "--noincludes" :: xs =>
-                resolveIncludes = false
+                settings = settings.copy(resolveIncludes = false)
                 handleArgs(xs)
             case "--format" :: "termbg" :: xs =>
-                format = "termbg";
+                settings = settings.copy(format = "termbg")
                 handleArgs(xs)
             case "--format" :: "term" :: xs =>
-                format = "term";
+                settings = settings.copy(format = "term")
                 handleArgs(xs)
             case "--format" :: "html" :: xs =>
-                format = "html";
+                settings = settings.copy(format = "html")
                 handleArgs(xs)
             case "--format" :: "quickfix" :: xs =>
-                format = "quickfix";
+                settings = settings.copy(format = "quickfix")
                 handleArgs(xs)
             case "--format" :: "none" :: xs =>
-                format = "none";
+                settings = settings.copy(format = "none")
                 handleArgs(xs)
             case "--format" :: f :: xs =>
                 println("Invalid format "+f)
+                displayUsage = true
             case "--only" :: filter :: xs =>
-                typeFlowFilter = filter.replace("::", "/").split(":").map(_.replace("/", "::")).toList
+                settings = settings.copy(typeFlowFilter = filter.replace("::", "/").split(":").map(_.replace("/", "::")).toList)
                 handleArgs(xs)
             case "--focus" :: xs =>
-                focusOnMainFiles = true
+                settings = settings.copy(focusOnMainFiles = true)
                 handleArgs(xs)
             case "--noapi" :: xs =>
-                importAPI = false
+                settings = settings.copy(importAPI = false)
                 handleArgs(xs)
             case "--tests" :: xs =>
-                testsActive = true
+                settings = settings.copy(testsActive = true)
                 handleArgs(xs)
             case "--fixpoint" :: xs =>
-                displayFixPoint = true
+                settings = settings.copy(displayFixPoint = true)
                 handleArgs(xs)
             case "--debug" :: xs =>
-                displayFixPoint = true
-                testsActive     = true
-                displayProgress = true
-                verbosity       = 3
+                settings = settings.copy(displayFixPoint = true, testsActive = true, displayProgress = true, verbosity = 3)
                 handleArgs(xs)
             case "--quiet" :: xs =>
-                verbosity = 0
+                settings = settings.copy(verbosity = 0)
                 handleArgs(xs)
             case "--shy" :: xs =>
-                verbosity = -1
+                settings = settings.copy(verbosity = -1)
                 handleArgs(xs)
             case "--verbose" :: xs =>
-                verbosity = verbosity.max(2)
+                settings = settings.copy(verbosity = 2)
                 handleArgs(xs)
             case "--vverbose" :: xs =>
-                verbosity = verbosity.max(3)
+                settings = settings.copy(verbosity = 3)
                 handleArgs(xs)
             case "--includepath" :: ip :: xs =>
-                includePaths = ip.split(":").toList
+                settings = settings.copy(includePaths = ip.split(":").toList)
                 handleArgs(xs)
             case "--importincludes" :: paths :: xs =>
+                //TODO
                 IncludeResolver.importIncludes(paths.split(":").toList)
                 handleArgs(xs)
             case "--importdump" :: paths :: xs =>
-                dumps = paths.split(":").toList
+                settings = settings.copy(dumps = paths.split(":").toList)
                 handleArgs(xs)
             case "--importapi" :: aps :: xs =>
-                apis = aps.split(":").toList
+                settings = settings.copy(apis = aps.split(":").toList)
                 handleArgs(xs)
             case "--exportapi" :: path :: xs =>
-                exportAPIPath = Some(path)
+                settings = settings.copy(exportAPIPath = Some(path))
                 handleArgs(xs)
             case "--progress" :: xs =>
-                displayProgress = true
+                settings = settings.copy(displayProgress = true)
                 handleArgs(xs)
             case "--lint" ::  xs =>
-                onlyLint = true
+                settings = settings.copy(onlyLint = true)
                 handleArgs(xs)
             case x :: xs =>
                 files = files ::: args.head :: Nil
                 handleArgs(xs)
             case Nil =>
-        }
-    }
-
-    def compile(files: List[String]) = {
-        try {
-            var ctx = new PhasesContext().setFiles(files)
-
-            var oph: Option[Phase] = Some(CompilationPhase)
-
-            var i = 1;
-            while(oph != None) {
-                val ph = oph.get
-                try {
-                    if (displayProgress) {
-                        println(i+": "+ph.name+"...")
-                    }
-                    ctx = ph.run(ctx)
-                    Reporter.errorMilestone
-                    oph = ph.next
-                    i += 1
-                } catch {
-                    case e: PhaseException =>
-                        Reporter.error("Processing failed at phase "+i+" ("+e.ph.name+"): "+e.error)
-                        Reporter.errorMilestone
-                }
-            }
-            val n = Reporter.getNoticesCount
-            val tn = Reporter.getTotalNoticesCount
-
-            if (focusOnMainFiles && n > 0 && tn > n) {
-                println(n+" notice"+(if (n>1) "s" else "")+" occured in main files.")
-                println(tn+" notice"+(if (tn>1) "s" else "")+" occured in total.")
-            } else {
-                println(n+" notice"+(if (n>1) "s" else "")+" occured.")
-            }
-
-        } catch {
-            case Reporter.ErrorException(en, nn, etn, ntn) =>
-                if (focusOnMainFiles) {
-                    println(nn+" notice"+(if (nn>1) "s" else "")+" and "+en+" error"+(if (en>1) "s" else "")+" occured in main files, abort.")
-                    println(ntn+" notice"+(if (ntn>1) "s" else "")+" and "+etn+" error"+(if (etn>1) "s" else "")+" occured in total.")
-                } else {
-                    println(nn+" notice"+(if (nn>1) "s" else "")+" and "+en+" error"+(if (en>1) "s" else "")+" occured, abort.")
-
-                }
         }
     }
 

@@ -1,17 +1,11 @@
 package phantm.phases
 
 import phantm.ast.Trees.Program
+import phantm.util.Unserializer
 
-class PhasesContext(
-            val files: List[String],
-            val oast: Option[Program]
-            ) {
-
-    def this() = {
-        this(Nil, None)
-    }
-
-    def setFiles(files: List[String]) = new PhasesContext(files, oast)
-    def setAST(ast: Program) = new PhasesContext(files, Some(ast))
-
-}
+case class PhasesContext(
+    val files: List[String] = Nil,
+    val settings: phantm.Settings = Settings(),
+    val oast: Option[Program] = None,
+    val dumpedData: List[Unserializer] = Nul
+);

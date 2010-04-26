@@ -1,9 +1,8 @@
 package phantm.util
 import scala.io.Source
-import phantm.Main
+import phantm.Settings
 
-/* The reported trait is reponsible to output formatted errors */
-object Reporter {
+class Reporter(settings: Settings, mainFiles: List[String]) {
     type ErrorCheck = (String, String, String);
     type Error = (String, String, Positional, String);
 
@@ -14,6 +13,9 @@ object Reporter {
     private var totalNoticesCount = 0
     private var errorsCheck = Map[Option[String], Set[ErrorCheck]]().withDefaultValue(Set[ErrorCheck]())
     private var errors = Map[Option[String], Set[Error]]().withDefaultValue(Set[Error]())
+
+    def getNoticesCount = noticesCount
+    def getTotalNoticesCount = totalNoticesCount
 
     def error(msg: String) = {
         errorsCount += 1;
@@ -33,9 +35,6 @@ object Reporter {
         }
     }
 
-    def getNoticesCount = noticesCount
-    def getTotalNoticesCount = totalNoticesCount
-
     def notice(msg: String) = {
         noticesCount += 1;
         totalNoticesCount += 1;
@@ -54,13 +53,12 @@ object Reporter {
         }
     }
 
-    case class ErrorException(en: Int, nn: Int, etn: Int, ntn: Int) extends RuntimeException;
 
     def errorMilestone = {
-        var errorsToDisplay = if (Main.focusOnMainFiles) {
+        var errorsToDisplay = if (settings.focusOnMainFiles) {
             var errorSet = Map[Option[String], Set[Error]]()
             for ((file, errs) <- errors) {
-                if ((file != None) && (Main.files contains file.get)) {
+                if ((file != None) && (mainFiles contains file.get)) {
                     errorSet += (file -> errs)
                 } else {
                     // decrement error counts
@@ -118,12 +116,12 @@ object Reporter {
                             1
                         }
 
-                        if (Main.format != "termbg") {
+                        if (settings.format != "termbg") {
                             println(s)
 
-                            val (colorBegin, colorEnd) = if (Main.format == "term") {
+                            val (colorBegin, colorEnd) = if (settings.format == "term") {
                                 (Console.RED+Console.BOLD, Console.RESET)
-                            } else if (Main.format == "html") {
+                            } else if (settings.format == "html") {
                                 ("<span style=\"color: red;\">", "</span>")
                             } else {
                                 ("", "")
@@ -154,7 +152,7 @@ object Reporter {
     }
 
     private def emit(prefix: String, msg: String, pos: Positional) = {
-        if (Main.format == "quickfix") {
+        if (settings.format == "quickfix") {
             emitQuickFix(prefix, msg, pos)
         } else {
             emitNormal(prefix, msg, pos)
@@ -191,3 +189,25 @@ object Reporter {
     }
 
 }
+
+object Reporter {
+    private var rep: Option[Reporter] = None
+
+    def get = rep.getOrElse(throw new RuntimeException("Undefined Reporter instance"))
+
+    def set(newrep: Reporter) = this.rep = Some(newrep)
+
+    def error(msg: String) =
+        get.error(msg)
+
+    def error(msg: String, pos: Positional) =
+        get.error(msg, pos)
+
+    def notice(msg: String) =
+        get.notice(msg)
+
+    def notice(msg: String, pos: Positional) =
+        get.notice(msg, pos)
+}
+
+case class ErrorException(en: Int, nn: Int, etn: Int, ntn: Int) extends RuntimeException;

@@ -1,6 +1,6 @@
 package phantm.phases
 
-import phantm.Main
+import phantm.Settings
 import phantm.ast.Trees._
 import phantm.ast.ASTTraversal
 import phantm.util.Reporter
@@ -11,7 +11,7 @@ object ASTChecksPhase  extends Phase(Some(SymbolsCollectionPhase)) {
     def description = "Checking AST integrity"
 
     def run(ctx: PhasesContext): PhasesContext = {
-        new ASTIntegrityChecks(ctx.oast.get) execute;
+        new ASTIntegrityChecks(ctx.settings, ctx.oast.get) execute;
         ctx
     }
 
@@ -19,9 +19,11 @@ object ASTChecksPhase  extends Phase(Some(SymbolsCollectionPhase)) {
 
 case class CheckContext(topLevel: Boolean, inCond: Boolean);
 
-case class ASTIntegrityChecks(node: Tree, context: CheckContext) extends ASTTraversal[CheckContext](node, context) {
+case class ASTIntegrityChecks(settings: Settings,
+                              node: Tree,
+                              context: CheckContext) extends ASTTraversal[CheckContext](node, context) {
 
-    def this(node: Tree) = this(node, CheckContext(true, false))
+    def this(settings: Settings, node: Tree) = this(settings, node, CheckContext(true, false))
 
     /**
      * Visit the nodes and aggregate information inside the context to provide
@@ -34,12 +36,12 @@ case class ASTIntegrityChecks(node: Tree, context: CheckContext) extends ASTTrav
         node match {
             case f : FunctionDecl => 
                 newCtx = CheckContext(false, false); 
-                if (!ctx.topLevel && Main.verbosity >= 2) {
+                if (!ctx.topLevel && settings.verbosity >= 2) {
                     Reporter.notice("Function "+f.name.value+" should be declared at top-level", f.name)
                 }
             case c: ClassDecl =>
                 newCtx = CheckContext(false, false);
-                if (!ctx.topLevel && Main.verbosity >= 2) {
+                if (!ctx.topLevel && settings.verbosity >= 2) {
                     Reporter.notice("Class "+c.name.value+" should be declared at top-level", c.name)
                 }
             case x @ If(cond, then, elze) =>
@@ -72,34 +74,34 @@ case class ASTIntegrityChecks(node: Tree, context: CheckContext) extends ASTTrav
                 newCtx = CheckContext(false, false)
 
             // check for call-time pass-by-ref
-            case FunctionCall(ref, args) if Main.verbosity >= 2 => {
+            case FunctionCall(ref, args) if settings.verbosity >= 2 => {
                 for (arg <- args) if (arg.forceref) {
                     Reporter.notice("Usage of call-time pass-by-ref is deprecated and should be avoided", arg)
                 }
             }
 
-            case a @ Assign(vr, vl, _) if ctx.inCond && Main.verbosity >= 2 => {
+            case a @ Assign(vr, vl, _) if ctx.inCond && settings.verbosity >= 2 => {
                 Reporter.notice("Potential mistake: assignation used in an if condition", node)
             }
 
-            case MethodCall(obj, ref, args) if Main.verbosity >= 2 => {
+            case MethodCall(obj, ref, args) if settings.verbosity >= 2 => {
                 for (arg <- args) if (arg.forceref) {
                     Reporter.notice("Usage of call-time pass-by-ref is deprecated and should be avoided", arg)
                 }
             }
 
-            case StaticMethodCall(classref, ref, args) if Main.verbosity >= 2 => {
+            case StaticMethodCall(classref, ref, args) if settings.verbosity >= 2 => {
                 for (arg <- args) if (arg.forceref) {
                     Reporter.notice("Usage of call-time pass-by-ref is deprecated and should be avoided", arg)
                 }
             }
 
             // Check for variable variables
-            case v @ VariableVariable(ex) if Main.verbosity >= 3 => {
+            case v @ VariableVariable(ex) if settings.verbosity >= 3 => {
                 Reporter.notice("Variable variables should be avoided, use arrays instead", v)
             }
 
-            case d @ DynamicObjectProperty(o, ex) if Main.verbosity >= 3 => {
+            case d @ DynamicObjectProperty(o, ex) if settings.verbosity >= 3 => {
                 Reporter.notice("Dynamic object properties should be avoided", ex)
             }
 
