@@ -1,6 +1,6 @@
 package phantm.phases
 
-import phantm.Main
+import phantm.Settings
 import phantm.util.Unserializer
 
 object DumpsCollectionPhase extends Phase(Some(TypeAnalyzingPhase)) {
@@ -9,13 +9,15 @@ object DumpsCollectionPhase extends Phase(Some(TypeAnalyzingPhase)) {
     def description = "Collecting and importing dumps"
 
     def run(ctx: PhasesContext): PhasesContext = {
-        if (ctx.settings.dumps != Nil) {
-            for (dump <- ctx.settings.dumps) {
-                Main.dumpedData = Unserializer.fromDump(dump) :: Main.dumpedData
+        var data = List[Unserializer]()
+
+        if (Settings.get.dumps != Nil) {
+            for (dump <- Settings.get.dumps) {
+                data = Unserializer.fromDump(dump) :: data
             }
         }
 
-        ctx
+        ctx.copy(dumpedData = data)
     }
 
 }

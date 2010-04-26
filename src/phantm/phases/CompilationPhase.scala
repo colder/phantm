@@ -3,8 +3,6 @@ package phantm.phases
 import phantm.Compiler
 import phantm.ast.STToAST
 
-
-
 object CompilationPhase extends Phase(Some(APIImportationPhase)) {
     def name = "Compilation"
     def description = "Generating AST"
@@ -18,6 +16,8 @@ object CompilationPhase extends Phase(Some(APIImportationPhase)) {
 
         val asts = sts map { c => new STToAST(c._1, c._2.get) getAST }
 
-        ctx.setAST(asts.reduceLeft {(a,b) => a combine b})
+        val ast = asts.reduceLeft {(a,b) => a combine b}
+
+        ctx.copy(oast = Some(ast))
     }
 }

@@ -16,7 +16,6 @@ class CFGGraph extends Helper {
                 case Some(node) =>
                     val ast = IncludeResolver(STToAST(c, node).getAST).transform;
                     CollectSymbols(ast) execute;
-                    Reporter.errorMilestone
 
                     CFGGraphs(ast).execute
                 case None =>

@@ -1,7 +1,7 @@
 package phantm.symbols
 
 import scala.collection.mutable.HashMap
-import phantm.Main
+import phantm.Settings
 import phantm.ast.Trees._
 import phantm.util.{Reporter, Positional}
 import phantm.annotations.{FunctionTypeAnnotation, TypeAnnotation}
@@ -123,7 +123,7 @@ object GlobalSymbols extends Scope {
           case Some(cs) => cs
           case None =>
               // In case of an undefined constant, PHP falls back to its name as string value
-              if (Main.verbosity > 0) {
+              if (Settings.get.verbosity > 0) {
                   Reporter.notice("Potentially undefined constant", id)
               }
               val cs = new ConstantSymbol(id.value, Some(PHPString(id.value)))

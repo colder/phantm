@@ -25,9 +25,10 @@ object Main {
                     println("No file provided.")
                     usage
                 } else {
-                    val rep = new Reporter(settings, files)
+                    val rep = new Reporter(files)
                     Reporter.set(rep)
-                    new PhasesRunner(rep).run(new PhasesContext(files = files, settings = settings))
+                    Settings.set(settings)
+                    new PhasesRunner(rep).run(new PhasesContext(files = files))
                 }
             }
         } else {

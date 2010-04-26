@@ -1,15 +1,18 @@
 package phantm.types
 
-import phantm.Main
-import phantm.util.{Positional, Reporter}
+import phantm.phases.PhasesContext
+import phantm.util.{Positional, Reporter, Unserializer}
 import phantm.ast.{Trees => AST}
 import phantm.cfg.ControlFlowGraph
 import phantm.cfg.Trees._
 import phantm.symbols._
+import phantm.Settings
 import phantm.annotations.AnnotationsStore
 import phantm.dataflow.TransferFunction
 
-case class TypeTransferFunction(silent: Boolean, collectAnnotations: Boolean) extends TransferFunction[TypeEnvironment, Statement] {
+case class TypeTransferFunction(silent: Boolean,
+                                ctx: PhasesContext,
+                                collectAnnotations: Boolean) extends TransferFunction[TypeEnvironment, Statement] {
     def notice(msg: String, pos: Positional) = if (!silent) Reporter.notice(msg, pos)
     def error(msg: String, pos: Positional) = if (!silent) Reporter.error(msg, pos)
 
@@ -116,10 +119,8 @@ case class TypeTransferFunction(silent: Boolean, collectAnnotations: Boolean) ex
                         TAnyObject
                 }
             case FunctionCall(AST.Identifier("phantm_dumpanddie"), args) =>
-                if (Main.dumpedData != Nil) {
-                    for (unser <- Main.dumpedData) {
-                        env = unser.importToEnv(env)
-                    }
+                for (unser <- ctx.dumpedData) {
+                    env = unser.importToEnv(env)
                 }
                 TBottom
 
@@ -274,9 +275,9 @@ case class TypeTransferFunction(silent: Boolean, collectAnnotations: Boolean) ex
         def typeError(pos: Positional, etyp: Type, vtyp: Type): Unit = {
             if (!silent) {
                 def filterErrors(t: Type): Boolean = {
-                    if (Main.verbosity <= 0 && possiblyUninit(t)) {
+                    if (Settings.get.verbosity <= 0 && possiblyUninit(t)) {
                         true
-                    } else if (Main.verbosity < 0 && t == TAny) {
+                    } else if (Settings.get.verbosity < 0 && t == TAny) {
                         true
                     } else {
                         false
@@ -364,7 +365,7 @@ case class TypeTransferFunction(silent: Boolean, collectAnnotations: Boolean) ex
 
                 (etyp, vtyp) match {
                     case (et, vt) if filterErrors(vt) =>
-                        if (Main.verbosity > 0) {
+                        if (Settings.get.verbosity > 0) {
                             pos match {
                                 case sv: SimpleVariable =>
                                     notice("Potentialy uninitialized variable", pos)

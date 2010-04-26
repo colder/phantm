@@ -1,6 +1,7 @@
 package phantm.dataflow
 
-import phantm.cfg.VertexImp;
+import phantm.cfg.VertexImp
+import phantm.phases.PhasesContext
 
 abstract class Environment[E <: Environment[_, S],S] {
     type Env = E
@@ -8,5 +9,5 @@ abstract class Environment[E <: Environment[_, S],S] {
 
     def union (env: E): E;
     def copy: E;
-    def checkMonotonicity (vertex: Vertex, newEnv: E, inEdges: Iterable[(S, E)]): Unit;
+    def checkMonotonicity (vertex: Vertex, newEnv: E, ctx: PhasesContext, inEdges: Iterable[(S, E)]): Unit;
 }

@@ -11,7 +11,7 @@ object ASTChecksPhase  extends Phase(Some(SymbolsCollectionPhase)) {
     def description = "Checking AST integrity"
 
     def run(ctx: PhasesContext): PhasesContext = {
-        new ASTIntegrityChecks(ctx.settings, ctx.oast.get) execute;
+        new ASTIntegrityChecks(ctx.oast.get) execute;
         ctx
     }
 
@@ -19,19 +19,19 @@ object ASTChecksPhase  extends Phase(Some(SymbolsCollectionPhase)) {
 
 case class CheckContext(topLevel: Boolean, inCond: Boolean);
 
-case class ASTIntegrityChecks(settings: Settings,
-                              node: Tree,
+case class ASTIntegrityChecks(node: Tree,
                               context: CheckContext) extends ASTTraversal[CheckContext](node, context) {
 
-    def this(settings: Settings, node: Tree) = this(settings, node, CheckContext(true, false))
+    def this(node: Tree) = this(node, CheckContext(true, false))
 
     /**
      * Visit the nodes and aggregate information inside the context to provide
      * hints about obvious errors directly from the AST
      */
     def visit(node: Tree, ctx: CheckContext): (CheckContext, Boolean) = {
-        var newCtx = ctx;
-        var continue = true;
+        var newCtx = ctx
+        var continue = true
+        val settings = Settings.get
 
         node match {
             case f : FunctionDecl => 

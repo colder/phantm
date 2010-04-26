@@ -2,7 +2,7 @@ package phantm.util
 import phantm.symbols._
 import phantm.types.TypeHelpers
 import phantm.types.TAny
-import phantm.Main
+import phantm.Settings
 
 import phantm.ast.Trees._
 import phantm.ast.ASTTransform
@@ -22,7 +22,7 @@ case class ConstantsResolver(ast: Program, issueErrors: Boolean) extends ASTTran
 
                             GlobalSymbols.registerConstant(cs)
                         case None =>
-                            if (issueErrors && Main.verbosity >= 2) {
+                            if (issueErrors && Settings.get.verbosity >= 2) {
                                 Reporter.notice("Dynamic constant declaration", expr)
                             }
 
@@ -37,7 +37,7 @@ case class ConstantsResolver(ast: Program, issueErrors: Boolean) extends ASTTran
             ex
 
         case FunctionCall(StaticFunctionRef(_, _, Identifier("define")), _) =>
-            if (issueErrors && Main.verbosity >= 2) {
+            if (issueErrors && Settings.get.verbosity >= 2) {
                 Reporter.notice("Dynamic constant declaration ignored", ex)
             }
             ex

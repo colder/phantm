@@ -1,16 +1,17 @@
 package phantm.types
 
-import phantm.Main
+import phantm.Settings
 import phantm.util.Reporter
 
 import phantm.ast.{Trees => AST}
 import phantm.cfg.ControlFlowGraph
 import phantm.cfg.Trees._
 import phantm.symbols._
+import phantm.phases.PhasesContext
 import phantm.annotations.AnnotationsStore
 import phantm.dataflow.AnalysisAlgorithm
 
-case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope) {
+case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope, ctx: PhasesContext) {
 
     def setupEnvironment: TypeEnvironment = {
         var baseEnv   = new TypeEnvironment;
@@ -61,13 +62,6 @@ case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope) {
             }
         }
 
-        // Lets try the unserializer
-        if (Main.dumpedData != Nil) {
-            for (unser <- Main.dumpedData) {
-                baseEnv = unser.importToEnv(baseEnv)
-            }
-        }
-
         baseEnv
     }
 
@@ -75,12 +69,12 @@ case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope) {
         val bottomEnv = BaseTypeEnvironment;
         val baseEnv   = setupEnvironment;
 
-        val aa = new AnalysisAlgorithm[TypeEnvironment, Statement](TypeTransferFunction(true, false), bottomEnv, baseEnv, cfg)
+        val aa = new AnalysisAlgorithm[TypeEnvironment, Statement](TypeTransferFunction(true, ctx, false), bottomEnv, baseEnv, cfg)
 
         aa.init
-        aa.computeFixpoint
+        aa.computeFixpoint(ctx)
 
-        if (Main.displayFixPoint) {
+        if (Settings.get.displayFixPoint) {
             println("     - Fixpoint:");
             for ((v,e) <- aa.getResult.toList.sortWith{(x,y) => x._1.name < y._1.name}) {
                 println("      * ["+v+"] => "+e);
@@ -88,12 +82,12 @@ case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope) {
         }
 
         // Detect unreachables:
-        for (l <- aa.detectUnreachable(TypeTransferFunction(true, false))) {
+        for (l <- aa.detectUnreachable(TypeTransferFunction(true, ctx, false))) {
             Reporter.notice("Unreachable code", l)
         }
 
         // Collect errors and annotations
-        aa.pass(TypeTransferFunction(false, !Main.exportAPIPath.isEmpty))
+        aa.pass(TypeTransferFunction(false, ctx, !Settings.get.exportAPIPath.isEmpty))
 
         // Collect retvals
         scope match {

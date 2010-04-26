@@ -1,7 +1,7 @@
 package phantm.types
 
-import phantm.Main
 import phantm.cfg.Trees._
+import phantm.phases.PhasesContext
 import phantm.symbols._
 import phantm.dataflow.Environment
 
@@ -53,7 +53,7 @@ class TypeEnvironment(val map: Map[SimpleVariable, Type], val scope: Option[Clas
         }
     }
 
-    def checkMonotonicity(vrtx: Vertex, e: TypeEnvironment, inEdges: Iterable[(Statement, TypeEnvironment)]): Unit = {
+    def checkMonotonicity(vrtx: Vertex, e: TypeEnvironment, ctx: PhasesContext, inEdges: Iterable[(Statement, TypeEnvironment)]): Unit = {
         var delim = false;
         for ((v, t) <- map) {
             if (e.map contains v) {
@@ -68,7 +68,7 @@ class TypeEnvironment(val map: Map[SimpleVariable, Type], val scope: Option[Clas
                     println("      NEW: "+e.map(v))
                     println(" incoming values: ")
                     for ((cfg, e) <- inEdges) {
-                        println("   * "+cfg+" => "+e.lookup(v)+" ===> "+TypeTransferFunction(true, false)(cfg, e).lookup(v))
+                        println("   * "+cfg+" => "+e.lookup(v)+" ===> "+TypeTransferFunction(true, ctx, false)(cfg, e).lookup(v))
                         println
                     }
                     println("@@@@@@@@@@@@@@@@@")

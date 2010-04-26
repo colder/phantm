@@ -2,7 +2,7 @@ package phantm.util
 import scala.io.Source
 import phantm.Settings
 
-class Reporter(settings: Settings, mainFiles: List[String]) {
+class Reporter(mainFiles: List[String]) {
     type ErrorCheck = (String, String, String);
     type Error = (String, String, Positional, String);
 
@@ -55,7 +55,7 @@ class Reporter(settings: Settings, mainFiles: List[String]) {
 
 
     def errorMilestone = {
-        var errorsToDisplay = if (settings.focusOnMainFiles) {
+        var errorsToDisplay = if (Settings.get.focusOnMainFiles) {
             var errorSet = Map[Option[String], Set[Error]]()
             for ((file, errs) <- errors) {
                 if ((file != None) && (mainFiles contains file.get)) {
@@ -116,12 +116,12 @@ class Reporter(settings: Settings, mainFiles: List[String]) {
                             1
                         }
 
-                        if (settings.format != "termbg") {
+                        if (Settings.get.format != "termbg") {
                             println(s)
 
-                            val (colorBegin, colorEnd) = if (settings.format == "term") {
+                            val (colorBegin, colorEnd) = if (Settings.get.format == "term") {
                                 (Console.RED+Console.BOLD, Console.RESET)
-                            } else if (settings.format == "html") {
+                            } else if (Settings.get.format == "html") {
                                 ("<span style=\"color: red;\">", "</span>")
                             } else {
                                 ("", "")
@@ -152,7 +152,7 @@ class Reporter(settings: Settings, mainFiles: List[String]) {
     }
 
     private def emit(prefix: String, msg: String, pos: Positional) = {
-        if (settings.format == "quickfix") {
+        if (Settings.get.format == "quickfix") {
             emitQuickFix(prefix, msg, pos)
         } else {
             emitNormal(prefix, msg, pos)

@@ -1,5 +1,5 @@
 package phantm.util
-import phantm.{Main, Compiler}
+import phantm.{Settings, Compiler}
 import phantm.ast.Trees._
 import phantm.ast.ASTTransform
 
@@ -120,13 +120,13 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
                     IncludeResolver.inclsInstr.get((absPath, inc.line)) match {
                         case Some(paths) =>
                             if (paths.size > 1) {
-                                if (Main.verbosity >= 0) {
+                                if (Settings.get.verbosity >= 0) {
                                     Reporter.notice("Include statement including more than one file!", inc)
                                 }
                             }
                             Some(PHPString(paths.toList.head).setPos(fc))
                         case None =>
-                            if (Main.verbosity >= 0) {
+                            if (Settings.get.verbosity >= 0) {
                                 Reporter.notice("No runtime information found for this include location", inc)
                             }
                             None
@@ -151,7 +151,7 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
                     } else {
                         var foundPath: Option[String] = None;
 
-                        for (prefix <- Main.includePaths if foundPath == None) {
+                        for (prefix <- Settings.get.includePaths if foundPath == None) {
                             val fullpath = prefix+"/"+p;
                             val realpath = pathExists(fullpath);
                             if (!realpath.isEmpty) {
@@ -171,7 +171,7 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
                         }
                     }
                 case None =>
-                    if (Main.verbosity >= 0) {
+                    if (Settings.get.verbosity >= 0) {
                         Reporter.notice("Include with non trivial argument will be ignored", inc)
                     }
                     PHPFalse()

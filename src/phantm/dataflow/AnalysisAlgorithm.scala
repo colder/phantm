@@ -1,13 +1,13 @@
 package phantm.dataflow
 
-import phantm.Settings;
-import phantm.cfg.{LabeledDirectedGraphImp, VertexImp};
+import phantm.Settings
+import phantm.phases.PhasesContext
+import phantm.cfg.{LabeledDirectedGraphImp, VertexImp}
 
 class AnalysisAlgorithm[E <: Environment[E, S],S]
                (transferFun : TransferFunction[E,S],
                 bottomEnv : E,
                 baseEnv : E,
-                settings: Settings,
                 cfg : LabeledDirectedGraphImp[S])
 {
     type Vertex = VertexImp[S]
@@ -45,12 +45,12 @@ class AnalysisAlgorithm[E <: Environment[E, S],S]
         res
     }
 
-    def computeFixpoint : Unit = {
+    def computeFixpoint(ctx: PhasesContext) : Unit = {
         var pass = 0;
 
         var workList = Set[Vertex]();
 
-        if (settings.displayProgress) {
+        if (Settings.get.displayProgress) {
             println("      * Analyzing CFG ("+cfg.V.size+" vertices, "+cfg.E.size+" edges)")
         }
 
@@ -63,7 +63,7 @@ class AnalysisAlgorithm[E <: Environment[E, S],S]
         while (workList.size > 0) {
             pass += 1
 
-            if (settings.displayProgress) {
+            if (Settings.get.displayProgress) {
               println("      * Pass "+pass+" ("+workList.size+" nodes to propagate)...")
             }
 
@@ -95,8 +95,8 @@ class AnalysisAlgorithm[E <: Environment[E, S],S]
                 val nf = newFact.getOrElse(oldFact.copy);
 
                 if (nf != oldFact) {
-                    if (settings.testsActive) {
-                        oldFact.checkMonotonicity(v, nf, cfg.inEdges(v) map (e => (e.lab, facts(e.v1))))
+                    if (Settings.get.testsActive) {
+                        oldFact.checkMonotonicity(v, nf, ctx, cfg.inEdges(v) map (e => (e.lab, facts(e.v1))))
                     }
 
                     //println("@@ Updating facts to "+nf)

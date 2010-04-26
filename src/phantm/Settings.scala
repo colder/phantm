@@ -17,4 +17,12 @@ case class Settings(
     val apis: List[String]            = Nil,
     val dumps: List[String]           = Nil,
     val exportAPIPath: Option[String] = None
-);
+)
+
+object Settings {
+    private var stgs: Option[Settings] = None
+
+    def get = stgs.getOrElse(throw new RuntimeException("No global settings defined"))
+
+    def set(stgs: Settings) = this.stgs = Some(stgs)
+}

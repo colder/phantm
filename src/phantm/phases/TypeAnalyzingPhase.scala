@@ -1,6 +1,6 @@
 package phantm.phases;
 
-import phantm.Main
+import phantm.Settings
 import phantm.cfg.{ASTToCFG}
 import phantm.ast.Trees._
 import phantm.ast.ASTSimpleTraversal
@@ -13,23 +13,23 @@ object TypeAnalyzingPhase extends Phase(Some(APIExportingPhase)) {
     def description = "Analyzing types"
 
     def run(ctx: PhasesContext): PhasesContext = {
-        TypeFlowAnalysis(ctx.oast.get) execute;
+        TypeFlowAnalysis(ctx, ctx.oast.get) execute;
         ctx
     }
 
 }
 
 
-case class TypeFlowAnalysis(node: Tree) extends ASTSimpleTraversal(node) {
+case class TypeFlowAnalysis(ctx: PhasesContext, node: Tree) extends ASTSimpleTraversal(node) {
 
     def display(content: String) = {
-        if (Main.displayProgress) {
+        if (Settings.get.displayProgress) {
             println("     - "+content)
         }
     }
 
     def filter(name: String): Boolean = {
-        ((Main.typeFlowFilter == Nil) || (Main.typeFlowFilter.contains(name))) &&
+        ((Settings.get.typeFlowFilter == Nil) || (Settings.get.typeFlowFilter.contains(name))) &&
         (name != "phantm_dumpanddie") &&
         (name != "phantm_incl")
     }
@@ -40,7 +40,7 @@ case class TypeFlowAnalysis(node: Tree) extends ASTSimpleTraversal(node) {
                 display("Converting main scope...")
                 val cfg = ASTToCFG.convertAST(stmts, GlobalSymbols)
                 display("Analyzing main...")
-                val tfa = new TypeFlowAnalyzer(cfg, GlobalSymbols)
+                val tfa = new TypeFlowAnalyzer(cfg, GlobalSymbols, ctx)
                 tfa.analyze
 
 
@@ -50,7 +50,7 @@ case class TypeFlowAnalysis(node: Tree) extends ASTSimpleTraversal(node) {
                         display("Converting function "+name.value+"...")
                         val cfg = ASTToCFG.convertAST(List(body), fs)
                         display("Analyzing function "+name.value+"...")
-                        val tfa = new TypeFlowAnalyzer(cfg, fs)
+                        val tfa = new TypeFlowAnalyzer(cfg, fs, ctx)
                         tfa.analyze
                     case _ =>
                         error("Incoherent symbol type, should be function")
@@ -67,7 +67,7 @@ case class TypeFlowAnalysis(node: Tree) extends ASTSimpleTraversal(node) {
                                         display("Converting method "+cl.name+"::"+m.name.value+"...")
                                         val cfg = ASTToCFG.convertAST(List(m.body.get), ms)
                                         display("Analyzing method "+cl.name+"::"+m.name.value+"...")
-                                        val tfa = new TypeFlowAnalyzer(cfg, ms)
+                                        val tfa = new TypeFlowAnalyzer(cfg, ms, ctx)
                                         tfa.analyze
                                     }
                                 case _ =>
@@ -87,7 +87,7 @@ case class TypeFlowAnalysis(node: Tree) extends ASTSimpleTraversal(node) {
 
     def execute = {
         traverse(visit _)
-        if (Main.displayProgress) {
+        if (Settings.get.displayProgress) {
             display("All done")
             println
         }
