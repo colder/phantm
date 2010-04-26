@@ -9,7 +9,7 @@ class Lint extends Helper{
         try {
             val l = new Lexer(new java.io.FileReader(input));
             l.setFileName(input);
-            val p = new Parser(l);
+            val p = new CUPParser(l);
             p.parse();
             printStream.println("No syntax errors detected in "+input);
         } catch {

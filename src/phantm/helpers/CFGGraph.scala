@@ -1,6 +1,6 @@
 package phantm.helpers
 
-import phantm.Compiler
+import phantm.parser.Parser
 import phantm.util.{Reporter,IncludeResolver}
 import phantm.cfg.ASTToCFG
 import phantm.ast.Trees._
@@ -11,10 +11,10 @@ import phantm.phases.CollectSymbols
 class CFGGraph extends Helper {
 
     def generate(input: String, printStream: java.io.PrintStream): Unit = {
-            val c = new Compiler(input)
-            c compile match {
+            val p = new Parser(input)
+            p parse match {
                 case Some(node) =>
-                    val ast = IncludeResolver(STToAST(c, node).getAST).transform;
+                    val ast = IncludeResolver(STToAST(p, node).getAST).transform;
                     CollectSymbols(ast) execute;
 
                     CFGGraphs(ast).execute

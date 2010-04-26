@@ -1,6 +1,5 @@
 package phantm.helpers
 
-import phantm.Compiler
 import phantm.parser._
 import phantm.util.JavaListIteratorWrapper
 import java.io._
@@ -8,7 +7,7 @@ import java.io._
 class STGraph extends Helper {
 
     def generate(input: String, printStream: java.io.PrintStream): Unit = {
-            new Compiler(input) compile match {
+            new Parser(input) parse match {
                 case Some(node) =>
                     generateDotGraph(node, printStream)
                     printStream.close

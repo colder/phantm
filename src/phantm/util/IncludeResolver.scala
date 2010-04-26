@@ -1,5 +1,6 @@
 package phantm.util
-import phantm.{Settings, Compiler}
+import phantm.Settings
+import phantm.parser.Parser
 import phantm.ast.Trees._
 import phantm.ast.ASTTransform
 
@@ -86,10 +87,10 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
 
             IncludeResolver.includedFiles += path
 
-            val c = new Compiler(path)
-            c compile match {
+            val p = new Parser(path)
+            p parse match {
                 case Some(node) =>
-                    var ast: Program = new STToAST(c, node) getAST;
+                    var ast: Program = new STToAST(p, node) getAST;
                     // We define/resolve constants there too
                     ast = ConstantsResolver(ast, false).transform
                     // We include-resolve this file too

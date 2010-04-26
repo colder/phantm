@@ -1,17 +1,11 @@
-package phantm
+package phantm.parser
 
 import java.io._
-import phantm.parser._
-import phantm.util.{Positional, JavaListIteratorWrapper}
+import phantm.util._
 import phantm.annotations.SourceAnnotations.{Parser => AnnotationsParser}
 
-class Compiler(filename: String) {
+class Parser(filename: String) {
     type LexerComment = phantm.parser.Lexer#Comment;
-    case class Position(_line: Int, _col: Int, _file: String) extends Positional {
-        col  = _col;
-        line = _line;
-        file = Some(_file);
-    }
 
     private var comments = List[(Positional, String)]();
 
@@ -34,17 +28,17 @@ class Compiler(filename: String) {
         comm
     }
 
-    def compile: Option[ParseNode] = {
+    def parse: Option[ParseNode] = {
          var l: Lexer = null;
 
          try {
             l = new Lexer(new java.io.FileReader(filename));
             l.setFileName(filename);
-            val p = new Parser(l);
+            val p = new CUPParser(l);
             val r: ParseNode = p.parse().value.asInstanceOf[ParseNode];
 
             for (c <- JavaListIteratorWrapper[LexerComment](l.comments.iterator)) {
-                comments = (Position(c.line, c.col, c.filename), c.content) :: comments;
+                comments = (new Position().setPos(c.line, c.col, c.filename), c.content) :: comments;
             }
 
             comments = comments.reverse

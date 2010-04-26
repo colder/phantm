@@ -1,17 +1,17 @@
 package phantm.phases
 
-import phantm.Compiler
+import phantm.parser.Parser
 import phantm.ast.STToAST
 
-object CompilationPhase extends Phase(Some(APIImportationPhase)) {
-    def name = "Compilation"
+object ParsingPhase extends Phase(Some(APIImportationPhase)) {
+    def name = "Parsing"
     def description = "Generating AST"
 
     def run(ctx: PhasesContext): PhasesContext = {
-        val sts = ctx.files map { f => val c = new Compiler(f); (c, c compile) }
+        val sts = ctx.files map { f => val c = new Parser(f); (c, c parse) }
 
         if (sts exists { _._2 == None} ) {
-            throw PhaseException(this, "Compilation failed")
+            throw PhaseException(this, "Parsing failed")
         }
 
         val asts = sts map { c => new STToAST(c._1, c._2.get) getAST }

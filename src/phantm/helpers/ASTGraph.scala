@@ -1,6 +1,7 @@
 package phantm.helpers
 
 import phantm._
+import phantm.parser.Parser
 import phantm.ast.Trees._
 import phantm.ast.STToAST
 import phantm.util.IncludeResolver
@@ -9,10 +10,10 @@ import java.io._
 class ASTGraph extends Helper {
 
     def generate(input: String, printStream: java.io.PrintStream): Unit = {
-            val c = new Compiler(input)
-            c compile match {
+            val p = new Parser(input)
+            p parse match {
                 case Some(node) =>
-                    generateDotGraph(IncludeResolver(STToAST(c, node).getAST).transform, printStream)
+                    generateDotGraph(IncludeResolver(STToAST(p, node).getAST).transform, printStream)
                     printStream.close
                 case None =>
                     throw new Exception("Compilation failed");

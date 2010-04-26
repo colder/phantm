@@ -23,7 +23,7 @@ touch-scala:
 rebuild: touch-scala scalafiles
 
 cup:
-	java -jar lib/cup/dist/java-cup-11a.jar -parser Parser -package phantm.parser -destdir java/phantm/parser/ -files -symbols Symbols spec/php.cup
+	java -jar lib/cup/dist/java-cup-11a.jar -parser CUPParser -package phantm.parser -destdir java/phantm/parser/ -files -symbols Symbols spec/php.cup
 
 jflex:
 	java -jar bin/JFlex.jar -d java/phantm/parser/ -nobak spec/php.jflex
