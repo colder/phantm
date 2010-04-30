@@ -12,8 +12,11 @@ This is a early development version. Don't be surprised if many features are sti
 
 Requirements
 ------------
-In order to use this tool, you need
+In order to run this tool, simply use a self-contained release that you'll find on the download pages.
+You only need Java 1.6 or higher to run a release of phantm.
 
+
+In order to compile this tool, you need
 * ant
 * Java 1.6 or higher
 * Scala 2.8.0 or higher
@@ -42,7 +45,6 @@ to see what options the tool supports:
 
     Usage:   phantm [..options..] <files ...>
     Options: --help                 This help
-             --maindir <maindir>    Specify main directory of the tool
              --colors <mode>        Change the way errors are displayed:
                                     Mode: none   : no colors
                                           termbg : ANSI colors inside the code (default)
