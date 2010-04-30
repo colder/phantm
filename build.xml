@@ -21,7 +21,7 @@ PROPERTIES
   <property name="build.dir" value="classes"/>
   <property name="release.dir" value="releases"/>
   <property name="lib.dir" value="lib"/>
-  <property name="main.class" value="Main"/>
+  <property name="main.class" value="phantm.Main"/>
 
   <property name="proguard.jar" value="${lib.dir}/proguard.jar" />
 
@@ -85,12 +85,31 @@ JAR
 ============================================================================ -->
 
  <target name="jar" depends="build">
-    <mkdir dir="builds"/>
+     <mkdir dir="builds"/>
+     <mkdir dir="classes/spec"/>
+     <copy file="spec/internal_api.xml" tofile="classes/spec/internal_api.xml" />
+     <mkdir dir="classes/tables"/>
+     <copy file="java/phantm/parser/action_table.bin" tofile="classes/tables/action_table.bin" />
+     <copy file="java/phantm/parser/reduce_table.bin" tofile="classes/tables/reduce_table.bin" />
+     <copy file="java/phantm/parser/production_table.bin" tofile="classes/tables/production_table.bin" />
+     <copy file="scala-license.txt" tofile="classes/scala-license.txt" />
+
      <delete file="builds/phantm.jar"/>
+     <delete file="builds/MANIFEST.mf"/>
+
+     <manifest file="builds/MANIFEST.mf">
+      <attribute name="Main-Class" value="phantm.Main" />
+     </manifest>
+
      <jar destfile="builds/phantm.jar"
+          manifest="builds/MANIFEST.mf"
           basedir="classes"
-          includes="**/*.class"
+          includes="**/*.class,spec/*.xml,tables/*.bin,scala-license.txt"
           />
+
+     <delete file="classes/scala-license.txt"/>
+     <delete file="classes/spec"/>
+     <delete file="classes/tables"/>
   </target>
 
 <!-- ===========================================================================
@@ -102,16 +121,15 @@ RELEASE
 
       <java jar="${proguard.jar}" fork="true">
        <arg value="
-          -injars             ${build.dir}
-          -injars             ${scala-library.jar}
+          -injars             builds/phantm.jar
           -injars             lib/cup/dist/java-cup-11a-runtime.jar
-          -outjars            ${release.dir}/latest.jar
+          -injars             ${scala-library.jar}
+          -outjars            ${release.dir}/phantm-latest.jar
           -libraryjars        ${java.home}/lib/rt.jar
           -ignorewarnings
           -dontwarn
-          -dontobfuscate
           -dontoptimize
-          -dontpreverify
+          -dontobfuscate
           -verbose
 
           -keep public class ${main.class} {

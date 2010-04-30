@@ -13,7 +13,6 @@ case class Settings(
     val onlyLint: Boolean             = false,
     val typeFlowFilter: List[String]  = Nil,
     val includePaths: List[String]    = List("."),
-    val mainDir: String               = "./",
     val apis: List[String]            = Nil,
     val dumps: List[String]           = Nil,
     val exportAPIPath: Option[String] = None

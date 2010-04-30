@@ -804,8 +804,8 @@ public class emit {
 
   protected static void emit_load_table(PrintWriter out, String filename, String property) {
     out.println("    try {");
-    out.println("      FileInputStream fin = new FileInputStream(\""+new File(store_tables_path, filename).getAbsolutePath()+"\");");
-    out.println("      ObjectInputStream ois = new ObjectInputStream(fin);");
+    out.println("      InputStream is = getClass().getClassLoader().getResourceAsStream(\"tables/"+filename+"\");");
+    out.println("      ObjectInputStream ois = new ObjectInputStream(is);");
     out.println("      this."+property+" = (short[][]) ois.readObject();");
     out.println("      ois.close();");
     out.println("    } catch (Exception e) {");
@@ -903,6 +903,7 @@ public class emit {
 
       if (store_tables) {
           out.println("import java.io.*;");
+          out.println("import java.net.URL;");
       }
 
       /* class header */

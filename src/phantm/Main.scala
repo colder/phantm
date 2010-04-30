@@ -41,9 +41,6 @@ object Main {
         (args.head.toLowerCase :: args.tail) match {
             case "--help" :: xs =>
                 displayUsage = true
-            case "--maindir" :: x :: xs =>
-                settings = settings.copy(mainDir = x)
-                handleArgs(xs)
             case "--showincludes" :: xs =>
                 settings = settings.copy(displayIncludes = true)
                 handleArgs(xs)

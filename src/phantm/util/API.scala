@@ -9,7 +9,11 @@ import scala.xml._
 
 object API {
     // Load an API into the symbol tables
-    class Reader(file: String) {
+    class Reader(is: java.io.InputStream) {
+        def this(path: String) = {
+            this(new java.io.FileInputStream(new java.io.File(path)))
+        }
+
         case class APIPos(elem: Node) extends Positional {
             val pos = (elem \ "position")
             file = (pos \ "@file").text match {
@@ -87,7 +91,7 @@ object API {
 
         def load = {
             try {
-                val data = XML.loadFile(file)
+                val data = XML.load(is)
                 val userland = (data \ "@userland") == "yes"
 
                 // classes
@@ -216,7 +220,7 @@ object API {
 
             } catch {
                 case e =>
-                    Reporter.error("Parsing of the api file '"+file+"' failed: "+e.getMessage)
+                    Reporter.error("Parsing of the api file failed: "+e.getMessage)
             }
         }
     }
