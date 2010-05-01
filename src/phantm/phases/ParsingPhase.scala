@@ -3,7 +3,7 @@ package phantm.phases
 import phantm.parser.Parser
 import phantm.ast.STToAST
 
-object ParsingPhase extends Phase(Some(APIImportationPhase)) {
+object ParsingPhase extends Phase(Some(ASTChecksPhase)) {
     def name = "Parsing"
     def description = "Generating AST"
 

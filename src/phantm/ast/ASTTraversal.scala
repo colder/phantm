@@ -5,10 +5,15 @@ import Trees.Tree
 sealed class DummyContext;
 
 abstract class ASTSimpleTraversal(root: Tree) extends ASTTraversal[DummyContext](root, new DummyContext) {
+
+    def visit(tr: Tree): Boolean;
+
     def traverse (visit: Tree => Boolean): Unit = {
         def visit0(t: Tree, ctx: DummyContext): (DummyContext, Boolean) = (ctx, visit(t))
         super.traverse(visit0)
     }
+
+    def execute = traverse(visit _)
 
 }
 

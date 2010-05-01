@@ -84,12 +84,4 @@ case class TypeFlowAnalysis(ctx: PhasesContext, node: Tree) extends ASTSimpleTra
 
         true
     }
-
-    def execute = {
-        traverse(visit _)
-        if (Settings.get.displayProgress) {
-            display("All done")
-            println
-        }
-    }
 }
