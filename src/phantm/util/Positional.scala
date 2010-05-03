@@ -20,6 +20,14 @@ trait Positional {
 
     def getPos = file.getOrElse("<unknown>")+" line "+line+" column "+col;
 
+    def getEndPosition = {
+        val p = new Position;
+        p.file = file;
+        p.line = line_end;
+        p.col = col_end;
+        p
+    }
+
     def setPos(l: Int, c: Int, f: String): self.type = {
         line = l;
         col = c;

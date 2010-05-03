@@ -20,7 +20,9 @@ clean:
 touch-scala:
 	find src/phantm/ -type f -iname "*.scala" -exec touch '{}' \;
 
-rebuild: touch-scala scalafiles
+rebuild:
+	@ant build_complete
+	@ant jar
 
 cup:
 	java -jar lib/cup/dist/java-cup-11a.jar -parser CUPParser -package phantm.parser -destdir java/phantm/parser/ -files -symbols Symbols spec/php.cup

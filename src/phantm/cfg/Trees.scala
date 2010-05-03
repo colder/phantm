@@ -40,6 +40,7 @@ object Trees {
 
   case class Assume(lhs: SimpleValue, relOp: RelationalOperator, rhs: SimpleValue) extends Statement
   case class Print(rhs: SimpleValue) extends Statement
+  case class Return(rhs: SimpleValue) extends Statement
 
   case object Skip extends Statement
 
@@ -164,6 +165,7 @@ object Trees {
       case Skip => "..."
       case Assume(l, o, r) => "[" + l + o + r + "]"
       case Print(v) => "print("+v+")"
+      case Return(v) => "return("+v+")"
       case Unset(v) => "unset("+v+")"
       case PHPString(value) => "\"" + value + "\""
       case PHPLong(value) => value.toString

@@ -19,7 +19,6 @@ object ASTToCFG {
 
     val cfg = new ControlFlowGraph
     val assertionsEnabled: Boolean = true
-    val retval: CFG.TempID = CFG.TempID("retval");
 
     type Vertex = cfg.Vertex
 
@@ -696,8 +695,8 @@ object ASTToCFG {
 
             Emit.setPC(lastValidNext)
             Emit.goto(cont)
-        case AST.Return(expr) =>
-            Emit.statementCont(exprStore(retval, expr), cfg.exit)
+        case AST.Return(v) =>
+            Emit.statementCont(CFG.Return(expr(v)).setPos(v), cfg.exit)
         case AST.Assign(AST.SimpleVariable(id), value, byref) =>
             Emit.statementCont(exprStore(idFromId(id), value), cont)
         case AST.Foreach(ex, as, _, optkey, _, body) =>
@@ -777,10 +776,20 @@ object ASTToCFG {
     }
 
     Emit.setPC(cfg.entry)
-    val codeEntry = cfg.newVertex
-    Emit.statementBetween(cfg.entry, CFG.Assign(retval, CFG.PHPNull()) , codeEntry)
-    Emit.setPC(codeEntry)
-    stmts(statements, cfg.exit)
+    val codeEnd = cfg.newVertex
+    stmts(statements, codeEnd)
+
+    Emit.setPC(codeEnd)
+
+    scope match {
+        case fs: FunctionSymbol => 
+            if (!cfg.inEdges(codeEnd).isEmpty) {
+                // We add implicit "return null;"
+                Emit.statementCont(CFG.Return(CFG.PHPNull().setPos(fs)).setPos(fs), cfg.exit)
+            }
+        case _ =>
+            Emit.goto(cfg.exit)
+    }
     Emit.setPC(cfg.exit)
 
     for ((l, vs) <- forwardGotos) {

@@ -18,7 +18,8 @@ sealed abstract class Type {
 
     def union(t: Type) = TypeLattice.join(this, t)
 
-    def toText(e: TypeEnvironment) = toString
+    def toText(e: TypeEnvironment): String = toString
+    def toText: String = toText(BaseTypeEnvironment)
 }
 
 sealed abstract class ConcreteType extends Type;
@@ -135,7 +136,10 @@ class TObjectRef(val id: ObjectId) extends ObjectType {
     def realObject(e: TypeEnvironment) = e.store.lookup(id)
 
     override def toText(e: TypeEnvironment) = {
-        e.store.lookup(id).toText(e)
+        e.store.store.get(id) match {
+            case Some(o) => o.toText(e)
+            case None => "Object(#"+id+")"
+        }
     }
 
     override def depth(e: TypeEnvironment) = realObject(e).depth(e)

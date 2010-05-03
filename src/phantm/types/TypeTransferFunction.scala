@@ -276,7 +276,10 @@ case class TypeTransferFunction(silent: Boolean,
             new TObjectRef(id)
         }
 
-        def typeError(pos: Positional, etyp: Type, vtyp: Type): Unit = {
+        def typeError(pos: Positional, etyp: Type, vtyp: Type): Unit =
+            typeErrorF("Potential type mismatch: expected: %s, found: %s", pos, etyp, vtyp)
+
+        def typeErrorF(format: String, pos: Positional, etyp: Type, vtyp: Type): Unit = {
             if (!silent) {
                 def filterErrors(t: Type): Boolean = {
                     if (Settings.get.verbosity <= 0 && possiblyUninit(t)) {
@@ -388,7 +391,7 @@ case class TypeTransferFunction(silent: Boolean,
                         val (diff, cancelError) = typesDiff(et, vt)
 
                         if (!cancelError) {
-                            notice("Potential type mismatch: expected: "+diff._1+", found: "+diff._2, pos)
+                            notice(String.format(format, diff._1, diff._2), pos)
                         }
                 }
             }
@@ -808,6 +811,23 @@ case class TypeTransferFunction(silent: Boolean,
 
             case Print(v) =>
                 expOrRef(v, TAny)
+
+            case r @ Return(v) =>
+                ctx.symbol match {
+                    case Some(fs: FunctionSymbol) =>
+
+                        val retType = if (!fs.ftyps.isEmpty) fs.ftyps.map(_.ret).reduceLeft(_ union _) else TTop
+                        val vType = typeFromSV(v)
+
+                        if (!leq(vType, retType)) {
+                            typeErrorF("Return type mismatch: expected: %s, found: %s", r, retType, vType)
+                        }
+
+                        if (collectAnnotations) {
+                            AnnotationsStore.collectFunctionRet(fs, typeFromSV(v))
+                        }
+                    case _ =>
+                }
 
             case Unset(v) =>
                 assign(v, TUninitialized)

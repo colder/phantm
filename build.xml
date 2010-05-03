@@ -80,6 +80,21 @@ BUILD
     />
   </target>
 
+  <target name="build_complete" depends="init">
+    <echo level="verbose" message="build.dir=${build.dir}"/>
+    <mkdir dir="${build.dir}"/>
+    <scalac
+      srcdir="${source.dir}"
+      includes="**/*.scala"
+      destdir="${build.dir}"
+      classpathref="build.classpath"
+      unchecked="on"
+      deprecation="on"
+      force="yes"
+      addparams="-make:all"
+    />
+  </target>
+
 <!-- ===========================================================================
 JAR
 ============================================================================ -->

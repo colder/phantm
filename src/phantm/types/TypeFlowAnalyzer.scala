@@ -68,36 +68,31 @@ case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope, ctx: PhasesCont
     def analyze: Unit = {
         val bottomEnv = BaseTypeEnvironment;
         val baseEnv   = setupEnvironment;
+        var newCtx = ctx
 
-        val aa = new AnalysisAlgorithm[TypeEnvironment, Statement](TypeTransferFunction(true, ctx, false), bottomEnv, baseEnv, cfg)
+        scope match {
+            case fs: FunctionSymbol =>
+                newCtx = newCtx.copy(symbol = Some(fs))
+            case _ =>
+        }
 
-        aa.init
-        aa.computeFixpoint(ctx)
+        val aa = new AnalysisAlgorithm[TypeEnvironment, Statement](TypeTransferFunction(true, newCtx, false), bottomEnv, baseEnv, cfg)
+
+        aa.computeFixpoint(newCtx)
 
         if (Settings.get.displayFixPoint) {
             println("     - Fixpoint:");
-            for ((v,e) <- aa.getResult.toList.sortWith{(x,y) => x._1.name < y._1.name}) {
+            for ((v,e) <- aa.getResult.filter(v => !v._1.isInstanceOf[ClassProperty]).toList.sortWith{(x,y) => x._1.name < y._1.name}) {
                 println("      * ["+v+"] => "+e);
             }
         }
 
         // Detect unreachables:
-        for (l <- aa.detectUnreachable(TypeTransferFunction(true, ctx, false))) {
+        for (l <- aa.detectUnreachable(TypeTransferFunction(true, newCtx, false))) {
             Reporter.notice("Unreachable code", l)
         }
 
         // Collect errors and annotations
-        aa.pass(TypeTransferFunction(false, ctx, !Settings.get.exportAPIPath.isEmpty))
-
-        // Collect retvals
-        scope match {
-            case fs: FunctionSymbol =>
-                // collect return value
-                val facts = aa.getResult;
-                val retType = facts(cfg.exit).map.getOrElse(TempID("retval"), TBottom);
-
-                AnnotationsStore.collectFunctionRet(fs, retType)
-            case _ =>
-        }
+        aa.pass(TypeTransferFunction(false, newCtx, !Settings.get.exportAPIPath.isEmpty))
     }
 }

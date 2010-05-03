@@ -25,6 +25,8 @@ case class PureStatementsChecks(node: Tree) extends ASTSimpleTraversal(node) {
 
     def isPure(stmt: Statement): Boolean = stmt match {
         case ex: Expression => ex match {
+            case Block(_) =>
+                false
             case DynamicObjectProperty(obj: Expression, property: Expression) =>
                 isPure(obj) && isPure(property)
             case ObjectProperty(obj: Expression, property: Identifier) =>

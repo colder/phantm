@@ -12,11 +12,7 @@ class AnalysisAlgorithm[E <: Environment[E, S],S]
 {
     type Vertex = VertexImp[S]
 
-    var facts : Map[Vertex, E] = Map[Vertex,E]()
-
-    def init = {
-        facts = Map[Vertex,E]().withDefaultValue(bottomEnv)
-    }
+    var facts : Map[Vertex, E] = Map[Vertex,E]().withDefaultValue(bottomEnv)
 
     def pass(transferFun: TransferFunction[E,S]) = {
         for (v <- cfg.V) {

@@ -54,7 +54,8 @@ object SourceAnnotations {
             "Array" ^^^ TAnyArray
 
         def arrayentry: Parser[(Option[String], Type)] =
-            stringLit ~ "=>" ~ typ ^^ { case key ~ "=>" ~ typ => (Some(key.toString), typ) } |
+            stringLit  ~ "=>" ~ typ ^^ { case key ~ "=>" ~ typ => (Some(key.toString), typ) } |
+            numericLit ~ "=>" ~ typ ^^ { case key ~ "=>" ~ typ => (Some(key.toString), typ) } |
             "?" ~ "=>" ~> typ ^^ ((None, _: Type))
 
         def typ: Parser[Type] =
