@@ -50,6 +50,9 @@ class AnalysisAlgorithm[E <: Environment[E, S],S]
             println("      * Analyzing CFG ("+cfg.V.size+" vertices, "+cfg.E.size+" edges)")
         }
 
+        val ssc  = new StronglyConnectedComponents(cfg);
+        val sscs = ssc.getComponents
+
         facts = facts.updated(cfg.entry, baseEnv)
 
         for (e <- cfg.outEdges(cfg.entry)) {
@@ -63,10 +66,9 @@ class AnalysisAlgorithm[E <: Environment[E, S],S]
               println("      * Pass "+pass+" ("+workList.size+" nodes to propagate)...")
             }
 
-
-
-            val passWorkList = Set[Vertex]() ++ workList;
+            val passWorkList = ssc.topSort(sscs, workList);
             workList = Set[Vertex]()
+
 
             for(v <- passWorkList) {
 
