@@ -44,68 +44,77 @@ class AnalysisAlgorithm[E <: Environment[E, S],S]
     def computeFixpoint(ctx: PhasesContext) : Unit = {
         var pass = 0;
 
-        var workList = Set[Vertex]();
 
         if (Settings.get.displayProgress) {
             println("      * Analyzing CFG ("+cfg.V.size+" vertices, "+cfg.E.size+" edges)")
         }
 
+        /*
         val ssc  = new StronglyConnectedComponents(cfg);
         val sscs = ssc.getComponents
 
+        val vToPos = ssc.topSort(sscs)
+        */
+
         facts = facts.updated(cfg.entry, baseEnv)
+
+        var workList    = Set[Vertex]();
 
         for (e <- cfg.outEdges(cfg.entry)) {
             workList += e.v2
         }
 
+       // var workListSeq = workList.toSeq.sortWith((a,b) => vToPos(a) < vToPos(b))
+
         while (workList.size > 0) {
             pass += 1
 
             if (Settings.get.displayProgress) {
-              println("      * Pass "+pass+" ("+workList.size+" nodes to propagate)...")
+              println("      * Pass "+pass+" ("+workList.size+" nodes in worklist)...")
             }
 
-            val passWorkList = ssc.topSort(sscs, workList);
-            workList = Set[Vertex]()
+            /*
+            val v = workListSeq.head
+            workListSeq = workListSeq.tail
+            workList -= v
+            */
+            val v = workList.head
+            workList -= v
 
 
-            for(v <- passWorkList) {
+            val oldFact : E = facts(v)
+            var newFact : Option[E] = None
 
-                //println("[[[["+v+"]]]]")
-                //println("Facts: "+facts(v))
-                val oldFact : E = facts(v)
-                var newFact : Option[E] = None
+            for (e <- cfg.inEdges(v) if facts(e.v1) != bottomEnv) {
+                //println("##>"+e.lab+"("+facts(e.v1)+")")
+                val propagated = transferFun(e.lab, facts(e.v1));
+                //println("##=>"+propagated)
 
-                for (e <- cfg.inEdges(v) if facts(e.v1) != bottomEnv) {
-                    //println("##>"+e.lab+"("+facts(e.v1)+")")
-                    val propagated = transferFun(e.lab, facts(e.v1));
-                    //println("##=>"+propagated)
-
-                    if (propagated != bottomEnv) {
-                        newFact = newFact match {
-                            case Some(nf) => Some(nf union propagated)
-                            case None => Some(propagated)
-                        }
+                if (propagated != bottomEnv) {
+                    newFact = newFact match {
+                        case Some(nf) => Some(nf union propagated)
+                        case None => Some(propagated)
                     }
                 }
-
-                val nf = newFact.getOrElse(oldFact.copy);
-
-                if (nf != oldFact) {
-                    if (Settings.get.testsActive) {
-                        oldFact.checkMonotonicity(v, nf, ctx, cfg.inEdges(v) map (e => (e.lab, facts(e.v1))))
-                    }
-
-                    //println("@@ Updating facts to "+nf)
-                    facts = facts.updated(v, nf)
-
-                    for (e <- cfg.outEdges(v)) {
-                        workList += e.v2;
-                    }
-                }
-
             }
+
+            val nf = newFact.getOrElse(oldFact.copy);
+
+            if (nf != oldFact) {
+                if (Settings.get.testsActive) {
+                    oldFact.checkMonotonicity(v, nf, ctx, cfg.inEdges(v) map (e => (e.lab, facts(e.v1))))
+                }
+
+                //println("@@ Updating facts to "+nf)
+                facts = facts.updated(v, nf)
+
+                for (e <- cfg.outEdges(v)) {
+                    workList += e.v2;
+                }
+
+                //workListSeq = workList.toSeq.sortWith((a,b) => vToPos(a) < vToPos(b))
+            }
+
         }
     }
 

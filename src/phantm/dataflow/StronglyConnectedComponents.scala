@@ -6,10 +6,15 @@ class StronglyConnectedComponents[S](cfg: LabeledDirectedGraphImp[S]) {
     type Vertex = VertexImp[S]
     type Edge   = EdgeImp[S]
 
-    class Node(var v: Vertex, var index: Int, var vindex: Int, var lowlink: Int, var caller: Option[Node], var vSeq: IndexedSeq[Vertex]);
+    class Node(var v: Vertex, var index: Int, var vindex: Int, var lowlink: Int, var caller: Option[Node], var vSeq: IndexedSeq[Vertex]) {
+       override def toString = v.toString
+    }
+
+    class SCC(val vs: Set[Vertex], var adjSCC: Set[SCC])
 
     def getComponents = {
-        var sccs     = Set[Set[Vertex]]()
+        var sccs     = Set[SCC]()
+        var vToScc   = Map[Vertex, SCC]()
 
         var onStack  = Set[Node]()
         var stack    = List[Node]()
@@ -65,7 +70,11 @@ class StronglyConnectedComponents[S](cfg: LabeledDirectedGraphImp[S]) {
                             top = pop
                             set += top.v
                         }
-                        sccs += set
+                        val scc = new SCC(set, Set())
+
+                        set.foreach(vToScc += _ -> scc)
+
+                        sccs += scc
                     }
 
                     val optCaller = last.caller
@@ -83,16 +92,36 @@ class StronglyConnectedComponents[S](cfg: LabeledDirectedGraphImp[S]) {
 
         tarjan(cfg.entry)
 
+        // be blunt, traverse again to get adjacent SCC
+        for(scc <- sccs) {
+            scc.adjSCC = scc.vs.flatMap(v => cfg.outEdges(v).map(e => vToScc(e.v2)).filter(_ != scc)).toSet
+        }
+
         sccs
     }
 
-    def topSort(sscs: Set[Set[Vertex]], worklist: Set[Vertex]): Seq[Vertex] = {
-        val newsscs = sscs.map(s => s & worklist).toSeq.sortWith((a,b) => a.size > b.size).filter(_.size > 0)
+    def topSort(sccs: Set[SCC]): Map[Vertex, Int] = {
+        // first we get the roots
+        var todo = (sccs &~ sccs.flatMap(scc => scc.adjSCC)).toSeq
 
-        newsscs.flatten
+        var pos = 0;
+        var wl = Map[Vertex, Int]()
+
+        while (todo.size > 0) {
+            val scc = todo.head
+            for (v <- scc.vs) {
+                wl += v -> pos
+            }
+            pos += 1
+            todo = todo.tail
+
+            for (s <- scc.adjSCC) {
+                todo = todo :+ s
+            }
+        }
+
+        wl
     }
-
-
 
 }
 
