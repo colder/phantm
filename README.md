@@ -1,4 +1,4 @@
-phantm - PHp ANalzer for Type Mistakes
+phantm - PHp ANalzer for Type Mismatches
 ======
 
 **phantm** is a tool that can be used to spot various kinds of mistakes in your
