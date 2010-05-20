@@ -6,6 +6,8 @@
  * into phantm
  *
  * Call it like that: phantm_dumpanddie(get_defined_vars());
+ * @param string $path
+ * @return string
  */
 function phantm_incl($path) {
 
@@ -32,6 +34,7 @@ function phantm_incl($path) {
 }
 
 function phantm_dumpanddie(array $vars) {
+
     $bt = debug_backtrace();
     $file = $bt[0]['file'];
     $line = $bt[0]['line'];
@@ -59,13 +62,23 @@ function phantm_dumpanddie(array $vars) {
         $vars['GLOBALS']['HTTP_COOKIE_VARS']    = &$vars['_COOKIE'];
         $vars['GLOBALS']['HTTP_SERVER_VARS']    = &$vars['_SERVER'];
     }
-
-    $vars['GLOBALS'] = array();
-
     $path = basename(basename($_SERVER['SCRIPT_FILENAME']))."--".date('d-m-y--H\hi\ms').".dump";
     $fh = fopen($path, "w");
     fwrite($fh, "# Dumped state of ".$file." at line ".$line."  \n");
     fwrite($fh, "# Date: ".date("r")."\n");
+    fwrite($fh, "# Function declarations:\n");
+
+    $funcs = get_defined_functions();
+    foreach ($funcs['user'] as $f) {
+        if ($f == 'phantm_incl' || $f == 'phantm_dumpanddie') continue;
+
+        $rf = new ReflectionFunction($f);
+
+        fwrite($fh, $f.":".$rf->getStartLine().":".$rf->getFileName()."\n");
+    }
+    unset($vars['GLOBALS']);
+
+    fwrite($fh, "# Heap state:\n");
     fwrite($fh, serialize($vars));
     fclose($fh);
 

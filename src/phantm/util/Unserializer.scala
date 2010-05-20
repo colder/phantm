@@ -3,8 +3,6 @@ package phantm.util
 import phantm.symbols._
 import phantm.types._
 import phantm.cfg.Trees.Identifier
-import io.Source
-import java.io.File
 
 class UnserializeException(msg: String) extends Exception(msg)
 
@@ -20,13 +18,6 @@ case class URealRef(i: Int) extends UValue
 case object UNull extends UValue
 case object UFalse extends UValue
 case object UTrue extends UValue
-
-object Unserializer {
-    def fromDump(path: String): Unserializer = {
-        val content = Source.fromFile(new File(path)).getLines("\n")
-        new Unserializer(content.drop(2).reduceLeft(_+_))
-    }
-}
 
 class Unserializer(content: String) {
     // allocate the first for the outer array

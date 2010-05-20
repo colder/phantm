@@ -120,7 +120,7 @@ case class TypeTransferFunction(silent: Boolean,
                 }
             case FunctionCall(AST.Identifier("phantm_dumpanddie"), args) =>
                 for (unser <- ctx.dumpedData) {
-                    env = unser.importToEnv(env)
+                    env = unser.heap.importToEnv(env)
                 }
                 TBottom
 
