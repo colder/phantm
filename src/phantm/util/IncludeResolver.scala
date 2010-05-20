@@ -114,7 +114,7 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
             val eval = Evaluator.staticEval(path, false)
             val pathres = (eval, path) match {
                 case (Some(scal), _) =>
-                    Some(scal)
+                    (false, Some(scal))
                 case (None, fc @ FunctionCall(StaticFunctionRef(_, _, Identifier("phantm_incl")), _)) =>
                     // probably instrumentalized, let's check if the position can be found
                     val absPath = if (inc.file.isEmpty) "?" else new File(inc.file.get).getAbsolutePath;
@@ -125,18 +125,18 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
                                     Reporter.notice("Include statement including more than one file!", inc)
                                 }
                             }
-                            Some(PHPString(paths.toList.head).setPos(fc))
+                            (true, Some(PHPString(paths.toList.head).setPos(fc)))
                         case None =>
                             if (Settings.get.verbosity >= 0) {
                                 Reporter.notice("No runtime information found for this include location", inc)
                             }
-                            None
+                            (true, None)
                     }
                 case _ =>
-                    None
+                    (false, None)
             }
             pathres match {
-                case Some(scalar_p) =>
+                case (_, Some(scalar_p)) =>
                     val p = Evaluator.scalarToString(scalar_p)
                     if (p(0) == '/') {
                         val realpath = pathExists(p);
@@ -171,8 +171,8 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
                                 notfound(p)
                         }
                     }
-                case None =>
-                    if (Settings.get.verbosity >= 0) {
+                case (instr, None) =>
+                    if (Settings.get.verbosity >= 0 && !instr) {
                         Reporter.notice("Include with non trivial argument will be ignored", inc)
                     }
                     PHPFalse()
