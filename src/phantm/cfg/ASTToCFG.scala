@@ -421,6 +421,18 @@ object ASTToCFG {
                             stmts(sts, endblock)
                             Emit.setPC(endblock)
                             Emit.statement(CFG.Assign(v, CFG.PHPTrue()).setPos(ex))
+
+                        case AST.Alternatives(exprs) =>
+                            val endBlock = cfg.newVertex
+                            val pc = Emit.getPC
+
+                            for (e <- exprs) {
+                                Emit.setPC(pc)
+                                Emit.statementCont(exprStore(v, e), endBlock)
+                            }
+
+                            Emit.setPC(endBlock)
+
                         case i: AST.Include =>
                             // ignore
                             retval = Some(CFG.PHPFalse().setPos(i))

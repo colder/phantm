@@ -1,4 +1,6 @@
-package phantm.helpers;
+package phantm.helpers
+
+import phantm.Settings
 
 object Main {
     // Defaults params
@@ -8,6 +10,8 @@ object Main {
 
     def main(args: Array[String]): Unit = {
         try {
+            Settings.set(new Settings())
+
             handle_options(args toList)
 
             input match {

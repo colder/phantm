@@ -114,20 +114,15 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
             val eval = Evaluator.staticEval(path, false)
             val pathres = (eval, path) match {
                 case (Some(scal), _) =>
-                    (false, Some(scal))
+                    (false, Some(List(scal)))
                 case (None, fc @ FunctionCall(StaticFunctionRef(_, _, Identifier("phantm_incl")), _)) =>
                     // probably instrumentalized, let's check if the position can be found
                     val absPath = if (inc.file.isEmpty) "?" else new File(inc.file.get).getAbsolutePath;
                     IncludeResolver.inclsInstr.get((absPath, inc.line)) match {
                         case Some(paths) =>
-                            if (paths.size > 1) {
-                                if (Settings.get.verbosity >= 0) {
-                                    Reporter.notice("Include statement including more than one file!", inc)
-                                }
-                            }
-                            (true, Some(PHPString(paths.toList.head).setPos(fc)))
+                            (true, Some(paths.map(p => PHPString(p).setPos(fc)).toList))
                         case None =>
-                            if (Settings.get.verbosity >= 0) {
+                            if (Settings.get.verbosity >= 2) {
                                 Reporter.notice("No runtime information found for this include location", inc)
                             }
                             (true, None)
@@ -136,40 +131,49 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
                     (false, None)
             }
             pathres match {
-                case (_, Some(scalar_p)) =>
-                    val p = Evaluator.scalarToString(scalar_p)
-                    if (p(0) == '/') {
-                        val realpath = pathExists(p);
-                        if (!realpath.isEmpty) {
-                            if (shouldInclude(realpath.get)) {
-                                getAST(realpath.get)
-                            } else {
-                                PHPFalse()
-                            }
-                        } else {
-                            notfound(p)
-                        }
-                    } else {
-                        var foundPath: Option[String] = None;
-
-                        for (prefix <- Settings.get.includePaths if foundPath == None) {
-                            val fullpath = prefix+"/"+p;
-                            val realpath = pathExists(fullpath);
+                case (_, Some(paths)) =>
+                    def astFromScalar(scalar: Scalar): Expression = {
+                        val p = Evaluator.scalarToString(scalar)
+                        if (p(0) == '/') {
+                            val realpath = pathExists(p);
                             if (!realpath.isEmpty) {
-                                foundPath = Some(realpath.get)
-                            }
-                        }
-
-                        foundPath match {
-                            case Some(path) =>
-                                if (shouldInclude(path)) {
-                                    getAST(path)
+                                if (shouldInclude(realpath.get)) {
+                                    getAST(realpath.get)
                                 } else {
                                     PHPFalse()
                                 }
-                            case None =>
+                            } else {
                                 notfound(p)
+                            }
+                        } else {
+                            var foundPath: Option[String] = None;
+
+                            for (prefix <- Settings.get.includePaths if foundPath == None) {
+                                val fullpath = prefix+"/"+p;
+                                val realpath = pathExists(fullpath);
+                                if (!realpath.isEmpty) {
+                                    foundPath = Some(realpath.get)
+                                }
+                            }
+
+                            foundPath match {
+                                case Some(path) =>
+                                    if (shouldInclude(path)) {
+                                        getAST(path)
+                                    } else {
+                                        PHPFalse()
+                                    }
+                                case None =>
+                                    notfound(p)
+                            }
                         }
+                    }
+                    val asts = paths map (astFromScalar _)
+
+                    if (asts.size > 1) {
+                        Alternatives(asts)
+                    } else {
+                        asts.head
                     }
                 case (instr, None) =>
                     if (Settings.get.verbosity >= 0 && !instr) {
