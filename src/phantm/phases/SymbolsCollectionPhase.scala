@@ -1,5 +1,6 @@
 package phantm.phases
 
+import phantm.Settings
 import phantm.util.{Reporter, Positional, Evaluator}
 import phantm.ast.Trees._
 import phantm.ast.ASTTraversal
@@ -198,9 +199,29 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
         val res = TypeLattice.meet(annoType, hintType)
 
         if (res == TBottom) {
-            Reporter.notice("Annotation("+annoType.toText(BaseTypeEnvironment)+") incompatible with type hint or default value("+hintType.toText(BaseTypeEnvironment)+")", pos)
+            var verbosity = 0
+
+            val t = (annoType, hintType) match {
+                case (_, TNull) =>
+                    verbosity = 2
+                    TypeLattice.join(annoType, hintType)
+                case (t1, t2) if TypeLattice.leq(annoType, TFloat) && TypeLattice.leq(hintType, TInt) =>
+                    verbosity = 3
+                    TNumeric
+                case _ =>
+                    annoType
+
+            }
+
+            // Display error
+            if (Settings.get.verbosity >= verbosity) {
+                Reporter.notice("Annotation: "+annoType.toText(BaseTypeEnvironment)+" incompatible with type hint or default value: "+hintType.toText(BaseTypeEnvironment), pos)
+            }
+
+            t
+        } else {
+            annoType
         }
-        annoType
     }
 
     /**
