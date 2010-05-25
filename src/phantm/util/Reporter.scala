@@ -6,16 +6,14 @@ class Reporter(mainFiles: List[String]) {
     type ErrorCheck = (String, String, String);
     type Error = (String, String, Positional, String);
 
+    var errorsCount = 0
+    var noticesCount = 0
+    var totalErrorsCount = 0
+    var totalNoticesCount = 0
+
     private var files = Map[String, List[String]]();
-    private var errorsCount = 0
-    private var noticesCount = 0
-    private var totalErrorsCount = 0
-    private var totalNoticesCount = 0
     private var errorsCheck = Map[Option[String], Set[ErrorCheck]]().withDefaultValue(Set[ErrorCheck]())
     private var errors = Map[Option[String], Set[Error]]().withDefaultValue(Set[Error]())
-
-    def getNoticesCount = noticesCount
-    def getTotalNoticesCount = totalNoticesCount
 
     def error(msg: String) = {
         errorsCount += 1;
@@ -54,7 +52,7 @@ class Reporter(mainFiles: List[String]) {
     }
 
 
-    def errorMilestone = {
+    def emitAll = {
         var errorsToDisplay = if (Settings.get.focusOnMainFiles) {
             var errorSet = Map[Option[String], Set[Error]]()
             for ((file, errs) <- errors) {
@@ -84,14 +82,6 @@ class Reporter(mainFiles: List[String]) {
 
         errors = Map[Option[String], Set[Error]]().withDefaultValue(Set[Error]())
         errorsCheck = Map[Option[String], Set[ErrorCheck]]().withDefaultValue(Set[ErrorCheck]())
-
-        if (errorsCount > 0) {
-            val ec = errorsCount;
-            val tec = totalErrorsCount;
-            errorsCount = 0;
-            totalErrorsCount = 0;
-            throw new ErrorException(ec, noticesCount, tec, totalNoticesCount);
-        }
     }
 
     private def emitNormal(prefix: String, msg: String, pos: Positional) = {
