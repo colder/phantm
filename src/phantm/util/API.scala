@@ -240,16 +240,22 @@ object API {
                 def simpleTypVal(name: String, value: String) = "<type name=\""+name+"\" value=\""+value+"\" />"
 
                 typ match {
+                    case TTop            => simpleTyp("any")
+                    case TUninitialized  => simpleTyp("null")
+                    case TBottom         => simpleTyp("any")
                     case TInt            => simpleTyp("int")
-                    case TIntLit(i)      => simpleTypVal("int", i.toString)
+                    //case TIntLit(i)      => simpleTypVal("int", i.toString)
+                    case TIntLit(i)      => simpleTyp("int")
                     case TNumeric        => simpleTyp("numeric")
                     case TBoolean        => simpleTyp("bool")
                     case TTrue           => simpleTyp("true")
                     case TFalse          => simpleTyp("false")
                     case TFloat          => simpleTyp("float")
-                    case TFloatLit(l)    => simpleTypVal("float", l.toString)
+                    //case TFloatLit(l)    => simpleTypVal("float", l.toString)
+                    case TFloatLit(l)    => simpleTyp("float")
                     case TString         => simpleTyp("string")
-                    case TStringLit(s)   => simpleTypVal("string", s)
+                    //case TStringLit(s)   => simpleTypVal("string", s)
+                    case TStringLit(s)   => simpleTyp("string")
                     case TAny            => simpleTyp("any")
                     case TResource       => simpleTyp("resource")
                     case TNull           => simpleTyp("null")
@@ -259,7 +265,7 @@ object API {
                         tu.types.map(typeToXML).mkString
 
                     case ta: TArray      =>
-                        val es = ta.entries.map(e => "<elem key=\""+e._1+"\">"+typeToXML(e._2)+"</elem>").mkString
+                        val es = ta.entries.map(e => "<elem key=\""+e._1.replaceAll("\"", "\\\"")+"\">"+typeToXML(e._2)+"</elem>").mkString
                         val ge = "<anyelem>"+typeToXML(ta.globalType)+"</anyelem>"
                         "<type name=\"array\">"+es+ge+"</type>"
 
