@@ -2,6 +2,8 @@ package phantm
 
 import java.io._
 
+import scala.xml._
+
 import phantm.util._
 
 import phantm.phases._
@@ -12,14 +14,19 @@ import phantm.ast.STToAST
 object Main {
     var settings = Settings()
     var displayUsage = false
+    var displayVersion = false
     var files = List[String]()
 
     def main(args: Array[String]): Unit = {
         if (args.length > 0) {
             handleArgs(args.toList)
 
-            if (displayUsage) {
-                usage
+            if (displayVersion || displayUsage) {
+                version
+
+                if (displayUsage) {
+                    usage
+                }
             } else {
                 if (files.length == 0) {
                     println("No file provided.")
@@ -117,6 +124,8 @@ object Main {
             case "--summary" :: xs =>
                 settings = settings.copy(summaryOnly = true)
                 handleArgs(xs)
+            case "--version" :: xs =>
+                displayVersion = true
             case "--lint" ::  xs =>
                 settings = settings.copy(onlyLint = true)
                 handleArgs(xs)
@@ -126,6 +135,12 @@ object Main {
                 handleArgs(xs)
             case Nil =>
         }
+    }
+
+    def version = {
+        val data = XML.load(getClass().getClassLoader().getResourceAsStream("spec/build.xml"))
+
+        println("phantm "+(data \ "version").text+" (built: "+(data \ "date").text+")");
     }
 
     def usage = {

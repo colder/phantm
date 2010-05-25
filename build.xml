@@ -103,6 +103,7 @@ JAR
      <mkdir dir="builds"/>
      <mkdir dir="classes/spec"/>
      <copy file="spec/internal_api.xml" tofile="classes/spec/internal_api.xml" />
+     <copy file="spec/build.xml" tofile="classes/spec/build.xml" />
      <mkdir dir="classes/tables"/>
      <copy file="java/phantm/parser/action_table.bin" tofile="classes/tables/action_table.bin" />
      <copy file="java/phantm/parser/reduce_table.bin" tofile="classes/tables/reduce_table.bin" />
