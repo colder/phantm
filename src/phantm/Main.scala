@@ -114,6 +114,9 @@ object Main {
             case "--progress" :: xs =>
                 settings = settings.copy(displayProgress = true)
                 handleArgs(xs)
+            case "--summary" :: xs =>
+                settings = settings.copy(summaryOnly = true)
+                handleArgs(xs)
             case "--lint" ::  xs =>
                 settings = settings.copy(onlyLint = true)
                 handleArgs(xs)

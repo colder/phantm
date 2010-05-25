@@ -6,6 +6,7 @@ case class Settings(
     val resolveIncludes: Boolean      = true,
     val importAPI: Boolean            = true,
     val testsActive: Boolean          = false,
+    val summaryOnly: Boolean          = false,
     val displayFixPoint: Boolean      = false,
     val displayIncludes: Boolean      = false,
     val displayProgress: Boolean      = false,

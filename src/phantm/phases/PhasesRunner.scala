@@ -26,7 +26,9 @@ class PhasesRunner(val reporter: Reporter) {
             }
         }
 
-        reporter.emitAll
+        if (!Settings.get.summaryOnly) {
+            reporter.emitAll
+        }
 
         val ec  = reporter.errorsCount
         val tec = reporter.totalErrorsCount
