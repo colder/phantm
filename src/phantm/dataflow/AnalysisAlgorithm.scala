@@ -45,7 +45,7 @@ class AnalysisAlgorithm[E <: Environment[E, S],S]
         var pass = 0;
 
 
-        if (Settings.get.displayProgress) {
+        if (Settings.get.displayProgress && Settings.get.verbosity > 2) {
             println("      * Analyzing CFG ("+cfg.V.size+" vertices, "+cfg.E.size+" edges)")
         }
 
@@ -69,7 +69,7 @@ class AnalysisAlgorithm[E <: Environment[E, S],S]
         while (workList.size > 0) {
             pass += 1
 
-            if (Settings.get.displayProgress) {
+            if (Settings.get.displayProgress && Settings.get.verbosity > 2) {
               println("      * Pass "+pass+" ("+workList.size+" nodes in worklist)...")
             }
 
