@@ -16,6 +16,10 @@ class TypeEnvironment(val map: Map[SimpleVariable, Type], val scope: Option[Clas
         this(Map[SimpleVariable, Type](), None, new ObjectStore);
     }
 
+    def getGlobalsType: Type = {
+        new TArray(map.collect{ case (Identifier(sym), t) => (sym.name, t)}, TUninitialized)
+    }
+
     def lookup(v: SimpleVariable): Option[Type] = map.get(v)
 
     def inject(v: SimpleVariable, typ: Type): TypeEnvironment =

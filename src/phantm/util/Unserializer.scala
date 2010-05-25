@@ -128,6 +128,8 @@ class Unserializer(content: String) {
 
     def toScalarMap = toMap.mapValues(uValueToScalar _)
 
+    def toTypeMap = toMap.mapValues(uValueToType _)
+
 
     def consumeInt : Int = {
         var buf = "";

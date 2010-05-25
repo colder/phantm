@@ -3,9 +3,10 @@ package phantm.phases;
 import phantm.Settings
 import phantm.cfg.{ASTToCFG}
 import phantm.ast.Trees._
+import phantm.cfg.{Trees => CFG}
 import phantm.ast.ASTSimpleTraversal
 import phantm.symbols._
-import phantm.types.TypeFlowAnalyzer
+import phantm.types.{Type,TypeFlowAnalyzer}
 
 object TypeAnalyzingPhase extends Phase(Some(APIExportingPhase)) {
 
@@ -21,6 +22,8 @@ object TypeAnalyzingPhase extends Phase(Some(APIExportingPhase)) {
 
 
 case class TypeFlowAnalysis(ctx: PhasesContext, node: Tree) extends ASTSimpleTraversal(node) {
+
+    var mainGlobals: Option[Type] = None
 
     def display(content: String) = {
         if (Settings.get.displayProgress && Settings.get.verbosity > 2) {
@@ -40,9 +43,10 @@ case class TypeFlowAnalysis(ctx: PhasesContext, node: Tree) extends ASTSimpleTra
                 display("Converting main scope...")
                 val cfg = ASTToCFG.convertAST(stmts, GlobalSymbols)
                 display("Analyzing main...")
-                val tfa = new TypeFlowAnalyzer(cfg, GlobalSymbols, ctx)
-                tfa.analyze
+                val tfa = new TypeFlowAnalyzer(cfg, GlobalSymbols, ctx, None)
+                val results = tfa.analyze
 
+                mainGlobals = Some(results(cfg.exit).getGlobalsType)
 
             case FunctionDecl(name, args, retref, body) if filter(name.value) =>
                 name.getSymbol match {
@@ -50,7 +54,7 @@ case class TypeFlowAnalysis(ctx: PhasesContext, node: Tree) extends ASTSimpleTra
                         display("Converting function "+name.value+"...")
                         val cfg = ASTToCFG.convertAST(List(body), fs)
                         display("Analyzing function "+name.value+"...")
-                        val tfa = new TypeFlowAnalyzer(cfg, fs, ctx)
+                        val tfa = new TypeFlowAnalyzer(cfg, fs, ctx, mainGlobals)
                         tfa.analyze
                     case _ =>
                         error("Incoherent symbol type, should be function")
@@ -67,7 +71,7 @@ case class TypeFlowAnalysis(ctx: PhasesContext, node: Tree) extends ASTSimpleTra
                                         display("Converting method "+cl.name+"::"+m.name.value+"...")
                                         val cfg = ASTToCFG.convertAST(List(m.body.get), ms)
                                         display("Analyzing method "+cl.name+"::"+m.name.value+"...")
-                                        val tfa = new TypeFlowAnalyzer(cfg, ms, ctx)
+                                        val tfa = new TypeFlowAnalyzer(cfg, ms, ctx, mainGlobals)
                                         tfa.analyze
                                     }
                                 case _ =>

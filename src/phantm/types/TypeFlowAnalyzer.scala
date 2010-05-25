@@ -10,11 +10,25 @@ import phantm.symbols._
 import phantm.phases.PhasesContext
 import phantm.annotations.AnnotationsStore
 import phantm.dataflow.AnalysisAlgorithm
+import phantm.cfg.{LabeledDirectedGraphImp, VertexImp}
 
-case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope, ctx: PhasesContext) {
+case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope, ctx: PhasesContext, globals: Option[Type]) {
+
+    type Vertex = VertexImp[Statement]
 
     def setupEnvironment: TypeEnvironment = {
         var baseEnv   = new TypeEnvironment;
+
+        // Get data from dumped state if any
+        def getSuperGlobal(name: String): Type = {
+            if (ctx.dumpedData != Nil) {
+                val map = ctx.dumpedData.flatMap(d => d.heap.toTypeMap).toMap
+                map.getOrElse(name, TNull)
+            } else {
+                new TArray(TTop)
+            }
+        }
+
 
         // We now inject predefined variables
         def injectPredef(name: String, typ: Type): Unit = {
@@ -27,16 +41,20 @@ case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope, ctx: PhasesCont
             }
         }
 
+        def injectSuperGlobal(name: String): Unit =
+            injectPredef(name, getSuperGlobal(name))
+
         //scope.registerPredefVariables
-        injectPredef("_GET",     new TArray(TTop))
-        injectPredef("_POST",    new TArray(TTop))
-        injectPredef("GLOBALS",  new TArray(TTop))
-        injectPredef("_REQUEST", new TArray(TTop))
-        injectPredef("_COOKIE",  new TArray(TTop))
-        injectPredef("_SERVER",  new TArray(TTop))
-        injectPredef("_FILES",   new TArray(TTop))
-        injectPredef("_ENV",     new TArray(TTop))
-        injectPredef("_SESSION", new TArray(TTop))
+        injectSuperGlobal("_GET")
+        injectSuperGlobal("_POST")
+        injectSuperGlobal("_REQUEST")
+        injectSuperGlobal("_COOKIE")
+        injectSuperGlobal("_SERVER")
+        injectSuperGlobal("_FILES")
+        injectSuperGlobal("_ENV")
+        injectSuperGlobal("_SESSION")
+
+        injectPredef("GLOBALS",  globals.getOrElse(new TArray(TAny)))
 
         // for methods, we inject $this as its always defined
         scope match {
@@ -65,7 +83,7 @@ case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope, ctx: PhasesCont
         baseEnv
     }
 
-    def analyze: Unit = {
+    def analyze: Map[Vertex, TypeEnvironment] = {
         val bottomEnv = BaseTypeEnvironment;
         val baseEnv   = setupEnvironment;
         var newCtx = ctx
@@ -94,5 +112,7 @@ case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope, ctx: PhasesCont
 
         // Collect errors and annotations
         aa.pass(TypeTransferFunction(false, newCtx, !Settings.get.exportAPIPath.isEmpty))
+
+        aa.getResult
     }
 }
