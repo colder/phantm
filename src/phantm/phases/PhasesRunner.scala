@@ -5,47 +5,40 @@ import phantm.util.{Reporter, ErrorException}
 
 class PhasesRunner(val reporter: Reporter) {
     def run(initCtx: PhasesContext) = {
-        try {
-            var ctx = initCtx
+        var ctx = initCtx
 
-            var oph: Option[Phase] = Some(DumpsCollectionPhase)
+        var oph: Option[Phase] = Some(DumpsCollectionPhase)
 
-            var i = 1;
-            while(oph != None) {
-                val ph = oph.get
-                try {
-                    if (Settings.get.displayProgress) {
-                        println(i+": "+ph.name+"...")
-                    }
-                    ctx = ph.run(ctx)
-                    reporter.errorMilestone
-                    oph = ph.next
-                    i += 1
-                } catch {
-                    case e: PhaseException =>
-                        reporter.error("Processing failed at phase "+i+" ("+e.ph.name+"): "+e.error)
-                        reporter.errorMilestone
+        var i = 1;
+        while(oph != None) {
+            val ph = oph.get
+            try {
+                if (Settings.get.displayProgress) {
+                    println(i+": "+ph.name+"...")
                 }
+                ctx = ph.run(ctx)
+                oph = ph.next
+                i += 1
+            } catch {
+                case e: PhaseException =>
+                    reporter.error("Processing failed at phase "+i+" ("+e.ph.name+"): "+e.error)
+                    oph = None
             }
-            val n = reporter.getNoticesCount
-            val tn = reporter.getTotalNoticesCount
+        }
 
-            if (Settings.get.focusOnMainFiles && n > 0 && tn > n) {
-                println(n+" notice"+(if (n>1) "s" else "")+" occured in main files.")
-                println(tn+" notice"+(if (tn>1) "s" else "")+" occured in total.")
-            } else {
-                println(n+" notice"+(if (n>1) "s" else "")+" occured.")
-            }
+        reporter.emitAll
 
-        } catch {
-            case ErrorException(en, nn, etn, ntn) =>
-                if (Settings.get.focusOnMainFiles) {
-                    println(nn+" notice"+(if (nn>1) "s" else "")+" and "+en+" error"+(if (en>1) "s" else "")+" occured in main files, abort.")
-                    println(ntn+" notice"+(if (ntn>1) "s" else "")+" and "+etn+" error"+(if (etn>1) "s" else "")+" occured in total.")
-                } else {
-                    println(nn+" notice"+(if (nn>1) "s" else "")+" and "+en+" error"+(if (en>1) "s" else "")+" occured, abort.")
+        val ec  = reporter.errorsCount
+        val tec = reporter.totalErrorsCount
+        val nc  = reporter.noticesCount
+        val tnc = reporter.totalNoticesCount
 
-                }
+        if (Settings.get.focusOnMainFiles) {
+            println(nc+" notice"+(if (nc>1) "s" else "")+" and "+ec+" error"+(if (ec>1) "s" else "")+" occured in main files, abort.")
+            println(tnc+" notice"+(if (tnc>1) "s" else "")+" and "+tec+" error"+(if (tec>1) "s" else "")+" occured in total.")
+        } else {
+            println(nc+" notice"+(if (nc>1) "s" else "")+" and "+ec+" error"+(if (ec>1) "s" else "")+" occured, abort.")
+
         }
     }
 }

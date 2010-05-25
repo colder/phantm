@@ -23,7 +23,7 @@ object TypeAnalyzingPhase extends Phase(Some(APIExportingPhase)) {
 case class TypeFlowAnalysis(ctx: PhasesContext, node: Tree) extends ASTSimpleTraversal(node) {
 
     def display(content: String) = {
-        if (Settings.get.displayProgress) {
+        if (Settings.get.displayProgress && Settings.get.verbosity > 2) {
             println("     - "+content)
         }
     }
