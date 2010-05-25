@@ -27,6 +27,12 @@ object IncludesConstantsResolutionPhase extends Phase(Some(SymbolsCollectionPhas
             }
         }
 
+        // We register every files as included already
+
+        for (f <- ctx.dumpedData.flatMap(d => d.files)) {
+            IncludeResolver.includedFiles += f
+        }
+
         ast = ConstantsResolver(ast, false).transform
         ast = IncludeResolver(ast).transform
         ast = ConstantsResolver(ast, false).transform
