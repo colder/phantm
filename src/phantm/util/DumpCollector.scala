@@ -1,11 +1,12 @@
 package phantm.util
-import io.Source
+import io.{Source, Codec}
 import java.io.File
+import java.nio.charset.Charset
 
 import scala.util.control.Breaks._
 
 case class DumpCollector(path: String) {
-    private val content = Source.fromFile(new File(path)).getLines("\n").toList
+    private val content = Source.fromFile(new File(path))(new Codec(Charset.forName("ISO-8859-1"))).getLines("\n").toList
     var lineNr = 3
 
     var files: List[String] = Nil
