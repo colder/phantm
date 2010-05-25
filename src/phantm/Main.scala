@@ -118,7 +118,8 @@ object Main {
                 settings = settings.copy(onlyLint = true)
                 handleArgs(xs)
             case x :: xs =>
-                files = files ::: args.head :: Nil
+                val f = new File(args.head)
+                files = files ::: f.getAbsolutePath :: Nil
                 handleArgs(xs)
             case Nil =>
         }

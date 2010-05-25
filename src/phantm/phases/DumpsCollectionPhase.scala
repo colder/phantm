@@ -5,7 +5,7 @@ import java.io.File
 import phantm.Settings
 import phantm.util.DumpCollector
 
-object DumpsCollectionPhase extends Phase(Some(TypeAnalyzingPhase)) {
+object DumpsCollectionPhase extends Phase(Some(ParsingPhase)) {
 
     def name = "Dumps collections"
     def description = "Collecting and importing dumps"
@@ -13,13 +13,19 @@ object DumpsCollectionPhase extends Phase(Some(TypeAnalyzingPhase)) {
     def run(ctx: PhasesContext): PhasesContext = {
         var data = List[DumpCollector]()
 
+        var files = Set[String]()
+
         if (Settings.get.dumps != Nil) {
             for (path <- Settings.get.dumps) {
-                data = new DumpCollector(path) :: data
+                val dc = new DumpCollector(path)
+                data = dc :: data
+                files = files ++ dc.files
             }
         }
 
-        ctx.copy(dumpedData = data)
+        files = files -- ctx.files
+
+        ctx.copy(dumpedData = data, files = files.toList ::: ctx.files)
     }
 
 }

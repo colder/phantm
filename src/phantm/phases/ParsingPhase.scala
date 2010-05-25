@@ -3,11 +3,12 @@ package phantm.phases
 import phantm.parser.Parser
 import phantm.ast.STToAST
 
-object ParsingPhase extends Phase(Some(ASTChecksPhase)) {
+object ParsingPhase extends Phase(Some(ASTPruningPhase)) {
     def name = "Parsing"
     def description = "Generating AST"
 
     def run(ctx: PhasesContext): PhasesContext = {
+
         val sts = ctx.files map { f => val c = new Parser(f); (c, c parse) }
 
         if (sts exists { _._2 == None} ) {

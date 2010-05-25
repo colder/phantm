@@ -102,7 +102,6 @@ class Unserializer(content: String) {
                     }
 
                     env = env.inject(Identifier(sym), typ)
-                    println("Setting "+key+" => "+typ)
                 }
                 env
             case _ =>

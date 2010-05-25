@@ -8,7 +8,7 @@ class PhasesRunner(val reporter: Reporter) {
         try {
             var ctx = initCtx
 
-            var oph: Option[Phase] = Some(ParsingPhase)
+            var oph: Option[Phase] = Some(DumpsCollectionPhase)
 
             var i = 1;
             while(oph != None) {

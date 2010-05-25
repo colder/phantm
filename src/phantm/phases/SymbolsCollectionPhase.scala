@@ -10,7 +10,7 @@ import phantm.annotations.SourceAnnotations
 import scala.collection.mutable.HashSet
 import scala.collection.mutable.HashMap
 
-object SymbolsCollectionPhase extends Phase(Some(DumpsCollectionPhase)) {
+object SymbolsCollectionPhase extends Phase(Some(TypeAnalyzingPhase)) {
 
     def name = "Symbols collections"
     def description = "Collecting symbols"

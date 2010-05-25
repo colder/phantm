@@ -66,6 +66,16 @@ function phantm_dumpanddie(array $vars) {
     $fh = fopen($path, "w");
     fwrite($fh, "# Dumped state of ".$file." at line ".$line."  \n");
     fwrite($fh, "# Date: ".date("r")."\n");
+    fwrite($fh, "# Included files:\n");
+    $files = get_included_files();
+
+    foreach ($files as $f) {
+        $f = realpath($f);
+        if (($f === __FILE__) || ($f === $file)) continue;
+
+        fwrite($fh, $f."\n");
+    }
+
     fwrite($fh, "# Function declarations:\n");
 
     $funcs = get_defined_functions();
@@ -76,10 +86,27 @@ function phantm_dumpanddie(array $vars) {
 
         fwrite($fh, $f.":".$rf->getStartLine().":".$rf->getFileName()."\n");
     }
-    unset($vars['GLOBALS']);
+
+    fwrite($fh, "# Classes declarations:\n");
+    $classes = get_declared_classes();
+    foreach ($classes as $c) {
+        $rc = new ReflectionClass($c);
+
+        if (!$rc->isUserDefined()) continue;
+
+        fwrite($fh, $c.":".$rc->getStartLine().":".$rc->getFileName()."\n");
+    }
+
+
+    fwrite($fh, "# Constants:\n");
+    $allConsts = get_defined_constants(true);
+
+    $consts = !empty($allConsts['user']) ? $allConsts['user'] : array();
+    fwrite($fh, strtr(serialize($consts), array("\\" => "\\\\", "\n" => "\\n"))."\n");
 
     fwrite($fh, "# Heap state:\n");
-    fwrite($fh, serialize($vars));
+    unset($vars['GLOBALS']);
+    fwrite($fh, strtr(serialize($vars), array("\\" => "\\\\", "\n" => "\\n"))."\n");
     fclose($fh);
 
     copy($path, "last.dump");
