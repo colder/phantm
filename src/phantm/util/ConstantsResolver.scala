@@ -7,8 +7,6 @@ import phantm.Settings
 import phantm.ast.Trees._
 import phantm.ast.ASTTransform
 
-import scala.collection.mutable.Map
-
 case class ConstantsResolver(ast: Program, issueErrors: Boolean) extends ASTTransform(ast) {
 
     override def trExpr(ex: Expression): Expression = ex match {

@@ -2,6 +2,7 @@ package phantm.util
 
 import phantm.symbols._
 import phantm.types._
+import phantm.ast.Trees.{Scalar, PHPInteger, PHPString, PHPNull, PHPTrue, PHPFalse, PHPFloat}
 import phantm.cfg.Trees.Identifier
 
 class UnserializeException(msg: String) extends Exception(msg)
@@ -34,80 +35,98 @@ class Unserializer(content: String) {
         valueStore(i)
     }
 
+    def uValueToKey(v: UValue) = v match {
+        case UInt(i) => i+""
+        case UString(str) => str
+        case _ =>
+            throw new UnserializeException("Invalid key value: "+v)
+    }
+
+    var recursionLimit = 0
+
+    def uValueToScalar(v: UValue): Scalar = v match {
+        case UFalse => PHPFalse()
+        case UTrue => PHPTrue()
+        case UNull => PHPNull()
+        case UInt(i) => PHPInteger(i)
+        case UString(v) => PHPString(v)
+        case UFloat(f) => PHPFloat(f)
+        case _ => throw new UnserializeException("Invalid serialized scalar value: "+v)
+    }
+
+    def uValueToType(v: UValue): Type = v match {
+        case UFalse => TFalse
+        case UTrue => TTrue
+        case UNull => TNull
+        case UInt(i) => TIntLit(i)
+        case UString(v) => TStringLit(v)
+        case UFloat(f) => TFloatLit(f)
+        case UObject(cl, entries) => TAnyObject
+        case UArray(entries) =>
+            var res = Map[String, Type]()
+
+            for ((k, v) <- entries) {
+                res += (uValueToKey(k) -> uValueToType(v))
+            }
+
+            new TArray(res, TUninitialized)
+
+        case UObjRef(i) =>
+            recursionLimit += 1
+            val t = if (recursionLimit >= 5) {
+                TTop
+            } else {
+                uValueToType(getVal(i))
+            }
+            recursionLimit -= 1
+
+            t
+        case URealRef(i) =>
+            recursionLimit += 1
+            val t = if (recursionLimit >= 5) {
+                TTop
+            } else {
+                uValueToType(getVal(i))
+            }
+            recursionLimit -= 1
+
+            t
+
+    }
+
     //def importToEnv(env: TypeEnvironment): TypeEnvironment = {
     def importToEnv(envInit: TypeEnvironment): TypeEnvironment = {
-        def uValueToKey(v: UValue) = v match {
-            case UInt(i) => i+""
-            case UString(str) => str
-            case _ =>
-                throw new UnserializeException("Invalid key value: "+v)
+        var env = envInit
+        for ((k, t) <- toMap.mapValues(uValueToType _)) {
+            val sym = GlobalSymbols.lookupVariable(k) match {
+                case Some(vs) =>
+                    vs
+                case None =>
+                    val vs = new VariableSymbol(k)
+                    GlobalSymbols.registerVariable(vs)
+                    vs
+            }
+
+            env = env.inject(Identifier(sym), t)
         }
+        env
+    }
 
-        var recursionLimit = 0
-
-        def uValueToType(v: UValue): Type = v match {
-            case UFalse => TFalse
-            case UTrue => TTrue
-            case UNull => TNull
-            case UInt(i) => TIntLit(i)
-            case UString(v) => TStringLit(v)
-            case UFloat(f) => TFloatLit(f)
-            case UObject(cl, entries) => TAnyObject
-            case UArray(entries) =>
-                var res = Map[String, Type]()
-
-                for ((k, v) <- entries) {
-                    res += (uValueToKey(k) -> uValueToType(v))
-                }
-
-                new TArray(res, TUninitialized)
-
-            case UObjRef(i) =>
-                recursionLimit += 1
-                val t = if (recursionLimit >= 5) {
-                    TTop
-                } else {
-                    uValueToType(getVal(i))
-                }
-                recursionLimit -= 1
-
-                t
-            case URealRef(i) =>
-                recursionLimit += 1
-                val t = if (recursionLimit >= 5) {
-                    TTop
-                } else {
-                    uValueToType(getVal(i))
-                }
-                recursionLimit -= 1
-
-                t
-
-        }
-
-
+    def toMap = {
+        var map = Map[String, UValue]()
         result match {
             case UArray(entries) =>
-                var env = envInit
                 for ((k, v) <- entries) {
                     val key = uValueToKey(k)
-                    val typ = uValueToType(v)
-                    val sym = GlobalSymbols.lookupVariable(key) match {
-                        case Some(vs) =>
-                            vs
-                        case None =>
-                            val vs = new VariableSymbol(key)
-                            GlobalSymbols.registerVariable(vs)
-                            vs
-                    }
-
-                    env = env.inject(Identifier(sym), typ)
+                    map += key -> v
                 }
-                env
             case _ =>
                 throw new UnserializeException("Invalid non-array input for dumpanddie")
         }
+        map
     }
+
+    def toScalarMap = toMap.mapValues(uValueToScalar _)
 
 
     def consumeInt : Int = {

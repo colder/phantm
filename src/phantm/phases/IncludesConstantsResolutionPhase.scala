@@ -1,8 +1,10 @@
 package phantm.phases
 
 import phantm.Settings
+import phantm.symbols._
 import phantm.ast.{Trees => AST}
-import phantm.util.{ConstantsResolver, IncludeResolver}
+import phantm.util.{ConstantsResolver, IncludeResolver, Evaluator}
+import phantm.types.TypeHelpers
 
 object IncludesConstantsResolutionPhase extends Phase(Some(SymbolsCollectionPhase)) {
     def name = "Resolving includes"
@@ -10,6 +12,20 @@ object IncludesConstantsResolutionPhase extends Phase(Some(SymbolsCollectionPhas
 
     def run(ctx: PhasesContext): PhasesContext = {
         var ast: AST.Program = ctx.oast.get
+
+        // We register all constants found in dumped state
+        val consts = ctx.dumpedData.flatMap(d => d.constants.toScalarMap).toMap
+        for ((name, expr) <- consts if GlobalSymbols.lookupConstant(name) == None) {
+            Evaluator.staticEval(expr, false) match {
+                case Some(v) =>
+                    val cs = new ConstantSymbol(name, Some(v))
+                    cs.typ = TypeHelpers.exprToType(v)
+
+                    GlobalSymbols.registerConstant(cs)
+                case _ =>
+                    error("Unnexpected non-evaluable scalar value")
+            }
+        }
 
         ast = ConstantsResolver(ast, false).transform
         ast = IncludeResolver(ast).transform
