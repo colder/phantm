@@ -42,8 +42,8 @@ class ASTCollector(functs: Map[String, (String, Int)],
     def visit(t: Tree): Boolean = {
         t match {
             case fd @ FunctionDecl(Identifier(name), _, _, _) =>
-                if (functs contains name) {
-                    val (file, line) = functs(name)
+                if (functs contains name.toLowerCase) {
+                    val (file, line) = functs(name.toLowerCase)
                     if (file == fd.file.get && line == fd.line) {
                         functionsDecls = fd :: functionsDecls
                     }
