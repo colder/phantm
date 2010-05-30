@@ -39,6 +39,12 @@ object Trees {
   }
 
   case class Assume(lhs: SimpleValue, relOp: RelationalOperator, rhs: SimpleValue) extends Statement
+
+  case class AssumeSet(vs: List[Variable]) extends Statement
+  case class AssumeNotSet(vs: List[Variable]) extends Statement
+  case class AssumeEmpty(v: Variable) extends Statement
+  case class AssumeNotEmpty(v: Variable) extends Statement
+
   case class Print(rhs: SimpleValue) extends Statement
   case class Return(rhs: SimpleValue) extends Statement
 
@@ -164,6 +170,10 @@ object Trees {
       case Cast(to, e) => "("+to+")" + e
       case Skip => "..."
       case Assume(l, o, r) => "[" + l + o + r + "]"
+      case AssumeSet(vs) => "[isset(" + vs.mkString(", ") + ")]"
+      case AssumeNotSet(vs) => "[!isset(" + vs.mkString(", ") + ")]"
+      case AssumeEmpty(v) => "[empty(" + v + ")]"
+      case AssumeNotEmpty(v) => "[!empty(" + v + ")]"
       case Print(v) => "print("+v+")"
       case Return(v) => "return("+v+")"
       case Unset(v) => "unset("+v+")"

@@ -16,6 +16,9 @@ case class TypeTransferFunction(silent: Boolean,
     def notice(msg: String, pos: Positional) = if (!silent) Reporter.notice(msg, pos)
     def error(msg: String, pos: Positional) = if (!silent) Reporter.error(msg, pos)
 
+    val trueTypes  = TNumeric union TAnyArray union TString union TTrue union TResource union TAnyObject
+    val falseTypes = TNumeric union TAnyArray union TString union TFalse union TNull union TUninitialized
+
     def possiblyUninit(t: Type): Boolean = t match {
         case TTop =>
             true
@@ -735,6 +738,27 @@ case class TypeTransferFunction(silent: Boolean,
             }
         }
 
+        def filterType(v: Variable, reft: Type) = {
+            val t = typeFromSV(v);
+
+            if (t != TBottom) {
+                // We don't want to generate "unreachable code"
+                // if the type is already bottom
+
+                val rest = meet(t, reft)
+
+                if (rest == TBottom) {
+                    // unreachable code
+                    env = BaseTypeEnvironment
+                } else {
+                    val (osv, ct) = getCheckType(v, rest)
+                    if (!osv.isEmpty) {
+                        env = env.inject(osv.get, ct)
+                    }
+                }
+            }
+        }
+
         node match {
             case Assign(vr: Variable, v1) =>
                 //println("Assign..")
@@ -751,59 +775,46 @@ case class TypeTransferFunction(silent: Boolean,
                 val t = typeFromBinOP(v1, op, v2)
                 assign(vr, uninitToNull(t))
 
+            case AssumeSet(vs) =>
+                vs.foreach(v => filterType(v, TAny))
+            case AssumeNotSet(vs) =>
+                if  (vs.size == 1) {
+                    filterType(vs.head, TUninitialized union TNull)
+                } else {
+                    // can't do anything
+                }
+
+            case AssumeEmpty(v) =>
+                filterType(v, falseTypes)
+
+            case AssumeNotEmpty(v) =>
+                filterType(v, trueTypes)
+
             case Assume(v1, op, v2) => op match {
                 case LT | LEQ | GEQ | GT =>
                     expOrRef(v1, TNumeric)
                     expOrRef(v2, TNumeric)
                 case EQUALS | IDENTICAL | NOTEQUALS | NOTIDENTICAL =>
-                    def filter(v: Variable, value: Boolean) = {
-                        val t = typeFromSV(v);
-
-                        if (t != TBottom) {
-                            // We don't want to generate "unreachable code"
-                            // if the type is already bottom
-                            val reft = if (value == true) {
-                                // possible types of $v after $v == true
-                                TNumeric union TAnyArray union TString union TTrue union TResource union TAnyObject
-                            } else {
-                                // possible types of $v after $v == false
-                                TNumeric union TAnyArray union TString union TFalse union TNull union TUninitialized
-                            }
-
-                            val rest = meet(t, reft)
-
-                            if (rest == TBottom) {
-                                // unreachable code
-                                env = BaseTypeEnvironment
-                            } else {
-                                val (osv, ct) = getCheckType(v, rest)
-                                if (!osv.isEmpty) {
-                                    env = env.inject(osv.get, ct)
-                                }
-                            }
-                        }
-                    }
-
                     expOrRef(v1, TAny)
                     expOrRef(v2, TAny)
 
                     (v1, op, v2) match {
                         case (v: Variable, EQUALS | IDENTICAL, _: PHPTrue) =>
-                            filter(v, true)
+                            filterType(v, trueTypes)
                         case (v: Variable, NOTEQUALS | NOTIDENTICAL, _: PHPTrue) =>
-                            filter(v, false)
+                            filterType(v, falseTypes)
                         case (v: Variable, EQUALS | IDENTICAL, _: PHPFalse) =>
-                            filter(v, false)
+                            filterType(v, falseTypes)
                         case (v: Variable, NOTEQUALS | NOTIDENTICAL, _: PHPFalse) =>
-                            filter(v, true)
+                            filterType(v, trueTypes)
                         case (_: PHPTrue, EQUALS | IDENTICAL, v: Variable) =>
-                            filter(v, true)
+                            filterType(v, trueTypes)
                         case (_: PHPTrue, NOTEQUALS | NOTIDENTICAL, v: Variable) =>
-                            filter(v, false)
+                            filterType(v, falseTypes)
                         case (_: PHPFalse, EQUALS | IDENTICAL, v: Variable) =>
-                            filter(v, false)
+                            filterType(v, falseTypes)
                         case (_: PHPFalse, NOTEQUALS | NOTIDENTICAL, v: Variable) =>
-                            filter(v, true)
+                            filterType(v, trueTypes)
                         case _ =>
                             // no filtering
                     }

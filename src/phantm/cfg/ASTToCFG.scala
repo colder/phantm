@@ -132,6 +132,12 @@ object ASTToCFG {
                 Emit.goto(trueCont)
           case AST.BooleanNot(not) =>
             condExpr(not, trueCont, falseCont)
+          case AST.Isset(vs) =>
+            Emit.statementCont(CFG.AssumeSet(vs.map(varFromVar _)).setPos(ex), trueCont)
+            Emit.statementCont(CFG.AssumeNotSet(vs.map(varFromVar _)).setPos(ex), falseCont)
+          case AST.Empty(v) =>
+            Emit.statementCont(CFG.AssumeEmpty(varFromVar(v)).setPos(ex), trueCont)
+            Emit.statementCont(CFG.AssumeNotEmpty(varFromVar(v)).setPos(ex), falseCont)
           case _ =>
             val e = expr(ex)
             Emit.statementCont(CFG.Assume(e, CFG.EQUALS, CFG.PHPTrue().setPos(ex)).setPos(ex), trueCont)
