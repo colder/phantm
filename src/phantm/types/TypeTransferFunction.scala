@@ -473,10 +473,17 @@ case class TypeTransferFunction(silent: Boolean,
                 if (leq(t1, TAnyArray)) {
                     expOrRef(v2, TAnyArray)
                 } else {
-                    expOrRef(v1, TNumeric)
-                    expOrRef(v2, TNumeric)
+                    expOrRef(v1, TNumeric) union expOrRef(v2, TNumeric)
                 }
-            case MINUS | MULT | DIV | MOD =>
+            case MINUS | MULT =>
+                expOrRef(v2, TNumeric) union expOrRef(v1, TNumeric)
+
+            case MOD =>
+                expOrRef(v2, TNumeric)
+                expOrRef(v1, TNumeric)
+                TInt
+
+            case DIV =>
                 expOrRef(v2, TNumeric)
                 expOrRef(v1, TNumeric)
                 TNumeric
