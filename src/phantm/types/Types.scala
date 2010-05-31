@@ -49,11 +49,13 @@ object TFunctionAny extends FunctionType {
     val ret = TAny
 }
 
-case class TFunction(val args: List[(Type, Boolean)], val ret: Type) extends FunctionType {
+case class TFunction(val args: List[(Type, Boolean, Boolean)], val ret: Type) extends FunctionType {
 
     override def toString = args.map{a => a match {
-            case (t, false) => t
-            case (t, true) => "["+t+"]"
+            case (t, false, false) => t
+            case (t, false, true) => "["+t+"]"
+            case (t, true, false) => "&"+t
+            case (t, true, true) => "[&"+t+"]"
         }}.mkString("(", ", ", ")")+" => "+ret
 }
 

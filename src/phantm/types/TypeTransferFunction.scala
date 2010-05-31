@@ -131,7 +131,7 @@ case class TypeTransferFunction(silent: Boolean,
                 GlobalSymbols.lookupFunction(id.value) match {
                     case Some(fs) =>
                             if (collectAnnotations) {
-                                val ft = new TFunction(args.map(a => (typeFromSV(a), false)), TBottom)
+                                val ft = new TFunction(args.map(a => (typeFromSV(a), false, false)), TBottom)
                                 AnnotationsStore.collectFunction(fs, ft);
                             }
                             checkFCalls(fcall.params, fs.ftyps.toList, fcall)
@@ -730,7 +730,13 @@ case class TypeTransferFunction(silent: Boolean,
                                     if (i >= tf.args.length) {
                                         error("Prototype error!", pos)
                                     } else {
-                                        expOrRef(fcall_params(i), tf.args(i)._1)
+                                        (fcall_params(i), tf.args(i)._1, tf.args(i)._2) match {
+                                            case (v: Variable, etyp, true) =>
+                                                // If by ref and variable, we assign it directly
+                                                assign(v, etyp)
+                                            case (sv, etyp, byref) =>
+                                                expOrRef(sv, etyp)
+                                        }
                                     }
 
                                 }

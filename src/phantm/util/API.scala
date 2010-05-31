@@ -89,6 +89,12 @@ object API {
                 TAny
         }
 
+        def optArg(node: Node, name: String): Boolean = {
+            val t = (node \ ("@"+name)).text
+
+            (t == "") || (Integer.parseInt(t) > 0)
+        }
+
         def load = {
             try {
                 val data = XML.load(is)
@@ -125,18 +131,23 @@ object API {
                         }
 
 
-                        val args: List[(Type, Boolean)] = ((m \ "args" \\ "arg") map { a => (elemsToType(a \ "type"), Integer.parseInt((a \ "@opt").text) > 0) }).toList
+                        val args: List[(Node, Type, Boolean, Boolean)] = ((m \ "args" \\ "arg") map {
+                            a => (a,
+                                  elemsToType(a \ "type"),
+                                  optArg(a, "byref"),
+                                  optArg(a, "opt"))
+                        }).toList
 
                         val ms = new MethodSymbol(cs, name, visibility).setPos(APIPos(m))
                         ms.setOverwriteable(userland).setUserland(userland)
 
                         for ((a, i) <- args.zipWithIndex) {
-                            val as = new ArgumentSymbol("arg"+i, false, a._2)
-                            as.typ = a._1
+                            val as = new ArgumentSymbol("arg"+i, a._3, a._4).setPos(APIPos(a._1))
+                            as.typ = a._2
                             as.setOverwriteable(userland).setUserland(userland)
                             ms.registerArgument(as)
                         }
-                        ms.registerFType(TFunction(ms.argList.map { a => (a._2.typ, a._2.optional) }, elemsToType(m \ "return" \ "type")))
+                        ms.registerFType(TFunction(ms.argList.map { a => (a._2.typ, a._2.byref, a._2.optional) }, elemsToType(m \ "return" \ "type")))
                         cs.registerMethod(ms)
                     }
 
@@ -186,20 +197,26 @@ object API {
                 // functions
                 for (f <- data \\ "function") {
                     val name = (f \ "@name").text
-                    val args: List[(Node, Type, Boolean)] = ((f \ "args" \\ "arg") map { a => (a, elemsToType(a \ "type"), Integer.parseInt((a \ "@opt").text) > 0) }).toList
+                    val args: List[(Node, Type, Boolean, Boolean)] = ((f \ "args" \\ "arg") map {
+                        a => (a,
+                              elemsToType(a \ "type"),
+                              optArg(a, "byref"),
+                              optArg(a, "opt")
+                              )
+                    }).toList
 
                     val fs = new FunctionSymbol(name).setPos(APIPos(f))
                     fs.setOverwriteable(userland).setUserland(userland)
 
                     for ((a, i) <- args.zipWithIndex) {
-                        val as = new ArgumentSymbol("arg"+i, false, a._3).setPos(APIPos(a._1))
+                        val as = new ArgumentSymbol("arg"+i, a._3, a._4).setPos(APIPos(a._1))
                         as.typ = a._2
                         as.setOverwriteable(userland).setUserland(userland)
 
                         fs.registerArgument(as)
                     }
 
-                    fs.registerFType(TFunction(fs.argList.map { a => (a._2.typ, a._2.optional) }, elemsToType(f \ "return" \ "type")))
+                    fs.registerFType(TFunction(fs.argList.map { a => (a._2.typ, a._2.byref, a._2.optional) }, elemsToType(f \ "return" \ "type")))
 
                     GlobalSymbols.lookupFunction(name) match {
                         case Some(fs) =>
@@ -228,8 +245,8 @@ object API {
     class Writer(path: String) {
         // Compacts collected annotations and exports them
         def reduceFT(ft1: TFunction, ft2: TFunction): TFunction = {
-            new TFunction(ft1.args.zipAll(ft2.args, (TBottom, true), (TBottom, true)).map {
-                a => (a._1._1 union a._2._1, a._1._2 || a._2._2)
+            new TFunction(ft1.args.zipAll(ft2.args, (TBottom, false, true), (TBottom, false, true)).map {
+                a => (a._1._1 union a._2._1, a._1._2 || a._2._2,  a._1._3 || a._2._3)
             }, ft1.ret union ft2.ret)
         }
 
@@ -293,7 +310,7 @@ object API {
                         emit("   <return>"+typeToXML(ret)+"</return>")
                         emit("   <args>")
                         for (arg <- args) {
-                            emit("    <arg opt=\""+(if (arg._2) "1" else "0")+"\">"+typeToXML(arg._1)+"</arg>")
+                            emit("    <arg"+(if (arg._2) " opt=\"1\"" else "")+(if (arg._3) " byref=\"1\"" else "")+">"+typeToXML(arg._1)+"</arg>")
                         }
                         emit("   </args>")
                         emit("  </function>")
