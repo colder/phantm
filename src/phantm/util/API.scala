@@ -92,7 +92,7 @@ object API {
         def optArg(node: Node, name: String): Boolean = {
             val t = (node \ ("@"+name)).text
 
-            (t == "") || (Integer.parseInt(t) > 0)
+            (t != "") && (Integer.parseInt(t) > 0)
         }
 
         def load = {
