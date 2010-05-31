@@ -76,7 +76,8 @@ object SourceAnnotations {
             ident ~ "=" ~ utyp ^^ { case i ~ "=" ~ t => (i.toString, t) }
 
         def typVar: Parser[(String, Type)] =
-            utyp ~ variable ^^ { case t ~ v => (v, t) }
+            utyp ~ variable ^^ { case t ~ v => (v, t) } |
+            variable ~ utyp ^^ { case v ~ t => (v, t) }
 
 
         // Parsing helpers
