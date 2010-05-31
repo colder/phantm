@@ -26116,9 +26116,9 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
    <args>
     <arg><type name="string" /></arg>
     <arg><type name="string" /></arg>
-    <arg><type name="array" /></arg>
-    <arg><type name="numeric" /></arg>
-    <arg><type name="numeric" /></arg>
+    <arg byref="1" opt="1"><type name="array"><anyelem><type name="array"><anyelem><type name="any" /></anyelem></type></anyelem></type></arg>
+    <arg opt="1"><type name="numeric" /></arg>
+    <arg opt="1"><type name="numeric" /></arg>
    </args>
   </function>
 
