@@ -106,8 +106,11 @@ case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope, ctx: PhasesCont
         }
 
         // Detect unreachables:
-        for (l <- aa.detectUnreachable(TypeTransferFunction(true, newCtx, false))) {
-            Reporter.notice("Unreachable code", l)
+        if (ctx.dumpedData.isEmpty) {
+            // Only do it if no runtime instrumentation
+            for (l <- aa.detectUnreachable(TypeTransferFunction(true, newCtx, false))) {
+                Reporter.notice("Unreachable code", l)
+            }
         }
 
         // Collect errors and annotations
