@@ -766,7 +766,7 @@ case class TypeTransferFunction(silent: Boolean,
                 } else {
                     val (osv, ct) = getCheckType(v, rest)
                     if (!osv.isEmpty) {
-                        env = env.inject(osv.get, ct)
+                        env = env.inject(osv.get, meet(typeFromSV(osv.get), ct))
                     }
                 }
             }
