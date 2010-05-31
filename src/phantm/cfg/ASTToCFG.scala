@@ -77,10 +77,24 @@ object ASTToCFG {
             None
     }
 
+    val assumeFuncs  = Map[String, CFG.Property]() +
+            ("is_string" -> CFG.IsString) + ("is_bool" -> CFG.IsBool) +
+            ("is_array" -> CFG.IsArray) + ("is_float" -> CFG.IsFloat) +
+            ("is_real" -> CFG.IsFloat) + ("is_double" -> CFG.IsFloat) +
+            ("is_int" -> CFG.IsInt) + ("is_long" -> CFG.IsInt) +
+            ("is_integer" -> CFG.IsInt) + ("is_null" -> CFG.IsNull) +
+            ("is_object" -> CFG.IsObject) + ("is_resource" -> CFG.IsResource) +
+            ("is_scalar" -> CFG.IsScalar)
+
     /** Generates the part of the graph corresponding to the branching on a conditional expression */
     def condExpr(ex: AST.Expression, falseCont: Vertex, trueCont: Vertex): Unit = {
       // should have been enforced by type checking.
       // assert(ex.getType == TBoolean)
+
+      def assumeProp(p: CFG.Property, vs: List[AST.Variable]) = {
+          Emit.statementCont(CFG.AssumeProperty(p, vs.map(varFromVar _)).setPos(ex), trueCont)
+          Emit.statementCont(CFG.AssumeNotProperty(p, vs.map(varFromVar _)).setPos(ex), falseCont)
+      }
 
       ex match {
           case AST.Exit(Some(value)) =>
@@ -133,11 +147,12 @@ object ASTToCFG {
           case AST.BooleanNot(not) =>
             condExpr(not, trueCont, falseCont)
           case AST.Isset(vs) =>
-            Emit.statementCont(CFG.AssumeSet(vs.map(varFromVar _)).setPos(ex), trueCont)
-            Emit.statementCont(CFG.AssumeNotSet(vs.map(varFromVar _)).setPos(ex), falseCont)
+            assumeProp(CFG.Isset, vs)
           case AST.Empty(v) =>
-            Emit.statementCont(CFG.AssumeEmpty(varFromVar(v)).setPos(ex), trueCont)
-            Emit.statementCont(CFG.AssumeNotEmpty(varFromVar(v)).setPos(ex), falseCont)
+            assumeProp(CFG.Empty, v :: Nil)
+          case AST.FunctionCall(AST.StaticFunctionRef(AST.NSNone, Nil, id), AST.CallArg(v: AST.Variable, _) :: Nil)
+            if assumeFuncs.contains(id.value.toLowerCase) =>
+                assumeProp(assumeFuncs(id.value.toLowerCase), v :: Nil)
           case _ =>
             val e = expr(ex)
             Emit.statementCont(CFG.Assume(e, CFG.EQUALS, CFG.PHPTrue().setPos(ex)).setPos(ex), trueCont)

@@ -40,10 +40,22 @@ object Trees {
 
   case class Assume(lhs: SimpleValue, relOp: RelationalOperator, rhs: SimpleValue) extends Statement
 
-  case class AssumeSet(vs: List[Variable]) extends Statement
-  case class AssumeNotSet(vs: List[Variable]) extends Statement
-  case class AssumeEmpty(v: Variable) extends Statement
-  case class AssumeNotEmpty(v: Variable) extends Statement
+  // Assume property used for type filterings on branches
+  sealed abstract class Property
+  case object Isset       extends Property
+  case object Empty       extends Property
+  case object IsNull      extends Property
+  case object IsInt       extends Property
+  case object IsFloat     extends Property
+  case object IsBool      extends Property
+  case object IsArray     extends Property
+  case object IsString    extends Property
+  case object IsObject    extends Property
+  case object IsScalar    extends Property
+  case object IsResource extends Property
+
+  case class AssumeProperty(prop: Property, vs: List[Variable]) extends Statement
+  case class AssumeNotProperty(prop: Property, vs: List[Variable]) extends Statement
 
   case class Print(rhs: SimpleValue) extends Statement
   case class Return(rhs: SimpleValue) extends Statement
@@ -170,10 +182,8 @@ object Trees {
       case Cast(to, e) => "("+to+")" + e
       case Skip => "..."
       case Assume(l, o, r) => "[" + l + o + r + "]"
-      case AssumeSet(vs) => "[isset(" + vs.mkString(", ") + ")]"
-      case AssumeNotSet(vs) => "[!isset(" + vs.mkString(", ") + ")]"
-      case AssumeEmpty(v) => "[empty(" + v + ")]"
-      case AssumeNotEmpty(v) => "[!empty(" + v + ")]"
+      case AssumeProperty(p, vs) => "["+p+"(" + vs.mkString(", ") + ")]"
+      case AssumeNotProperty(p, vs) => "[!"+p+"(" + vs.mkString(", ") + ")]"
       case Print(v) => "print("+v+")"
       case Return(v) => "return("+v+")"
       case Unset(v) => "unset("+v+")"

@@ -788,20 +788,69 @@ case class TypeTransferFunction(silent: Boolean,
                 val t = typeFromBinOP(v1, op, v2)
                 assign(vr, uninitToNull(t))
 
-            case AssumeSet(vs) =>
-                vs.foreach(v => filterType(v, TAny))
-            case AssumeNotSet(vs) =>
-                if  (vs.size == 1) {
-                    filterType(vs.head, TUninitialized union TNull)
-                } else {
-                    // can't do anything
+            case AssumeProperty(p, vs) =>
+                p match {
+                    case Isset =>
+                        vs.foreach(v => filterType(v, TAny))
+                    case Empty =>
+                        vs.foreach(v => filterType(v, falseTypes))
+                    case IsInt =>
+                        filterType(vs.head, TInt)
+                    case IsFloat =>
+                        filterType(vs.head, TFloat)
+                    case IsArray =>
+                        filterType(vs.head, TAnyArray)
+                    case IsResource =>
+                        filterType(vs.head, TResource)
+                    case IsString =>
+                        filterType(vs.head, TString)
+                    case IsObject =>
+                        filterType(vs.head, TAnyObject)
+                    case IsBool =>
+                        filterType(vs.head, TBoolean)
+                    case IsNull =>
+                        filterType(vs.head, TNull)
+                    case IsScalar =>
+                        filterType(vs.head, TNumeric union TBoolean union TString)
                 }
 
-            case AssumeEmpty(v) =>
-                filterType(v, falseTypes)
+            case AssumeNotProperty(p, vs) =>
+                val allTypes = Set[Type]() + TInt + TFloat +
+                               TAnyArray + TResource + TString +
+                               TAnyObject + TBoolean + TNull;
 
-            case AssumeNotEmpty(v) =>
-                filterType(v, trueTypes)
+                def allBut(t: Type): Type = {
+                    (allTypes - t).reduceLeft(_ union _)
+                }
+
+                p match {
+                    case Isset =>
+                        if  (vs.size == 1) {
+                            filterType(vs.head, TUninitialized union TNull)
+                        } else {
+                            // can't do anything
+                        }
+                    case Empty =>
+                        filterType(vs.head, trueTypes)
+                    case IsInt =>
+                        filterType(vs.head, allBut(TInt))
+                    case IsFloat =>
+                        filterType(vs.head, allBut(TFloat))
+                    case IsArray =>
+                        filterType(vs.head, allBut(TAnyArray))
+                    case IsResource =>
+                        filterType(vs.head, allBut(TResource))
+                    case IsString =>
+                        filterType(vs.head, allBut(TString))
+                    case IsObject =>
+                        filterType(vs.head, allBut(TAnyObject))
+                    case IsBool =>
+                        filterType(vs.head, allBut(TBoolean))
+                    case IsNull =>
+                        filterType(vs.head, allBut(TNull))
+                    case IsScalar =>
+                        filterType(vs.head, TAnyObject union TAnyArray union TResource)
+                }
 
             case Assume(v1, op, v2) => op match {
                 case LT | LEQ | GEQ | GT =>
