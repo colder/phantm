@@ -120,9 +120,9 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
 
                 val ftargs = for ((n, as) <- ms.argList) yield {
                     if (args contains n) {
-                        (args(n), as.optional)
+                        (args(n), as.byref, as.optional)
                     } else {
-                        (TAny, as.optional)
+                        (TAny, as.byref, as.optional)
                     }
                 }
 
@@ -134,7 +134,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
 
             val ftargs = for (((n, a), i) <- ms.argList.zipWithIndex) yield {
                 if (t.args.size <= i) {
-                    (a.typ, a.optional)
+                    (a.typ, a.byref, a.optional)
                 } else {
                     if (m.args(i).default != None) {
                         val tde = TypeHelpers.exprToType(m.args(i).default)
@@ -142,7 +142,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
                     }
                     val newT = checkTypeHint(t.args(i)._1, a.typ, a)
                     a.typ = newT
-                    (newT, a.optional)
+                    (newT, a.byref, a.optional)
                 }
             }
             ms.registerFType(TFunction(ftargs, t.ret))
@@ -263,9 +263,9 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
 
                     val ftargs = for ((n, as) <- fs.argList) yield {
                         if (args contains n) {
-                            (args(n), as.optional)
+                            (args(n), as.byref, as.optional)
                         } else {
-                            (TAny, as.optional)
+                            (TAny, as.byref, as.optional)
                         }
                     }
 
@@ -277,7 +277,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
 
                 val ftargs = for (((n, a), i) <- fs.argList.zipWithIndex) yield {
                     if (t.args.size <= i) {
-                        (a.typ, a.optional)
+                        (a.typ, a.byref, a.optional)
                     } else {
                         if (args(i).default != None) {
                             val tde = TypeHelpers.exprToType(args(i).default)
@@ -285,7 +285,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
                         }
                         val newT = checkTypeHint(t.args(i)._1, a.typ, a)
                         a.typ = newT
-                        (newT, a.optional)
+                        (newT, a.byref, a.optional)
                     }
                 }
                 fs.registerFType(TFunction(ftargs, t.ret))
