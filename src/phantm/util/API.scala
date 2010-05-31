@@ -92,7 +92,7 @@ object API {
         def load = {
             try {
                 val data = XML.load(is)
-                val userland = (data \ "@userland") == "yes"
+                val userland = (data \ "@userland").text == "yes"
 
                 // classes
                 for (c <- data \\ "class") {
@@ -136,7 +136,7 @@ object API {
                             as.setOverwriteable(userland).setUserland(userland)
                             ms.registerArgument(as)
                         }
-                        ms.registerFType(TFunction(ms.argList.map { a => (a._2.typ, a._2.optional) }, elemsToType(m \ "type")))
+                        ms.registerFType(TFunction(ms.argList.map { a => (a._2.typ, a._2.optional) }, elemsToType(m \ "return" \ "type")))
                         cs.registerMethod(ms)
                     }
 
@@ -199,7 +199,7 @@ object API {
                         fs.registerArgument(as)
                     }
 
-                    fs.registerFType(TFunction(fs.argList.map { a => (a._2.typ, a._2.optional) }, elemsToType(f \ "type")))
+                    fs.registerFType(TFunction(fs.argList.map { a => (a._2.typ, a._2.optional) }, elemsToType(f \ "return" \ "type")))
 
                     GlobalSymbols.lookupFunction(name) match {
                         case Some(fs) =>
