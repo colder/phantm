@@ -136,7 +136,13 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
                 if (t.args.size <= i) {
                     (a.typ, a.optional)
                 } else {
-                    (checkTypeHint(t.args(i)._1, a.typ, a), a.optional)
+                    if (m.args(i).default != None) {
+                        val tde = TypeHelpers.exprToType(m.args(i).default)
+                        checkTypeHint(t.args(i)._1, tde, a)
+                    }
+                    val newT = checkTypeHint(t.args(i)._1, a.typ, a)
+                    a.typ = newT
+                    (newT, a.optional)
                 }
             }
             ms.registerFType(TFunction(ftargs, t.ret))
@@ -277,7 +283,9 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
                             val tde = TypeHelpers.exprToType(args(i).default)
                             checkTypeHint(t.args(i)._1, tde, a)
                         }
-                        (checkTypeHint(t.args(i)._1, a.typ, a), a.optional)
+                        val newT = checkTypeHint(t.args(i)._1, a.typ, a)
+                        a.typ = newT
+                        (newT, a.optional)
                     }
                 }
                 fs.registerFType(TFunction(ftargs, t.ret))

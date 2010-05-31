@@ -67,7 +67,7 @@ case class TypeFlowAnalysis(ctx: PhasesContext, node: Tree) extends ASTSimpleTra
                         for (m <- methods) if (m.body != None) {
                             m.name.getSymbol match {
                                 case ms: MethodSymbol =>
-                                    if (filter(cl.name+"::"+m.name.value)) {
+                                    if (filter(cl.name+"::"+m.name.value) || filter(cl.name+"::_")) {
                                         display("Converting method "+cl.name+"::"+m.name.value+"...")
                                         val cfg = ASTToCFG.convertAST(List(m.body.get), ms)
                                         display("Analyzing method "+cl.name+"::"+m.name.value+"...")
