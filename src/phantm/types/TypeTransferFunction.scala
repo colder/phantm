@@ -860,23 +860,38 @@ case class TypeTransferFunction(silent: Boolean,
                     expOrRef(v1, TAny)
                     expOrRef(v2, TAny)
 
+                    def filterOType(v: Variable, reft: Option[Type]) =
+                        if (!reft.isEmpty) filterType(v, reft.get);
+
+
+                    def getReprTypes(sv: StaticValue, bval: Boolean, strict: Boolean): Option[Type] = (sv, bval, strict) match {
+                        case (sv,          true,    true)  => Some(typeFromSV(sv))
+                        case (_:PHPTrue,   true,    _)     => Some(trueTypes)
+                        case (_:PHPTrue,   false,   false) => Some(falseTypes)
+                        case (_:PHPFalse,  true,    _)     => Some(falseTypes)
+                        case (_:PHPFalse,  false,   false) => Some(trueTypes)
+                        case (_:PHPNull,   true,    false) => Some(falseTypes)
+                        case (_:PHPNull,   false,   false) => Some(trueTypes)
+                        case _ => None
+                    }
+
                     (v1, op, v2) match {
-                        case (v: Variable, EQUALS | IDENTICAL, _: PHPTrue) =>
-                            filterType(v, trueTypes)
-                        case (v: Variable, NOTEQUALS | NOTIDENTICAL, _: PHPTrue) =>
-                            filterType(v, falseTypes)
-                        case (v: Variable, EQUALS | IDENTICAL, _: PHPFalse) =>
-                            filterType(v, falseTypes)
-                        case (v: Variable, NOTEQUALS | NOTIDENTICAL, _: PHPFalse) =>
-                            filterType(v, trueTypes)
-                        case (_: PHPTrue, EQUALS | IDENTICAL, v: Variable) =>
-                            filterType(v, trueTypes)
-                        case (_: PHPTrue, NOTEQUALS | NOTIDENTICAL, v: Variable) =>
-                            filterType(v, falseTypes)
-                        case (_: PHPFalse, EQUALS | IDENTICAL, v: Variable) =>
-                            filterType(v, falseTypes)
-                        case (_: PHPFalse, NOTEQUALS | NOTIDENTICAL, v: Variable) =>
-                            filterType(v, trueTypes)
+                        case (v: Variable, EQUALS, sv: StaticValue) =>
+                            filterOType(v, getReprTypes(sv, true, false))
+                        case (v: Variable, IDENTICAL, sv: StaticValue) =>
+                            filterOType(v, getReprTypes(sv, true, true))
+                        case (v: Variable, NOTEQUALS, sv: StaticValue) =>
+                            filterOType(v, getReprTypes(sv, false, false))
+                        case (v: Variable, NOTIDENTICAL, sv: StaticValue) =>
+                            filterOType(v, getReprTypes(sv, false, true))
+                        case (sv: StaticValue, EQUALS, v: Variable) =>
+                            filterOType(v, getReprTypes(sv, true, false))
+                        case (sv: StaticValue, IDENTICAL, v: Variable) =>
+                            filterOType(v, getReprTypes(sv, true, true))
+                        case (sv: StaticValue, NOTEQUALS, v: Variable) =>
+                            filterOType(v, getReprTypes(sv, false, false))
+                        case (sv: StaticValue, NOTIDENTICAL, v: Variable) =>
+                            filterOType(v, getReprTypes(sv, false, true))
                         case _ =>
                             // no filtering
                     }

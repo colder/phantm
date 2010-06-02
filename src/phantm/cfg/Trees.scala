@@ -85,15 +85,16 @@ object Trees {
   case class VariableClassProperty(cl: AST.ClassRef, index: SimpleValue) extends Variable
   case class NoVar() extends Variable
 
-  case class PHPLong(value: Long) extends SimpleValue
-  case class PHPFloat(value: Float) extends SimpleValue
-  case class PHPString(value: java.lang.String) extends SimpleValue
-  case class PHPTrue() extends SimpleValue
-  case class PHPAny() extends SimpleValue
-  case class PHPFalse() extends SimpleValue
-  case class PHPNull() extends SimpleValue
-  case class PHPThis() extends SimpleValue
-  case class PHPEmptyArray() extends SimpleValue
+  sealed abstract class StaticValue extends SimpleValue
+  case class PHPLong(value: Long) extends StaticValue
+  case class PHPFloat(value: Float) extends StaticValue
+  case class PHPString(value: java.lang.String) extends StaticValue
+  case class PHPTrue() extends StaticValue
+  case class PHPAny() extends StaticValue
+  case class PHPFalse() extends StaticValue
+  case class PHPNull() extends StaticValue
+  case class PHPThis() extends StaticValue
+  case class PHPEmptyArray() extends StaticValue
 
   case class Instanceof(lhs: SimpleValue, cl: AST.ClassRef) extends SimpleValue
   case class Cast(to: AST.CastType, e: SimpleValue) extends SimpleValue
