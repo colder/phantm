@@ -19,6 +19,15 @@ case class TypeTransferFunction(silent: Boolean,
     val trueTypes  = TNumeric union TAnyArray union TString union TTrue union TResource union TAnyObject
     val falseTypes = TNumeric union TAnyArray union TString union TFalse union TNull union TUninitialized
 
+    val allTypes = Set[Type]() + TInt + TFloat +
+                   TAnyArray + TResource + TString +
+                   TAnyObject + TTrue + TFalse + TNull;
+
+    def allTypesBut(t: Type*): Type = {
+        (allTypes -- t).reduceLeft(_ union _)
+    }
+
+
     def possiblyUninit(t: Type): Boolean = t match {
         case TTop =>
             true
@@ -815,14 +824,6 @@ case class TypeTransferFunction(silent: Boolean,
                 }
 
             case AssumeNotProperty(p, vs) =>
-                val allTypes = Set[Type]() + TInt + TFloat +
-                               TAnyArray + TResource + TString +
-                               TAnyObject + TBoolean + TNull;
-
-                def allBut(t: Type): Type = {
-                    (allTypes - t).reduceLeft(_ union _)
-                }
-
                 p match {
                     case Isset =>
                         if  (vs.size == 1) {
@@ -833,21 +834,21 @@ case class TypeTransferFunction(silent: Boolean,
                     case Empty =>
                         filterType(vs.head, trueTypes)
                     case IsInt =>
-                        filterType(vs.head, allBut(TInt))
+                        filterType(vs.head, allTypesBut(TInt))
                     case IsFloat =>
-                        filterType(vs.head, allBut(TFloat))
+                        filterType(vs.head, allTypesBut(TFloat))
                     case IsArray =>
-                        filterType(vs.head, allBut(TAnyArray))
+                        filterType(vs.head, allTypesBut(TAnyArray))
                     case IsResource =>
-                        filterType(vs.head, allBut(TResource))
+                        filterType(vs.head, allTypesBut(TResource))
                     case IsString =>
-                        filterType(vs.head, allBut(TString))
+                        filterType(vs.head, allTypesBut(TString))
                     case IsObject =>
-                        filterType(vs.head, allBut(TAnyObject))
+                        filterType(vs.head, allTypesBut(TAnyObject))
                     case IsBool =>
-                        filterType(vs.head, allBut(TBoolean))
+                        filterType(vs.head, allTypesBut(TFalse, TTrue))
                     case IsNull =>
-                        filterType(vs.head, allBut(TNull))
+                        filterType(vs.head, allTypesBut(TNull))
                     case IsScalar =>
                         filterType(vs.head, TAnyObject union TAnyArray union TResource)
                 }
@@ -872,6 +873,10 @@ case class TypeTransferFunction(silent: Boolean,
                         case (_:PHPFalse,  false,   false) => Some(trueTypes)
                         case (_:PHPNull,   true,    false) => Some(falseTypes)
                         case (_:PHPNull,   false,   false) => Some(trueTypes)
+                        // Exclude singleton types from var in var !== <val>§
+                        case (_:PHPNull,   false,   true)  => Some(allTypesBut(TNull))
+                        case (_:PHPTrue,   false,   true)  => Some(allTypesBut(TTrue))
+                        case (_:PHPFalse,  false,   true)  => Some(allTypesBut(TFalse))
                         case _ => None
                     }
 
