@@ -86,6 +86,7 @@ case class STToAST(parser: Parser, st: ParseNode) {
                 (st._1, st._2, st._3, st._4:::cd)
             case List("method_modifiers", "T_FUNCTION", "is_reference", "T_STRING", "T_OPEN_BRACES", "parameter_list", "T_CLOSE_BRACES", "method_body") =>
                 val pos = new Position().setPos(child(n,3));
+                val endpos = new Position().setPos(child(n,7));
                 val com = parser.getPreviousComment(pos);
 
                 var md = MethodDecl(identifier(child(n, 3)),
@@ -93,6 +94,9 @@ case class STToAST(parser: Parser, st: ParseNode) {
                                     parameter_list(child(n, 5)),
                                     is_reference(child(n, 2)),
                                     method_body(child(n, 7))).setPos(pos).attachComment(com);
+
+                md.line_end = endpos.line_end;
+                md.col_end  = endpos.col_end;
 
                 (st._1:::List(md), st._2, st._3, st._4)
         }
@@ -747,9 +751,13 @@ case class STToAST(parser: Parser, st: ParseNode) {
         childrenNames(n) match {
             case List("T_FUNCTION", "is_reference", "T_STRING", "T_OPEN_BRACES", "parameter_list", "T_CLOSE_BRACES", "T_OPEN_CURLY_BRACES", "inner_statement_list", "T_CLOSE_CURLY_BRACES") =>
                 val pos = new Position().setPos(child(n, 2));
+                val endpos = new Position().setPos(child(n, 8));
                 val com = parser.getPreviousComment(pos);
 
-                FunctionDecl(identifier(child(n, 2)), parameter_list(child(n, 4)), is_reference(child(n, 1)), inner_statement_list(child(n, 7))).setPos(pos).attachComment(com)
+                val fd = FunctionDecl(identifier(child(n, 2)), parameter_list(child(n, 4)), is_reference(child(n, 1)), inner_statement_list(child(n, 7))).setPos(pos).attachComment(com)
+                fd.col_end  = endpos.col;
+                fd.line_end = endpos.line;
+                fd
         }
     }
 

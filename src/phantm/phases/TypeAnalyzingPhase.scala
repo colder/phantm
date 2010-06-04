@@ -5,6 +5,7 @@ import phantm.cfg.{ASTToCFG}
 import phantm.ast.Trees._
 import phantm.cfg.{Trees => CFG}
 import phantm.ast.ASTSimpleTraversal
+import phantm.util.Reporter
 import phantm.symbols._
 import phantm.types.{Type,TypeFlowAnalyzer}
 
@@ -14,6 +15,14 @@ object TypeAnalyzingPhase extends Phase(Some(APIExportingPhase)) {
     def description = "Analyzing types"
 
     def run(ctx: PhasesContext): PhasesContext = {
+        // Print summary header, if requested
+        if (Settings.get.summaryOnly) {
+            printf(" %3s | %3s | %4s | %3s | %-50s | %s \n", "#N", "#L", "R", "An?", "Symbol:", "File:");
+        }
+        // If the --only option is used, we're not interrested in the previous errors
+        if (Settings.get.typeFlowFilter != Nil) {
+            Reporter.get.clear
+        }
         TypeFlowAnalysis(ctx, ctx.oast.get) execute;
         ctx
     }

@@ -1,14 +1,14 @@
 package phantm.types
 
 import phantm.Settings
-import phantm.util.Reporter
+import phantm.util.{Reporter, Positional}
 
 import phantm.ast.{Trees => AST}
 import phantm.cfg.ControlFlowGraph
 import phantm.cfg.Trees._
 import phantm.symbols._
 import phantm.phases.PhasesContext
-import phantm.annotations.AnnotationsStore
+import phantm.annotations.{AnnotationsStore, SourceAnnotations}
 import phantm.dataflow.AnalysisAlgorithm
 import phantm.cfg.{LabeledDirectedGraphImp, VertexImp}
 
@@ -94,6 +94,7 @@ case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope, ctx: PhasesCont
             case _ =>
         }
 
+
         val aa = new AnalysisAlgorithm[TypeEnvironment, Statement](TypeTransferFunction(true, newCtx, false), bottomEnv, baseEnv, cfg)
 
         aa.computeFixpoint(newCtx)
@@ -105,16 +106,47 @@ case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope, ctx: PhasesCont
             }
         }
 
+        // Collect error summaries per function/method
+        var noticesCount = 0;
+
+        def notice(msg: String, pos: Positional) = {
+            noticesCount += 1;
+            Reporter.notice(msg, pos);
+        }
+
         // Detect unreachables:
         if (ctx.dumpedData.isEmpty) {
             // Only do it if no runtime instrumentation
             for (l <- aa.detectUnreachable(TypeTransferFunction(true, newCtx, false))) {
-                Reporter.notice("Unreachable code", l)
+                notice("Unreachable code", l)
             }
         }
-
         // Collect errors and annotations
-        aa.pass(TypeTransferFunction(false, newCtx, !Settings.get.exportAPIPath.isEmpty))
+        aa.pass(TypeTransferFunction(false, newCtx, !Settings.get.exportAPIPath.isEmpty, notice))
+
+        if (Settings.get.summaryOnly) {
+            scope match {
+                case ms: MethodSymbol =>
+                    val lineCount = ms.line_end-ms.line+1;
+                    val isAnnotated = SourceAnnotations.Parser.isAnnotated(ms.comment.getOrElse(""))
+                    printf(" %3d | %3d | %.2f | %3s | %-50s | %s \n", noticesCount,
+                                                                      lineCount,
+                                                                      noticesCount*1.0/lineCount,
+                                                                      if (isAnnotated) "yes" else "no",
+                                                                      ms.cs.name+"::"+ms.name,
+                                                                      ms.file.getOrElse("-- no file --"));
+                case fs: FunctionSymbol =>
+                    val lineCount = fs.line_end-fs.line+1;
+                    val isAnnotated = SourceAnnotations.Parser.isAnnotated(fs.comment.getOrElse(""))
+                    printf(" %3d | %3d | %.2f | %3s | %-50s | %s \n", noticesCount,
+                                                                      lineCount,
+                                                                      noticesCount*1.0/lineCount,
+                                                                      if (isAnnotated) "yes" else "no",
+                                                                      fs.name,
+                                                                      fs.file.getOrElse("-- no file --"));
+                case _ =>
+            }
+        }
 
         aa.getResult
     }

@@ -115,8 +115,12 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
                 ms.registerArgument(as);
             }
 
+            ms.attachComment(m.comment);
+
             val t = if (m.comment != None) {
                 val (args, ret) = SourceAnnotations.Parser.getFunctionTypes(m.comment.get)
+
+                var foundOne = false
 
                 val ftargs = for ((n, as) <- ms.argList) yield {
                     if (args contains n) {
@@ -240,7 +244,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
 
         node match {
             case fd @ FunctionDecl(name, args, retref, body) =>
-                val fs = new FunctionSymbol(name.value).setPos(name).setUserland
+                val fs = new FunctionSymbol(name.value).setPos(fd).setUserland
                 for(a <- args) {
                     var t = TypeHelpers.typeHintToType(a.hint)
 

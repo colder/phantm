@@ -80,6 +80,14 @@ class Reporter(mainFiles: List[String]) {
             }
         }
 
+        clear
+    }
+
+    def clear = {
+        noticesCount = 0
+        errorsCount  = 0
+        totalErrorsCount = 0
+        totalNoticesCount = 0
         errors = Map[Option[String], Set[Error]]().withDefaultValue(Set[Error]())
         errorsCheck = Map[Option[String], Set[ErrorCheck]]().withDefaultValue(Set[ErrorCheck]())
     }

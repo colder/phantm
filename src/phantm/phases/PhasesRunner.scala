@@ -26,14 +26,14 @@ class PhasesRunner(val reporter: Reporter) {
             }
         }
 
-        if (!Settings.get.summaryOnly) {
-            reporter.emitAll
-        }
-
         val ec  = reporter.errorsCount
         val tec = reporter.totalErrorsCount
         val nc  = reporter.noticesCount
         val tnc = reporter.totalNoticesCount
+
+        if (!Settings.get.summaryOnly) {
+            reporter.emitAll
+        }
 
         if (Settings.get.focusOnMainFiles) {
             println(nc+" notice"+(if (nc>1) "s" else "")+" and "+ec+" error"+(if (ec>1) "s" else "")+" occured in main files.")

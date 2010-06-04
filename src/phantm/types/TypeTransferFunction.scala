@@ -12,9 +12,11 @@ import phantm.dataflow.TransferFunction
 
 case class TypeTransferFunction(silent: Boolean,
                                 ctx: PhasesContext,
-                                collectAnnotations: Boolean) extends TransferFunction[TypeEnvironment, Statement] {
-    def notice(msg: String, pos: Positional) = if (!silent) Reporter.notice(msg, pos)
-    def error(msg: String, pos: Positional) = if (!silent) Reporter.error(msg, pos)
+                                collectAnnotations: Boolean,
+                                noticesFct: (String, Positional) => Unit = Reporter.notice(_: String, _: Positional),
+                                errorsFct: (String, Positional) => Unit = Reporter.error(_: String, _: Positional)) extends TransferFunction[TypeEnvironment, Statement] {
+    def notice(msg: String, pos: Positional) = if (!silent) noticesFct(msg, pos)
+    def error(msg: String, pos: Positional) = if (!silent) errorsFct(msg, pos)
 
     val trueTypes  = TNumeric union TAnyArray union TString union TTrue union TResource union TAnyObject
     val falseTypes = TNumeric union TAnyArray union TString union TFalse union TNull union TUninitialized

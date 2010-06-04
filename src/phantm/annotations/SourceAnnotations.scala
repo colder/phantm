@@ -123,6 +123,10 @@ object SourceAnnotations {
         def getVarType = getAnyType("@var")_
         def getConstType = getAnyType("@const")_
 
+        def isAnnotated(comment: String): Boolean = {
+            (getReturnType(comment) != None) || (!filterLines(comment, "@param").isEmpty)
+        }
+
         def getFunctionTypes(comment: String): (Map[String, Type], Type) = {
             var args = Map[String, Type]()
 
