@@ -6,7 +6,7 @@ import phantm.ast.{Trees => AST}
 import phantm.util.{ConstantsResolver, IncludeResolver, Evaluator}
 import phantm.types.TypeHelpers
 
-object IncludesConstantsResolutionPhase extends Phase(Some(SymbolsCollectionPhase)) {
+object IncludesConstantsResolutionPhase extends Phase {
     def name = "Resolving includes"
     def description = "Resolving includes and constants"
 

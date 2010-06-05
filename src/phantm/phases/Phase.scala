@@ -1,6 +1,6 @@
 package phantm.phases
 
-abstract class Phase(val next: Option[Phase]) {
+abstract class Phase {
     def name: String
     def description: String
 

@@ -5,7 +5,7 @@ import phantm.ast.Trees._
 import phantm.ast.ASTTraversal
 import phantm.util.Reporter
 
-object ASTChecksPhase extends Phase(Some(PureStatementsPhase)) {
+object ASTChecksPhase extends Phase {
 
     def name = "AST checks"
     def description = "Checking AST integrity"

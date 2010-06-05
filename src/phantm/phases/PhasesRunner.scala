@@ -2,27 +2,42 @@ package phantm.phases
 
 import phantm.Settings
 import phantm.util.{Reporter, ErrorException}
+import scala.util.control.Breaks._
 
 class PhasesRunner(val reporter: Reporter) {
+    def getPhasesToRun: List[Phase] = {
+        DumpsCollectionPhase ::
+        ParsingPhase ::
+        ASTPruningPhase ::
+        ASTChecksPhase ::
+        ASTChecksPhase ::
+        PureStatementsPhase ::
+        APIImportationPhase ::
+        IncludesConstantsResolutionPhase ::
+        SymbolsCollectionPhase ::
+        TypeAnalyzingPhase ::
+        APIExportingPhase ::
+        Nil
+
+    }
+
     def run(initCtx: PhasesContext) = {
         var ctx = initCtx
 
-        var oph: Option[Phase] = Some(DumpsCollectionPhase)
+        val phases = getPhasesToRun
 
-        var i = 1;
-        while(oph != None) {
-            val ph = oph.get
-            try {
-                if (Settings.get.displayProgress) {
-                    println(i+": "+ph.name+"...")
+        breakable {
+            for((ph, i) <- phases.zipWithIndex) {
+                try {
+                    if (Settings.get.displayProgress) {
+                        println((i+1)+": "+ph.name+"...")
+                    }
+                    ctx = ph.run(ctx)
+                } catch {
+                    case e: PhaseException =>
+                        reporter.error("Processing failed at phase "+(i+1)+" ("+e.ph.name+"): "+e.error)
+                        break;
                 }
-                ctx = ph.run(ctx)
-                oph = ph.next
-                i += 1
-            } catch {
-                case e: PhaseException =>
-                    reporter.error("Processing failed at phase "+i+" ("+e.ph.name+"): "+e.error)
-                    oph = None
             }
         }
 

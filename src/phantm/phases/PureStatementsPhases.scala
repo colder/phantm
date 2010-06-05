@@ -5,7 +5,7 @@ import phantm.ast.Trees._
 import phantm.ast.ASTSimpleTraversal
 import phantm.util.Reporter
 
-object PureStatementsPhase  extends Phase(Some(APIImportationPhase)) {
+object PureStatementsPhase  extends Phase {
 
     def name = "Pure statements checks"
     def description = "Checking for pure statements"

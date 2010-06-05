@@ -3,7 +3,7 @@ package phantm.phases
 import phantm.Settings
 import phantm.util.{API, Reporter}
 
-object APIImportationPhase extends Phase(Some(IncludesConstantsResolutionPhase)) {
+object APIImportationPhase extends Phase {
     def name = "API importation"
     def description = "Importing API from XML files"
 

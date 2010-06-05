@@ -5,7 +5,7 @@ import phantm.ast.Trees._
 import phantm.ast.{ASTTransform, ASTSimpleTraversal}
 import phantm.util.Reporter
 
-object ASTPruningPhase extends Phase(Some(ASTChecksPhase)) {
+object ASTPruningPhase extends Phase {
 
     def name = "AST pruning"
     def description = "Prunes AST before dump and die"

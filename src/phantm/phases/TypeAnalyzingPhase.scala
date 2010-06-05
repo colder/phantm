@@ -9,7 +9,7 @@ import phantm.util.Reporter
 import phantm.symbols._
 import phantm.types.{Type,TypeFlowAnalyzer}
 
-object TypeAnalyzingPhase extends Phase(Some(APIExportingPhase)) {
+object TypeAnalyzingPhase extends Phase {
 
     def name = "Typeflow analysis"
     def description = "Analyzing types"

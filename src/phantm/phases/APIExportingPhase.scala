@@ -3,7 +3,7 @@ package phantm.phases
 import phantm.Settings
 import phantm.util.{API, Reporter}
 
-object APIExportingPhase extends Phase(None) {
+object APIExportingPhase extends Phase {
     def name = "API exportation"
     def description = "exporting API to XML files"
 

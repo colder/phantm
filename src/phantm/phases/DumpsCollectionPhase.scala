@@ -5,7 +5,7 @@ import java.io.File
 import phantm.Settings
 import phantm.util.DumpCollector
 
-object DumpsCollectionPhase extends Phase(Some(ParsingPhase)) {
+object DumpsCollectionPhase extends Phase {
 
     def name = "Dumps collections"
     def description = "Collecting and importing dumps"
