@@ -48,7 +48,7 @@ case class TypeFlowAnalysis(ctx: PhasesContext, node: Tree) extends ASTSimpleTra
 
     def visit(node: Tree): Boolean = {
         node match {
-            case Program(stmts) if filter("main") =>
+            case Program(stmts) =>
                 display("Converting main scope...")
                 val cfg = ASTToCFG.convertAST(stmts, GlobalSymbols)
                 display("Analyzing main...")
@@ -56,6 +56,9 @@ case class TypeFlowAnalysis(ctx: PhasesContext, node: Tree) extends ASTSimpleTra
                 val results = tfa.analyze
 
                 mainGlobals = Some(results(cfg.exit).getGlobalsType)
+                if (!filter("main")) {
+                    Reporter.get.clear
+                }
 
             case FunctionDecl(name, args, retref, body) if filter(name.value) =>
                 name.getSymbol match {
