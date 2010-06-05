@@ -10,11 +10,11 @@ class PhasesRunner(val reporter: Reporter) {
         ParsingPhase ::
         ASTPruningPhase ::
         ASTChecksPhase ::
-        ASTChecksPhase ::
         PureStatementsPhase ::
         APIImportationPhase ::
         IncludesConstantsResolutionPhase ::
         SymbolsCollectionPhase ::
+        CallGraphPhase ::
         TypeAnalyzingPhase ::
         APIExportingPhase ::
         Nil

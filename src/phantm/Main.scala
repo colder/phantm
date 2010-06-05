@@ -118,6 +118,9 @@ object Main {
             case "--exportapi" :: path :: xs =>
                 settings = settings.copy(exportAPIPath = Some(path))
                 handleArgs(xs)
+            case "--exportcg" :: path :: xs =>
+                settings = settings.copy(exportCGPath = Some(path))
+                handleArgs(xs)
             case "--progress" :: xs =>
                 settings = settings.copy(displayProgress = true)
                 handleArgs(xs)

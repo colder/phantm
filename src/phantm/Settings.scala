@@ -16,7 +16,8 @@ case class Settings(
     val includePaths: List[String]    = List("."),
     val apis: List[String]            = Nil,
     val dumps: List[String]           = Nil,
-    val exportAPIPath: Option[String] = None
+    val exportAPIPath: Option[String] = None,
+    val exportCGPath: Option[String]  = None
 )
 
 object Settings {
