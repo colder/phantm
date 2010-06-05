@@ -252,38 +252,39 @@ object API {
 
 
         def emitXML = {
-            def typeToXML(typ: Type): String  = {
+            def typeToXML(typ: Type, widen: Type => Type): String  = {
                 def simpleTyp(name: String) = "<type name=\""+name+"\" />"
                 def simpleTypVal(name: String, value: String) = "<type name=\""+name+"\" value=\""+value+"\" />"
 
-                typ match {
+                def escapeVal(s: String): String = {
+                    s.replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll("\"", "&quot;")
+                }
+
+                widen(typ) match {
                     case TTop            => simpleTyp("any")
                     case TUninitialized  => simpleTyp("null")
                     case TBottom         => simpleTyp("any")
                     case TInt            => simpleTyp("int")
-                    //case TIntLit(i)      => simpleTypVal("int", i.toString)
-                    case TIntLit(i)      => simpleTyp("int")
+                    case TIntLit(i)      => simpleTypVal("int", i.toString)
                     case TNumeric        => simpleTyp("numeric")
                     case TBoolean        => simpleTyp("bool")
                     case TTrue           => simpleTyp("true")
                     case TFalse          => simpleTyp("false")
                     case TFloat          => simpleTyp("float")
-                    //case TFloatLit(l)    => simpleTypVal("float", l.toString)
-                    case TFloatLit(l)    => simpleTyp("float")
+                    case TFloatLit(l)    => simpleTypVal("float", l.toString)
                     case TString         => simpleTyp("string")
-                    //case TStringLit(s)   => simpleTypVal("string", s)
-                    case TStringLit(s)   => simpleTyp("string")
+                    case TStringLit(s)   => simpleTypVal("string", escapeVal(s))
                     case TAny            => simpleTyp("any")
                     case TResource       => simpleTyp("resource")
                     case TNull           => simpleTyp("null")
                     case tor: TObjectRef => simpleTyp("object")
                     case TAnyObject      => simpleTyp("object")
                     case tu: TUnion      =>
-                        tu.types.map(typeToXML).mkString
+                        tu.types.map(typeToXML(_, widen)).mkString
 
                     case ta: TArray      =>
-                        val es = ta.entries.map(e => "<elem key=\""+e._1.replaceAll("\"", "\\\"")+"\">"+typeToXML(e._2)+"</elem>").mkString
-                        val ge = "<anyelem>"+typeToXML(ta.globalType)+"</anyelem>"
+                        val es = ta.entries.map(e => "<elem key=\""+e._1.replaceAll("\"", "\\\"")+"\">"+typeToXML(e._2, widen)+"</elem>").mkString
+                        val ge = "<anyelem>"+typeToXML(ta.globalType, widen)+"</anyelem>"
                         "<type name=\"array\">"+es+ge+"</type>"
 
                     case _               =>
@@ -295,6 +296,15 @@ object API {
 
             def emit(str: String) = printStream.println(str)
 
+            def widenArgs(t: Type): Type = t match {
+                case TIntLit(i)      => TInt
+                case TTrue           => TBoolean
+                case TFalse          => TBoolean
+                case TFloatLit(l)    => TFloat
+                case TStringLit(s)   => TString
+                case t               => t
+            }
+
             emit("<!-- Generated API -->")
             emit("<api userland=\"yes\">")
 
@@ -304,13 +314,13 @@ object API {
                 GlobalSymbols.lookupFunction(name) match {
                     case Some(fs) if fs.userland =>
                         val args = if (data._1.size > 0) (data._1 reduceLeft reduceFT).args else Nil;
-                        val ret  = data._2;
+                        val ret  = if (data._2.isEmpty) TNull else (data._2 reduceLeft TypeLattice.join);
 
                         emit("  <function name=\""+name+"\">")
-                        emit("   <return>"+typeToXML(ret)+"</return>")
+                        emit("   <return>"+typeToXML(ret, t => t)+"</return>")
                         emit("   <args>")
                         for (arg <- args) {
-                            emit("    <arg"+(if (arg._2) " opt=\"1\"" else "")+(if (arg._3) " byref=\"1\"" else "")+">"+typeToXML(arg._1)+"</arg>")
+                            emit("    <arg"+(if (arg._2) " opt=\"1\"" else "")+(if (arg._3) " byref=\"1\"" else "")+">"+typeToXML(arg._1, widenArgs)+"</arg>")
                         }
                         emit("   </args>")
                         emit("  </function>")
