@@ -127,6 +127,10 @@ object SourceAnnotations {
             (getReturnType(comment) != None) || (!filterLines(comment, "@param").isEmpty)
         }
 
+        def shouldInline(comment: String): Boolean = {
+            !filterLines(comment, "@inline").isEmpty
+        }
+
         def getFunctionTypes(comment: String): (Map[String, Type], Type) = {
             var args = Map[String, Type]()
 

@@ -20,6 +20,10 @@ trait FunctionTypeAnnotation extends Annotation {
     def annotateFromFT(from: FunctionTypeAnnotation): this.type = { ftyps = from.ftyps; this }
 }
 
+trait FunctionAnnotation extends Annotation {
+    var shouldInline = false
+}
+
 trait CommentAnnotation  extends Annotation {
     var comment: Option[String] = None
 

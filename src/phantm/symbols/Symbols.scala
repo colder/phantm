@@ -4,7 +4,7 @@ import scala.collection.mutable.HashMap
 import phantm.Settings
 import phantm.ast.Trees._
 import phantm.util.{Reporter, Positional}
-import phantm.annotations.{FunctionTypeAnnotation, TypeAnnotation, CommentAnnotation}
+import phantm.annotations._
 import phantm.types._
 
 
@@ -145,7 +145,7 @@ object GlobalSymbols extends Scope {
   def getConstants: List[ConstantSymbol] = constants map { x => x._2 } toList
 }
 
-class FunctionSymbol(val name: String) extends Symbol with Scope with FunctionTypeAnnotation with CommentAnnotation {
+class FunctionSymbol(val name: String) extends Symbol with Scope with FunctionTypeAnnotation with CommentAnnotation with FunctionAnnotation {
   val args = new HashMap[String, ArgumentSymbol]();
   var argList: List[(String, ArgumentSymbol)] = Nil;
 
