@@ -133,7 +133,12 @@ class Unserializer(content: String) {
 
     def consumeInt : Int = {
         var buf = "";
-        while(chars.head >= '0' && chars.head <= '9') {
+        if (chars.head == '-') {
+            buf += chars.head
+            chars = chars.tail
+        }
+
+        while((chars.head >= '0' && chars.head <= '9')) {
             buf += chars.head
             chars = chars.tail
         }

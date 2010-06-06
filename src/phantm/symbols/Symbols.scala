@@ -243,7 +243,7 @@ class ClassSymbol(val name: String, val parent: Option[ClassSymbol], ifaces: Lis
   val constants = new HashMap[String, ClassConstantSymbol]();
 
   /* if a parent is defined and the method is defined in its parent, then the method can't be more restrictive */
-  def registerMethod(ms: MethodSymbol) : Unit = methods.get(ms.name) match {
+  def registerMethod(ms: MethodSymbol) : Unit = methods.get(ms.name.toLowerCase) match {
       case Some(x) => Reporter.error("Method "+name+"::"+ms.name+" already defined (previously defined "+x.previousPos+")", ms)
       case None    =>
           parent match {
@@ -253,12 +253,12 @@ class ClassSymbol(val name: String, val parent: Option[ClassSymbol], ifaces: Lis
                               Reporter.error("Method "+name+"::"+ms.name+" cannot overwrite "+pms.cs.name+"::"+pms.name+" with visibility "+ms.visibility+" (was "+pms.visibility+")", ms)
                           } else {
                               // todo: check prototypes
-                              methods += ((ms.name, ms))
+                              methods += ((ms.name.toLowerCase, ms))
                           }
                       }
-                      case LookupResult(None, _, _) => methods += ((ms.name, ms))
+                      case LookupResult(None, _, _) => methods += ((ms.name.toLowerCase, ms))
                   }
-              case None => methods += ((ms.name, ms))
+              case None => methods += ((ms.name.toLowerCase, ms))
           }
   }
   /** looking up a method follows those rules:
@@ -266,7 +266,7 @@ class ClassSymbol(val name: String, val parent: Option[ClassSymbol], ifaces: Lis
    * 2) if not found, lookup on the parent
    */
 
-  def lookupMethod(name: String, from: Option[ClassSymbol]): LookupResult[MethodSymbol] = methods.get(name) match {
+  def lookupMethod(name: String, from: Option[ClassSymbol]): LookupResult[MethodSymbol] = methods.get(name.toLowerCase) match {
       case Some(ms) => ms.visibility match {
           case MVPublic => LookupResult(Some(ms), None, false)
           case MVProtected => from match {

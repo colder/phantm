@@ -320,7 +320,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
                         case LookupResult(Some(ms: MethodSymbol), _, _) =>
                             name.setSymbol(ms)
                             newCtx = SymContext(ms, Some(cs), None)
-                        case _ => error("Woops?! No such method declared yet??")
+                        case _ => error("Woops?! No such method declared yet: "+cs.name+"::"+name.value+" ??")
                     }
                     case (None, Some(iface)) =>
                         // nothing
