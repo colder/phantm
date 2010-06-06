@@ -12,7 +12,7 @@ import phantm.annotations.{AnnotationsStore, SourceAnnotations}
 import phantm.dataflow.AnalysisAlgorithm
 import phantm.cfg.{LabeledDirectedGraphImp, VertexImp}
 
-case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope, ctx: PhasesContext, globals: Option[Type]) {
+case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope, ctx: PhasesContext, globals: Option[Type], inline: Boolean = false) {
 
     type Vertex = VertexImp[Statement]
 
@@ -99,7 +99,7 @@ case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope, ctx: PhasesCont
 
         aa.computeFixpoint(newCtx)
 
-        if (Settings.get.displayFixPoint) {
+        if (Settings.get.displayFixPoint && !inline) {
             println("     - Fixpoint:");
             for ((v,e) <- aa.getResult.filter(v => !v._1.isInstanceOf[ClassProperty]).toList.sortWith{(x,y) => x._1.name < y._1.name}) {
                 println("      * ["+v+"] => "+e);
@@ -133,7 +133,7 @@ case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope, ctx: PhasesCont
                                                                       lineCount,
                                                                       noticesCount*1.0/lineCount,
                                                                       if (isAnnotated) "yes" else "no",
-                                                                      ms.cs.name+"::"+ms.name,
+                                                                      ms.cs.name+"::"+ms.name+(if(inline) " (inline)" else ""),
                                                                       ms.file.getOrElse("-- no file --"));
                 case fs: FunctionSymbol =>
                     val lineCount = fs.line_end-fs.line+1;
@@ -142,7 +142,7 @@ case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope, ctx: PhasesCont
                                                                       lineCount,
                                                                       noticesCount*1.0/lineCount,
                                                                       if (isAnnotated) "yes" else "no",
-                                                                      fs.name,
+                                                                      fs.name+(if(inline) " (inline)" else ""),
                                                                       fs.file.getOrElse("-- no file --"));
                 case _ =>
             }

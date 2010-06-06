@@ -15,6 +15,7 @@ class PhasesRunner(val reporter: Reporter) {
         IncludesConstantsResolutionPhase ::
         SymbolsCollectionPhase ::
         CallGraphPhase ::
+        CFGGenerationPhase ::
         TypeAnalyzingPhase ::
         APIExportingPhase ::
         Nil

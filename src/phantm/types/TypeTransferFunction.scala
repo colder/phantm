@@ -145,7 +145,7 @@ case class TypeTransferFunction(silent: Boolean,
                                 val ft = new TFunction(args.map(a => (typeFromSV(a), false, false)), TBottom)
                                 AnnotationsStore.collectFunction(fs, ft);
                             }
-                            checkFCalls(fcall.params, fs.ftyps.toList, fcall)
+                            checkFCalls(fcall.params, fs, fcall)
                     case None =>
                         // handle special functions
                         id.value.toLowerCase match {
@@ -164,11 +164,11 @@ case class TypeTransferFunction(silent: Boolean,
                     case or: TObjectRef =>
                         val ro = env.store.lookup(or);
                         ro.lookupMethod(mid.value, env.scope) match {
-                            case Some(mt) =>
+                            case Some(ms) =>
                                 if (collectAnnotations) {
                                     // TODO: Create a FunctionType and add it to the list of potential prototypes
                                 }
-                                checkFCalls(args, List(mt), mcall)
+                                checkFCalls(args, ms, mcall)
                             case None =>
                                 // Check for magic __call ?
                                 val cms = ro.lookupMethod("__call", env.scope)
@@ -176,7 +176,12 @@ case class TypeTransferFunction(silent: Boolean,
                                     notice("Undefined method '" + mid.value + "' in object "+ro, mid)
                                     TBottom
                                 } else {
-                                    cms.get.ret
+                                    val ms = cms.get
+                                    if (ms.ftyps.size > 0) {
+                                        ms.ftyps.head.ret
+                                    } else {
+                                        TBottom
+                                    }
                                 }
                         }
                     case _ =>
@@ -707,58 +712,68 @@ case class TypeTransferFunction(silent: Boolean,
             }
         }
 
-        def checkFCalls(fcall_params: List[SimpleValue], syms: List[FunctionType], pos: Positional) : Type =  {
-            def protoFilter(sym: FunctionType): Boolean = {
-                sym match {
-                    case tf: TFunction =>
-                        var ret = true;
-                        for (i <- fcall_params.indices) {
-                            if (i >= tf.args.length) {
-                                ret = false
-                            } else {
-                                if (!leq(typeFromSV(fcall_params(i)), tf.args(i)._1)) {
-                                    //notice("Prototype mismatch because "+fcall.params(i)+"("+typeFromSV(fcall.params(i))+") </: "+args(i)._1) 
+        def shouldInline(sym: FunctionSymbol): Boolean = {
+            false
+        }
 
-                                    ret = false;
+        def checkFCalls(fcall_params: List[SimpleValue], sym: FunctionSymbol, pos: Positional) : Type =  {
+            if (shouldInline(sym)) {
+                val cfg = ctx.cfgs(Some(sym))
+                TBottom
+            } else {
+                def protoFilter(sym: FunctionType): Boolean = {
+                    sym match {
+                        case tf: TFunction =>
+                            var ret = true;
+                            for (i <- fcall_params.indices) {
+                                if (i >= tf.args.length) {
+                                    ret = false
+                                } else {
+                                    if (!leq(typeFromSV(fcall_params(i)), tf.args(i)._1)) {
+                                        //notice("Prototype mismatch because "+fcall.params(i)+"("+typeFromSV(fcall.params(i))+") </: "+args(i)._1) 
+
+                                        ret = false;
+                                    }
                                 }
                             }
-                        }
-                        ret
-                    case TFunctionAny =>
-                        true
-                }
-            }
-
-            syms filter protoFilter match {
-                case Nil =>
-                    if (syms.size > 1) {
-                        error("Unmatched function prototype '("+fcall_params.map(x => typeFromSV(x)).mkString(", ")+")', candidates are:\n    "+syms.mkString(",\n    "), pos)
-                        TBottom
-                    } else {
-                        syms.head match {
-                            case tf: TFunction =>
-                                for (i <- fcall_params.indices) {
-                                    if (i >= tf.args.length) {
-                                        error("Prototype error!", pos)
-                                    } else {
-                                        (fcall_params(i), tf.args(i)._1, tf.args(i)._2) match {
-                                            case (v: Variable, etyp, true) =>
-                                                // If by ref and variable, we assign it directly
-                                                assign(v, etyp)
-                                            case (sv, etyp, byref) =>
-                                                expOrRef(sv, etyp)
-                                        }
-                                    }
-
-                                }
-                                tf.ret
-                            case s =>
-                                s.ret
-                        }
+                            ret
+                        case TFunctionAny =>
+                            true
                     }
+                }
 
-                case f :: xs =>
-                    f.ret
+                val ftyps = sym.ftyps.toList
+                ftyps filter protoFilter match {
+                    case Nil =>
+                        if (ftyps.size > 1) {
+                            error("Unmatched function prototype '("+fcall_params.map(x => typeFromSV(x)).mkString(", ")+")', candidates are:\n    "+ftyps.mkString(",\n    "), pos)
+                            TBottom
+                        } else {
+                            ftyps.head match {
+                                case tf: TFunction =>
+                                    for (i <- fcall_params.indices) {
+                                        if (i >= tf.args.length) {
+                                            error("Prototype error!", pos)
+                                        } else {
+                                            (fcall_params(i), tf.args(i)._1, tf.args(i)._2) match {
+                                                case (v: Variable, etyp, true) =>
+                                                    // If by ref and variable, we assign it directly
+                                                    assign(v, etyp)
+                                                case (sv, etyp, byref) =>
+                                                    expOrRef(sv, etyp)
+                                            }
+                                        }
+
+                                    }
+                                    tf.ret
+                                case s =>
+                                    s.ret
+                            }
+                        }
+
+                    case f :: xs =>
+                        f.ret
+                }
             }
         }
 

@@ -8,6 +8,7 @@ import phantm.ast.ASTSimpleTraversal
 import phantm.util.Reporter
 import phantm.symbols._
 import phantm.types.{Type,TypeFlowAnalyzer}
+import phantm.cfg.ControlFlowGraph
 
 object TypeAnalyzingPhase extends Phase {
 
@@ -34,6 +35,10 @@ case class TypeFlowAnalysis(ctx: PhasesContext, node: Tree) extends ASTSimpleTra
 
     var mainGlobals: Option[Type] = None
 
+    def getCFG(sym: Option[FunctionSymbol]): ControlFlowGraph = {
+        ctx.cfgs.get(sym).getOrElse(error("Unknown CFG: "+sym))
+    }
+
     def display(content: String) = {
         if (Settings.get.displayProgress && Settings.get.verbosity > 2) {
             println("     - "+content)
@@ -49,9 +54,8 @@ case class TypeFlowAnalysis(ctx: PhasesContext, node: Tree) extends ASTSimpleTra
     def visit(node: Tree): Boolean = {
         node match {
             case Program(stmts) =>
-                display("Converting main scope...")
-                val cfg = ASTToCFG.convertAST(stmts, GlobalSymbols)
                 display("Analyzing main...")
+                val cfg = getCFG(None)
                 val tfa = new TypeFlowAnalyzer(cfg, GlobalSymbols, ctx, None)
                 val results = tfa.analyze
 
@@ -63,10 +67,8 @@ case class TypeFlowAnalysis(ctx: PhasesContext, node: Tree) extends ASTSimpleTra
             case FunctionDecl(name, args, retref, body) if filter(name.value) =>
                 name.getSymbol match {
                     case fs: FunctionSymbol =>
-                        display("Converting function "+name.value+"...")
-                        val cfg = ASTToCFG.convertAST(List(body), fs)
                         display("Analyzing function "+name.value+"...")
-                        val tfa = new TypeFlowAnalyzer(cfg, fs, ctx, mainGlobals)
+                        val tfa = new TypeFlowAnalyzer(getCFG(Some(fs)), fs, ctx, mainGlobals)
                         tfa.analyze
                     case _ =>
                         error("Incoherent symbol type, should be function")
@@ -80,10 +82,8 @@ case class TypeFlowAnalysis(ctx: PhasesContext, node: Tree) extends ASTSimpleTra
                             m.name.getSymbol match {
                                 case ms: MethodSymbol =>
                                     if (filter(cl.name+"::"+m.name.value) || filter(cl.name+"::_")) {
-                                        display("Converting method "+cl.name+"::"+m.name.value+"...")
-                                        val cfg = ASTToCFG.convertAST(List(m.body.get), ms)
                                         display("Analyzing method "+cl.name+"::"+m.name.value+"...")
-                                        val tfa = new TypeFlowAnalyzer(cfg, ms, ctx, mainGlobals)
+                                        val tfa = new TypeFlowAnalyzer(getCFG(Some(ms)), ms, ctx, mainGlobals)
                                         tfa.analyze
                                     }
                                 case _ =>

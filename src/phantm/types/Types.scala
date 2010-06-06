@@ -189,9 +189,9 @@ class TRealObject(val fields: Map[String, Type],
     def lookupField(index: String) =
         fields.getOrElse(index, globalType)
 
-    def lookupMethod(index: String, from: Option[ClassSymbol]): Option[FunctionType] = None
+    def lookupMethod(index: String, from: Option[ClassSymbol]): Option[MethodSymbol] = None
 
-    def lookupMethod(index: CFG.SimpleValue, from: Option[ClassSymbol]): Option[FunctionType] = index match {
+    def lookupMethod(index: CFG.SimpleValue, from: Option[ClassSymbol]): Option[MethodSymbol] = index match {
         case CFG.PHPLong(i)        => lookupMethod(i+"", from)
         case CFG.PHPString(index) => lookupMethod(index, from)
         case _ => None
@@ -310,14 +310,7 @@ class TRealClassObject(val cl: TClass,
     override def lookupMethod(index: String, from: Option[ClassSymbol]) =
         cl.cs.lookupMethod(index, from) match {
             case LookupResult(Some(ms), _, _) =>
-                // found method, ignore visibility errors, for now
-                // Type hints
-                if (ms.ftyps.size > 0) {
-                    Some(ms.ftyps.toList.head)
-                } else {
-                    None
-                }
-
+                Some(ms)
             case LookupResult(None, _, _) =>
                 None
         }
