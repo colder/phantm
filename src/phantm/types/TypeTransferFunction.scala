@@ -713,67 +713,75 @@ case class TypeTransferFunction(silent: Boolean,
         }
 
         def shouldInline(sym: FunctionSymbol): Boolean = {
-            false
+            // TODO: automate this
+            sym.shouldInline
         }
 
         def checkFCalls(fcall_params: List[SimpleValue], sym: FunctionSymbol, pos: Positional) : Type =  {
-            if (shouldInline(sym)) {
-                val cfg = ctx.cfgs(Some(sym))
-                TBottom
-            } else {
-                def protoFilter(sym: FunctionType): Boolean = {
-                    sym match {
-                        case tf: TFunction =>
-                            var ret = true;
-                            for (i <- fcall_params.indices) {
-                                if (i >= tf.args.length) {
-                                    ret = false
-                                } else {
-                                    if (!leq(typeFromSV(fcall_params(i)), tf.args(i)._1)) {
-                                        //notice("Prototype mismatch because "+fcall.params(i)+"("+typeFromSV(fcall.params(i))+") </: "+args(i)._1) 
+            def protoFilter(ftyp: FunctionType): Boolean = {
+                ftyp match {
+                    case tf: TFunction =>
+                        var ret = true;
+                        for (i <- fcall_params.indices) {
+                            if (i >= tf.args.length) {
+                                ret = false
+                            } else {
+                                if (!leq(typeFromSV(fcall_params(i)), tf.args(i)._1)) {
+                                    //notice("Prototype mismatch because "+fcall.params(i)+"("+typeFromSV(fcall.params(i))+") </: "+args(i)._1) 
 
-                                        ret = false;
-                                    }
+                                    ret = false;
                                 }
                             }
-                            ret
-                        case TFunctionAny =>
-                            true
-                    }
+                        }
+                        ret
+                    case TFunctionAny =>
+                        true
                 }
+            }
 
-                val ftyps = sym.ftyps.toList
-                ftyps filter protoFilter match {
-                    case Nil =>
-                        if (ftyps.size > 1) {
-                            error("Unmatched function prototype '("+fcall_params.map(x => typeFromSV(x)).mkString(", ")+")', candidates are:\n    "+ftyps.mkString(",\n    "), pos)
-                            TBottom
+            def getInlinedRetType(ftyp: TFunction): Type = {
+                TAny
+            }
+
+            def checkAgainstFType(ftyp: FunctionType): Type = ftyp match {
+                case tf: TFunction =>
+                    for (i <- fcall_params.indices) {
+                        if (i >= tf.args.length) {
+                            error("Prototype error!", pos)
                         } else {
-                            ftyps.head match {
-                                case tf: TFunction =>
-                                    for (i <- fcall_params.indices) {
-                                        if (i >= tf.args.length) {
-                                            error("Prototype error!", pos)
-                                        } else {
-                                            (fcall_params(i), tf.args(i)._1, tf.args(i)._2) match {
-                                                case (v: Variable, etyp, true) =>
-                                                    // If by ref and variable, we assign it directly
-                                                    assign(v, etyp)
-                                                case (sv, etyp, byref) =>
-                                                    expOrRef(sv, etyp)
-                                            }
-                                        }
-
-                                    }
-                                    tf.ret
-                                case s =>
-                                    s.ret
+                            (fcall_params(i), tf.args(i)._1, tf.args(i)._2) match {
+                                case (v: Variable, etyp, true) =>
+                                    // If by ref and variable, we assign it directly
+                                    assign(v, etyp)
+                                case (sv, etyp, byref) =>
+                                    expOrRef(sv, etyp)
                             }
                         }
 
-                    case f :: xs =>
-                        f.ret
-                }
+                    }
+
+                    if (shouldInline(sym)) {
+                        getInlinedRetType(tf)
+                    } else {
+                        tf.ret
+                    }
+                case _ =>
+                    TAny
+            }
+
+            val ftyps = sym.ftyps.toList
+            ftyps filter protoFilter match {
+                case Nil =>
+                    if (ftyps.size > 1) {
+                        error("Unmatched function prototype '("+fcall_params.map(x => typeFromSV(x)).mkString(", ")+")', candidates are:\n    "+ftyps.mkString(",\n    "), pos)
+                        TBottom
+                    } else {
+                        checkAgainstFType(ftyps.head)
+                    }
+
+                case f :: xs =>
+                    // Multiple matches, we use the first
+                    checkAgainstFType(f)
             }
         }
 
