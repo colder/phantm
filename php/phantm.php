@@ -64,6 +64,8 @@ function phantm_dumpanddie(array $vars) {
     }
     $path = basename(basename($_SERVER['SCRIPT_FILENAME']))."--".date('d-m-y--H\hi\ms').".dump";
     $fh = fopen($path, "w");
+
+    if (!$fh) die("Failed to write dump...");
     fwrite($fh, "# Dumped state of ".$file." at line ".$line."  \n");
     fwrite($fh, "# Date: ".date("r")."\n");
     fwrite($fh, "# Included files:\n");
