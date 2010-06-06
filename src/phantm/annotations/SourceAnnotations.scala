@@ -88,6 +88,10 @@ object SourceAnnotations {
             lines.filter(_.indexOf(tag+" ") >= 0).map(s => s.substring(s.indexOf(tag+" ")+tag.length+1))
         }
 
+        def contains(comment: String, tag: String): Boolean = {
+            comment.indexOf(tag) >= 0
+        }
+
         def strToType(str: String): Option[Type] = {
             val s = new lexical.Scanner(str);
             val r = utyp(s)
@@ -128,7 +132,7 @@ object SourceAnnotations {
         }
 
         def shouldInline(comment: String): Boolean = {
-            !filterLines(comment, "@inline").isEmpty
+            contains(comment, "@inline")
         }
 
         def getFunctionTypes(comment: String): (Map[String, Type], Type) = {

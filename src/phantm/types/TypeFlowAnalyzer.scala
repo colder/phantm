@@ -12,7 +12,7 @@ import phantm.annotations.{AnnotationsStore, SourceAnnotations}
 import phantm.dataflow.AnalysisAlgorithm
 import phantm.cfg.{LabeledDirectedGraphImp, VertexImp}
 
-case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope, ctx: PhasesContext, globals: Option[Type], inline: Boolean = false) {
+case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope, ctx: PhasesContext, inlined: Boolean = false) {
 
     type Vertex = VertexImp[Statement]
 
@@ -54,7 +54,7 @@ case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope, ctx: PhasesCont
         injectSuperGlobal("_ENV")
         injectSuperGlobal("_SESSION")
 
-        injectPredef("GLOBALS",  globals.getOrElse(new TArray(TAny)))
+        injectPredef("GLOBALS",  ctx.globals.getOrElse(new TArray(TAny)))
 
         // for methods, we inject $this as its always defined
         scope match {
@@ -99,7 +99,7 @@ case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope, ctx: PhasesCont
 
         aa.computeFixpoint(newCtx)
 
-        if (Settings.get.displayFixPoint && !inline) {
+        if (Settings.get.displayFixPoint && !inlined) {
             println("     - Fixpoint:");
             for ((v,e) <- aa.getResult.filter(v => !v._1.isInstanceOf[ClassProperty]).toList.sortWith{(x,y) => x._1.name < y._1.name}) {
                 println("      * ["+v+"] => "+e);
@@ -115,16 +115,16 @@ case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope, ctx: PhasesCont
         }
 
         // Detect unreachables:
-        if (ctx.dumpedData.isEmpty) {
+        if (ctx.dumpedData.isEmpty && !inlined) {
             // Only do it if no runtime instrumentation
             for (l <- aa.detectUnreachable(TypeTransferFunction(true, newCtx, false))) {
                 notice("Unreachable code", l)
             }
         }
         // Collect errors and annotations
-        aa.pass(TypeTransferFunction(false, newCtx, !Settings.get.exportAPIPath.isEmpty, notice))
+        aa.pass(TypeTransferFunction(inlined, newCtx, !Settings.get.exportAPIPath.isEmpty, inlined, notice))
 
-        if (Settings.get.summaryOnly) {
+        if (Settings.get.summaryOnly && !inlined) {
             scope match {
                 case ms: MethodSymbol =>
                     val lineCount = ms.line_end-ms.line+1;
@@ -133,7 +133,7 @@ case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope, ctx: PhasesCont
                                                                       lineCount,
                                                                       noticesCount*1.0/lineCount,
                                                                       if (isAnnotated) "yes" else "no",
-                                                                      ms.cs.name+"::"+ms.name+(if(inline) " (inline)" else ""),
+                                                                      ms.cs.name+"::"+ms.name,
                                                                       ms.file.getOrElse("-- no file --"));
                 case fs: FunctionSymbol =>
                     val lineCount = fs.line_end-fs.line+1;
@@ -142,7 +142,7 @@ case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope, ctx: PhasesCont
                                                                       lineCount,
                                                                       noticesCount*1.0/lineCount,
                                                                       if (isAnnotated) "yes" else "no",
-                                                                      fs.name+(if(inline) " (inline)" else ""),
+                                                                      fs.name,
                                                                       fs.file.getOrElse("-- no file --"));
                 case _ =>
             }

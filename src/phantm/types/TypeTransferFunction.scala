@@ -13,6 +13,7 @@ import phantm.dataflow.TransferFunction
 case class TypeTransferFunction(silent: Boolean,
                                 ctx: PhasesContext,
                                 collectAnnotations: Boolean,
+                                inlined: Boolean = false,
                                 noticesFct: (String, Positional) => Unit = Reporter.notice(_: String, _: Positional),
                                 errorsFct: (String, Positional) => Unit = Reporter.error(_: String, _: Positional)) extends TransferFunction[TypeEnvironment, Statement] {
     def notice(msg: String, pos: Positional) = if (!silent) noticesFct(msg, pos)
@@ -739,8 +740,39 @@ case class TypeTransferFunction(silent: Boolean,
                 }
             }
 
-            def getInlinedRetType(ftyp: TFunction): Type = {
-                TAny
+            def getInlinedRetType(params: List[Type]): Type = ctx.cfgs.get(Some(sym)) match {
+                case Some(cfg) =>
+                    // clear & save previous annotations
+                    val annots = AnnotationsStore.clearFunctionAnnotations(sym)
+
+                    // save general argument types and inject call types
+                    val oldTypes = sym.argList.map(a => a._2.typ)
+
+                    for ((t, i) <- params.zipWithIndex) {
+                        if (i < sym.argList.size) {
+                            sym.argList(i)._2.typ = t
+                        }
+                    }
+
+                    // analyze like usual
+                    val tfa = new TypeFlowAnalyzer(cfg, sym, ctx, true)
+                    tfa.analyze
+
+                    // retreive return type
+                    val rtyp = AnnotationsStore.getReturnType(sym)
+
+                    // restore annotations
+                    AnnotationsStore.restoreFunctionAnnotations(sym, annots)
+
+                    // restore argument types
+                    for ((t, i) <- oldTypes.zipWithIndex) {
+                        sym.argList(i)._2.typ = t
+                    }
+
+                    rtyp
+                case None =>
+                    error("Unable to retrieve target CFG to inline", pos)
+                    TBottom
             }
 
             def checkAgainstFType(ftyp: FunctionType): Type = ftyp match {
@@ -761,7 +793,7 @@ case class TypeTransferFunction(silent: Boolean,
                     }
 
                     if (shouldInline(sym)) {
-                        getInlinedRetType(tf)
+                        getInlinedRetType(fcall_params.map(typeFromSV(_)))
                     } else {
                         tf.ret
                     }
@@ -941,8 +973,8 @@ case class TypeTransferFunction(silent: Boolean,
                             typeErrorF("Return type mismatch: expected: %s, found: %s", r, retType, vType)
                         }
 
-                        if (collectAnnotations) {
-                            AnnotationsStore.collectFunctionRet(fs, typeFromSV(v))
+                        if (collectAnnotations || inlined) {
+                            AnnotationsStore.collectFunctionRet(fs, vType)
                         }
                     case _ =>
                 }

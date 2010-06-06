@@ -24,16 +24,17 @@ object TypeAnalyzingPhase extends Phase {
         if (Settings.get.typeFlowFilter != Nil) {
             Reporter.get.clear
         }
-        TypeFlowAnalysis(ctx, ctx.oast.get) execute;
-        ctx
+        val tfa = TypeFlowAnalysis(ctx, ctx.oast.get)
+        tfa.execute
+        tfa.ctx
     }
 
 }
 
 
-case class TypeFlowAnalysis(ctx: PhasesContext, node: Tree) extends ASTSimpleTraversal(node) {
+case class TypeFlowAnalysis(initCtx: PhasesContext, node: Tree) extends ASTSimpleTraversal(node) {
 
-    var mainGlobals: Option[Type] = None
+    var ctx = initCtx
 
     def getCFG(sym: Option[FunctionSymbol]): ControlFlowGraph = {
         ctx.cfgs.get(sym).getOrElse(error("Unknown CFG: "+sym))
@@ -56,10 +57,11 @@ case class TypeFlowAnalysis(ctx: PhasesContext, node: Tree) extends ASTSimpleTra
             case Program(stmts) =>
                 display("Analyzing main...")
                 val cfg = getCFG(None)
-                val tfa = new TypeFlowAnalyzer(cfg, GlobalSymbols, ctx, None)
+                val tfa = new TypeFlowAnalyzer(cfg, GlobalSymbols, ctx)
                 val results = tfa.analyze
 
-                mainGlobals = Some(results(cfg.exit).getGlobalsType)
+                ctx = ctx.copy(globals = Some(results(cfg.exit).getGlobalsType))
+
                 if (!filter("main")) {
                     Reporter.get.clear
                 }
@@ -68,7 +70,7 @@ case class TypeFlowAnalysis(ctx: PhasesContext, node: Tree) extends ASTSimpleTra
                 name.getSymbol match {
                     case fs: FunctionSymbol =>
                         display("Analyzing function "+name.value+"...")
-                        val tfa = new TypeFlowAnalyzer(getCFG(Some(fs)), fs, ctx, mainGlobals)
+                        val tfa = new TypeFlowAnalyzer(getCFG(Some(fs)), fs, ctx)
                         tfa.analyze
                     case _ =>
                         error("Incoherent symbol type, should be function")
@@ -83,7 +85,7 @@ case class TypeFlowAnalysis(ctx: PhasesContext, node: Tree) extends ASTSimpleTra
                                 case ms: MethodSymbol =>
                                     if (filter(cl.name+"::"+m.name.value) || filter(cl.name+"::_")) {
                                         display("Analyzing method "+cl.name+"::"+m.name.value+"...")
-                                        val tfa = new TypeFlowAnalyzer(getCFG(Some(ms)), ms, ctx, mainGlobals)
+                                        val tfa = new TypeFlowAnalyzer(getCFG(Some(ms)), ms, ctx)
                                         tfa.analyze
                                     }
                                 case _ =>

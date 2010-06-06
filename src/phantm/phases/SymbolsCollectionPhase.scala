@@ -118,6 +118,9 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
             ms.attachComment(m.comment);
 
             val t = if (m.comment != None) {
+
+                ms.shouldInline = SourceAnnotations.Parser.shouldInline(m.comment.get)
+
                 val (args, ret) = SourceAnnotations.Parser.getFunctionTypes(m.comment.get)
 
                 var foundOne = false
@@ -263,6 +266,8 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
                 }
 
                 val t = if (fd.comment != None) {
+                    fs.shouldInline = SourceAnnotations.Parser.shouldInline(fd.comment.get)
+
                     val (args, ret) = SourceAnnotations.Parser.getFunctionTypes(fd.comment.get)
 
                     val ftargs = for ((n, as) <- fs.argList) yield {
