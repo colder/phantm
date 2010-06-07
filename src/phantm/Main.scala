@@ -54,6 +54,21 @@ object Main {
             case "--noincludes" :: xs =>
                 settings = settings.copy(resolveIncludes = false)
                 handleArgs(xs)
+            case "--inline" :: mode :: xs =>
+                val m = mode match {
+                    case "none"   => InlineNone
+                    case "manual" => InlineManual
+                    case "leaves" => InlineLeaves
+                    case "full"   => InlineFull
+                    case _ =>
+                        println("Invalid inline mode")
+                        displayUsage = true
+                        InlineNone
+                }
+
+                settings = settings.copy(inlineMode = m)
+                handleArgs(xs)
+
             case "--format" :: "termbg" :: xs =>
                 settings = settings.copy(format = "termbg")
                 handleArgs(xs)

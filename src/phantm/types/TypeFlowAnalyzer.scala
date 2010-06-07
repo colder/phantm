@@ -122,7 +122,7 @@ case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope, ctx: PhasesCont
             }
         }
         // Collect errors and annotations
-        aa.pass(TypeTransferFunction(inlined, newCtx, !Settings.get.exportAPIPath.isEmpty, inlined, notice))
+        aa.pass(TypeTransferFunction(false, newCtx, !Settings.get.exportAPIPath.isEmpty, inlined, notice))
 
         if (Settings.get.summaryOnly && !inlined) {
             scope match {
@@ -134,7 +134,7 @@ case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope, ctx: PhasesCont
                                                                       noticesCount*1.0/lineCount,
                                                                       if (isAnnotated) "yes" else "no",
                                                                       ms.cs.name+"::"+ms.name,
-                                                                      ms.file.getOrElse("-- no file --"));
+                                                                      ms.file.map(f => f+":"+ms.line).getOrElse("-- no file --"));
                 case fs: FunctionSymbol =>
                     val lineCount = fs.line_end-fs.line+1;
                     val isAnnotated = SourceAnnotations.Parser.isAnnotated(fs.comment.getOrElse(""))
@@ -143,7 +143,7 @@ case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope, ctx: PhasesCont
                                                                       noticesCount*1.0/lineCount,
                                                                       if (isAnnotated) "yes" else "no",
                                                                       fs.name,
-                                                                      fs.file.getOrElse("-- no file --"));
+                                                                      fs.file.map(f => f+":"+fs.line).getOrElse("-- no file --"));
                 case _ =>
             }
         }

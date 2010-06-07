@@ -17,8 +17,16 @@ case class Settings(
     val apis: List[String]            = Nil,
     val dumps: List[String]           = Nil,
     val exportAPIPath: Option[String] = None,
-    val exportCGPath: Option[String]  = None
+    val exportCGPath: Option[String]  = None,
+    val inlineMode: InlineMode        = InlineManual
 )
+
+sealed abstract class InlineMode;
+case object InlineNone   extends InlineMode;
+case object InlineLeaves extends InlineMode;
+case object InlineFull   extends InlineMode;
+case object InlineManual extends InlineMode;
+
 
 object Settings {
     private var stgs: Option[Settings] = None

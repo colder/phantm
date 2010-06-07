@@ -1,6 +1,6 @@
 package phantm.phases
 
-import phantm.Settings
+import phantm._
 import phantm.util.{Reporter, Positional, Evaluator}
 import phantm.ast.Trees._
 import phantm.ast.ASTTraversal
@@ -119,7 +119,9 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
 
             val t = if (m.comment != None) {
 
-                ms.shouldInline = SourceAnnotations.Parser.shouldInline(m.comment.get)
+                if (Settings.get.inlineMode != InlineNone) {
+                    ms.shouldInline = SourceAnnotations.Parser.shouldInline(m.comment.get)
+                }
 
                 val (args, ret) = SourceAnnotations.Parser.getFunctionTypes(m.comment.get)
 
@@ -266,7 +268,9 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
                 }
 
                 val t = if (fd.comment != None) {
-                    fs.shouldInline = SourceAnnotations.Parser.shouldInline(fd.comment.get)
+                    if (Settings.get.inlineMode != InlineNone) {
+                        fs.shouldInline = SourceAnnotations.Parser.shouldInline(fd.comment.get)
+                    }
 
                     val (args, ret) = SourceAnnotations.Parser.getFunctionTypes(fd.comment.get)
 

@@ -13,5 +13,6 @@ case class PhasesContext(
     val dumpedData: List[DumpCollector] = Nil,
     val symbol: Option[Symbol] = None,
     val globals: Option[Type] = None,
-    val cfgs: Map[Option[FunctionSymbol], ControlFlowGraph] = Map[Option[FunctionSymbol], ControlFlowGraph]()
+    val cfgs: Map[Option[FunctionSymbol], ControlFlowGraph] = Map[Option[FunctionSymbol], ControlFlowGraph](),
+    var inlineCache: Map[FunctionSymbol, Map[List[Type], Type]] = Map().withDefaultValue(Map())
 );

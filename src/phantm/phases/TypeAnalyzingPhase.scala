@@ -69,9 +69,11 @@ case class TypeFlowAnalysis(initCtx: PhasesContext, node: Tree) extends ASTSimpl
             case FunctionDecl(name, args, retref, body) if filter(name.value) =>
                 name.getSymbol match {
                     case fs: FunctionSymbol =>
-                        display("Analyzing function "+name.value+"...")
-                        val tfa = new TypeFlowAnalyzer(getCFG(Some(fs)), fs, ctx)
-                        tfa.analyze
+                        if (!fs.shouldInline) {
+                            display("Analyzing function "+name.value+"...")
+                            val tfa = new TypeFlowAnalyzer(getCFG(Some(fs)), fs, ctx)
+                            tfa.analyze
+                        }
                     case _ =>
                         error("Incoherent symbol type, should be function")
                 }
@@ -83,7 +85,7 @@ case class TypeFlowAnalysis(initCtx: PhasesContext, node: Tree) extends ASTSimpl
                         for (m <- methods) if (m.body != None) {
                             m.name.getSymbol match {
                                 case ms: MethodSymbol =>
-                                    if (filter(cl.name+"::"+m.name.value) || filter(cl.name+"::_")) {
+                                    if (!ms.shouldInline && (filter(cl.name+"::"+m.name.value) || filter(cl.name+"::_"))) {
                                         display("Analyzing method "+cl.name+"::"+m.name.value+"...")
                                         val tfa = new TypeFlowAnalyzer(getCFG(Some(ms)), ms, ctx)
                                         tfa.analyze

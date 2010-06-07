@@ -713,11 +713,6 @@ case class TypeTransferFunction(silent: Boolean,
             }
         }
 
-        def shouldInline(sym: FunctionSymbol): Boolean = {
-            // TODO: automate this
-            sym.shouldInline
-        }
-
         def checkFCalls(fcall_params: List[SimpleValue], sym: FunctionSymbol, pos: Positional) : Type =  {
             def protoFilter(ftyp: FunctionType): Boolean = {
                 ftyp match {
@@ -742,34 +737,41 @@ case class TypeTransferFunction(silent: Boolean,
 
             def getInlinedRetType(params: List[Type]): Type = ctx.cfgs.get(Some(sym)) match {
                 case Some(cfg) =>
-                    // clear & save previous annotations
-                    val annots = AnnotationsStore.clearFunctionAnnotations(sym)
+                    if (ctx.inlineCache(sym) contains params) {
+                        // cache hit
+                        ctx.inlineCache(sym)(params)
+                    } else {
+                        // clear & save previous annotations
+                        val annots = AnnotationsStore.clearFunctionAnnotations(sym)
 
-                    // save general argument types and inject call types
-                    val oldTypes = sym.argList.map(a => a._2.typ)
+                        // save general argument types and inject call types
+                        val oldTypes = sym.argList.map(a => a._2.typ)
 
-                    for ((t, i) <- params.zipWithIndex) {
-                        if (i < sym.argList.size) {
+                        for ((t, i) <- params.zipWithIndex) {
+                            if (i < sym.argList.size) {
+                                sym.argList(i)._2.typ = t
+                            }
+                        }
+
+                        // analyze like usual
+                        val tfa = new TypeFlowAnalyzer(cfg, sym, ctx, true)
+                        tfa.analyze
+
+                        // retreive return type
+                        val rtyp = AnnotationsStore.getReturnType(sym)
+
+                        // restore annotations
+                        AnnotationsStore.restoreFunctionAnnotations(sym, annots)
+
+                        // restore argument types
+                        for ((t, i) <- oldTypes.zipWithIndex) {
                             sym.argList(i)._2.typ = t
                         }
+
+                        ctx.inlineCache = ctx.inlineCache + (sym -> (ctx.inlineCache(sym) + (params -> rtyp)))
+
+                        rtyp
                     }
-
-                    // analyze like usual
-                    val tfa = new TypeFlowAnalyzer(cfg, sym, ctx, true)
-                    tfa.analyze
-
-                    // retreive return type
-                    val rtyp = AnnotationsStore.getReturnType(sym)
-
-                    // restore annotations
-                    AnnotationsStore.restoreFunctionAnnotations(sym, annots)
-
-                    // restore argument types
-                    for ((t, i) <- oldTypes.zipWithIndex) {
-                        sym.argList(i)._2.typ = t
-                    }
-
-                    rtyp
                 case None =>
                     error("Unable to retrieve target CFG to inline", pos)
                     TBottom
@@ -792,7 +794,7 @@ case class TypeTransferFunction(silent: Boolean,
 
                     }
 
-                    if (shouldInline(sym)) {
+                    if (sym.shouldInline) {
                         getInlinedRetType(fcall_params.map(typeFromSV(_)))
                     } else {
                         tf.ret
