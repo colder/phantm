@@ -121,7 +121,7 @@ case class CallGraphGeneration(node: Tree,
 
             case FunctionCall(StaticFunctionRef(_, _, name), args) =>
                 GlobalSymbols.lookupFunction(name.value) match {
-                    case Some(fs) =>
+                    case Some(fs) if (fs.userland) =>
                         CallGraph.addEdge(ctx.scope, Some(fs))
                     case _ =>
                 }

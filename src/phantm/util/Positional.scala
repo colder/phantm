@@ -36,6 +36,38 @@ trait Positional {
         this
     }
 
+    def setEndPos(l: Int, c: Int, f: String): self.type = {
+        line_end = l;
+        col_end = c;
+
+        this
+    }
+
+    def setEndPos(p: Positional): self.type = {
+        line_end = p.line_end;
+        col_end = p.col_end;
+        this
+    }
+
+    def setEndPos(p: ParseNode): self.type = {
+        // Then, we get the right-most token
+        var pRight = p
+        var continue = true;
+        while (continue && !pRight.isToken) {
+            val lst = pRight.children()
+            if (lst.size() == 0) {
+                continue = false
+            } else {
+                pRight = lst.get(lst.size()-1);
+            }
+        }
+
+        line_end = pRight.line
+        col_end = pRight.column+pRight.tokenContent.length
+
+        this
+    }
+
     def setPos(p: ParseNode): self.type = {
         import Math.max
 
@@ -55,22 +87,7 @@ trait Positional {
         file = Some(pLeft.file)
 
         // Then, we get the right-most token
-        var pRight = p
-        continue = true;
-        while (continue && !pRight.isToken) {
-            val lst = pRight.children()
-            if (lst.size() == 0) {
-                continue = false
-            } else {
-                pRight = lst.get(lst.size()-1);
-            }
-        }
-
-        line_end = pRight.line
-        col_end = pRight.column+pRight.tokenContent.length
-
-
-        this
+        setEndPos(p)
     }
 
     def setPos(p: Positional): self.type = {

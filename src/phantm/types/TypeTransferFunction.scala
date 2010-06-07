@@ -532,12 +532,12 @@ case class TypeTransferFunction(silent: Boolean,
                 typeFromSV(arr) match {
                     case TString | _ :TStringLit =>
                         // If arr is known to be a string, index must be Int
-                        expOrRef(index, TInt)
+                        expOrRef(index, TNumeric)
                         getCheckType(arr, TString)
                     case to: ObjectType =>
                         getCheckType(arr, TAny)
                     case t =>
-                        expOrRef(index, TString, TInt)
+                        expOrRef(index, TString, TNumeric)
                         val newct = if (ct == TTop) {
                             TAnyArray
                         } else {

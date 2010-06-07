@@ -216,11 +216,12 @@ object API {
                         fs.registerArgument(as)
                     }
 
-                    fs.registerFType(TFunction(fs.argList.map { a => (a._2.typ, a._2.byref, a._2.optional) }, elemsToType(f \ "return" \ "type")))
+                    val ftyp = TFunction(fs.argList.map { a => (a._2.typ, a._2.byref, a._2.optional) }, elemsToType(f \ "return" \ "type"))
+                    fs.registerFType(ftyp)
 
                     GlobalSymbols.lookupFunction(name) match {
                         case Some(fs) =>
-                            // TODO: Add prototype
+                            fs.registerFType(ftyp)
                         case None =>
                             GlobalSymbols.registerFunction(fs)
                     }
