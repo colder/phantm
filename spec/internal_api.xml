@@ -26131,13 +26131,24 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
   </function>
 
   <function name="preg_replace">
-   <return><type name="mixed" /></return>
+   <return><type name="array" /></return>
    <args>
     <arg><type name="mixed" /></arg>
     <arg><type name="mixed" /></arg>
+    <arg><type name="array" /></arg>
+    <arg opt="1"><type name="numeric" /></arg>
+    <arg opt="1" byref="1"><type name="numeric" /></arg>
+   </args>
+  </function>
+
+  <function name="preg_replace">
+   <return><type name="string" /></return>
+   <args>
     <arg><type name="mixed" /></arg>
-    <arg><type name="numeric" /></arg>
-    <arg><type name="numeric" /></arg>
+    <arg><type name="mixed" /></arg>
+    <arg><type name="string" /></arg>
+    <arg opt="1"><type name="numeric" /></arg>
+    <arg opt="1" byref="1"><type name="numeric" /></arg>
    </args>
   </function>
 
