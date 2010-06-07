@@ -12,7 +12,7 @@ import phantm.annotations.{AnnotationsStore, SourceAnnotations}
 import phantm.dataflow.AnalysisAlgorithm
 import phantm.cfg.{LabeledDirectedGraphImp, VertexImp}
 
-case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope, ctx: PhasesContext, inlined: Boolean = false) {
+case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope, ctx: PhasesContext, inlined: Boolean = false, collectGlobals: Boolean = false) {
 
     type Vertex = VertexImp[Statement]
 
@@ -54,7 +54,8 @@ case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope, ctx: PhasesCont
         injectSuperGlobal("_ENV")
         injectSuperGlobal("_SESSION")
 
-        injectPredef("GLOBALS",  ctx.globals.getOrElse(new TArray(TAny)))
+
+        //
 
         // for methods, we inject $this as its always defined
         scope match {
@@ -70,7 +71,15 @@ case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope, ctx: PhasesCont
                 for ((name, sym) <- fs.argList) {
                     baseEnv = baseEnv.inject(Identifier(sym), sym.typ)
                 }
-            case _ =>
+
+                // All function symbols invoked from main scope that lead to this function
+                val mfs = ctx.reachableFromMain(fs)
+
+                val globals = mfs.flatMap(mf => ctx.globalCalls(mf))
+
+                injectPredef("GLOBALS",  if (globals.isEmpty) new TArray(TAny) else globals.foldLeft(TBottom: Type)((t, e2) => TypeLattice.join(t, e2._2)))
+            case GlobalSymbols =>
+                injectPredef("GLOBALS",  new TArray(TAny))
         }
 
         // we inject vars for static class properties
@@ -95,7 +104,8 @@ case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope, ctx: PhasesCont
         }
 
 
-        val aa = new AnalysisAlgorithm[TypeEnvironment, Statement](TypeTransferFunction(true, newCtx, false), bottomEnv, baseEnv, cfg)
+        val ttf = TypeTransferFunction(true, newCtx, false, collectGlobals)
+        val aa = new AnalysisAlgorithm[TypeEnvironment, Statement](ttf, bottomEnv, baseEnv, cfg)
 
         aa.computeFixpoint(newCtx)
 
@@ -126,7 +136,7 @@ case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope, ctx: PhasesCont
             }
         }
         // Collect errors and annotations
-        aa.pass(TypeTransferFunction(false, newCtx, !Settings.get.exportAPIPath.isEmpty, inlined, notice))
+        aa.pass(TypeTransferFunction(false, newCtx, !Settings.get.exportAPIPath.isEmpty, collectGlobals, inlined, notice))
 
         if (Settings.get.summaryOnly && !inlined) {
             scope match {

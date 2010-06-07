@@ -57,10 +57,8 @@ case class TypeFlowAnalysis(initCtx: PhasesContext, node: Tree) extends ASTSimpl
             case Program(stmts) =>
                 display("Analyzing main...")
                 val cfg = getCFG(None)
-                val tfa = new TypeFlowAnalyzer(cfg, GlobalSymbols, ctx)
+                val tfa = new TypeFlowAnalyzer(cfg, GlobalSymbols, ctx, collectGlobals = true)
                 val results = tfa.analyze
-
-                ctx = ctx.copy(globals = Some(results(cfg.exit).getGlobalsType))
 
                 if (!filter("main")) {
                     Reporter.get.clear

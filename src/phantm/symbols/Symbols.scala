@@ -55,7 +55,7 @@ private object ID {
 }
 
 
-trait Scope {
+sealed trait Scope {
   var variables: HashMap[String,VariableSymbol] = new HashMap[String,VariableSymbol]
 
   def getVariables: List[VariableSymbol] = variables map { x => x._2 } toList

@@ -13,6 +13,7 @@ import phantm.dataflow.TransferFunction
 case class TypeTransferFunction(silent: Boolean,
                                 ctx: PhasesContext,
                                 collectAnnotations: Boolean,
+                                collectGlobals: Boolean = false,
                                 inlined: Boolean = false,
                                 noticesFct: (String, Positional) => Unit = Reporter.notice(_: String, _: Positional),
                                 errorsFct: (String, Positional) => Unit = Reporter.error(_: String, _: Positional)) extends TransferFunction[TypeEnvironment, Statement] {
@@ -801,6 +802,11 @@ case class TypeTransferFunction(silent: Boolean,
                     }
                 case _ =>
                     TAny
+            }
+
+            // If necessary, we record global types into the CTX
+            if (collectGlobals && sym.userland) {
+                ctx.globalCalls += (sym -> (ctx.globalCalls(sym) + (pos.getPos -> env.getGlobalsType)))
             }
 
             val ftyps = sym.ftyps.toList

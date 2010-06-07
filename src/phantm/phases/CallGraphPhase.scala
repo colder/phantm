@@ -1,7 +1,7 @@
 package phantm.phases
 
 import phantm._
-import phantm.util.{API, Reporter}
+import phantm.util.{API, Reporter, Positional}
 import phantm.symbols._
 import phantm.ast.Trees._
 import phantm.ast.ASTTraversal
@@ -13,12 +13,15 @@ object CallGraphPhase extends Phase {
     def name = "Generating callgraph"
     def description = "Generating call graph"
 
-    def run(ctx: PhasesContext): PhasesContext = {
+    def run(initCtx: PhasesContext): PhasesContext = {
+        var ctx = initCtx
 
         val cgGenerator = new CallGraphGeneration(ctx.oast.get)
         cgGenerator.execute
 
         val cg = cgGenerator.CallGraph;
+
+        ctx = ctx.copy(reachableFromMain = cg.computeReachableFromMain)
 
         if (!Settings.get.exportCGPath.isEmpty) {
             cg.writeDottyToFile(Settings.get.exportCGPath.get, "Call Graph")
@@ -62,6 +65,8 @@ case class CallGraphGeneration(node: Tree,
 
         val entry = newVertex
 
+        var mainCallPositions = Map[FunctionSymbol, Set[Positional]]().withDefaultValue(Set())
+
         var osymToV = Map[Option[FunctionSymbol], Vertex](None -> entry)
         var vToOsym = Map[Vertex, Option[FunctionSymbol]](entry -> None)
 
@@ -77,6 +82,10 @@ case class CallGraphGeneration(node: Tree,
             }
         }
 
+        def addCallLocation(sym: FunctionSymbol, pos: Positional) = {
+            mainCallPositions += (sym -> (mainCallPositions(sym) + pos))
+        }
+
         def addEdge(from: AVertex, to: AVertex) = {
             val vFrom = addNode(from)
             val vTo   = addNode(to)
@@ -90,6 +99,34 @@ case class CallGraphGeneration(node: Tree,
                 case _ =>
                     error("More than one edge between call vertices")
             }
+        }
+
+        def computeReachableFromMain = {
+            var res  = Map[FunctionSymbol, Set[FunctionSymbol]]().withDefaultValue(Set())
+            var mainFuncs = outEdges(entry).map(_.v2);
+
+            for (mf <- mainFuncs) {
+                var visited = Set[Vertex]() + mf;
+                val msym = vToOsym(mf).get
+                res = res + (msym -> Set(msym))
+
+                var toVisit = Set[Vertex]() ++ outEdges(mf).map(_.v2)
+
+                while (!toVisit.isEmpty) {
+                    val v = toVisit.head
+                    toVisit -= v
+
+                    if (!(visited contains v)) {
+                        val sym = vToOsym(v).get
+                        res += (sym -> (res(sym) + msym))
+                        visited += v
+                        toVisit ++ outEdges(v).map(_.v2)
+                    }
+                }
+
+            }
+
+            res
         }
     }
 
@@ -119,9 +156,12 @@ case class CallGraphGeneration(node: Tree,
                 CallGraph.addNode(fid)
                 newCtx = CGContext(fid);
 
-            case FunctionCall(StaticFunctionRef(_, _, name), args) =>
+            case fcall @ FunctionCall(StaticFunctionRef(_, _, name), args) =>
                 GlobalSymbols.lookupFunction(name.value) match {
                     case Some(fs) if (fs.userland) =>
+                        if (ctx.scope == None) {
+                            CallGraph.addCallLocation(fs, fcall);
+                        }
                         CallGraph.addEdge(ctx.scope, Some(fs))
                     case _ =>
                 }
