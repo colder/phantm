@@ -20,6 +20,8 @@ abstract trait LabeledDirectedGraph[LabelType] {
   def inEdges(v: Vertex): Set[Edge]
   /** Returne the set of outgoing edges for a given vertex */
   def outEdges(v: Vertex): Set[Edge]
+  /** Returne the set of edges between two vertices */
+  def betweenEdges(from: Vertex, to: Vertex): Set[Edge]
   /** Removes an edge from the graph */
   def -= (from: Vertex, lab: LabelType, to: Vertex)
   /** Generates a new, isomorphic labeled directed graphs where the new labels
@@ -71,6 +73,10 @@ abstract class LabeledDirectedGraphImp[LabelType] extends LabeledDirectedGraph[L
     vertices += to
     from.out += edge
     to.in += edge
+  }
+
+  def betweenEdges(from: Vertex, to: Vertex) = {
+    edges.filter(e => (e.v1 == from && e.v2 == to))
   }
 
   def -=(from: Vertex, lab: LabelType, to: Vertex) = {

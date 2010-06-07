@@ -1,10 +1,12 @@
 package phantm.phases
 
-import phantm.Settings
+import phantm._
 import phantm.util.{API, Reporter}
 import phantm.symbols._
 import phantm.ast.Trees._
 import phantm.ast.ASTTraversal
+import phantm.cfg.LabeledDirectedGraphImp
+import phantm.dataflow.StronglyConnectedComponents
 import java.io.{PrintStream,FileOutputStream}
 
 object CallGraphPhase extends Phase {
@@ -13,15 +15,37 @@ object CallGraphPhase extends Phase {
 
     def run(ctx: PhasesContext): PhasesContext = {
 
+        val cgGenerator = new CallGraphGeneration(ctx.oast.get)
+        cgGenerator.execute
+
+        val cg = cgGenerator.CallGraph;
+
         if (!Settings.get.exportCGPath.isEmpty) {
-            val cgGenerator = new CallGraphGeneration(ctx.oast.get)
+            cg.writeDottyToFile(Settings.get.exportCGPath.get, "Call Graph")
+        }
 
-            cgGenerator.execute
+        def flag(osym: Option[FunctionSymbol], inline: Boolean) = {
+            if (osym != None) {
+                osym.get.shouldInline = inline
+            }
+        }
 
-            val outputStream = new FileOutputStream(Settings.get.exportCGPath.get);
-            val printStream  = new PrintStream(outputStream);
+        // Flag symbols to inline
+        if (Settings.get.inlineMode == InlineLeaves) {
+            cg.V.filter(v => cg.outEdges(v).isEmpty && !cg.inEdges(v).isEmpty).foreach(v => flag(cg.vToOsym(v), true))
 
-            cgGenerator.CallGraph.emitDot(printStream)
+        } else if (Settings.get.inlineMode == InlineFull) {
+            // Detect cycles
+            val tarjan = new StronglyConnectedComponents(cg)
+            val sscs = tarjan.getComponents
+
+            for (ssc <- sscs) {
+                if (ssc.vs.size > 1) {
+                    for (v <- ssc.vs) flag(cg.vToOsym(v), false)
+                } else {
+                    for (v <- ssc.vs) flag(cg.vToOsym(v), true)
+                }
+            }
         }
 
         ctx
@@ -33,64 +57,39 @@ case class CGContext(scope: Option[FunctionSymbol]);
 case class CallGraphGeneration(node: Tree,
                               context: CGContext) extends ASTTraversal[CGContext](node, context) {
 
-    object CallGraph {
-        type FuncId = Option[FunctionSymbol]
-        var nodes = Set[FuncId]()
-        var edges = Map[(FuncId, FuncId), Int]().withDefaultValue(0)
+    object CallGraph extends LabeledDirectedGraphImp[Int] {
+        type AVertex = Option[FunctionSymbol]
 
-        def addNode(f: FuncId) = {
-            if (f.isEmpty || f.get.userland) {
-                nodes += f
+        val entry = newVertex
+
+        var osymToV = Map[Option[FunctionSymbol], Vertex](None -> entry)
+        var vToOsym = Map[Vertex, Option[FunctionSymbol]](entry -> None)
+
+        def addNode(osym: AVertex): Vertex = {
+            osymToV.get(osym) match {
+                case Some(v) => v
+                case None =>
+                    val v = newVertex
+                    v.name = osym.map(_.name).getOrElse("<main>")
+                    osymToV += (osym -> v)
+                    vToOsym += (v -> osym)
+                    v
             }
         }
 
-        def addEdge(from: FuncId, to: FuncId) {
-            if ((from.isEmpty || from.get.userland) && (to.isEmpty || to.get.userland)) {
-                addNode(from)
-                addNode(to)
-                edges += (from -> to) -> (edges(from -> to) + 1);
+        def addEdge(from: AVertex, to: AVertex) = {
+            val vFrom = addNode(from)
+            val vTo   = addNode(to)
+
+            betweenEdges(vFrom, vTo).toList  match {
+                case Nil =>
+                    this += (vFrom, 1, vTo)
+                case e :: Nil =>
+                    this -= (vFrom, e.lab, vTo)
+                    this += (vFrom, e.lab+1, vTo)
+                case _ =>
+                    error("More than one edge between call vertices")
             }
-        }
-
-        def emitDot(ps: PrintStream) = {
-            // we have at least the main scope
-            addNode(None);
-
-            var i = 1
-            var namesToIds = Map[String, String]()
-
-            ps.print("digraph G {\n")
-            def getName(fid: FuncId): String = {
-                val l = getLabel(fid)
-
-                if (namesToIds contains l) {
-                    namesToIds(l)
-                } else {
-                    val fresh = "func"+i
-                    namesToIds += (l -> fresh)
-                    i += 1
-                    fresh
-                }
-            }
-
-            def getLabel(fid: FuncId): String = fid match {
-                case Some(ms: MethodSymbol) => ms.cs.name+"::"+ms.name
-                case Some(fs: FunctionSymbol) => fs.name
-                case _ => "<main>"
-            }
-
-
-
-
-            for (node <- nodes) {
-                ps.print("  "+getName(node)+" [label=\""+getLabel(node)+"\"]\n")
-            }
-
-            for (((from, to), n) <- edges) {
-                ps.print("  "+getName(from)+" -> "+getName(to)+" [label=\""+n+"\"]\n")
-            }
-
-            ps.print("}\n")
         }
     }
 
