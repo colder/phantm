@@ -1,5 +1,6 @@
 package phantm.helpers
 
+import phantm.util.Reporter
 import phantm.Settings
 
 object Main {
@@ -13,6 +14,9 @@ object Main {
             Settings.set(new Settings())
 
             handle_options(args toList)
+
+            val rep = new Reporter(input.get :: Nil)
+            Reporter.set(rep)
 
             input match {
                 case Some(path) =>

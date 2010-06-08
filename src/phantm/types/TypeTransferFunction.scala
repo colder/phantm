@@ -298,7 +298,7 @@ case class TypeTransferFunction(silent: Boolean,
         }
 
         def typeError(pos: Positional, etyp: Type, vtyp: Type): Unit =
-            typeErrorF("Potential type mismatch: expected: %s, found: %s", pos, etyp, vtyp)
+            typeErrorF("Type mismatch: expected: %s, found: %s", pos, etyp, vtyp)
 
         def typeErrorF(format: String, pos: Positional, etyp: Type, vtyp: Type): Unit = {
             if (!silent) {
@@ -715,24 +715,24 @@ case class TypeTransferFunction(silent: Boolean,
         }
 
         def checkFCalls(fcall_params: List[SimpleValue], sym: FunctionSymbol, pos: Positional) : Type =  {
-            def protoFilter(ftyp: FunctionType): Boolean = {
+            def protoErrors(ftyp: FunctionType): Int = {
                 ftyp match {
                     case tf: TFunction =>
-                        var ret = true;
+                        var ret = 0;
                         for (i <- fcall_params.indices) {
                             if (i >= tf.args.length) {
-                                ret = false
+                                ret += 1
                             } else {
                                 if (!leq(typeFromSV(fcall_params(i)), tf.args(i)._1)) {
                                     //notice("Prototype mismatch because "+fcall.params(i)+"("+typeFromSV(fcall.params(i))+") </: "+args(i)._1) 
 
-                                    ret = false;
+                                    ret += 1;
                                 }
                             }
                         }
                         ret
                     case TFunctionAny =>
-                        true
+                        0
                 }
             }
 
@@ -809,20 +809,9 @@ case class TypeTransferFunction(silent: Boolean,
                 ctx.globalCalls += (sym -> (ctx.globalCalls(sym) + (pos.getPos -> env.getGlobalsType)))
             }
 
-            val ftyps = sym.ftyps.toList
-            ftyps filter protoFilter match {
-                case Nil =>
-                    if (ftyps.size > 1) {
-                        error("Unmatched function prototype '("+fcall_params.map(x => typeFromSV(x)).mkString(", ")+")', candidates are:\n    "+ftyps.mkString(",\n    "), pos)
-                        TBottom
-                    } else {
-                        checkAgainstFType(ftyps.head)
-                    }
+            val selectedFTyp = sym.ftyps.map(f => (f, protoErrors(f))).toSeq.sortWith((a,b) => (a._2 < b._2)).head._1
 
-                case f :: xs =>
-                    // Multiple matches, we use the first
-                    checkAgainstFType(f)
-            }
+            checkAgainstFType(selectedFTyp)
         }
 
         def filterType(v: Variable, reft: Type) = {
