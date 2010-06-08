@@ -77,7 +77,9 @@ case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope, ctx: PhasesCont
 
                 val globals = mfs.flatMap(mf => ctx.globalCalls(mf))
 
-                injectPredef("GLOBALS",  if (globals.isEmpty) new TArray(TAny) else globals.foldLeft(TBottom: Type)((t, e2) => TypeLattice.join(t, e2._2)))
+                baseEnv = if (globals.isEmpty) baseEnv else globals.foldLeft(baseEnv)((e, el) => e.union(el._2))
+
+                injectPredef("GLOBALS",  baseEnv.getGlobalsType)
             case GlobalSymbols =>
                 injectPredef("GLOBALS",  new TArray(TAny))
         }

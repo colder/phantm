@@ -806,7 +806,7 @@ case class TypeTransferFunction(silent: Boolean,
 
             // If necessary, we record global types into the CTX
             if (collectGlobals && sym.userland) {
-                ctx.globalCalls += (sym -> (ctx.globalCalls(sym) + (pos.getPos -> env.getGlobalsType)))
+                ctx.globalCalls += (sym -> (ctx.globalCalls(sym) + (pos.getPos -> env)))
             }
 
             val selectedFTyp = sym.ftyps.map(f => (f, protoErrors(f))).toSeq.sortWith((a,b) => (a._2 < b._2)).head._1
