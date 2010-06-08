@@ -77,7 +77,11 @@ case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope, ctx: PhasesCont
 
                 val globals = mfs.flatMap(mf => ctx.globalCalls(mf))
 
-                baseEnv = if (globals.isEmpty) baseEnv else globals.foldLeft(baseEnv)((e, el) => e.union(el._2))
+                if (globals.size > 1) {
+                    baseEnv = globals.map(_._2).reduceLeft((e1, e2) => e1.union(e2))
+                } else if (globals.size == 1) {
+                    baseEnv = globals.head._2
+                }
 
                 injectPredef("GLOBALS",  baseEnv.getGlobalsType)
             case GlobalSymbols =>
