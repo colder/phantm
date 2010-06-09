@@ -1,7 +1,7 @@
 package phantm.types
 
 import phantm.Settings
-import phantm.util.{Reporter, Positional}
+import phantm.util._
 
 import phantm.ast.{Trees => AST}
 import phantm.cfg.ControlFlowGraph
@@ -12,12 +12,17 @@ import phantm.annotations.{AnnotationsStore, SourceAnnotations}
 import phantm.dataflow.AnalysisAlgorithm
 import phantm.cfg.{LabeledDirectedGraphImp, VertexImp}
 
-case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope, ctx: PhasesContext, inlined: Boolean = false, collectGlobals: Boolean = false) {
+case class TypeFlowAnalyzer(cfg: ControlFlowGraph,
+                            scope: Scope,
+                            ctx: PhasesContext,
+                            inlined: Boolean = false,
+                            collectGlobals: Boolean = false,
+                            baseEnvInit: TypeEnvironment = new TypeEnvironment) {
 
     type Vertex = VertexImp[Statement]
 
     def setupEnvironment: TypeEnvironment = {
-        var baseEnv   = new TypeEnvironment;
+        var baseEnv   = baseEnvInit;
 
         // Get data from dumped state if any
         def getSuperGlobal(name: String): Type = {
@@ -73,17 +78,29 @@ case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope, ctx: PhasesCont
                 }
 
                 // All function symbols invoked from main scope that lead to this function
-                val mfs = ctx.reachableFromMain(fs)
+                val mfs = ctx.results.reachableFromMain(fs)
 
-                val globals = mfs.flatMap(mf => ctx.globalCalls(mf))
+                val globals = mfs.flatMap(mf => ctx.results.globalCalls(mf))
+
+                var globalsType: Type = new TArray(TAny)
 
                 if (globals.size > 1) {
-                    baseEnv = globals.map(_._2).reduceLeft((e1, e2) => e1.union(e2))
+                    val e = globals.map(_._2).reduceLeft((e1, e2) => e1.union(e2))
+                    globalsType = e.getGlobalsType
+                    baseEnv = baseEnv unionStoreFrom e
                 } else if (globals.size == 1) {
-                    baseEnv = globals.head._2
+                    val e = globals.head._2
+                    globalsType = e.getGlobalsType
+                    baseEnv = baseEnv unionStoreFrom e
+                } else {
+                    if (!ctx.results.endGlobals.isEmpty) {
+                        val e = ctx.results.endGlobals.get
+                        baseEnv = baseEnv unionStoreFrom e
+                        globalsType = e.getGlobalsType
+                    }
                 }
 
-                injectPredef("GLOBALS",  baseEnv.getGlobalsType)
+                injectPredef("GLOBALS",  globalsType)
             case GlobalSymbols =>
                 injectPredef("GLOBALS",  new TArray(TAny))
         }
@@ -126,8 +143,9 @@ case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope, ctx: PhasesCont
         var noticesCount = 0;
 
         def notice(msg: String, pos: Positional) = {
-            noticesCount += 1;
-            Reporter.notice(msg, pos);
+            if (Reporter.notice(msg, pos)) {
+                noticesCount += 1;
+            }
         }
 
         // Detect unreachables:
@@ -144,26 +162,11 @@ case class TypeFlowAnalyzer(cfg: ControlFlowGraph, scope: Scope, ctx: PhasesCont
         // Collect errors and annotations
         aa.pass(TypeTransferFunction(false, newCtx, !Settings.get.exportAPIPath.isEmpty, collectGlobals, inlined, notice))
 
-        if (Settings.get.summaryOnly && !inlined) {
+        if (Settings.get.summaryOnly) {
+            val gr = ctx.results
             scope match {
-                case ms: MethodSymbol =>
-                    val lineCount = ms.line_end-ms.line+1;
-                    val isAnnotated = SourceAnnotations.Parser.isAnnotated(ms.comment.getOrElse(""))
-                    printf(" %3d | %3d | %.2f | %3s | %-50s | %s \n", noticesCount,
-                                                                      lineCount,
-                                                                      noticesCount*1.0/lineCount,
-                                                                      if (isAnnotated) "yes" else "no",
-                                                                      ms.cs.name+"::"+ms.name,
-                                                                      ms.file.map(f => f+":"+ms.line).getOrElse("-- no file --"));
                 case fs: FunctionSymbol =>
-                    val lineCount = fs.line_end-fs.line+1;
-                    val isAnnotated = SourceAnnotations.Parser.isAnnotated(fs.comment.getOrElse(""))
-                    printf(" %3d | %3d | %.2f | %3s | %-50s | %s \n", noticesCount,
-                                                                      lineCount,
-                                                                      noticesCount*1.0/lineCount,
-                                                                      if (isAnnotated) "yes" else "no",
-                                                                      fs.name,
-                                                                      fs.file.map(f => f+":"+fs.line).getOrElse("-- no file --"));
+                    gr.summary = gr.summary + (fs -> (gr.summary.getOrElse(fs, 0) + noticesCount))
                 case _ =>
             }
         }

@@ -57,6 +57,20 @@ class TypeEnvironment(val map: Map[SimpleVariable, Type], val scope: Option[Clas
         }
     }
 
+    def unionStore(s: ObjectStore): TypeEnvironment = {
+        new TypeEnvironment(map, scope, s union store)
+    }
+
+    def unionStoreFrom(e: TypeEnvironment): TypeEnvironment = {
+        e match {
+            case BaseTypeEnvironment =>
+                this
+
+            case te: TypeEnvironment =>
+                unionStore(te.store)
+        }
+    }
+
     def checkMonotonicity(vrtx: Vertex, e: TypeEnvironment, ctx: PhasesContext, inEdges: Iterable[(Statement, TypeEnvironment)]): Unit = {
         var delim = false;
         for ((v, t) <- map) {

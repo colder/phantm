@@ -1,7 +1,7 @@
 package phantm.types
 
 import phantm.phases.PhasesContext
-import phantm.util.{Positional, Reporter, Unserializer}
+import phantm.util._
 import phantm.ast.{Trees => AST}
 import phantm.cfg.ControlFlowGraph
 import phantm.cfg.Trees._
@@ -738,10 +738,18 @@ case class TypeTransferFunction(silent: Boolean,
 
             def getInlinedRetType(params: List[Type]): Type = ctx.cfgs.get(Some(sym)) match {
                 case Some(cfg) =>
-                    if (ctx.inlineCache(sym) contains params) {
+                    val gr = ctx.results
+
+                    if (gr.inlineCache(sym) contains params) {
                         // cache hit
-                        ctx.inlineCache(sym)(params)
+                        val (t, store) = gr.inlineCache(sym)(params)
+                        env = env unionStore store
+                        t
                     } else {
+                        if (Settings.get.displayProgress && Settings.get.verbosity <= 2) {
+                            Reporter.get.tick
+                        }
+
                         // clear & save previous annotations
                         val annots = AnnotationsStore.clearFunctionAnnotations(sym)
 
@@ -755,11 +763,15 @@ case class TypeTransferFunction(silent: Boolean,
                         }
 
                         // analyze like usual
-                        val tfa = new TypeFlowAnalyzer(cfg, sym, ctx, true)
-                        tfa.analyze
+                        val tfa = new TypeFlowAnalyzer(cfg, sym, ctx, true, false, new TypeEnvironment unionStore env.store)
+                        val res = tfa.analyze
+
+                        val rStore = res(cfg.exit).store
 
                         // retreive return type
                         val rtyp = AnnotationsStore.getReturnType(sym)
+
+                        env = env unionStore rStore
 
                         // restore annotations
                         AnnotationsStore.restoreFunctionAnnotations(sym, annots)
@@ -769,7 +781,7 @@ case class TypeTransferFunction(silent: Boolean,
                             sym.argList(i)._2.typ = t
                         }
 
-                        ctx.inlineCache = ctx.inlineCache + (sym -> (ctx.inlineCache(sym) + (params -> rtyp)))
+                        gr.inlineCache = gr.inlineCache + (sym -> (gr.inlineCache(sym) + (params -> (rtyp, rStore))))
 
                         rtyp
                     }
@@ -806,7 +818,8 @@ case class TypeTransferFunction(silent: Boolean,
 
             // If necessary, we record global types into the CTX
             if (collectGlobals && sym.userland) {
-                ctx.globalCalls += (sym -> (ctx.globalCalls(sym) + (pos.getPos -> env)))
+                val gr = ctx.results
+                gr.globalCalls += (sym -> (gr.globalCalls(sym) + (pos.getPos -> env)))
             }
 
             val selectedFTyp = sym.ftyps.map(f => (f, protoErrors(f))).toSeq.sortWith((a,b) => (a._2 < b._2)).head._1

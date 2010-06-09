@@ -21,7 +21,7 @@ object CallGraphPhase extends Phase {
 
         val cg = cgGenerator.CallGraph;
 
-        ctx = ctx.copy(reachableFromMain = cg.computeReachableFromMain)
+        ctx.results.reachableFromMain = cg.computeReachableFromMain
 
         if (!Settings.get.exportCGPath.isEmpty) {
             cg.writeDottyToFile(Settings.get.exportCGPath.get, "Call Graph")
@@ -46,7 +46,14 @@ object CallGraphPhase extends Phase {
                 if (ssc.vs.size > 1) {
                     for (v <- ssc.vs) flag(cg.vToOsym(v), false)
                 } else {
-                    for (v <- ssc.vs) flag(cg.vToOsym(v), true)
+                    val v = ssc.vs.head
+
+                    // Is it self-recursive?
+                    if (cg.outEdges(v).exists(e => e.v2 == v)) {
+                        flag(cg.vToOsym(v), false)
+                    } else {
+                        flag(cg.vToOsym(v), true)
+                    }
                 }
             }
         }

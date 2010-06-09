@@ -1,7 +1,7 @@
 package phantm.phases
 
 import phantm.Settings
-import phantm.util.{Reporter, ErrorException}
+import phantm.util._
 import scala.util.control.Breaks._
 
 class PhasesRunner(val reporter: Reporter) {

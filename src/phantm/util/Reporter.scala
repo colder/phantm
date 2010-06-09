@@ -3,8 +3,36 @@ import scala.io.Source
 import phantm.Settings
 
 class Reporter(mainFiles: List[String]) {
-    type ErrorCheck = (String, String, String);
+    type ErrorFootPrint = (String, String, String);
     type Error = (String, String, Positional, String);
+
+    def getFootPrint(typ: String, msg: String, pos: Positional): ErrorFootPrint = {
+//        (typ, msg, pos.getPos)
+        // At most one error per line
+        (typ, "dummy", pos.file+":"+pos.line)
+    }
+
+    var tickCount = 0
+
+    def beginTicks = {
+        tickCount = 0
+    }
+
+    def tick = {
+        tickCount += 1
+        print(".")
+        if (tickCount == 80) {
+            println
+            tickCount = 0
+        }
+    }
+
+    def endTicks = {
+        if (tickCount != 0) {
+            println
+            tickCount = 0
+        }
+    }
 
     var errorsCount = 0
     var noticesCount = 0
@@ -12,42 +40,50 @@ class Reporter(mainFiles: List[String]) {
     var totalNoticesCount = 0
 
     private var files = Map[String, List[String]]();
-    private var errorsCheck = Map[Option[String], Set[ErrorCheck]]().withDefaultValue(Set[ErrorCheck]())
+    private var errorsCheck = Map[Option[String], Set[ErrorFootPrint]]().withDefaultValue(Set[ErrorFootPrint]())
     private var errors = Map[Option[String], Set[Error]]().withDefaultValue(Set[Error]())
 
-    def error(msg: String) = {
+    def error(msg: String): Boolean = {
         errorsCount += 1;
         totalErrorsCount += 1;
         println("Error: "+ msg);
+        true
     }
 
-    def error(msg: String, pos: Positional) = {
+    def error(msg: String, pos: Positional): Boolean = {
         val error = ("Error: ", msg, pos, pos.getPos);
-        val errorCheck = ("Error: ", msg, pos.getPos);
+        val errorCheck = getFootPrint("error", msg, pos)
 
         if (!errorsCheck(pos.file).contains(errorCheck)) {
             errorsCheck += (pos.file -> (errorsCheck(pos.file) + errorCheck))
 
             errorsCount += 1;
             errors += (pos.file -> (errors(pos.file) + error))
+            true
+        } else {
+            false
         }
     }
 
-    def notice(msg: String) = {
+    def notice(msg: String): Boolean = {
         noticesCount += 1;
         totalNoticesCount += 1;
         println("Notice: "+ msg);
+        true
     }
 
-    def notice(msg: String, pos: Positional) = {
+    def notice(msg: String, pos: Positional): Boolean = {
         val notice = ("Notice: ", msg, pos, pos.getPos);
-        val noticeCheck = ("Notice: ", msg, pos.getPos);
+        val noticeCheck = getFootPrint("notice", msg, pos)
 
         if (!errorsCheck(pos.file).contains(noticeCheck)) {
             errorsCheck += (pos.file -> (errorsCheck(pos.file) + noticeCheck))
 
             noticesCount += 1;
             errors += (pos.file -> (errors(pos.file) + notice))
+            true
+        } else {
+            false
         }
     }
 
@@ -88,8 +124,8 @@ class Reporter(mainFiles: List[String]) {
         errorsCount  = 0
         totalErrorsCount = 0
         totalNoticesCount = 0
-        errors = Map[Option[String], Set[Error]]().withDefaultValue(Set[Error]())
-        errorsCheck = Map[Option[String], Set[ErrorCheck]]().withDefaultValue(Set[ErrorCheck]())
+        errors = errors.empty
+        errorsCheck = errorsCheck.empty
     }
 
     private def emitNormal(prefix: String, msg: String, pos: Positional) = {
