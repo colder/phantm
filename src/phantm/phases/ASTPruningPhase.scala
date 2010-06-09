@@ -36,19 +36,24 @@ class ASTCollector(functs: Map[String, (String, Int)],
                    classes: Map[String, (String, Int)],
                    ast: Program) extends ASTSimpleTraversal(ast) {
 
+    var afterDump = false
+
     var functionsDecls = List[FunctionDecl]()
     var classesDecls   = List[ClassDecl]()
 
     def visit(t: Tree): Boolean = {
         t match {
-            case fd @ FunctionDecl(Identifier(name), _, _, _) =>
+            case FunctionCall(StaticFunctionRef(_, _, Identifier("phantm_dumpanddie")), _) =>
+                // found the call
+                afterDump = true
+            case fd @ FunctionDecl(Identifier(name), _, _, _) if !afterDump =>
                 if (functs contains name.toLowerCase) {
                     val (file, line) = functs(name.toLowerCase)
                     if (file == fd.file.get && line == fd.line) {
                         functionsDecls = fd :: functionsDecls
                     }
                 }
-            case cd @ ClassDecl(Identifier(name), _, _, _, _, _, _, _) =>
+            case cd @ ClassDecl(Identifier(name), _, _, _, _, _, _, _) if !afterDump =>
                 if (classes contains name) {
                     val (file, line) = classes(name)
                     if (file == cd.file.get && line == cd.line) {
