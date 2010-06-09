@@ -22707,6 +22707,22 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
    </args>
   </function>
 
+  <function name="mb_strtolower">
+   <return><type name="string" /></return>
+   <args>
+    <arg><type name="string" /></arg>
+    <arg opt="1"><type name="string" /></arg>
+   </args>
+  </function>
+
+  <function name="mb_strtoupper">
+   <return><type name="string" /></return>
+   <args>
+    <arg><type name="string" /></arg>
+    <arg opt="1"><type name="string" /></arg>
+   </args>
+  </function>
+
   <function name="mb_preferred_mime_name">
    <return><type name="string" /></return>
    <args>
@@ -26147,6 +26163,17 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
     <arg><type name="mixed" /></arg>
     <arg><type name="mixed" /></arg>
     <arg><type name="string" /></arg>
+    <arg opt="1"><type name="numeric" /></arg>
+    <arg opt="1" byref="1"><type name="numeric" /></arg>
+   </args>
+  </function>
+
+  <function name="preg_replace">
+   <return><type name="string" /></return>
+   <args>
+    <arg><type name="mixed" /></arg>
+    <arg><type name="mixed" /></arg>
+    <arg><type name="mixed" /></arg>
     <arg opt="1"><type name="numeric" /></arg>
     <arg opt="1" byref="1"><type name="numeric" /></arg>
    </args>
@@ -30012,7 +30039,7 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
   </function>
 
   <function name="fwrite">
-   <return><type name="int" /></return>
+   <return><type name="int" /><type name="false" /></return>
    <args>
     <arg><type name="resource" /></arg>
     <arg><type name="string" /></arg>
@@ -30372,7 +30399,7 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
   </function>
 
   <function name="fsockopen">
-   <return><type name="resource" /></return>
+   <return><type name="resource" /><type name="false" /></return>
    <args>
     <arg><type name="string" /></arg>
     <arg><type name="numeric" /></arg>
@@ -31867,7 +31894,7 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
   </function>
 
   <function name="strripos">
-   <return><type name="int" /></return>
+   <return><type name="int" /><type name="false" /></return>
    <args>
     <arg><type name="string" /></arg>
     <arg><type name="string" /></arg>
@@ -31876,7 +31903,7 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
   </function>
 
   <function name="strrpos">
-   <return><type name="int" /></return>
+   <return><type name="int" /><type name="false" /></return>
    <args>
     <arg><type name="string" /></arg>
     <arg><type name="string" /></arg>
@@ -31931,6 +31958,14 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
     <arg><type name="string" /></arg>
     <arg><type name="string" /></arg>
     <arg><type name="string" /></arg>
+   </args>
+  </function>
+
+  <function name="strtr">
+   <return><type name="string" /></return>
+   <args>
+    <arg><type name="string" /></arg>
+    <arg><type name="array" /></arg>
    </args>
   </function>
 
