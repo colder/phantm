@@ -128,7 +128,7 @@ case object TypeLattice extends Lattice {
         case (TAnyArray, t: TArray) => TAnyArray
         case (t: TArray, TAnyArray) => TAnyArray
         case (t1: TArray, t2: TArray) =>
-            var newEntries = Map[String, Type]();
+            var newEntries = Map[ArrayKey, Type]();
 
             for (k <- t1.entries.keySet ++ t2.entries.keySet) {
                 newEntries = newEntries.updated(k, t1.lookup(k) union t2.lookup(k))
@@ -171,7 +171,7 @@ case object TypeLattice extends Lattice {
 
             // Arrays
             case (t1: TArray, t2: TArray) =>
-                var newEntries = Map[String, Type]();
+                var newEntries = Map[ArrayKey, Type]();
 
                 for (k <- t1.entries.keySet ++ t2.entries.keySet) {
                     newEntries = newEntries.updated(k, meetTypes(t1.lookup(k), t2.lookup(k)))

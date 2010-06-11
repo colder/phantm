@@ -14,13 +14,13 @@ object SourceAnnotations {
 
         def arrentriesToArray(aes: List[(Option[String], Type)]): TArray = {
             var global: Type = TTop
-            var entries = Map[String, Type]()
+            var entries = Map[ArrayKey, Type]()
 
             for ((os, t) <- aes) {
                 if (os.isEmpty) {
                     global = t
                 } else {
-                    entries += (os.get -> t)
+                    entries += (ArrayKey.fromString(os.get) -> t)
                 }
             }
 

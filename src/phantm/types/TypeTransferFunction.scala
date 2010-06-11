@@ -52,7 +52,7 @@ case class TypeTransferFunction(silent: Boolean,
             tu.types.map { removeUninit(removeInArrays) } reduceLeft (_ union _)
         case ta: TArray =>
             if (removeInArrays) {
-                new TArray(Map[String, Type]() ++ ta.entries.map{ e => (e._1, removeUninit(removeInArrays)(e._2)) }, removeUninit(removeInArrays)(ta.globalType))
+                new TArray(Map[ArrayKey, Type]() ++ ta.entries.map{ e => (e._1, removeUninit(removeInArrays)(e._2)) }, removeUninit(removeInArrays)(ta.globalType))
             } else {
                 t
             }
@@ -324,7 +324,7 @@ case class TypeTransferFunction(silent: Boolean,
 
                 def typesDiff(et: Type, vt: Type): ((String, String), Boolean) = (et,vt) match {
                     case (eta: TArray, vta: TArray) =>
-                        var relevantKeys = Set[String]();
+                        var relevantKeys = Set[ArrayKey]();
                         var cancel = false
 
                         // Emphasis on the differences
@@ -544,11 +544,11 @@ case class TypeTransferFunction(silent: Boolean,
                         } else {
                             typeFromSV(index) match {
                                 case TStringLit(v) =>
-                                    new TArray().setAny(TTop).inject(v, ct)
+                                    new TArray().setAny(TTop).inject(ArrayKey.fromString(v), ct)
                                 case TIntLit(v) =>
-                                    new TArray().setAny(TTop).inject(v+"", ct)
+                                    new TArray().setAny(TTop).inject(IntKey(v), ct)
                                 case TFloatLit(v) =>
-                                    new TArray().setAny(TTop).inject(v.toInt+"", ct)
+                                    new TArray().setAny(TTop).inject(IntKey(v.toLong), ct)
                                 case _ =>
                                     new TArray().setAny(ct)
                             }
@@ -675,7 +675,7 @@ case class TypeTransferFunction(silent: Boolean,
                         if (l == 0) {
                             TAnyArray
                         } else {
-                            new TArray(Map[String, Type]() ++ ta.entries.map(e => (e._1, limitType(e._2, l-1))), limitType(ta.globalType, l-1))
+                            new TArray(Map[ArrayKey, Type]() ++ ta.entries.map(e => (e._1, limitType(e._2, l-1))), limitType(ta.globalType, l-1))
                         }
                     case to: TObjectRef =>
                         if (l == 0) {

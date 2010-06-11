@@ -316,30 +316,58 @@ class TRealClassObject(val cl: TClass,
         }
 }
 
-class TArray(val entries: Map[String, Type], val globalType: Type) extends ConcreteType {
+
+object ArrayKey {
+    def fromString(str: String): ArrayKey = {
+        if (str.matches("^(-?[1-9][0-9]*|0)$")) {
+            IntKey(str.toLong)
+        } else {
+            StringKey(str)
+        }
+    }
+}
+
+sealed abstract class ArrayKey {
+    def < (o: ArrayKey) = (this, o) match {
+        case (IntKey(v1), IntKey(v2)) => v1 < v2
+        case (IntKey(v1), StringKey(_)) => true
+        case (StringKey(v1), StringKey(v2)) => v1 < v2
+        case _ => false
+    }
+}
+
+case class StringKey(v: String) extends ArrayKey {
+    override def toString = "\""+v+"\""
+}
+case class IntKey(v: Long) extends ArrayKey {
+    override def toString = v.toString
+}
+
+
+class TArray(val entries: Map[ArrayKey, Type], val globalType: Type) extends ConcreteType {
 
     def this() =
-        this(Map[String, Type](), TUninitialized)
+        this(Map[ArrayKey, Type](), TUninitialized)
 
     def this(global: Type) =
-        this(Map[String, Type](), global)
+        this(Map[ArrayKey, Type](), global)
 
-    def lookup(index: String): Type =
+    def lookup(index: ArrayKey): Type =
         entries.getOrElse(index, globalType)
 
     def lookupByType(typ: Type): Type = typ match {
-        case TIntLit(v) => lookup(v+"")
-        case TFloatLit(v) => lookup(v.toInt+"")
-        case TStringLit(v) => lookup(v)
+        case TIntLit(v) => lookup(IntKey(v))
+        case TFloatLit(v) => lookup(IntKey(v.toLong))
+        case TStringLit(v) => lookup(ArrayKey.fromString(v))
         case tu: TUnion =>
             (tu.types.map { lookupByType(_) }).reduceLeft(_ union _)
-        case _ => globalType
+        case _ => globalType // TODO
     }
 
     def injectByType(indtyp: Type, typ: Type): TArray = indtyp match {
-        case TIntLit(v) => inject(v+"", typ)
-        case TFloatLit(v) => inject(v.toInt+"", typ)
-        case TStringLit(v) => inject(v, typ)
+        case TIntLit(v) => inject(IntKey(v), typ)
+        case TFloatLit(v) => inject(IntKey(v.toLong), typ)
+        case TStringLit(v) => inject(ArrayKey.fromString(v), typ)
         case tu: TUnion =>
             val weaktype = typ union globalType
             tu.types.foldLeft(this){ _.injectByType(_, weaktype) }
@@ -349,7 +377,7 @@ class TArray(val entries: Map[String, Type], val globalType: Type) extends Concr
     override def depth(env: TypeEnvironment): Int =
         globalType.depth(env).max(entries.map(_._2.depth(env)).foldLeft(0)(_ max _))+1
 
-    def inject(index: String, typ: Type): TArray = {
+    def inject(index: ArrayKey, typ: Type): TArray = {
         new TArray(entries + (index -> typ), globalType)
     }
 
@@ -360,7 +388,7 @@ class TArray(val entries: Map[String, Type], val globalType: Type) extends Concr
 
     def injectAny(typ: Type): TArray = {
         // When the index is unknown, we have to pollute every entries
-        var newEntries = Map[String, Type]();
+        var newEntries = Map[ArrayKey, Type]();
         for ((i,t) <- entries) {
             newEntries = newEntries + (i -> (t union typ))
         }
@@ -369,7 +397,7 @@ class TArray(val entries: Map[String, Type], val globalType: Type) extends Concr
     }
 
     def merge(a2: TArray): TArray = {
-        var newEntries = Map[String, Type]()
+        var newEntries = Map[ArrayKey, Type]()
 
         for (k <- a2.entries.keySet ++ entries.keySet) {
             newEntries = newEntries + (k -> (lookup(k) union a2.lookup(k)))
@@ -394,7 +422,7 @@ class TArray(val entries: Map[String, Type], val globalType: Type) extends Concr
         "Array["+(entries.toList.sortWith((x,y) => x._1 < y._1).map(x => x._1 +" => "+ x._2).toList ::: "? => "+globalType :: Nil).mkString("; ")+"]"
 }
 
-object TAnyArray extends TArray(Map[String, Type](), TTop) {
+object TAnyArray extends TArray(Map(), TTop) {
     override def toString = "Array[?]"
     override def toText(e: TypeEnvironment) = "Any array"
 

@@ -12,7 +12,7 @@ sealed abstract class UValue;
 case class UArray(var entries: Map[UValue, UValue]) extends UValue
 case class UObject(classname: String, var entries: Map[UValue, UValue]) extends UValue
 case class UString(str: String) extends UValue
-case class UInt(str: Int) extends UValue
+case class UInt(v: Int) extends UValue
 case class UFloat(str: Float) extends UValue
 case class UObjRef(i: Int) extends UValue
 case class URealRef(i: Int) extends UValue
@@ -36,8 +36,8 @@ class Unserializer(content: String) {
     }
 
     def uValueToKey(v: UValue) = v match {
-        case UInt(i) => i+""
-        case UString(str) => str
+        case UInt(i) => IntKey(i)
+        case UString(str) => ArrayKey.fromString(str)
         case _ =>
             throw new UnserializeException("Invalid key value: "+v)
     }
@@ -63,7 +63,7 @@ class Unserializer(content: String) {
         case UFloat(f) => TFloatLit(f)
         case UObject(cl, entries) => TAnyObject
         case UArray(entries) =>
-            var res = Map[String, Type]()
+            var res = Map[ArrayKey, Type]()
 
             for ((k, v) <- entries) {
                 res += (uValueToKey(k) -> uValueToType(v))
@@ -117,8 +117,11 @@ class Unserializer(content: String) {
         result match {
             case UArray(entries) =>
                 for ((k, v) <- entries) {
-                    val key = uValueToKey(k)
-                    map += key -> v
+                    uValueToKey(k) match {
+                        case StringKey(str) =>
+                            map += str -> v
+                        case _ =>
+                    }
                 }
             case _ =>
                 throw new UnserializeException("Invalid non-array input for dumpanddie")
