@@ -7,24 +7,29 @@ import scala.util.parsing.combinator.syntactical.StandardTokenParsers
 
 object SourceAnnotations {
     object Parser extends StandardTokenParsers {
-        lexical.delimiters += ("[", "]", ",", "=>", "$", "?", "|", "#", "=")
+        lexical.delimiters += ("[", "]", ",", "=>", "$", "?", "?s", "?i",  "|", "#", "=")
         lexical.reserved += ("array", "Array")
 
         var typedefs = Map[String, Type]();
 
-        def arrentriesToArray(aes: List[(Option[String], Type)]): TArray = {
-            var global: Type = TTop
+        def arrentriesToArray(aes: List[ArrayEntryType]): TArray = {
+            var globalInt: Type = TTop
+            var globalString: Type = TTop
             var entries = Map[ArrayKey, Type]()
 
-            for ((os, t) <- aes) {
-                if (os.isEmpty) {
-                    global = t
-                } else {
-                    entries += (ArrayKey.fromString(os.get) -> t)
-                }
+            for (ae <- aes) ae match {
+                case Entry(s, t) =>
+                    entries += (ArrayKey.fromString(s) -> t)
+                case AnyEntry(t) =>
+                    globalInt = t
+                    globalString = t
+                case AnyStringEntry(t) =>
+                    globalString = t
+                case AnyIntEntry(t) =>
+                    globalInt = t
             }
 
-            new TArray(entries, global, global)
+            new TArray(entries, globalInt, globalString)
 
         }
 
@@ -53,10 +58,18 @@ object SourceAnnotations {
             "array" ^^^ TAnyArray
             "Array" ^^^ TAnyArray
 
-        def arrayentry: Parser[(Option[String], Type)] =
-            stringLit  ~ "=>" ~ typ ^^ { case key ~ "=>" ~ typ => (Some(key.toString), typ) } |
-            numericLit ~ "=>" ~ typ ^^ { case key ~ "=>" ~ typ => (Some(key.toString), typ) } |
-            "?" ~ "=>" ~> typ ^^ ((None, _: Type))
+        sealed abstract class ArrayEntryType;
+        case class AnyEntry(t: Type) extends ArrayEntryType
+        case class AnyStringEntry(t: Type) extends ArrayEntryType
+        case class AnyIntEntry(t: Type) extends ArrayEntryType
+        case class Entry(s: String, t: Type) extends ArrayEntryType
+
+        def arrayentry: Parser[ArrayEntryType] =
+            stringLit  ~ "=>" ~ typ ^^ { case key ~ "=>" ~ typ => Entry(key.toString, typ) } |
+            numericLit ~ "=>" ~ typ ^^ { case key ~ "=>" ~ typ => Entry(key.toString, typ) } |
+            "?s" ~ "=>" ~> typ ^^ (t => AnyStringEntry(t)) |
+            "?i" ~ "=>" ~> typ ^^ (t => AnyIntEntry(t)) |
+            "?" ~ "=>" ~> typ ^^ (t => AnyEntry(t))
 
         def typ: Parser[Type] =
             ident ^^ { i => identToType(i.toString) } |
