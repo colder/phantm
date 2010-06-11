@@ -69,7 +69,7 @@ class Unserializer(content: String) {
                 res += (uValueToKey(k) -> uValueToType(v))
             }
 
-            new TArray(res, TUninitialized)
+            new TArray(res, TUninitialized, TUninitialized)
 
         case UObjRef(i) =>
             recursionLimit += 1

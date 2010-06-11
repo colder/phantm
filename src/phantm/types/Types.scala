@@ -1,5 +1,6 @@
 package phantm.types;
 
+import scala.util.control.Breaks._
 import phantm.ast.{Trees => AST}
 import phantm.cfg.{Trees => CFG}
 import phantm.symbols._
@@ -17,6 +18,7 @@ sealed abstract class Type {
     def depth(env: TypeEnvironment): Int = 1;
 
     def union(t: Type) = TypeLattice.join(this, t)
+    def leq(t: Type) = TypeLattice.leq(this, t)
 
     def toText(e: TypeEnvironment): String = toString
     def toText: String = toText(BaseTypeEnvironment)
@@ -344,16 +346,25 @@ case class IntKey(v: Long) extends ArrayKey {
 }
 
 
-class TArray(val entries: Map[ArrayKey, Type], val globalType: Type) extends ConcreteType {
+class TArray(val entries: Map[ArrayKey, Type], val globalInt: Type, val globalString: Type) extends ConcreteType {
+
+    val global = globalInt union globalString
 
     def this() =
-        this(Map[ArrayKey, Type](), TUninitialized)
+        this(Map[ArrayKey, Type](), TUninitialized, TUninitialized)
 
     def this(global: Type) =
-        this(Map[ArrayKey, Type](), global)
+        this(Map[ArrayKey, Type](), global, global)
 
-    def lookup(index: ArrayKey): Type =
-        entries.getOrElse(index, globalType)
+    def this(globalInt: Type, globalString: Type) =
+        this(Map[ArrayKey, Type](), globalInt, globalString)
+
+    def lookup(index: ArrayKey): Type = index match {
+        case ik: IntKey =>
+            entries.getOrElse(index, globalInt)
+        case sk: StringKey => 
+            entries.getOrElse(index, globalString)
+    }
 
     def lookupByType(typ: Type): Type = typ match {
         case TIntLit(v) => lookup(IntKey(v))
@@ -361,7 +372,10 @@ class TArray(val entries: Map[ArrayKey, Type], val globalType: Type) extends Con
         case TStringLit(v) => lookup(ArrayKey.fromString(v))
         case tu: TUnion =>
             (tu.types.map { lookupByType(_) }).reduceLeft(_ union _)
-        case _ => globalType // TODO
+
+        case t if t leq TNumeric => globalInt
+        case t if t leq TString  => globalString
+        case _ => global
     }
 
     def injectByType(indtyp: Type, typ: Type): TArray = indtyp match {
@@ -369,21 +383,58 @@ class TArray(val entries: Map[ArrayKey, Type], val globalType: Type) extends Con
         case TFloatLit(v) => inject(IntKey(v.toLong), typ)
         case TStringLit(v) => inject(ArrayKey.fromString(v), typ)
         case tu: TUnion =>
-            val weaktype = typ union globalType
-            tu.types.foldLeft(this){ _.injectByType(_, weaktype) }
+            var globalChanges = Set[Type]()
+            var resType = this
+
+            // apply all precise changes
+            for (t <- tu.types) {
+                t match {
+                    case TIntLit(v)    => resType = resType.inject(IntKey(v), typ, true)
+                    case TFloatLit(v)  => resType = resType.inject(IntKey(v.toLong), typ, true)
+                    case TStringLit(v) => resType = resType.inject(ArrayKey.fromString(v), typ, true)
+                    case _ => globalChanges += t
+                }
+            }
+
+            breakable {
+                for (t <- globalChanges) {
+                    if (t leq TNumeric) {
+                        resType = resType.injectAnyInt(typ)
+                    } else if (t leq TString) {
+                        resType = resType.injectAnyString(typ)
+                    } else {
+                        resType = injectAny(typ)
+                        break;
+                    }
+                } 
+            }
+
+            resType
+        case t if t leq TNumeric => injectAnyInt(typ)
+        case t if t leq TString  => injectAnyString(typ)
         case _ => injectAny(typ)
     }
 
     override def depth(env: TypeEnvironment): Int =
-        globalType.depth(env).max(entries.map(_._2.depth(env)).foldLeft(0)(_ max _))+1
+        globalInt.depth(env).max(globalString.depth(env).max(entries.map(_._2.depth(env)).foldLeft(0)(_ max _)))+1
 
-    def inject(index: ArrayKey, typ: Type): TArray = {
-        new TArray(entries + (index -> typ), globalType)
+    def inject(index: ArrayKey, typ: Type, maybe: Boolean = false): TArray = {
+        if (maybe) {
+            new TArray(entries + (index -> (lookup(index) union typ)), globalInt, globalString)
+        } else {
+            new TArray(entries + (index -> typ), globalInt, globalString)
+        }
     }
 
     // used for type constructions
     def setAny(typ: Type): TArray = {
-        new TArray(entries, typ)
+        new TArray(entries, typ, typ)
+    }
+    def setAnyInt(typ: Type): TArray = {
+        new TArray(entries, typ, globalString)
+    }
+    def setAnyString(typ: Type): TArray = {
+        new TArray(entries, globalInt, typ)
     }
 
     def injectAny(typ: Type): TArray = {
@@ -393,7 +444,35 @@ class TArray(val entries: Map[ArrayKey, Type], val globalType: Type) extends Con
             newEntries = newEntries + (i -> (t union typ))
         }
 
-        new TArray(newEntries, globalType union typ)
+        new TArray(newEntries, globalInt union typ, globalString union typ)
+    }
+
+    def injectAnyString(typ: Type): TArray = {
+        // When the index is unknown, we have to pollute every string entries
+        var newEntries = Map[ArrayKey, Type]();
+        for ((i,t) <- entries) {
+            if (i.isInstanceOf[StringKey]) {
+                newEntries = newEntries + (i -> (t union typ))
+            } else {
+                newEntries = newEntries + (i -> t)
+            }
+        }
+
+        new TArray(newEntries, globalInt, globalString union typ)
+    }
+
+    def injectAnyInt(typ: Type): TArray = {
+        // When the index is unknown, we have to pollute every int entries
+        var newEntries = Map[ArrayKey, Type]();
+        for ((i,t) <- entries) {
+            if (i.isInstanceOf[IntKey]) {
+                newEntries = newEntries + (i -> (t union typ))
+            } else {
+                newEntries = newEntries + (i -> t)
+            }
+        }
+
+        new TArray(newEntries, globalInt union typ, globalString)
     }
 
     def merge(a2: TArray): TArray = {
@@ -403,26 +482,27 @@ class TArray(val entries: Map[ArrayKey, Type], val globalType: Type) extends Con
             newEntries = newEntries + (k -> (lookup(k) union a2.lookup(k)))
         }
 
-        new TArray(newEntries, globalType union a2.globalType)
+        new TArray(newEntries, globalInt union a2.globalInt, globalString union a2.globalString)
     }
 
     override def equals(t: Any): Boolean = t match {
         case ta: TArray =>
-            entries == ta.entries && globalType == ta.globalType
+            entries == ta.entries && globalInt == ta.globalInt && globalString == ta.globalString
         case _ => false
     }
 
     override def hashCode = {
-        (entries.values.foldLeft(0)((a,b) => a ^ b.hashCode)) + globalType.hashCode
+        (entries.values.foldLeft(0)((a,b) => a ^ b.hashCode)) + globalString.hashCode + globalInt.hashCode
     }
 
     override def toText(env: TypeEnvironment) =
-        "Array["+(entries.toList.sortWith((x,y) => x._1 < y._1).map(x => x._1 +" => "+ x._2.toText(env)).toList ::: "? => "+globalType.toText(env) :: Nil).mkString(", ")+"]"
+        "Array["+(entries.toList.sortWith((x,y) => x._1 < y._1).map(x => x._1 +" => "+ x._2.toText(env)).toList ::: "?s => "+globalString.toText(env) :: "?i => "+globalInt.toText(env) :: Nil).mkString(", ")+"]"
+
     override def toString =
-        "Array["+(entries.toList.sortWith((x,y) => x._1 < y._1).map(x => x._1 +" => "+ x._2).toList ::: "? => "+globalType :: Nil).mkString("; ")+"]"
+        "Array["+(entries.toList.sortWith((x,y) => x._1 < y._1).map(x => x._1 +" => "+ x._2).toList ::: "?s => "+globalString :: "?i => "+globalInt :: Nil).mkString("; ")+"]"
 }
 
-object TAnyArray extends TArray(Map(), TTop) {
+object TAnyArray extends TArray(Map(), TTop, TTop) {
     override def toString = "Array[?]"
     override def toText(e: TypeEnvironment) = "Any array"
 

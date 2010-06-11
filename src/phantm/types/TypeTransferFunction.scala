@@ -52,7 +52,9 @@ case class TypeTransferFunction(silent: Boolean,
             tu.types.map { removeUninit(removeInArrays) } reduceLeft (_ union _)
         case ta: TArray =>
             if (removeInArrays) {
-                new TArray(Map[ArrayKey, Type]() ++ ta.entries.map{ e => (e._1, removeUninit(removeInArrays)(e._2)) }, removeUninit(removeInArrays)(ta.globalType))
+                new TArray(Map[ArrayKey, Type]() ++ ta.entries.map{ e => (e._1, removeUninit(removeInArrays)(e._2)) }, 
+                           removeUninit(removeInArrays)(ta.globalInt),
+                           removeUninit(removeInArrays)(ta.globalString))
             } else {
                 t
             }
@@ -105,12 +107,33 @@ case class TypeTransferFunction(silent: Boolean,
                             TBottom
                         }
 
-                         removeUninit(false)(et union t.globalType)
+                         removeUninit(false)(et union t.global)
                     case _ =>
                         TAny
                 }
             case ArrayCurElement(ar) => TAny
-            case ArrayCurKey(ar)     => TString union TInt
+            case ArrayCurKey(id: SimpleVariable) =>
+                env.lookup(id) match {
+                    case Some(TAnyArray) =>
+                        TString union TInt
+                    case Some(t: TArray) =>
+                        var hasIntKey = false
+                        var hasStringKey = false
+                        for (k <- t.entries.keys) k match {
+                            case _: IntKey =>
+                                hasIntKey = true
+                            case _: StringKey =>
+                                hasStringKey = true
+                        }
+
+                        val et = (if (hasIntKey) TInt else TBottom) union (if (hasStringKey) TString else TBottom)
+                        removeUninit(false)(et union t.global)
+                    case _ =>
+                        TString union TInt
+                }
+
+            case ArrayCurKey(ar) => TString union TInt
+
             case ArrayCurIsValid(ar) =>
                 TBoolean
             case New(cr, params) => cr match {
@@ -241,11 +264,11 @@ case class TypeTransferFunction(silent: Boolean,
             case ae @ NextArrayEntry(arr) =>
                 typeFromSV(arr) match {
                     case ta: TArray =>
-                        ta.entries.foldLeft(TBottom: Type)((t, e)=> t union e._2) union ta.globalType
+                        ta.entries.collect{ case t : IntKey => t }.foldLeft(TBottom: Type)((t, e)=> t union e._2) union ta.globalInt
                     case u: TUnion =>
                         u.types.map { _ match {
                             case ta: TArray =>
-                                ta.entries.foldLeft(TBottom: Type)((t, e)=> t union e._2) union ta.globalType
+                                ta.entries.collect{ case t : IntKey => t }.foldLeft(TBottom: Type)((t, e)=> t union e._2) union ta.globalInt
                             case _ =>
                                 TBottom
                         }}.reduceLeft(_ union _)
@@ -343,10 +366,17 @@ case class TypeTransferFunction(silent: Boolean,
                             cancel = cancel || diff._2
                         }
 
-                        if (!leq(vta.globalType, eta.globalType)) {
-                            val diff = typesDiff(vta.globalType, eta.globalType)
-                            lhs = "? => "+diff._1._1 :: lhs
-                            rhs = "? => "+diff._1._2 :: rhs
+                        if (!leq(vta.globalString, eta.globalString)) {
+                            val diff = typesDiff(vta.globalString, eta.globalString)
+                            lhs = "?s => "+diff._1._1 :: lhs
+                            rhs = "?s => "+diff._1._2 :: rhs
+                            cancel = cancel || diff._2
+                        }
+
+                        if (!leq(vta.globalInt, eta.globalInt)) {
+                            val diff = typesDiff(vta.globalInt, eta.globalInt)
+                            lhs = "?i => "+diff._1._1 :: lhs
+                            rhs = "?i => "+diff._1._2 :: rhs
                             cancel = cancel || diff._2
                         }
 
@@ -612,11 +642,11 @@ case class TypeTransferFunction(silent: Boolean,
                     case NextArrayEntry(arr) =>
                         val t = typeFromSV(arr) match {
                             case ta: TArray =>
-                                ta.setAny(typ union ta.globalType)
+                                ta.setAnyInt(typ union ta.globalInt)
                             case tu: TUnion =>
                                 val typs = for (f <- tu.types) yield f match {
                                     case ta: TArray =>
-                                        ta.setAny(typ union ta.globalType)
+                                        ta.setAnyInt(typ union ta.globalInt)
                                     case t =>
                                         t
                                 }
@@ -675,7 +705,10 @@ case class TypeTransferFunction(silent: Boolean,
                         if (l == 0) {
                             TAnyArray
                         } else {
-                            new TArray(Map[ArrayKey, Type]() ++ ta.entries.map(e => (e._1, limitType(e._2, l-1))), limitType(ta.globalType, l-1))
+                            new TArray(Map[ArrayKey, Type]() ++ ta.entries.map(e => (e._1, limitType(e._2, l-1))), 
+                                       limitType(ta.globalInt, l-1),
+                                       limitType(ta.globalString, l-1)
+                                       )
                         }
                     case to: TObjectRef =>
                         if (l == 0) {

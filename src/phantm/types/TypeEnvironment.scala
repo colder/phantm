@@ -17,7 +17,7 @@ class TypeEnvironment(val map: Map[SimpleVariable, Type], val scope: Option[Clas
     }
 
     def getGlobalsType: Type = {
-        new TArray(map.collect{ case (Identifier(sym), t) => (ArrayKey.fromString(sym.name), t)}, TUninitialized)
+        new TArray(map.collect{ case (Identifier(sym), t) => (ArrayKey.fromString(sym.name), t)}, TUninitialized, TUninitialized)
     }
 
     def lookup(v: SimpleVariable): Option[Type] = map.get(v)

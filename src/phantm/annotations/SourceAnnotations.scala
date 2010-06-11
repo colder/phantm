@@ -24,7 +24,7 @@ object SourceAnnotations {
                 }
             }
 
-            new TArray(entries, global)
+            new TArray(entries, global, global)
 
         }
 

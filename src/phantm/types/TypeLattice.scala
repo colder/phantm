@@ -44,8 +44,10 @@ case object TypeLattice extends Lattice {
                 }
 
             case (t1: TArray, t2: TArray) =>
-                leqT(t1.globalType, t2.globalType) && ((t1.entries.keySet ++ t2.entries.keySet) forall (k =>
-                    leqT(t1.lookup(k), t2.lookup(k))))
+                leqT(t1.globalInt, t2.globalInt) && leqT(t1.globalString, t2.globalString) && 
+                  ((t1.entries.keySet ++ t2.entries.keySet) forall (k =>
+                    leqT(t1.lookup(k), t2.lookup(k)))
+                  )
 
             case (t1: TUnion, t2: TUnion) =>
                 t1.types forall { x => t2.types.exists { y => leqT(x, y) } }
@@ -134,7 +136,7 @@ case object TypeLattice extends Lattice {
                 newEntries = newEntries.updated(k, t1.lookup(k) union t2.lookup(k))
             }
 
-            new TArray(newEntries, t1.globalType union t2.globalType)
+            new TArray(newEntries, t1.globalInt union t2.globalInt, t1.globalString union t2.globalString)
         // Unions
         case (t1, t2) => TUnion(t1, t2)
     })
@@ -177,7 +179,7 @@ case object TypeLattice extends Lattice {
                     newEntries = newEntries.updated(k, meetTypes(t1.lookup(k), t2.lookup(k)))
                 }
 
-                new TArray(newEntries, meetTypes(t1.globalType, t2.globalType))
+                new TArray(newEntries, meetTypes(t1.globalInt, t2.globalInt), meetTypes(t1.globalString, t2.globalString))
 
 
             // Unions

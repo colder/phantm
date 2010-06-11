@@ -63,21 +63,25 @@ object API {
             case "null" => TNull
             case "number" => TNumeric
             case "array" =>
-                var anyelem: Type = TTop
-                var elems = Map[String, Type]()
+                var anyint: Type = TTop
+                var anystring: Type = TTop
+                var elems = Map[ArrayKey, Type]()
 
                 for (el <- (elem \ "elem")) {
-                    elems += (((el \ "@key").text) -> elemsToType(el \ "type"))
+                    elems += (ArrayKey.fromString((el \ "@key").text) -> elemsToType(el \ "type"))
                 }
 
-                for (el <- (elem \ "anyelem")) {
-                    anyelem = elemsToType(el \ "type")
+                for (el <- (elem \ "anyintkey")) {
+                    anyint = elemsToType(el \ "type")
+                }
+                for (el <- (elem \ "anystringkey")) {
+                    anystring = elemsToType(el \ "type")
                 }
 
-                if (elems.size == 0 && anyelem == TTop) {
+                if (elems.size == 0 && anyint == TTop && anystring == TTop) {
                     TAnyArray
                 } else {
-                    new TArray(elems, anyelem)
+                    new TArray(elems, anyint, anystring)
                 }
             case "object" =>
                 TAnyObject
@@ -284,9 +288,10 @@ object API {
                         tu.types.map(typeToXML(_, widen)).mkString
 
                     case ta: TArray      =>
-                        val es = ta.entries.map(e => "<elem key=\""+e._1.replaceAll("\"", "\\\"")+"\">"+typeToXML(e._2, widen)+"</elem>").mkString
-                        val ge = "<anyelem>"+typeToXML(ta.globalType, widen)+"</anyelem>"
-                        "<type name=\"array\">"+es+ge+"</type>"
+                        val es = ta.entries.map(e => "<elem key=\""+e._1.toString.replaceAll("\"", "\\\"")+"\">"+typeToXML(e._2, widen)+"</elem>").mkString
+                        val gie = "<anyintkey>"+typeToXML(ta.globalInt, widen)+"</anyintkey>"
+                        val gse = "<anystringkey>"+typeToXML(ta.globalString, widen)+"</anystringkey>"
+                        "<type name=\"array\">"+es+gie+gse+"</type>"
 
                     case _               =>
                         println("Unknown Type: "+typ); simpleTyp("any")
