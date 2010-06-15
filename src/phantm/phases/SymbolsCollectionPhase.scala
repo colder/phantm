@@ -272,7 +272,6 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
                     if (Settings.get.inlineMode != InlineNone) {
                         fs.shouldInline = CommentParser.shouldInline(fd.comment.get)
                     }
-
                     fs.isPure = CommentParser.isPure(fd.comment.get)
 
                     val (args, ret) = CommentParser.getFunctionTypes(fd.comment.get)

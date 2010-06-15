@@ -1,6 +1,7 @@
 package phantm.phases
 
 import phantm.Settings
+import phantm.symbols._
 import phantm.ast.Trees._
 import phantm.ast.ASTSimpleTraversal
 import phantm.util.Reporter
@@ -129,10 +130,14 @@ case class PureStatementsChecks(node: Tree) extends ASTSimpleTraversal(node) {
                 true
             case New(_, _) =>
                 false
-            case FunctionCall(StaticFunctionRef(_, _, id), _) =>
-                GlobalSymbols.lookupFunction(id.name) match {
+            case FunctionCall(StaticFunctionRef(_, _, id), args) =>
+                GlobalSymbols.lookupFunction(id.value) match {
                   case Some(fs) =>
-                    fs.isPure
+                    if (fs.isPure) {
+                        args.forall(a => isPure(a.value))
+                    } else {
+                        false
+                    }
                   case None =>
                     false
                 }

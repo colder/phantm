@@ -5,20 +5,20 @@ import phantm.util._
 import scala.util.control.Breaks._
 
 class PhasesRunner(val reporter: Reporter) {
-    def getPhasesToRun: PhaseSeq = {
-        DumpsCollectionPhase andThen
-        ParsingPhase andThen
-        ASTPruningPhase andThen
-        IncludesConstantsResolutionPhase andThen
-        ASTChecksPhase andThen
-        PureStatementsPhase andThen
-        APIImportationPhase andThen
-        SymbolsCollectionPhase andThen
-        CallGraphPhase andThen
-        CFGGenerationPhase andThen
-        TypeAnalyzingPhase andThen
-        APIExportingPhase andThen
-    }
+    def getPhasesToRun: PhaseSeq = (
+        DumpsCollectionPhase
+        andThen ParsingPhase
+        andThen ASTPruningPhase
+        andThen IncludesConstantsResolutionPhase
+        andThen ASTChecksPhase
+        andThen APIImportationPhase
+        andThen SymbolsCollectionPhase
+        andThen PureStatementsPhase
+        andThen CallGraphPhase
+        andThen CFGGenerationPhase
+        andThen TypeAnalyzingPhase
+        andThen APIExportingPhase
+    )
 
     def run(initCtx: PhasesContext) = {
         var ctx = initCtx
