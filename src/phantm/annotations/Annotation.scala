@@ -22,6 +22,7 @@ trait FunctionTypeAnnotation extends Annotation {
 
 trait FunctionAnnotation extends Annotation {
     var shouldInline = false
+    var isPure = false
 }
 
 trait CommentAnnotation  extends Annotation {

@@ -142,6 +142,8 @@ object API {
                                   optArg(a, "opt"))
                         }).toList
 
+                        val isPure = !(m \ "pure").isEmpty;
+
                         val ms = new MethodSymbol(cs, name, visibility).setPos(APIPos(m))
                         ms.setOverwriteable(userland).setUserland(userland)
 

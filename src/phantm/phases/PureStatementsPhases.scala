@@ -129,8 +129,14 @@ case class PureStatementsChecks(node: Tree) extends ASTSimpleTraversal(node) {
                 true
             case New(_, _) =>
                 false
+            case FunctionCall(StaticFunctionRef(_, _, id), _) =>
+                GlobalSymbols.lookupFunction(id.name) match {
+                  case Some(fs) =>
+                    fs.isPure
+                  case None =>
+                    false
+                }
             case FunctionCall(_, _) =>
-                // Could be precised
                 false
             case MethodCall(_, _, _) =>
                 false
