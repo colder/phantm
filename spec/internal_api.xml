@@ -31869,7 +31869,7 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
    </args>
   </function>
 
-  <function name="strpos">
+  <function name="strpos" pure="1">
    <return><type name="false" /><type name="int" /></return>
    <args>
     <arg><type name="string" /></arg>
