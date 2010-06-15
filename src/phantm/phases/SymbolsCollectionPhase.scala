@@ -6,7 +6,7 @@ import phantm.ast.Trees._
 import phantm.ast.ASTTraversal
 import phantm.types._
 import phantm.symbols._
-import phantm.annotations.SourceAnnotations
+import phantm.annotations.SourceAnnotations.{Parser => CommentParser}
 
 import scala.collection.mutable.HashSet
 import scala.collection.mutable.HashMap
@@ -120,10 +120,11 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
             val t = if (m.comment != None) {
 
                 if (Settings.get.inlineMode != InlineNone) {
-                    ms.shouldInline = SourceAnnotations.Parser.shouldInline(m.comment.get)
+                    ms.shouldInline = CommentParser.shouldInline(m.comment.get)
                 }
+                ms.isPure = CommentParser.isPure(m.comment.get)
 
-                val (args, ret) = SourceAnnotations.Parser.getFunctionTypes(m.comment.get)
+                val (args, ret) = CommentParser.getFunctionTypes(m.comment.get)
 
                 var foundOne = false
 
@@ -163,7 +164,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
             val ps = new PropertySymbol(cs, p.v.value, getVisibility(p.flags)).setPos(p)
 
             val t = if (p.comment != None) {
-                SourceAnnotations.Parser.getVarType(p.comment.get).getOrElse(th)
+                CommentParser.getVarType(p.comment.get).getOrElse(th)
             } else {
                 th
             }
@@ -178,7 +179,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
             val ps = new PropertySymbol(cs, p.v.value, getVisibility(p.flags)).setPos(p)
 
             val t = if (p.comment != None) {
-                SourceAnnotations.Parser.getVarType(p.comment.get).getOrElse(th)
+                CommentParser.getVarType(p.comment.get).getOrElse(th)
             } else {
                 th
             }
@@ -199,7 +200,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
 
             val th = TypeHelpers.exprToType(c.value)
             val t = if (c.comment != None) {
-                SourceAnnotations.Parser.getConstType(c.comment.get).getOrElse(th)
+                CommentParser.getConstType(c.comment.get).getOrElse(th)
             } else {
                 th
             }
@@ -269,10 +270,12 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
 
                 val t = if (fd.comment != None) {
                     if (Settings.get.inlineMode != InlineNone) {
-                        fs.shouldInline = SourceAnnotations.Parser.shouldInline(fd.comment.get)
+                        fs.shouldInline = CommentParser.shouldInline(fd.comment.get)
                     }
 
-                    val (args, ret) = SourceAnnotations.Parser.getFunctionTypes(fd.comment.get)
+                    fs.isPure = CommentParser.isPure(fd.comment.get)
+
+                    val (args, ret) = CommentParser.getFunctionTypes(fd.comment.get)
 
                     val ftargs = for ((n, as) <- fs.argList) yield {
                         if (args contains n) {

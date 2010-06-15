@@ -148,6 +148,10 @@ object SourceAnnotations {
             contains(comment, "@inline")
         }
 
+        def isPure(comment: String): Boolean = {
+            contains(comment, "@pure")
+        }
+
         def getFunctionTypes(comment: String): (Map[String, Type], Type) = {
             var args = Map[String, Type]()
 
