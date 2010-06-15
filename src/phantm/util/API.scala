@@ -142,10 +142,10 @@ object API {
                                   optArg(a, "opt"))
                         }).toList
 
-                        val isPure = !(m \ "pure").isEmpty;
-
                         val ms = new MethodSymbol(cs, name, visibility).setPos(APIPos(m))
                         ms.setOverwriteable(userland).setUserland(userland)
+
+                        ms.isPure = optArg(m, "pure");
 
                         for ((a, i) <- args.zipWithIndex) {
                             val as = new ArgumentSymbol("arg"+i, a._3, a._4).setPos(APIPos(a._1))
@@ -213,6 +213,8 @@ object API {
 
                     val fs = new FunctionSymbol(name).setPos(APIPos(f))
                     fs.setOverwriteable(userland).setUserland(userland)
+
+                    fs.isPure = optArg(f, "pure");
 
                     for ((a, i) <- args.zipWithIndex) {
                         val as = new ArgumentSymbol("arg"+i, a._3, a._4).setPos(APIPos(a._1))
