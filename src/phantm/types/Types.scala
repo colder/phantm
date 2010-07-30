@@ -100,7 +100,7 @@ case class ObjectStore(val store: Map[ObjectId, TRealObject]) {
     def unset(id: ObjectId): ObjectStore = new ObjectStore(store - id);
     def set(id: ObjectId, robj: TRealObject): ObjectStore = new ObjectStore(store.updated(id, robj));
 
-    def initIfNotExist(id: ObjectId, ocs: Option[ClassSymbol]) : ObjectStore = store.get(id) match {
+    def initIfNotExist(id: ObjectId, ocs: Option[ClassSymbol], singleton: Boolean = false) : ObjectStore = store.get(id) match {
         case Some(_) =>
             this
         case None =>
@@ -108,10 +108,10 @@ case class ObjectStore(val store: Map[ObjectId, TRealObject]) {
             val rot = ocs match {
                 case Some(cs) =>
                     // construct a default object for this class
-                    new TRealClassObject(new TClass(cs), Map[String,Type]() ++ cs.properties.mapValues[Type] { x => x.typ }, TUninitialized)
+                    new TRealClassObject(new TClass(cs), Map[String,Type]() ++ cs.properties.mapValues[Type] { x => x.typ }, TUninitialized, singleton)
                 case None =>
                     // No class => any object
-                    new TRealObject(Map[String,Type](), TUninitialized)
+                    new TRealObject(Map[String,Type](), TUninitialized, singleton)
             }
 
             set(id, rot);
@@ -161,7 +161,8 @@ class TObjectRef(val id: ObjectId) extends ObjectType {
 
 // Real object type (in the store) representing a specific object of any class
 class TRealObject(val fields: Map[String, Type],
-                  val globalType: Type) {
+                  val globalType: Type,
+                  val singleton: Boolean) {
 
     override def equals(o: Any): Boolean = o match {
         case ro: TRealObject =>
@@ -213,22 +214,30 @@ class TRealObject(val fields: Map[String, Type],
 
 
     def injectField(index: String, typ: Type, weak: Boolean): TRealObject = {
-        val newFields = fields.updated(index, if (weak) typ union lookupField(index) else typ)
+        val newFields = fields.updated(index, if (weak && !singleton) typ union lookupField(index) else typ)
         this match {
             case t: TRealClassObject =>
-                new TRealClassObject(t.cl, newFields, globalType)
+                new TRealClassObject(t.cl, newFields, globalType, singleton)
             case _ =>
-                new TRealObject(newFields, globalType)
+                new TRealObject(newFields, globalType, singleton)
         }
     }
+
+    def setSingleton =
+        this match {
+            case t: TRealClassObject =>
+                new TRealClassObject(t.cl, fields, globalType, true)
+            case _ =>
+                new TRealObject(fields, globalType, true)
+        }
 
     // Used for type constructions
     def setAnyField(typ: Type) = {
         this match {
             case t: TRealClassObject =>
-                new TRealClassObject(t.cl, fields, typ)
+                new TRealClassObject(t.cl, fields, typ, singleton)
             case _ =>
-                new TRealObject(fields, typ)
+                new TRealObject(fields, typ, singleton)
         }
     }
 
@@ -241,9 +250,9 @@ class TRealObject(val fields: Map[String, Type],
 
         this match {
             case t: TRealClassObject =>
-                new TRealClassObject(t.cl, newFields, globalType union typ)
+                new TRealClassObject(t.cl, newFields, globalType union typ, singleton)
             case _ =>
-                new TRealObject(newFields, globalType union typ)
+                new TRealObject(newFields, globalType union typ, singleton)
         }
     }
 
@@ -285,16 +294,17 @@ class TRealObject(val fields: Map[String, Type],
 
         newcl match {
             case Some(cl) =>
-                new TRealClassObject(cl, newFields, globalType union a2.globalType)
+                new TRealClassObject(cl, newFields, globalType union a2.globalType, singleton)
             case None =>
-                new TRealObject(newFields, globalType union a2.globalType)
+                new TRealObject(newFields, globalType union a2.globalType, singleton)
         }
     }
 }
 
 class TRealClassObject(val cl: TClass,
                        fields: Map[String, Type],
-                       globalType: Type) extends TRealObject(fields, globalType) {
+                       globalType: Type,
+                       singleton: Boolean) extends TRealObject(fields, globalType, singleton) {
 
     override def toString = {
         RecProtection.objectToStringDepth += 1;
