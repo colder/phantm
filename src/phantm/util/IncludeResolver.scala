@@ -25,7 +25,7 @@ object IncludeResolver {
 
     def importIncludes(files: List[String]) = {
         for (incl <- files) {
-            for (l <- Source.fromFile(new File(incl)).getLines("\n")) {
+            for (l <- Source.fromFile(new File(incl)).getLines) {
                 var chars = l.toList
 
                 def consumeInt : Int = {

@@ -6,7 +6,7 @@ import java.nio.charset.Charset
 import scala.util.control.Breaks._
 
 case class DumpCollector(path: String) {
-    private val content = Source.fromFile(new File(path))(new Codec(Charset.forName("ISO-8859-1"))).getLines("\n").toList
+    private val content = Source.fromFile(new File(path))(new Codec(Charset.forName("ISO-8859-1"))).getLines.toList
     var lineNr = 3
 
     var files: List[String] = Nil
