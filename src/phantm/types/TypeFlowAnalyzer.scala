@@ -65,7 +65,8 @@ case class TypeFlowAnalyzer(cfg: ControlFlowGraph,
         // for methods, we inject $this as its always defined
         scope match {
             case ms: MethodSymbol =>
-                baseEnv = baseEnv.setStore(baseEnv.store.initIfNotExist(ObjectId(-1, 0), Some(ms.cs)))
+                // $this is a singleton object
+                baseEnv = baseEnv.setStore(baseEnv.store.initIfNotExist(ObjectId(-1, 0), Some(ms.cs), true))
                 injectPredef("this", new TObjectRef(ObjectId(-1, 0)))
             case _ =>
         }

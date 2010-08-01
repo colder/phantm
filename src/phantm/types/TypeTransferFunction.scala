@@ -92,7 +92,7 @@ case class TypeTransferFunction(silent: Boolean,
             case PHPAny()            => TAny
             case NoVar()             => TBottom
             case PHPNull()           => TNull
-            case PHPThis()           => getObject(node, env.scope)
+            case PHPThis()           => getObject(node, env.scope, true)
             case PHPEmptyArray()     => new TArray()
             case Instanceof(lhs, cl) => TBoolean
             case ArrayNext(ar)       => typeFromSV(ar)
@@ -140,13 +140,13 @@ case class TypeTransferFunction(silent: Boolean,
                 case AST.StaticClassRef(_, _, id) =>
                     GlobalSymbols.lookupClass(id.value) match {
                         case a @ Some(cs) =>
-                            getObject(node, a)
+                            getObject(node, a, true)
                         case _ =>
                             error("Undefined class '"+id.value+"'", id)
-                            getObject(node, None)
+                            getObject(node, None, true)
                     }
                 case _ =>
-                    getObject(node, None)
+                    getObject(node, None, true)
             }
             case cl @ Clone(obj) =>
                 typeFromSV(obj) match {
@@ -314,9 +314,9 @@ case class TypeTransferFunction(silent: Boolean,
               TBottom
         }
 
-        def getObject(node: Statement, ocs: Option[ClassSymbol]): ObjectType = {
+        def getObject(node: Statement, ocs: Option[ClassSymbol], singleton: Boolean): ObjectType = {
             val id = ObjectId(node.uniqueID, 0);
-            env = env.setStore(env.store.initIfNotExist(id, ocs))
+            env = env.setStore(env.store.initIfNotExist(id, ocs, singleton))
             new TObjectRef(id)
         }
 

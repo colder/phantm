@@ -100,7 +100,7 @@ case class ObjectStore(val store: Map[ObjectId, TRealObject]) {
     def unset(id: ObjectId): ObjectStore = new ObjectStore(store - id);
     def set(id: ObjectId, robj: TRealObject): ObjectStore = new ObjectStore(store.updated(id, robj));
 
-    def initIfNotExist(id: ObjectId, ocs: Option[ClassSymbol], singleton: Boolean = false) : ObjectStore = store.get(id) match {
+    def initIfNotExist(id: ObjectId, ocs: Option[ClassSymbol], singleton: Boolean) : ObjectStore = store.get(id) match {
         case Some(_) =>
             this
         case None =>
@@ -223,7 +223,16 @@ class TRealObject(val fields: Map[String, Type],
         }
     }
 
-    def setSingleton =
+    def setSingleton = setSingleton2(true)
+    def setMultiton = setSingleton2(false)
+
+    private def setSingleton2(s: Boolean) =
+        this match {
+            case t: TRealClassObject =>
+                new TRealClassObject(t.cl, fields, globalType, s)
+            case _ =>
+                new TRealObject(fields, globalType, s)
+        }
         this match {
             case t: TRealClassObject =>
                 new TRealClassObject(t.cl, fields, globalType, true)

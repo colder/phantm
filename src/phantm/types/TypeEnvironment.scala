@@ -33,8 +33,8 @@ class TypeEnvironment(val map: Map[SimpleVariable, Type], val scope: Option[Clas
         new TypeEnvironment(map, scope, store.set(id, ot))
     }
 
-    def initObjectIfNotExist(id: ObjectId, cl: Option[ClassSymbol]) = {
-        new TypeEnvironment(map, scope, store.initIfNotExist(id, cl))
+    def initObjectIfNotExist(id: ObjectId, cl: Option[ClassSymbol], singleton: Boolean) = {
+        new TypeEnvironment(map, scope, store.initIfNotExist(id, cl, singleton))
     }
 
     def copy: TypeEnvironment =
@@ -122,6 +122,6 @@ class TypeEnvironment(val map: Map[SimpleVariable, Type], val scope: Option[Clas
             case _ => t.toString
         }
         
-        map.toList.filter( tmp => tmp._1.toString.toList.head != '_' && tmp._1.toString != "GLOBALS").sortWith{(x,y) => x._1.uniqueID < x._1.uniqueID}.map(x => x._1+" => "+typeToString(x._2)).mkString("[ ", "; ", " ]");
+        map.toList.filter( tmp => tmp._1.toString.toList.head != '_' && tmp._1.toString != "GLOBALS" && !tmp._1.toString.contains("::")).sortWith{(x,y) => x._1.uniqueID < x._1.uniqueID}.map(x => x._1+" => "+typeToString(x._2)).mkString("[ ", "; ", " ]");
     }
 }
