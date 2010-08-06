@@ -76,9 +76,9 @@ case class TypeTransferFunction(silent: Boolean,
     def apply(node : Statement, envInit : TypeEnvironment) : TypeEnvironment = {
         var env = envInit
 
-        def leq(t1: Type, t2: Type) = TypeLattice.leq(env, env, t1, t2)
+        def leq(t1: Type, t2: Type) = TypeLattice.leq(env, t1, t2)
         def meet(t1: Type, t2: Type) = {
-            val (nenv, t) = TypeLattice.meet(env, env, t1, t2)
+            val (nenv, t) = TypeLattice.meet(env, t1, t2)
             env = nenv;
             t
         }
@@ -319,10 +319,8 @@ case class TypeTransferFunction(silent: Boolean,
             env = envInit.store.store.get(id) match {
                 case Some(o) if o.singleton =>
                     // Object becomes multiton, we merge it with a newly allocated object
-                    println("Before: "+o);
-                    val obj = env.store.lookup(id) merge env.store.newObject(id, ocs);
-                    println("After: "+obj);
-                    env.setStore(env.store.set(id, obj.setMultiton))
+                    val (nenv, obj) = TypeLattice.joinObjects(env, env.store.lookup(id), env.store.newObject(id, ocs));
+                    nenv.setStore(nenv.store.set(id, obj.setMultiton))
                 case _ =>
                     env.setStore(env.store.initIfNotExist(id, ocs))
             }
@@ -600,8 +598,13 @@ case class TypeTransferFunction(silent: Boolean,
                 val newct = if (ct == TTop) {
                     TAnyObject
                 } else {
-                    // TODO
-                    TAnyObject
+                    val ro = typeFromSV(prop) match {
+                        case TStringLit(v) =>
+                            new TRealObject(Map[String, Type]() + (v -> ct), TTop, true, TAnyClass)
+                        case _ =>
+                            new TRealObject(Map(), ct, true, TAnyClass)
+                    }
+                    new TObjectTmp(ro)
                 }
                 getCheckType(obj, newct)
             case svar: SimpleVariable =>

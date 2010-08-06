@@ -76,7 +76,8 @@ case class ObjectStore(val store: Map[ObjectId, TRealObject]) {
 
     def this() = this(Map[ObjectId, TRealObject]())
 
-    def union(os: ObjectStore) : ObjectStore = {
+    /*
+    def union(os: ObjectStore): ObjectStore = {
         var res = new ObjectStore()
 
         for (id <- this.store.keySet ++ os.store.keySet) {
@@ -93,8 +94,8 @@ case class ObjectStore(val store: Map[ObjectId, TRealObject]) {
         }
 
         res
-
     }
+    */
 
     def lookup(id: TObjectRef): TRealObject = lookup(id.id);
 
@@ -136,8 +137,15 @@ object TAnyObject extends ObjectType {
     override def toString = "TAnyObject"
     override def toText(e: TypeEnvironment)   = "any object"
 }
+
+abstract class TPreciseObject extends ObjectType {
+    def realObject(e: TypeEnvironment): TRealObject;
+
+    override def depth(e: TypeEnvironment) = realObject(e).depth(e)
+}
+
 // Reference to an object in the store
-class TObjectRef(val id: ObjectId) extends ObjectType {
+class TObjectRef(val id: ObjectId) extends TPreciseObject {
     override def toString = "TObjectRef#"+id+""
 
     def realObject(e: TypeEnvironment) = e.store.lookup(id)
@@ -148,8 +156,6 @@ class TObjectRef(val id: ObjectId) extends ObjectType {
             case None => "Object(#"+id+")"
         }
     }
-
-    override def depth(e: TypeEnvironment) = realObject(e).depth(e)
 
     override def equals(v: Any) = v match {
         case ref: TObjectRef =>
@@ -162,14 +168,12 @@ class TObjectRef(val id: ObjectId) extends ObjectType {
     }
 }
 
-class TObjectTmp(obj: TRealObject) extends ObjectType {
+class TObjectTmp(obj: TRealObject) extends TPreciseObject {
     override def toString = "TObjectTMP("+obj+")"
 
-    override def depth(e: TypeEnvironment) = obj.depth(e)
+    override def toText(e: TypeEnvironment) = obj.toText(e)
 
-    override def toText(e: TypeEnvironment) = {
-        obj.toText(e)
-    }
+    def realObject(e: TypeEnvironment) = obj
 }
 
 
@@ -293,25 +297,6 @@ class TRealObject(val fields: Map[String, Type],
     }
 
     def toText(e: TypeEnvironment) = toString
-
-    def merge(a2: TRealObject): TRealObject = {
-        // Pick superclass class, and subclass methods
-        val newct = if (ct.isSubtypeOf(a2.ct)) {
-                a2.ct
-            } else if (a2.ct.isSubtypeOf(ct)) {
-                ct
-            } else {
-                TAnyClass
-            }
-
-        var newFields = Map[String, Type]();
-
-        for (index <- (fields.keySet ++ a2.fields.keySet)) {
-            newFields = newFields.updated(index, lookupField(index) union a2.lookupField(index))
-        }
-
-        new TRealObject(newFields, globalType union a2.globalType, singleton && a2.singleton, newct)
-    }
 }
 
 object ArrayKey {

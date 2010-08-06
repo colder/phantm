@@ -53,12 +53,8 @@ class TypeEnvironment(val map: Map[SimpleVariable, Type], val scope: Option[Clas
                         map.getOrElse(k, TTop) union e.map.getOrElse(k, TTop))
                 }
 
-                new TypeEnvironment(newmap, scope, te.store union store)
+                new TypeEnvironment(newmap, scope, store).unionStoreFrom(te)
         }
-    }
-
-    def unionStore(s: ObjectStore): TypeEnvironment = {
-        new TypeEnvironment(map, scope, s union store)
     }
 
     def unionStoreFrom(e: TypeEnvironment): TypeEnvironment = {
@@ -67,8 +63,34 @@ class TypeEnvironment(val map: Map[SimpleVariable, Type], val scope: Option[Clas
                 this
 
             case te: TypeEnvironment =>
-                unionStore(te.store)
+                var env = te
+
+                val s1 = this.store
+                val s2 = te.store
+
+                var newstore = new ObjectStore()
+
+                for (id <- s1.store.keySet ++ s2.store.keySet) {
+                    val c1 = s1.store.contains(id);
+                    val c2 = s2.store.contains(id);
+
+                    if (c1 && c2) {
+                        val (nenv, nobj) = TypeLattice.joinObjects(this, s1.store(id), s2.store(id))
+                        env = nenv
+                        newstore = newstore.set(id, nobj)
+                    } else if (c1) {
+                        newstore = newstore.set(id, s1.store(id))
+                    } else {
+                        newstore = newstore.set(id, s2.store(id))
+                    }
+                }
+
+                env.setStore(newstore)
         }
+    }
+
+    def unionStore(st: ObjectStore): TypeEnvironment = {
+        unionStoreFrom(new TypeEnvironment().setStore(st))
     }
 
     def checkMonotonicity(vrtx: Vertex, e: TypeEnvironment, ctx: PhasesContext, inEdges: Iterable[(Statement, TypeEnvironment)]): Unit = {
