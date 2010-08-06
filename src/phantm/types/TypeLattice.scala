@@ -120,8 +120,19 @@ case object TypeLattice extends Lattice {
                     t1
                 }
             case (t1: TPreciseObject, t2: TPreciseObject) =>
-                println("TODO: join of two non-ref objects")
-                TAnyObject
+                val (e, ro) = joinObjects(env, t1.realObject(env), t2.realObject(env))
+
+                (t1,t2) match {
+                    case (_: TObjectTmp, _: TObjectTmp) =>
+                        new TObjectTmp(ro)
+                    case (r: TObjectRef, t: TObjectTmp) =>
+                        env = e.setStore(e.store.set(r.id, ro))
+                        r
+                    case (t: TObjectTmp, r: TObjectRef) =>
+                        env = e.setStore(e.store.set(r.id, ro))
+                        r
+                }
+
 
             // Arrays
             case (TAnyArray, t: TArray) => TAnyArray
@@ -245,6 +256,31 @@ case object TypeLattice extends Lattice {
 
                 new TArray(newEntries, meetTypes(t1.globalInt, t2.globalInt), meetTypes(t1.globalString, t2.globalString))
 
+            case (t1: TObjectRef, t2: TObjectRef) =>
+                if (t1.id != t2.id) {
+                    if (leq(env, t1, t2)) {
+                        t1
+                    } else if (leq(env, t2, t1)) {
+                        t2
+                    } else {
+                        TBottom
+                    }
+                } else {
+                    t1
+                }
+            case (t1: TPreciseObject, t2: TPreciseObject) =>
+                val (e, ro) = meetObjects(env, t1.realObject(env), t2.realObject(env))
+
+                (t1,t2) match {
+                    case (_: TObjectTmp, _: TObjectTmp) =>
+                        new TObjectTmp(ro)
+                    case (r: TObjectRef, t: TObjectTmp) =>
+                        env = e.setStore(e.store.set(r.id, ro))
+                        r
+                    case (t: TObjectTmp, r: TObjectRef) =>
+                        env = e.setStore(e.store.set(r.id, ro))
+                        r
+                }
 
             // Unions
             case (tu1: TUnion, tu2: TUnion) =>
