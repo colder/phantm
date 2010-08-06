@@ -33,8 +33,8 @@ class TypeEnvironment(val map: Map[SimpleVariable, Type], val scope: Option[Clas
         new TypeEnvironment(map, scope, store.set(id, ot))
     }
 
-    def initObjectIfNotExist(id: ObjectId, cl: Option[ClassSymbol], singleton: Boolean) = {
-        new TypeEnvironment(map, scope, store.initIfNotExist(id, cl, singleton))
+    def initObjectIfNotExist(id: ObjectId, cl: Option[ClassSymbol]) = {
+        new TypeEnvironment(map, scope, store.initIfNotExist(id, cl))
     }
 
     def copy: TypeEnvironment =
@@ -118,7 +118,7 @@ class TypeEnvironment(val map: Map[SimpleVariable, Type], val scope: Option[Clas
     override def toString = {
         def typeToString(t: Type): String = t match {
             case or: TObjectRef =>
-                "(#"+or.id.pos+","+or.id.offset+")"+store.lookup(or).toString
+                "(#"+or.id.pos+","+or.id.typ+")"+store.lookup(or).toString
             case _ => t.toString
         }
         

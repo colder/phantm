@@ -30,14 +30,7 @@ case object TypeLattice extends Lattice {
                     val r1 = t1.realObject(envx)
                     val r2 = t2.realObject(envy)
 
-                    val classesMatch = (r1, r2) match {
-                        case (r1: TRealClassObject, r2: TRealClassObject) =>
-                            r1.cl isSubtypeOf r2.cl
-                        case (r1: TRealObject, r2: TRealClassObject) =>
-                            false
-                        case _ =>
-                            true
-                    }
+                    val classesMatch = r1.ct isSubtypeOf r2.ct
 
                     classesMatch && leqT(r1.globalType, r2.globalType) && ((r1.fields.keySet ++ r2.fields.keySet) forall (k =>
                         leqT(r1.lookupField(k), r1.lookupField(k))))

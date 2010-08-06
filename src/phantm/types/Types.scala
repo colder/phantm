@@ -30,16 +30,17 @@ sealed abstract class ConcreteType extends Type;
 sealed abstract class ClassType {
     def isSubtypeOf(cl2: ClassType): Boolean;
 }
-case object TClassAny extends ClassType {
-    def isSubtypeOf(cl2: ClassType) = true;
+case object TAnyClass extends ClassType {
+    def isSubtypeOf(cl2: ClassType) = false;
+    override def toString = "?"
 }
 
-class TClass(val cs: ClassSymbol) extends ClassType {
+case class TClass(val cs: ClassSymbol) extends ClassType {
     override def toString = cs.name
     def isSubtypeOf(cl2: ClassType) = cl2 match {
-        case TClassAny => false
-        case tc: TClass =>
-            cs.subclassOf(tc.cs)
+        case TAnyClass => true
+        case TClass(cs2) =>
+            cs.subclassOf(cs2)
     }
 }
 
@@ -62,7 +63,12 @@ case class TFunction(val args: List[(Type, Boolean, Boolean)], val ret: Type) ex
 }
 
 // Objects related types
-case class ObjectId(val pos: Int, val offset: Int)
+sealed abstract class ObjectIdType;
+case object ObjectIdUse extends ObjectIdType {
+    override def toString = "use"
+}
+
+case class ObjectId(val pos: Int, val typ: ObjectIdType)
 
 // Stores the ref => Real Objects relashionship
 
@@ -100,31 +106,30 @@ case class ObjectStore(val store: Map[ObjectId, TRealObject]) {
     def unset(id: ObjectId): ObjectStore = new ObjectStore(store - id);
     def set(id: ObjectId, robj: TRealObject): ObjectStore = new ObjectStore(store.updated(id, robj));
 
-    def initIfNotExist(id: ObjectId, ocs: Option[ClassSymbol], singleton: Boolean) : ObjectStore = store.get(id) match {
+    def initIfNotExist(id: ObjectId, ocs: Option[ClassSymbol]) : ObjectStore = store.get(id) match {
         case Some(_) =>
             this
         case None =>
-            // We create a new object and place it in the store
-            val rot = ocs match {
-                case Some(cs) =>
-                    // construct a default object for this class
-                    new TRealClassObject(new TClass(cs), Map[String,Type]() ++ cs.properties.mapValues[Type] { x => x.typ }, TUninitialized, singleton)
-                case None =>
-                    // No class => any object
-                    new TRealObject(Map[String,Type](), TUninitialized, singleton)
-            }
+            set(id, newObject(id, ocs));
+    }
 
-            set(id, rot);
+    def newObject(id: ObjectId, ocs: Option[ClassSymbol]) : TRealObject = ocs match {
+        case Some(cs) =>
+            // construct a default object for this class
+            new TRealObject(Map[String,Type]() ++ cs.properties.mapValues[Type] { x => x.typ }, TUninitialized, true, TClass(cs))
+        case None =>
+            // No class => any object
+            new TRealObject(Map[String,Type](), TUninitialized, true, TAnyClass)
     }
 
     override def toString = {
-        store.toList.sortWith{(x,y) => x._1.pos < x._1.pos}.map(x => "("+x._1.pos+","+x._1.offset+") => "+x._2).mkString("{ ", "; ", " }");
+        store.toList.sortWith{(x,y) => x._1.pos < x._1.pos}.map(x => "("+x._1.pos+","+x._1.typ+") => "+x._2).mkString("{ ", "; ", " }");
     }
 }
 
 
 // Object types exposed to symbols
-abstract class ObjectType extends ConcreteType
+sealed abstract class ObjectType extends ConcreteType
 
 // Any object, should be only used to typecheck, no symbol should be infered to this type
 object TAnyObject extends ObjectType {
@@ -133,9 +138,7 @@ object TAnyObject extends ObjectType {
 }
 // Reference to an object in the store
 class TObjectRef(val id: ObjectId) extends ObjectType {
-    override def toString = {
-        "TObjectRef#"+id+""
-    }
+    override def toString = "TObjectRef#"+id+""
 
     def realObject(e: TypeEnvironment) = e.store.lookup(id)
 
@@ -155,18 +158,41 @@ class TObjectRef(val id: ObjectId) extends ObjectType {
     }
 
     override def hashCode = {
-        id.pos*id.offset
+        id.pos*id.typ.hashCode
     }
 }
+
+class TObjectTmp(obj: TRealObject) extends ObjectType {
+    override def toString = "TObjectTMP("+obj+")"
+
+    override def depth(e: TypeEnvironment) = obj.depth(e)
+
+    override def toText(e: TypeEnvironment) = {
+        obj.toText(e)
+    }
+}
+
 
 // Real object type (in the store) representing a specific object of any class
 class TRealObject(val fields: Map[String, Type],
                   val globalType: Type,
-                  val singleton: Boolean) {
+                  val singleton: Boolean,
+                  val ct: ClassType) {
+
+    def copy(fields: Map[String, Type] = this.fields,
+             globalType: Type = this.globalType,
+             singleton: Boolean = this.singleton,
+             ct: ClassType = this.ct): TRealObject = {
+        
+        new TRealObject(fields, globalType, singleton, ct)
+    }
 
     override def equals(o: Any): Boolean = o match {
         case ro: TRealObject =>
-            fields == ro.fields && globalType == ro.globalType
+            fields == ro.fields &&
+            globalType == ro.globalType &&
+            singleton == ro.singleton &&
+            ct == ro.ct
         case _ =>
             false
     }
@@ -184,7 +210,7 @@ class TRealObject(val fields: Map[String, Type],
     }
 
     def lookupField(index: CFG.SimpleValue): Type = index match {
-      case CFG.PHPLong(i)        => lookupField(i+"")
+      case CFG.PHPLong(i)       => lookupField(i+"")
       case CFG.PHPString(index) => lookupField(index)
       case _ => globalType
     }
@@ -192,10 +218,20 @@ class TRealObject(val fields: Map[String, Type],
     def lookupField(index: String) =
         fields.getOrElse(index, globalType)
 
-    def lookupMethod(index: String, from: Option[ClassSymbol]): Option[MethodSymbol] = None
+    def lookupMethod(index: String, from: Option[ClassSymbol]): Option[MethodSymbol] = ct match {
+        case TClass(cs) => 
+            cs.lookupMethod(index, from) match {
+                case LookupResult(Some(ms), _, _) =>
+                    Some(ms)
+                case LookupResult(None, _, _) =>
+                    None
+            }
+        case TAnyClass =>
+            None
+    }
 
     def lookupMethod(index: CFG.SimpleValue, from: Option[ClassSymbol]): Option[MethodSymbol] = index match {
-        case CFG.PHPLong(i)        => lookupMethod(i+"", from)
+        case CFG.PHPLong(i)       => lookupMethod(i+"", from)
         case CFG.PHPString(index) => lookupMethod(index, from)
         case _ => None
     }
@@ -215,40 +251,15 @@ class TRealObject(val fields: Map[String, Type],
 
     def injectField(index: String, typ: Type, weak: Boolean): TRealObject = {
         val newFields = fields.updated(index, if (weak && !singleton) typ union lookupField(index) else typ)
-        this match {
-            case t: TRealClassObject =>
-                new TRealClassObject(t.cl, newFields, globalType, singleton)
-            case _ =>
-                new TRealObject(newFields, globalType, singleton)
-        }
+        copy(fields = newFields)
     }
 
-    def setSingleton = setSingleton2(true)
-    def setMultiton = setSingleton2(false)
+    def setMultiton = copy(singleton = false)
 
-    private def setSingleton2(s: Boolean) =
-        this match {
-            case t: TRealClassObject =>
-                new TRealClassObject(t.cl, fields, globalType, s)
-            case _ =>
-                new TRealObject(fields, globalType, s)
-        }
-        this match {
-            case t: TRealClassObject =>
-                new TRealClassObject(t.cl, fields, globalType, true)
-            case _ =>
-                new TRealObject(fields, globalType, true)
-        }
+    def setSingleton = copy(singleton = true)
 
     // Used for type constructions
-    def setAnyField(typ: Type) = {
-        this match {
-            case t: TRealClassObject =>
-                new TRealClassObject(t.cl, fields, typ, singleton)
-            case _ =>
-                new TRealObject(fields, typ, singleton)
-        }
-    }
+    def setAnyField(typ: Type) = copy(globalType = typ)
 
     def injectAnyField(typ: Type) = {
         var newFields = fields;
@@ -257,20 +268,23 @@ class TRealObject(val fields: Map[String, Type],
             newFields = newFields.updated(i,t union typ)
         }
 
-        this match {
-            case t: TRealClassObject =>
-                new TRealClassObject(t.cl, newFields, globalType union typ, singleton)
-            case _ =>
-                new TRealObject(newFields, globalType union typ, singleton)
-        }
+        copy(fields = newFields, globalType = globalType union typ)
     }
 
 
     override def toString = {
         RecProtection.objectToStringDepth += 1;
-        var r = "Object(?)"
+        var r = (if (singleton) "S" else "M")
+        
+        r += "Object("+ct+")"
+
         if (RecProtection.objectToStringDepth < 2) {
             r = r+"["+((fields.map(x => x._1 +" => "+ x._2).toList ::: "? -> "+globalType :: Nil).mkString("; "))+"]"
+            ct match {
+                case TClass(cs) =>
+                    r = r+"["+(cs.methods.map(x => x._1+": "+x._2.ftyps.mkString("{", ",", "}")).mkString("; "))+"]"
+                case _ =>
+            }
         } else {
             r = r+"[...]"
         }
@@ -282,18 +296,13 @@ class TRealObject(val fields: Map[String, Type],
 
     def merge(a2: TRealObject): TRealObject = {
         // Pick superclass class, and subclass methods
-        val newcl = (this, a2) match {
-            case (o1: TRealClassObject, o2: TRealClassObject) =>
-                if (o1.cl.isSubtypeOf(o2.cl)) {
-                    Some(o2.cl)
-                } else if (o2.cl.isSubtypeOf(o1.cl)) {
-                    Some(o1.cl)
-                } else {
-                    None
-                }
-            case _ =>
-                None
-        }
+        val newct = if (ct.isSubtypeOf(a2.ct)) {
+                a2.ct
+            } else if (a2.ct.isSubtypeOf(ct)) {
+                ct
+            } else {
+                TAnyClass
+            }
 
         var newFields = Map[String, Type]();
 
@@ -301,42 +310,9 @@ class TRealObject(val fields: Map[String, Type],
             newFields = newFields.updated(index, lookupField(index) union a2.lookupField(index))
         }
 
-        newcl match {
-            case Some(cl) =>
-                new TRealClassObject(cl, newFields, globalType union a2.globalType, singleton)
-            case None =>
-                new TRealObject(newFields, globalType union a2.globalType, singleton)
-        }
+        new TRealObject(newFields, globalType union a2.globalType, singleton && a2.singleton, newct)
     }
 }
-
-class TRealClassObject(val cl: TClass,
-                       fields: Map[String, Type],
-                       globalType: Type,
-                       singleton: Boolean) extends TRealObject(fields, globalType, singleton) {
-
-    override def toString = {
-        RecProtection.objectToStringDepth += 1;
-        var r = "Object("+cl+")"
-        if (RecProtection.objectToStringDepth < 2) {
-            r = r+"["+((fields.map(x => x._1 +" => "+ x._2).toList ::: "? -> "+globalType :: Nil).mkString("; "))+"]"
-            r = r+"["+(cl.cs.methods.map(x => x._1+": "+x._2.ftyps.mkString("{", ",", "}")).mkString("; "))+"]"
-        } else {
-            r = r+"[...]"
-        }
-        RecProtection.objectToStringDepth -= 1;
-        r
-    }
-
-    override def lookupMethod(index: String, from: Option[ClassSymbol]) =
-        cl.cs.lookupMethod(index, from) match {
-            case LookupResult(Some(ms), _, _) =>
-                Some(ms)
-            case LookupResult(None, _, _) =>
-                None
-        }
-}
-
 
 object ArrayKey {
     def fromString(str: String): ArrayKey = {

@@ -92,7 +92,7 @@ case class TypeTransferFunction(silent: Boolean,
             case PHPAny()            => TAny
             case NoVar()             => TBottom
             case PHPNull()           => TNull
-            case PHPThis()           => getObject(node, env.scope, true)
+            case PHPThis()           => new TObjectRef(ObjectId(-1, ObjectIdUse))
             case PHPEmptyArray()     => new TArray()
             case Instanceof(lhs, cl) => TBoolean
             case ArrayNext(ar)       => typeFromSV(ar)
@@ -140,20 +140,20 @@ case class TypeTransferFunction(silent: Boolean,
                 case AST.StaticClassRef(_, _, id) =>
                     GlobalSymbols.lookupClass(id.value) match {
                         case a @ Some(cs) =>
-                            getObject(node, a, true)
+                            allocObject(node, a)
                         case _ =>
                             error("Undefined class '"+id.value+"'", id)
-                            getObject(node, None, true)
+                            allocObject(node, None)
                     }
                 case _ =>
-                    getObject(node, None, true)
+                    allocObject(node, None)
             }
             case cl @ Clone(obj) =>
                 typeFromSV(obj) match {
                     case ref: TObjectRef =>
                         val ro = env.store.lookup(ref)
-                        env = env.setStore(env.store.set(ObjectId(cl.uniqueID, 0), ro))
-                        new TObjectRef(ObjectId(cl.uniqueID, 0))
+                        env = env.setStore(env.store.set(ObjectId(cl.uniqueID, ObjectIdUse), ro))
+                        new TObjectRef(ObjectId(cl.uniqueID, ObjectIdUse))
                     case _ =>
                         TAnyObject
                 }
@@ -314,9 +314,18 @@ case class TypeTransferFunction(silent: Boolean,
               TBottom
         }
 
-        def getObject(node: Statement, ocs: Option[ClassSymbol], singleton: Boolean): ObjectType = {
-            val id = ObjectId(node.uniqueID, 0);
-            env = env.setStore(env.store.initIfNotExist(id, ocs, singleton))
+        def allocObject(node: Statement, ocs: Option[ClassSymbol]): ObjectType = {
+            val id = ObjectId(node.uniqueID, ObjectIdUse);
+            env = envInit.store.store.get(id) match {
+                case Some(o) if o.singleton =>
+                    // Object becomes multiton, we merge it with a newly allocated object
+                    println("Before: "+o);
+                    val obj = env.store.lookup(id) merge env.store.newObject(id, ocs);
+                    println("After: "+obj);
+                    env.setStore(env.store.set(id, obj.setMultiton))
+                case _ =>
+                    env.setStore(env.store.initIfNotExist(id, ocs))
+            }
             new TObjectRef(id)
         }
 
@@ -588,8 +597,13 @@ case class TypeTransferFunction(silent: Boolean,
             case NextArrayEntry(arr) =>
                 getCheckType(arr, TAnyArray)
             case ObjectProperty(obj, prop) =>
-                // IGNORE for now, focus on arrays
-                getCheckType(obj, TAnyObject)
+                val newct = if (ct == TTop) {
+                    TAnyObject
+                } else {
+                    // TODO
+                    TAnyObject
+                }
+                getCheckType(obj, newct)
             case svar: SimpleVariable =>
                 (Some(svar), ct)
             case VariableClassConstant(cr, id) =>
@@ -662,13 +676,7 @@ case class TypeTransferFunction(silent: Boolean,
                         backPatchType(arr, t)
                     case ObjectProperty(obj, prop) =>
                         def updateObject(obj: TObjectRef) {
-                            val ro =
-                                if (obj.id.pos < 0) {
-                                    // $this is always using strong updates
-                                    obj.realObject(env).injectField(prop, typ)
-                                } else {
-                                    obj.realObject(env).injectField(prop, typ union obj.realObject(env).lookupField(prop))
-                                }
+                            val ro = obj.realObject(env).injectField(prop, typ)
                             env = env.setObject(obj.id, ro)
                         }
                         val t = typeFromSV(obj) match {

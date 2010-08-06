@@ -66,8 +66,8 @@ case class TypeFlowAnalyzer(cfg: ControlFlowGraph,
         scope match {
             case ms: MethodSymbol =>
                 // $this is a singleton object
-                baseEnv = baseEnv.setStore(baseEnv.store.initIfNotExist(ObjectId(-1, 0), Some(ms.cs), true))
-                injectPredef("this", new TObjectRef(ObjectId(-1, 0)))
+                baseEnv = baseEnv.setStore(baseEnv.store.initIfNotExist(ObjectId(-1, ObjectIdUse), Some(ms.cs)))
+                injectPredef("this", new TObjectRef(ObjectId(-1, ObjectIdUse)))
             case _ =>
         }
 
