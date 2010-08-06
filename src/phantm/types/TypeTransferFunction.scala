@@ -403,6 +403,49 @@ case class TypeTransferFunction(silent: Boolean,
                     case (et, vt: TArray) =>
                         ((et.toText(env), simpleText(vt)), false)
 
+                    case (eto: TPreciseObject, vto: TPreciseObject) =>
+                        val ero = eto.realObject(env)
+                        val vro = vto.realObject(env)
+
+                        var relevantFields = Set[String]();
+                        var cancel = false
+
+                        // Emphasis on the differences
+                        for (f <- ero.fields.keySet ++ vro.fields.keySet) {
+                            if (!leq(vro.lookupField(f), ero.lookupField(f))) {
+                                relevantFields += f
+                            }
+                        }
+
+                        var rhs, lhs = List[String]()
+
+                        for (f <- relevantFields) {
+                            val diff = typesDiff(ero.lookupField(f), vro.lookupField(f))
+                            lhs = f+" => "+diff._1._1 :: lhs
+                            rhs = f+" => "+diff._1._2 :: rhs
+                            cancel = cancel || diff._2
+                        }
+
+                        if (!leq(vro.globalType, ero.globalType)) {
+                            val diff = typesDiff(vro.globalType, ero.globalType)
+                            lhs = "? => "+diff._1._1 :: lhs
+                            rhs = "? => "+diff._1._2 :: rhs
+                            cancel = cancel || diff._2
+                        }
+
+                        if (lhs.size < ero.fields.size+1) {
+                            lhs = "..." :: lhs;
+                        }
+
+                        if (rhs.size < vro.fields.size+1) {
+                            rhs = "..." :: rhs;
+                        }
+
+                        if (relevantFields.forall(f => filterErrors(vro.lookupField(f)))) {
+                            cancel = true
+                        }
+
+                        ((lhs.reverse.mkString("Object[", ", ", "]"), rhs.reverse.mkString("Object[", ", ", "]")), cancel)
                     case (et, vto: TObjectRef) =>
                         ((et.toText(env), simpleText(vto)), false)
 
@@ -606,6 +649,9 @@ case class TypeTransferFunction(silent: Boolean,
                     }
                     new TObjectTmp(ro)
                 }
+
+                println("Check type: "+newct);
+
                 getCheckType(obj, newct)
             case svar: SimpleVariable =>
                 (Some(svar), ct)

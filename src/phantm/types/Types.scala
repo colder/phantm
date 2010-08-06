@@ -169,7 +169,7 @@ class TObjectRef(val id: ObjectId) extends TPreciseObject {
 }
 
 class TObjectTmp(obj: TRealObject) extends TPreciseObject {
-    override def toString = "TObjectTMP("+obj+")"
+    override def toString = "Tmp"+obj
 
     override def toText(e: TypeEnvironment) = obj.toText(e)
 
@@ -278,9 +278,7 @@ class TRealObject(val fields: Map[String, Type],
 
     override def toString = {
         RecProtection.objectToStringDepth += 1;
-        var r = (if (singleton) "S" else "M")
-        
-        r += "Object("+ct+")"
+        var r = "Object("+ct+")"
 
         if (RecProtection.objectToStringDepth < 2) {
             r = r+"["+((fields.map(x => x._1 +" => "+ x._2).toList ::: "? -> "+globalType :: Nil).mkString("; "))+"]"

@@ -29,11 +29,10 @@ case object TypeLattice extends Lattice {
             case (t1: TPreciseObject, t2: TPreciseObject)  =>
                 val r1 = t1.realObject(envx)
                 val r2 = t2.realObject(envy)
-
                 val classesMatch = r1.ct isSubtypeOf r2.ct
 
                 classesMatch && leqT(r1.globalType, r2.globalType) && ((r1.fields.keySet ++ r2.fields.keySet) forall (k =>
-                    leqT(r1.lookupField(k), r1.lookupField(k))))
+                    leqT(r1.lookupField(k), r2.lookupField(k))))
 
             case (t1: TArray, t2: TArray) =>
                 leqT(t1.globalInt, t2.globalInt) && leqT(t1.globalString, t2.globalString) && 
