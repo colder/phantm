@@ -68,6 +68,10 @@ case object ObjectIdUse extends ObjectIdType {
     override def toString = "use"
 }
 
+case class ObjectIdTmp(val offset: Int) extends ObjectIdType {
+    override def toString = "#"+offset
+}
+
 case class ObjectId(val pos: Int, val typ: ObjectIdType)
 
 // Stores the ref => Real Objects relashionship
@@ -75,27 +79,6 @@ case class ObjectId(val pos: Int, val typ: ObjectIdType)
 case class ObjectStore(val store: Map[ObjectId, TRealObject]) {
 
     def this() = this(Map[ObjectId, TRealObject]())
-
-    /*
-    def union(os: ObjectStore): ObjectStore = {
-        var res = new ObjectStore()
-
-        for (id <- this.store.keySet ++ os.store.keySet) {
-            val c1 = this.store.contains(id);
-            val c2 =   os.store.contains(id);
-
-            if (c1 && c2) {
-                res = res.set(id, this.store(id) merge os.store(id))
-            } else if (c1) {
-                res = res.set(id, this.store(id))
-            } else {
-                res = res.set(id, os.store(id))
-            }
-        }
-
-        res
-    }
-    */
 
     def lookup(id: TObjectRef): TRealObject = lookup(id.id);
 
@@ -168,7 +151,7 @@ class TObjectRef(val id: ObjectId) extends TPreciseObject {
     }
 }
 
-class TObjectTmp(obj: TRealObject) extends TPreciseObject {
+class TObjectTmp(val obj: TRealObject) extends TPreciseObject {
     override def toString = "Tmp"+obj
 
     override def toText(e: TypeEnvironment) = obj.toText(e)

@@ -498,9 +498,53 @@ case class TypeTransferFunction(silent: Boolean,
             }
         }
 
-        def fixTmpObjects(t: Type): Type = {
+        def fixTmpObjects(t: Type, sv: SimpleValue): Type = {
             // We need to turn All TObjectTmp into TObjectRef
-            t
+            var lookedAt: Set[ObjectId] = Set()
+            var offset = 1
+            var store  = env.store
+
+            def fixType(t: Type) : Type = t match {
+                case ta: TArray =>
+                    new TArray(ta.entries.map(kt => (kt._1, fixType(kt._2))), fixType(ta.globalInt), fixType(ta.globalString))
+
+                case tor: TObjectRef =>
+                    if (lookedAt contains tor.id) {
+                        tor
+                    } else {
+                        // check object fields
+                        lookedAt += tor.id
+                        var ro = store.lookup(tor)
+
+                        ro = ro.copy(fields = ro.fields.map(kt => (kt._1, fixType(kt._2))), globalType =  fixType(ro.globalType))
+                        store = store.set(tor.id, ro)
+
+                        tor
+                    }
+
+                case tot: TObjectTmp =>
+
+                    var ro = tot.obj
+                    ro = ro.copy(fields = ro.fields.map(kt => (kt._1, fixType(kt._2))), globalType =  fixType(ro.globalType))
+
+                    var id = new ObjectId(sv.uniqueID, ObjectIdTmp(offset))
+                    offset   += 1
+                    lookedAt += id
+
+                    store = store.set(id, ro)
+                    new TObjectRef(id)
+
+                case tu: TUnion =>
+                    TUnion(tu.types.map(t => fixType(t)))
+
+                case t => t
+            }
+
+            val r = fixType(t)
+
+            env = env.setStore(store)
+
+            r
         }
 
         def expOrRef(v1: SimpleValue, typs: Type*): Type = {
@@ -524,7 +568,7 @@ case class TypeTransferFunction(silent: Boolean,
                         var t = meet(svetyp, svvtyp)
 
                         if (hasTmp) {
-                            t = fixTmpObjects(t)
+                            t = fixTmpObjects(t, sv)
                         }
 
                         env = env.inject(sv, t)
@@ -945,7 +989,7 @@ case class TypeTransferFunction(silent: Boolean,
                     if (!osv.isEmpty) {
                         var t = meet(typeFromSV(osv.get), ct)
                         if (hasTmp) {
-                            t = fixTmpObjects(t)
+                            t = fixTmpObjects(t, v)
                         }
                         env = env.inject(osv.get, t)
                     }
