@@ -498,12 +498,17 @@ case class TypeTransferFunction(silent: Boolean,
             }
         }
 
+        def fixTmpObjects(t: Type): Type = {
+            // We need to turn All TObjectTmp into TObjectRef
+            t
+        }
+
         def expOrRef(v1: SimpleValue, typs: Type*): Type = {
             val etyp = typs reduceLeft (_ union _)
             val vtyp = typeFromSV(v1)
 
-            def checkVariable(v: Variable, kind: String): Type = {
-                val (osv, svetyp) = getCheckType(v, etyp)
+            def checkVariable(v: Variable): Type = {
+                val (osv, svetyp, hasTmp) = getCheckType(v, etyp)
 
                 if (!osv.isEmpty) {
                     val sv = osv.get
@@ -516,10 +521,17 @@ case class TypeTransferFunction(silent: Boolean,
                     } else {
                         typeError(sv, svetyp, svvtyp)
 
-                        val t = meet(svetyp, svvtyp)
-                        //println("== Refining "+svvtyp+" to "+t+" ("+svetyp+")")
+                        var t = meet(svetyp, svvtyp)
+
+                        if (hasTmp) {
+                            t = fixTmpObjects(t)
+                        }
+
                         env = env.inject(sv, t)
+
+
                         // we then return the type
+                        // Note: Since etyp will never be TmpObject, the result cannot be TMP Obj
                         meet(etyp, vtyp)
                     }
                 } else {
@@ -529,13 +541,13 @@ case class TypeTransferFunction(silent: Boolean,
 
             v1 match {
                 case sv: SimpleVariable =>
-                    checkVariable(sv, "variable")
+                    checkVariable(sv)
                 case v: NextArrayEntry =>
-                    checkVariable(v, "array entry")
+                    checkVariable(v)
                 case v: ArrayEntry =>
-                    checkVariable(v,"array entry")
+                    checkVariable(v)
                 case v: ObjectProperty =>
-                    checkVariable(v, "object property")
+                    checkVariable(v)
                 case v =>
                     if (leq(vtyp, etyp)) {
                         vtyp
@@ -606,17 +618,17 @@ case class TypeTransferFunction(silent: Boolean,
                 TBoolean
         }
 
-        def getCheckType(sv: SimpleValue, ct: Type): (Option[SimpleVariable], Type) = sv match {
+        def getCheckType(sv: SimpleValue, ct: Type, hasTmp: Boolean = false): (Option[SimpleVariable], Type, Boolean) = sv match {
             case VariableVar(v) =>
-                getCheckType(v, TString)
+                getCheckType(v, TString, hasTmp)
             case ArrayEntry(arr, index) =>
                 typeFromSV(arr) match {
                     case TString | _ :TStringLit =>
                         // If arr is known to be a string, index must be Int
                         expOrRef(index, TNumeric)
-                        getCheckType(arr, TString)
+                        getCheckType(arr, TString, hasTmp)
                     case to: ObjectType =>
-                        getCheckType(arr, TAny)
+                        getCheckType(arr, TAny, hasTmp)
                     case t =>
                         expOrRef(index, TString, TNumeric)
                         val newct = if (ct == TTop) {
@@ -633,11 +645,12 @@ case class TypeTransferFunction(silent: Boolean,
                                     new TArray().setAny(ct)
                             }
                         }
-                        getCheckType(arr, newct)
+                        getCheckType(arr, newct, hasTmp)
                 }
             case NextArrayEntry(arr) =>
-                getCheckType(arr, TAnyArray)
+                getCheckType(arr, TAnyArray, hasTmp)
             case ObjectProperty(obj, prop) =>
+                var hasTmpNew = false
                 val newct = if (ct == TTop) {
                     TAnyObject
                 } else {
@@ -647,27 +660,25 @@ case class TypeTransferFunction(silent: Boolean,
                         case _ =>
                             new TRealObject(Map(), ct, true, TAnyClass)
                     }
+                    hasTmpNew = true
                     new TObjectTmp(ro)
                 }
 
-                println("Check type: "+newct);
-
-                getCheckType(obj, newct)
+                getCheckType(obj, newct, hasTmpNew)
             case svar: SimpleVariable =>
-                (Some(svar), ct)
+                (Some(svar), ct, hasTmp)
             case VariableClassConstant(cr, id) =>
-                (None, ct)
+                (None, ct, hasTmp)
             case VariableClassProperty(cr, id) =>
-                (None, ct)
+                (None, ct, hasTmp)
             case NoVar() =>
-                (None, ct)
+                (None, ct, hasTmp)
             case v =>
                 Predef.error("Woops, unexpected Variable("+v+") inside checktype of!")
-
         }
 
         def assign(v: Variable, ext: Type): Type = {
-            val (osvar, ct) = getCheckType(v, TTop)
+            val (osvar, ct, hasTmp) = getCheckType(v, TTop)
             if (!osvar.isEmpty) {
                 val svar = osvar.get
                 //println("Assigning "+v+" to "+ext)
@@ -930,9 +941,13 @@ case class TypeTransferFunction(silent: Boolean,
                     // unreachable code
                     env = BaseTypeEnvironment
                 } else {
-                    val (osv, ct) = getCheckType(v, rest)
+                    val (osv, ct, hasTmp) = getCheckType(v, rest)
                     if (!osv.isEmpty) {
-                        env = env.inject(osv.get, meet(typeFromSV(osv.get), ct))
+                        var t = meet(typeFromSV(osv.get), ct)
+                        if (hasTmp) {
+                            t = fixTmpObjects(t)
+                        }
+                        env = env.inject(osv.get, t)
                     }
                 }
             }
