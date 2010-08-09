@@ -282,14 +282,14 @@ case class TypeTransferFunction(silent: Boolean,
                 typeFromSV(obj) match {
                     case TAnyObject | TAny | TTop =>
                         TTop
-                    case or: TObjectRef =>
-                        env.store.lookup(or).lookupField(p)
+                    case or: TPreciseObject =>
+                        or.realObject(env).lookupField(p)
                     case u: TUnion =>
                         u.types.map { _ match {
                             case TAnyObject | TAny | TTop =>
                                 TTop
-                            case or: TObjectRef =>
-                                env.store.lookup(or).lookupField(p)
+                            case or: TPreciseObject =>
+                                or.realObject(env).lookupField(p)
                             case _ =>
                                 TBottom
                         }}.reduceLeft(_ union _)
@@ -727,7 +727,7 @@ case class TypeTransferFunction(silent: Boolean,
                 val svar = osvar.get
                 //println("Assigning "+v+" to "+ext)
                 //println("Checking "+svar+"("+typeFromSV(svar)+") against "+ct)
-                val reft = expOrRef(svar, ct)
+                var reft = expOrRef(svar, ct)
                 //println("After refinement: "+reft)
 
                 // Now, we need to get down in that variable and affect the type as the assign require
@@ -787,16 +787,26 @@ case class TypeTransferFunction(silent: Boolean,
                             case to: TObjectRef =>
                                 updateObject(to)
                                 to
+                            case to: TObjectTmp =>
+                                val ro = to.obj.injectField(prop, typ)
+                                new TObjectTmp(ro)
                             case tu: TUnion =>
                                 for (f <- tu.types) f match {
                                     case to: TObjectRef =>
                                         updateObject(to)
+                                    case TAnyObject =>
+                                        // TODO
                                     case _ =>
                                 }
 
                                 tu
                             case TAnyObject =>
-                                TAnyObject
+                                // We need to create one object here
+                                var id = new ObjectId(obj.uniqueID, ObjectIdUse)
+                                var ro = new TRealObject(Map(), TTop, false, TAnyClass).injectField(prop, typ, false)
+                                env = env.setObject(id, ro)
+                                new TObjectRef(id)
+
                             case TAny =>
                                 TAny
                             case TTop =>
@@ -826,7 +836,6 @@ case class TypeTransferFunction(silent: Boolean,
                         if (l == 0) {
                             TAnyObject
                         } else {
-                            // TODO
                             to
                         }
                     case tu: TUnion =>
@@ -843,16 +852,23 @@ case class TypeTransferFunction(silent: Boolean,
                         }
                 }
 
-                env = env.inject(svar, reft)
+                if (hasTmp) {
+                    reft = fixTmpObjects(reft, svar)
+                }
                 //println("Refined type: "+reft)
+                env = env.inject(svar, reft)
+
                 var rest = backPatchType(v, ext)
-                //println("Backpatched type: "+rest)
-                //println("Depth: "+rest.depth(env))
+
                 if (rest.depth(env) >= 5) {
                     rest = limitType(rest, 5)
                 }
-                //println("Limitted: "+rest)
+                if (hasTmp) {
+                    rest = fixTmpObjects(rest, svar)
+                }
+                //println("Backpatched type: "+rest)
                 env = env.inject(svar, rest)
+
                 rest
             } else {
                 ext

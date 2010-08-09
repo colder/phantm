@@ -170,7 +170,7 @@ class TRealObject(val fields: Map[String, Type],
              globalType: Type = this.globalType,
              singleton: Boolean = this.singleton,
              ct: ClassType = this.ct): TRealObject = {
-        
+
         new TRealObject(fields, globalType, singleton, ct)
     }
 
@@ -261,7 +261,13 @@ class TRealObject(val fields: Map[String, Type],
 
     override def toString = {
         RecProtection.objectToStringDepth += 1;
-        var r = "Object("+ct+")"
+        var r = "Object"
+
+        ct match {
+            case TClass(cs) =>
+                r += "("+cs.name+")"
+            case _ =>
+        }
 
         if (RecProtection.objectToStringDepth < 2) {
             r = r+"["+((fields.map(x => x._1 +" => "+ x._2).toList ::: "? -> "+globalType :: Nil).mkString("; "))+"]"
