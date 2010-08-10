@@ -156,9 +156,18 @@ object Main {
             case "--lint" ::  xs =>
                 settings = settings.copy(onlyLint = true)
                 handleArgs(xs)
+            case "--" ::  xs =>
+                for (path <- args.tail) {
+                    val f = new File(path)
+                    files = files ::: f.getAbsolutePath :: Nil
+                }
             case x :: xs =>
-                val f = new File(args.head)
-                files = files ::: f.getAbsolutePath :: Nil
+                if (x startsWith "-") {
+                    println("Notice: Unknown option '"+args.head+"'. Real file? Use '--' to delimit options.")
+                } else {
+                    val f = new File(args.head)
+                    files = files ::: f.getAbsolutePath :: Nil
+                }
                 handleArgs(xs)
             case Nil =>
         }
