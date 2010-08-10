@@ -127,7 +127,6 @@ case class TypeFlowAnalyzer(cfg: ControlFlowGraph,
             case _ =>
         }
 
-
         val ttf = TypeTransferFunction(true, newCtx, false, collectGlobals)
         val aa = new AnalysisAlgorithm[TypeEnvironment, Statement](ttf, bottomEnv, baseEnv, cfg)
 

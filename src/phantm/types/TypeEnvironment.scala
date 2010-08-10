@@ -63,7 +63,7 @@ class TypeEnvironment(val map: Map[SimpleVariable, Type], val scope: Option[Clas
                 this
 
             case te: TypeEnvironment =>
-                var env = te
+                var env = this
 
                 val s1 = this.store
                 val s2 = te.store
