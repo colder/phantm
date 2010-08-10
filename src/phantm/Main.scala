@@ -87,6 +87,15 @@ object Main {
             case "--format" :: f :: xs =>
                 println("Invalid format "+f)
                 displayUsage = true
+            case "--compacterrors" :: "yes" :: xs =>
+                settings = settings.copy(compactErrors = true)
+                handleArgs(xs)
+            case "--compacterrors" :: "no" :: xs =>
+                settings = settings.copy(compactErrors = false)
+                handleArgs(xs)
+            case "--compacterrors" :: xs =>
+                settings = settings.copy(compactErrors = true)
+                handleArgs(xs)
             case "--only" :: filter :: xs =>
                 settings = settings.copy(typeFlowFilter = filter.replace("::", "/").split(":").map(_.replace("/", "::")).toList)
                 handleArgs(xs)

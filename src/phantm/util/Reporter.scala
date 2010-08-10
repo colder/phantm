@@ -7,9 +7,12 @@ class Reporter(mainFiles: List[String]) {
     type Error = (String, String, Positional, String);
 
     def getFootPrint(typ: String, msg: String, pos: Positional): ErrorFootPrint = {
-//        (typ, msg, pos.getPos)
-        // At most one error per line
-        (typ, "dummy", pos.file+":"+pos.line)
+        if (Settings.get.compactErrors) {
+            // At most one error per line
+            (typ, "dummy", pos.file+":"+pos.line)
+        } else {
+            (typ, msg, pos.file+":"+pos.line)
+        }
     }
 
     var tickCount = 0

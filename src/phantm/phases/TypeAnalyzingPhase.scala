@@ -117,7 +117,7 @@ case class TypeFlowAnalysis(initCtx: PhasesContext, node: Tree) extends ASTSimpl
             case FunctionDecl(name, args, retref, body) if filter(name.value) =>
                 name.getSymbol match {
                     case fs: FunctionSymbol =>
-                        if (!fs.shouldInline && !ctx.results.reachableFromMain(fs).isEmpty) {
+                        if (!fs.shouldInline) {
                             display("Analyzing function "+name.value+"...")
                             val tfa = new TypeFlowAnalyzer(getCFG(Some(fs)), fs, ctx)
                             tfa.analyze

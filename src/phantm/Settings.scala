@@ -18,7 +18,8 @@ case class Settings(
     val dumps: List[String]           = Nil,
     val exportAPIPath: Option[String] = None,
     val exportCGPath: Option[String]  = None,
-    val inlineMode: InlineMode        = InlineManual
+    val inlineMode: InlineMode        = InlineManual,
+    val compactErrors: Boolean        = true
 )
 
 sealed abstract class InlineMode;

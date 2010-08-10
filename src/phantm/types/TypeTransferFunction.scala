@@ -188,26 +188,28 @@ case class TypeTransferFunction(silent: Boolean,
                 typeFromSV(r) match {
                     case or: TObjectRef =>
                         val ro = env.store.lookup(or);
-                        ro.lookupMethod(mid.value, env.scope) match {
-                            case Some(ms) =>
-                                if (collectAnnotations) {
-                                    // TODO: Create a FunctionType and add it to the list of potential prototypes
-                                }
-                                checkFCalls(args, ms, mcall)
-                            case None =>
-                                // Check for magic __call ?
-                                val cms = ro.lookupMethod("__call", env.scope)
-                                if (cms == None) {
-                                    notice("Undefined method '" + mid.value + "' in object "+ro, mid)
-                                    TBottom
-                                } else {
-                                    val ms = cms.get
-                                    if (ms.ftyps.size > 0) {
-                                        ms.ftyps.head.ret
-                                    } else {
-                                        TBottom
+                        if (ro.singleton) {
+                            ro.lookupMethod(mid.value, env.scope) match {
+                                case Some(ms) =>
+                                    if (collectAnnotations) {
+                                        // TODO: Create a FunctionType and add it to the list of potential prototypes
                                     }
-                                }
+                                    checkFCalls(args, ms, mcall)
+                                case None =>
+                                    // Check for magic __call ?
+                                    val cms = ro.lookupMethod("__call", env.scope)
+                                    if (cms == None) {
+                                        notice("Undefined method '" + mid.value + "' in object "+ro, mid)
+                                        TBottom
+                                    } else {
+                                        val ms = cms.get
+                                        checkFCalls(args, ms, mcall)
+                                    }
+                            }
+                        } else {
+                            // TODO: Recovery solution? Name based?
+                            notice("Object non-singularity prevents inlining or precise analysis", mcall)
+                            TAny
                         }
                     case _ =>
                         TTop
