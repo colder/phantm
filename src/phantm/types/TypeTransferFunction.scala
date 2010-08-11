@@ -200,27 +200,38 @@ case class TypeTransferFunction(silent: Boolean,
                                 TBottom
                         }
                 }
-            case mcall @ MethodCall(r, mid, args) =>
+            case mcall @ MethodCall(r, id, args) =>
                 typeFromSV(r) match {
                     case or: TObjectRef =>
                         val ro = env.store.lookup(or);
                         if (ro.singleton) {
-                            ro.lookupMethod(mid.value, env.scope) match {
-                                case Some(ms) =>
-                                    if (collectAnnotations) {
-                                        // TODO: Create a FunctionType and add it to the list of potential prototypes
+                            ro.ct match {
+                                case TClass(cs) =>
+                                    // First, we check if __call is here:
+                                    val cms = cs.lookupMethod("__call", env.scope).ms
+
+                                    cs.lookupMethod(id.value, env.scope) match {
+                                        case LookupResult(Some(ms), None, _) =>
+                                            if (collectAnnotations) {
+                                                // TODO: Create a FunctionType and add it to the list of potential prototypes
+                                            }
+                                            checkFCalls(args, ms, mcall)
+                                        case LookupResult(Some(ms), vis, _) if cms.isEmpty =>
+                                            notice("Can't access "+vis.get+" method '"+cs.name+"::"+id.value+"'", id)
+                                            TBottom
+                                        case LookupResult(None, _, _) if cms.isEmpty =>
+                                            notice("Undefined method '"+cs.name+"::" + id.value + "'", id)
+                                            TBottom
+
+                                        case _ =>
+                                            val ms = cms.get
+                                            checkFCalls(args, ms, mcall)
                                     }
-                                    checkFCalls(args, ms, mcall)
-                                case None =>
-                                    // Check for magic __call ?
-                                    val cms = ro.lookupMethod("__call", env.scope)
-                                    if (cms == None) {
-                                        notice("Undefined method '" + mid.value + "' in object "+ro, mid)
-                                        TBottom
-                                    } else {
-                                        val ms = cms.get
-                                        checkFCalls(args, ms, mcall)
-                                    }
+                                case TAnyClass =>
+                                    // Name based resolution?
+                                    notice("Unable to statically resolve the object class", mcall)
+                                    TAny
+
                             }
                         } else {
                             // TODO: Recovery solution? Name based?
@@ -261,7 +272,7 @@ case class TypeTransferFunction(silent: Boolean,
                                 }
                                 checkFCalls(args, ms, mcall)
                             case LookupResult(Some(ms), vis, _) if csms.isEmpty =>
-                                notice("Can't access "+vis.get+" static  method '"+cs.name+"::"+id.value+"'", id)
+                                notice("Can't access "+vis.get+" static method '"+cs.name+"::"+id.value+"'", id)
                                 TBottom
                             case LookupResult(None, _, _) if csms.isEmpty =>
                                 notice("Undefined static method '"+cs.name+"::" + id.value + "'", id)
