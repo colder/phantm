@@ -130,7 +130,6 @@ object Main {
                 settings = settings.copy(includePaths = ip.split(":").toList)
                 handleArgs(xs)
             case "--importincludes" :: paths :: xs =>
-                //TODO
                 IncludeResolver.importIncludes(paths.split(":").toList)
                 handleArgs(xs)
             case "--importdump" :: paths :: xs =>
@@ -182,31 +181,40 @@ object Main {
     def usage = {
         println("Usage:   phantm [..options..] <files ...>");
         println("Options: --help                 This help");
+        println
+        println("  - General settings:")
         println("         --maindir <maindir>    Specify main directory of the tool");
+        println("         --includepath <paths>  Define paths for compile time include resolution (.:a:bb:c:..)");
+        println
+        println("  - Error control:")
         println("         --format <mode>        Change the way errors are displayed:");
         println("                                Mode: none     : no colors");
         println("                                      termbg   : ANSI colors inside the code (default)");
         println("                                      term     : ANSI colors below the code");
         println("                                      html     : HTML colors below the code");
         println("                                      quickfix : quickfix error style");
-        println("         --showincludes         Display the list of included files");
-        println("         --noincludes           Disables includes resolutions");
-        println("         --noapi                Do not load the main API");
-        println("         --tests                Enable internal consistency checks");
-        println("         --fixpoint             Display fixpoints");
-        println("         --debug                Display all kind of debug information");
         println("         --quiet                Mute some errors such as uninitialized variables");
         println("         --shy                  Psscht");
         println("         --verbose              Display more notices");
+        println("         --compactErrors yes|no Group errors per line. Useful when inlining");
         println("         --vverbose             Be nitpicking and display even more notices");
-        println("         --includepath <paths>  Define paths for compile time include resolution (.:a:bb:c:..)");
+        println("         --focus                Focus on main files and ignore errors in dependencies");
+        println("         --only <symbols>       Only do analysis on the specified bodies of code (main:func1:class1::method1:...)");
+        println
+        println("  - Additional features/infos:")
+        println("         --noapi                Do not load the main API");
+        println("         --noincludes           Disables includes resolutions");
+        println("         --fixpoint             Display fixpoints");
+        println("         --showincludes         Display the list of included files");
         println("         --importAPI <paths>    Import additional APIs (a.xml:b.xml:...)");
         println("         --importDUMP <paths>   Import dump files (a.xml:b.xml:...)");
         println("         --exportAPI <path>     Use the type analysis to output a likely API");
         println("         --progress             Display analysis progress");
-        println("         --focus                Focus on main files and ignore errors in dependencies");
-        println("         --only <symbols>       Only do analysis on the specified bodies of code (main:func1:class1::method1:...)");
-        println("         --exportAPI <path>     Export generated API to <path>");
+        println
+        println("  - Misc.:")
+        println("         --tests                Enable internal consistency checks");
         println("         --lint                 Stop the analysis after the parsing");
+        println("         --debug                Display all kind of debug information");
+        println("         --                     Separate options and files, allowing files starting with '-'.");
     }
 }
