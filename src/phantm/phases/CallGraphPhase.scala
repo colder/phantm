@@ -172,7 +172,29 @@ case class CallGraphGeneration(node: Tree,
                         CallGraph.addEdge(ctx.scope, Some(fs))
                     case _ =>
                 }
+            case fcall @ StaticMethodCall(StaticClassRef(_, _, id), StaticMethodRef(mid), args) =>
+                GlobalSymbols.lookupClass(id.value) match {
+                    case Some(cs) =>
+                        val cscope = ctx.scope match {
+                            case ms: MethodSymbol =>
+                                Some(ms.cs)
+                            case _ =>
+                                None
+                        }
+                        cs.lookupMethod(mid.value, cscope).ms match {
+                            case Some(ms) =>
+                                if (ctx.scope == None) {
+                                    CallGraph.addCallLocation(ms, fcall);
+                                }
+                                CallGraph.addEdge(ctx.scope, Some(ms))
 
+                            case None =>
+                                //ignore, the error will be reported by other parts
+                        }
+
+                    case None =>
+                        //ignore, the error will be reported by other parts
+                }
             case _ =>
         }
 

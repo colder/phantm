@@ -175,46 +175,53 @@ object Main {
     def version = {
         val data = XML.load(getClass().getClassLoader().getResourceAsStream("spec/build.xml"))
 
-        println("phantm "+(data \ "version").text+" (built: "+(data \ "date").text+")");
+        println("phantm "+(data \ "version").text+" (built: "+(data \ "date").text+")")
     }
 
     def usage = {
-        println("Usage:   phantm [..options..] <files ...>");
-        println("Options: --help                 This help");
+        println("Usage:   phantm [..options..] <files ...>")
+        println("Options:");
         println
         println("  - General settings:")
-        println("         --maindir <maindir>    Specify main directory of the tool");
-        println("         --includepath <paths>  Define paths for compile time include resolution (.:a:bb:c:..)");
+        println("         --maindir <maindir>    Specify main directory of the tool")
+        println("         --includepath <paths>  Define paths for compile time include resolution (.:a:bb:c:..)")
+        println("         --only <symbols>       Only perform analysis on the specified")
+        println("                                        symbols (main:func1:class1::method1:...)")
         println
         println("  - Error control:")
-        println("         --format <mode>        Change the way errors are displayed:");
-        println("                                Mode: none     : no colors");
-        println("                                      termbg   : ANSI colors inside the code (default)");
-        println("                                      term     : ANSI colors below the code");
-        println("                                      html     : HTML colors below the code");
-        println("                                      quickfix : quickfix error style");
-        println("         --quiet                Mute some errors such as uninitialized variables");
-        println("         --shy                  Psscht");
-        println("         --verbose              Display more notices");
-        println("         --compactErrors yes|no Group errors per line. Useful when inlining");
-        println("         --vverbose             Be nitpicking and display even more notices");
-        println("         --focus                Focus on main files and ignore errors in dependencies");
-        println("         --only <symbols>       Only do analysis on the specified bodies of code (main:func1:class1::method1:...)");
+        println("         --format <mode>        Change the way errors are displayed:")
+        println("                                Mode: none     : no colors")
+        println("                                      termbg   : ANSI colors inside the code (default)")
+        println("                                      term     : ANSI colors below the code")
+        println("                                      html     : HTML colors below the code")
+        println("                                      quickfix : quickfix error style")
+        println("         --quiet                Mute some errors such as uninitialized variables")
+        println("         --shy                  Psscht")
+        println("         --verbose              Display more notices")
+        println("         --compactErrors yes|no Group errors per line. Useful when inlining")
+        println("         --vverbose             Be nitpicking and display even more notices")
+        println("         --focus                Focus on main files and ignore errors in dependencies")
         println
         println("  - Additional features/infos:")
-        println("         --noapi                Do not load the main API");
-        println("         --noincludes           Disables includes resolutions");
-        println("         --fixpoint             Display fixpoints");
-        println("         --showincludes         Display the list of included files");
-        println("         --importAPI <paths>    Import additional APIs (a.xml:b.xml:...)");
-        println("         --importDUMP <paths>   Import dump files (a.xml:b.xml:...)");
-        println("         --exportAPI <path>     Use the type analysis to output a likely API");
-        println("         --progress             Display analysis progress");
+        println("         --noapi                Do not load the main API")
+        println("         --noincludes           Disables includes resolutions")
+        println("         --fixpoint             Display fixpoints")
+        println("         --showincludes         Display the list of included files")
+        println("         --importAPI <paths>    Import additional APIs (a.xml:b.xml:...)")
+        println("         --importDUMP <paths>   Import dump files (a.xml:b.xml:...)")
+        println("         --exportAPI <path>     Use the type analysis to output a likely API")
+        println("         --progress             Display analysis progress")
+        println("         --inline <mode>        Perform function/method inlining, default is 'manual'")
+        println("                                Mode: none     : no inlining")
+        println("                                      manual   : Inline methods specified in the code")
+        println("                                      leaves   : Inline leaves in the callgraph")
+        println("                                      full     : Inline acyclic functions")
         println
         println("  - Misc.:")
-        println("         --tests                Enable internal consistency checks");
-        println("         --lint                 Stop the analysis after the parsing");
-        println("         --debug                Display all kind of debug information");
-        println("         --                     Separate options and files, allowing files starting with '-'.");
+        println("         --tests                Enable internal consistency checks")
+        println("         --lint                 Stop the analysis after the parsing")
+        println("         --debug                Display all kind of debug information")
+        println("         --help                 This help")
+        println("         --                     Separate options and files, allowing files starting with '-'.")
     }
 }
