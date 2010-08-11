@@ -97,8 +97,12 @@ case class TypeTransferFunction(silent: Boolean,
                     notice("Class could not be resolved statically", cr)
                     None
             }
-            case _ =>
-                notice("Non-fully-qualified class referencement is not currently implemented...", cr)
+
+            case _: ClassRefUnknown =>
+                None
+
+            case _: ClassRefCalledClass =>
+                notice("LSB not yet supported (TODO) ", cr)
                 None
         }
 
@@ -244,32 +248,32 @@ case class TypeTransferFunction(silent: Boolean,
                         TBottom
                 }
 
-            case mcall @ StaticMethodCall(cl, id, args) =>
-                /*
-                val cs = cl match {
-                    case StaticClassRef(_, _, id) =>
+            case mcall @ StaticMethodCall(cr, id, args) =>
+                getClassSymbol(cr) match {
+                    case Some(cs) =>
+                        // First, we check if __callStatic is here:
+                        val csms = cs.lookupMethod("__callstatic", env.scope).ms
 
-                    case _ =>
-                }
-                ro.lookupMethod(mid.value, env.scope) match {
-                    case Some(ms) =>
-                        if (collectAnnotations) {
-                            // TODO: Create a FunctionType and add it to the list of potential prototypes
+                        cs.lookupMethod(id.value, env.scope) match {
+                            case LookupResult(Some(ms), None, _) =>
+                                if (collectAnnotations) {
+                                    // TODO: Create a FunctionType and add it to the list of potential prototypes
+                                }
+                                checkFCalls(args, ms, mcall)
+                            case LookupResult(Some(ms), vis, _) if csms.isEmpty =>
+                                notice("Can't access "+vis.get+" static  method '"+cs.name+"::"+id.value+"'", id)
+                                TBottom
+                            case LookupResult(None, _, _) if csms.isEmpty =>
+                                notice("Undefined static method '"+cs.name+"::" + id.value + "'", id)
+                                TBottom
+
+                            case _ =>
+                                val ms = csms.get
+                                checkFCalls(args, ms, mcall)
                         }
-                        checkFCalls(args, ms, mcall)
                     case None =>
-                        // Check for magic __call ?
-                        val cms = ro.lookupMethod("__call", env.scope)
-                        if (cms == None) {
-                            notice("Undefined method '" + mid.value + "' in object "+ro, mid)
-                            TBottom
-                        } else {
-                            val ms = cms.get
-                            checkFCalls(args, ms, mcall)
-                        }
+                        TBottom
                 }
-                */
-                TAny // TODO
 
             case tern @ Ternary(iff, then, elze) =>
                 typeFromSV(then) union typeFromSV(elze)

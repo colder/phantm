@@ -169,15 +169,17 @@ object ASTToCFG {
             CFG.ClassRefDynamic(expr(ex)).setPos(cr)
 
         case AST.StaticClassRef(_, _, id) =>
-            // TODO: namespaces
-            GlobalSymbols.lookupClass(id.value) match {
-                case Some(cs) =>
-                    CFG.ClassRefFixed(cs).setPos(cr)
-                case None =>
-                    CFG.ClassRefUnknown().setPos(cr)
+            if (id.hasSymbol) {
+                id.getSymbol match {
+                    case cs: ClassSymbol =>
+                        CFG.ClassRefFixed(cs)
+                    case _ =>
+                        Reporter.error("Can't resolve '"+id+"' as a class symbol", id)
+                        CFG.ClassRefUnknown().setPos(cr)
+                }
+            } else {
+                CFG.ClassRefUnknown().setPos(cr)
             }
-            // Ignore namespaces for now
-
         case AST.CalledClass() =>
             CFG.ClassRefCalledClass().setPos(cr)
     }
