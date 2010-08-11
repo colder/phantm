@@ -31,7 +31,6 @@ case class TypeTransferFunction(silent: Boolean,
         (allTypes -- t).reduceLeft(_ union _)
     }
 
-
     def possiblyUninit(t: Type): Boolean = t match {
         case TTop =>
             true
@@ -82,6 +81,27 @@ case class TypeTransferFunction(silent: Boolean,
             env = nenv;
             t
         }
+
+        def getClassSymbol(cr: ClassRef): Option[ClassSymbol] = cr match {
+            case ClassRefFixed(cs) =>
+                Some(cs)
+            case ClassRefDynamic(sv) => typeFromSV(sv) match {
+                case TStringLit(str) => GlobalSymbols.lookupClass(str) match {
+                        case Some(cs) =>
+                            Some(cs)
+                        case None =>
+                            notice("Undefined class '"+str+"'", cr)
+                            None
+                    }
+                case _ =>
+                    notice("Class could not be resolved statically", cr)
+                    None
+            }
+            case _ =>
+                notice("Non-fully-qualified class referencement is not currently implemented...", cr)
+                None
+        }
+
 
         def typeFromSV(sv: SimpleValue): Type = sv match {
             case PHPLong(value)      => TIntLit(value)
@@ -136,18 +156,10 @@ case class TypeTransferFunction(silent: Boolean,
 
             case ArrayCurIsValid(ar) =>
                 TBoolean
-            case New(cr, params) => cr match {
-                case AST.StaticClassRef(_, _, id) =>
-                    GlobalSymbols.lookupClass(id.value) match {
-                        case a @ Some(cs) =>
-                            allocObject(node, a)
-                        case _ =>
-                            error("Undefined class '"+id.value+"'", id)
-                            allocObject(node, None)
-                    }
-                case _ =>
-                    allocObject(node, None)
-            }
+
+            case New(cr, params) =>
+                allocObject(node, getClassSymbol(cr))
+
             case cl @ Clone(obj) =>
                 typeFromSV(obj) match {
                     case ref: TObjectRef =>
@@ -218,10 +230,45 @@ case class TypeTransferFunction(silent: Boolean,
             case Constant(cs) =>
                 cs.typ
 
-            case const @ ClassConstant(cs) =>
-                cs.typ
+            case const @ ClassConstant(cr, id) =>
+                getClassSymbol(cr) match {
+                    case Some(cs) =>
+                        cs.lookupConstant(id.value) match {
+                            case Some(ccs) =>
+                                ccs.typ
+                            case None =>
+                                notice("Undefined class constant "+const, const)
+                                TBottom
+                        }
+                    case None =>
+                        TBottom
+                }
 
             case mcall @ StaticMethodCall(cl, id, args) =>
+                /*
+                val cs = cl match {
+                    case StaticClassRef(_, _, id) =>
+
+                    case _ =>
+                }
+                ro.lookupMethod(mid.value, env.scope) match {
+                    case Some(ms) =>
+                        if (collectAnnotations) {
+                            // TODO: Create a FunctionType and add it to the list of potential prototypes
+                        }
+                        checkFCalls(args, ms, mcall)
+                    case None =>
+                        // Check for magic __call ?
+                        val cms = ro.lookupMethod("__call", env.scope)
+                        if (cms == None) {
+                            notice("Undefined method '" + mid.value + "' in object "+ro, mid)
+                            TBottom
+                        } else {
+                            val ms = cms.get
+                            checkFCalls(args, ms, mcall)
+                        }
+                }
+                */
                 TAny // TODO
 
             case tern @ Ternary(iff, then, elze) =>
@@ -298,10 +345,6 @@ case class TypeTransferFunction(silent: Boolean,
                     case _ =>
                         TBottom
                 }
-
-            case vv @ VariableClassConstant(cr, id) =>
-                notice("Dynamically referenced class constants ignored", vv)
-                TBottom
 
             case vv @ VariableClassProperty(cr, prop) =>
                 notice("Dynamically referenced class properties ignored", vv)
@@ -713,8 +756,6 @@ case class TypeTransferFunction(silent: Boolean,
                 getCheckType(obj, newct, hasTmpNew)
             case svar: SimpleVariable =>
                 (Some(svar), ct, hasTmp)
-            case VariableClassConstant(cr, id) =>
-                (None, ct, hasTmp)
             case VariableClassProperty(cr, id) =>
                 (None, ct, hasTmp)
             case NoVar() =>

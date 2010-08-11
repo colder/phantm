@@ -74,6 +74,24 @@ object Trees {
     override def toString = stringRepr(this)
   }
 
+  abstract class ClassRef extends Positional
+
+  case class  ClassRefDynamic(sv: SimpleValue) extends ClassRef {
+    override def toString = sv.toString
+  }
+
+  case class  ClassRefFixed(cs: ClassSymbol) extends ClassRef {
+    override def toString = cs.name
+  }
+
+  case class ClassRefCalledClass() extends ClassRef {
+    override def toString = "[static]"
+  }
+
+  case class ClassRefUnknown() extends ClassRef {
+    override def toString = "[unknown]"
+  }
+
   /** Used to represent intermediate values (fresh identifiers). */
   case class TempID(value: java.lang.String) extends SimpleVariable
   case class ClassProperty(symbol: PropertySymbol) extends SimpleVariable
@@ -82,7 +100,7 @@ object Trees {
   case class ArrayEntry(arr: SimpleValue, index: SimpleValue) extends Variable
   case class NextArrayEntry(arr: SimpleValue) extends Variable
   case class ObjectProperty(obj: SimpleValue, index: SimpleValue) extends Variable
-  case class VariableClassProperty(cl: AST.ClassRef, index: SimpleValue) extends Variable
+  case class VariableClassProperty(cl: ClassRef, index: SimpleValue) extends Variable
   case class NoVar() extends Variable
 
   sealed abstract class StaticValue extends SimpleValue
@@ -96,7 +114,7 @@ object Trees {
   case class PHPThis() extends StaticValue
   case class PHPEmptyArray() extends StaticValue
 
-  case class Instanceof(lhs: SimpleValue, cl: AST.ClassRef) extends SimpleValue
+  case class Instanceof(lhs: SimpleValue, cl: ClassRef) extends SimpleValue
   case class Cast(to: AST.CastType, e: SimpleValue) extends SimpleValue
   case class ArrayNext(ar: SimpleValue) extends SimpleValue
   case class ArrayCurElement(ar: SimpleValue) extends SimpleValue
@@ -104,8 +122,7 @@ object Trees {
   case class ArrayCurIsValid(ar: SimpleValue) extends SimpleValue
 
   case class Constant(cs: ConstantSymbol) extends SimpleValue
-  case class ClassConstant(cs: ClassConstantSymbol) extends SimpleValue
-  case class VariableClassConstant(cl: AST.ClassRef, name: AST.Identifier) extends SimpleValue
+  case class ClassConstant(cl: ClassRef, name: AST.Identifier) extends SimpleValue
 
   case class Ternary(cond: SimpleValue,
                          then: SimpleValue,
@@ -114,7 +131,7 @@ object Trees {
   case class FunctionCall(id: AST.Identifier,
                              params: List[SimpleValue]) extends SimpleValue
 
-  case class StaticMethodCall(cl: AST.ClassRef,
+  case class StaticMethodCall(cl: ClassRef,
                                  id: AST.Identifier,
                                  params: List[SimpleValue]) extends SimpleValue
 
@@ -122,7 +139,7 @@ object Trees {
                                  id: AST.Identifier,
                                  params: List[SimpleValue]) extends SimpleValue
 
-  case class New(cl: AST.ClassRef, params: List[SimpleValue]) extends SimpleValue
+  case class New(cl: ClassRef, params: List[SimpleValue]) extends SimpleValue
   case class Clone(obj: SimpleValue) extends SimpleValue
 
   sealed abstract class BinaryOperator
@@ -176,8 +193,7 @@ object Trees {
       case MethodCall(r, mid, p) => r + "->" + mid.value + p.mkString("(", ", ", ")")
       case FunctionCall(fid, p) => fid.value + p.mkString("(", ", ", ")")
       case Constant(cs) => cs.name
-      case ClassConstant(cs) => cs.cs.name + "::" + cs.name
-      case VariableClassConstant(cl, cid) => cl + "::" + cid.value
+      case ClassConstant(cl, cid) => cl + "::" + cid.value
       case Ternary(i, then, elze) => i + " ? " + then + " : " + elze
       case Assign(v, e) => v + assOp + e
       case Cast(to, e) => "("+to+")" + e
@@ -205,8 +221,7 @@ object Trees {
       case ArrayCurKey(a) => a + ".key"
       case ArrayCurElement(a) => a + ".current"
       case ArrayCurIsValid(a) => a + ".valid"
-      case Instanceof(obj, AST.StaticClassRef(_, _, id)) => obj + " instanceof "+id.value
-      case Instanceof(obj, _) => obj + " instanceof ?"
+      case Instanceof(obj, cl) => obj + " instanceof "+cl
       case Identifier(sym) => sym.name
       case TempID(value) => value
       case VariableVar(v) => "*("+v+")"

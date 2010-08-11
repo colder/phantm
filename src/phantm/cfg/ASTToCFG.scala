@@ -159,7 +159,29 @@ object ASTToCFG {
             Emit.statementCont(CFG.Assume(e, CFG.NOTEQUALS, CFG.PHPTrue().setPos(ex)).setPos(ex), falseCont)
       }
     }
- 
+
+    /** Take an AST class ref, and resolve it to the class symbol */
+    def resolveClassRef(cr: AST.ClassRef): CFG.ClassRef = cr match {
+        case AST.VarClassRef(v) =>
+            CFG.ClassRefDynamic(varFromVar(v)).setPos(cr)
+
+        case AST.DynamicClassRef(ex) =>
+            CFG.ClassRefDynamic(expr(ex)).setPos(cr)
+
+        case AST.StaticClassRef(_, _, id) =>
+            // TODO: namespaces
+            GlobalSymbols.lookupClass(id.value) match {
+                case Some(cs) =>
+                    CFG.ClassRefFixed(cs).setPos(cr)
+                case None =>
+                    CFG.ClassRefUnknown().setPos(cr)
+            }
+            // Ignore namespaces for now
+
+        case AST.CalledClass() =>
+            CFG.ClassRefCalledClass().setPos(cr)
+    }
+
     /** Transforms a variable from the AST to one for the CFG.. */
     def varFromVar(v: AST.Variable): CFG.Variable = v match {
         case AST.SimpleVariable(id) => idFromId(id)
@@ -188,7 +210,7 @@ object ASTToCFG {
                             None
                     }
                 case _ =>
-                    Some(CFG.VariableClassProperty(cl, expr(property)).setPos(v))
+                    Some(CFG.VariableClassProperty(resolveClassRef(cl), expr(property)).setPos(v))
             }
 
             res.getOrElse(CFG.NoVar().setPos(v))
@@ -212,30 +234,7 @@ object ASTToCFG {
       case AST.Constant(id) =>
         Some(CFG.Constant(GlobalSymbols.lookupOrRegisterConstant(id)).setPos(ex))
       case AST.ClassConstant(c, i) =>
-            c match {
-                case AST.StaticClassRef(_, _, cid) =>
-                    val occ = cid.getSymbol match {
-                        case cs: ClassSymbol =>
-                            cs.lookupConstant(i.value) match {
-                                case Some(ccs) =>
-                                    Some(CFG.ClassConstant(ccs).setPos(ex))
-                                case None =>
-                                    if (Settings.get.verbosity > 0) {
-                                        Reporter.notice("Undefined class constant '"+cid.value+"::"+i.value+"'", i)
-                                    }
-                                    None
-                            }
-                        case _ =>
-                            if (Settings.get.verbosity > 0) {
-                                Reporter.notice("Undefined class '"+cid.value+"'", cid)
-                            }
-                            None
-                    }
-
-                    Some(occ.getOrElse(CFG.NoVar().setPos(ex)))
-                case _ =>
-                    Some(CFG.VariableClassConstant(c, i).setPos(ex))
-            }
+        Some(CFG.ClassConstant(resolveClassRef(c), i).setPos(ex))
       case AST.PHPInteger(v) =>
         Some(CFG.PHPLong(v).setPos(ex))
       case AST.PHPFloat(v) =>
@@ -308,7 +307,7 @@ object ASTToCFG {
                 case AST.BitwiseNot(rhs) =>
                     Some(CFG.AssignUnary(v, CFG.BITSIWENOT, expr(rhs)))
                 case AST.InstanceOf(lhs, cr) =>
-                    Some(CFG.Assign(v, CFG.Instanceof(expr(lhs), cr).setPos(ex)))
+                    Some(CFG.Assign(v, CFG.Instanceof(expr(lhs), resolveClassRef(cr)).setPos(ex)))
                 case AST.Ternary(cond, Some(then), elze) =>
                     Some(CFG.Assign(v, CFG.Ternary(expr(cond), expr(then), expr(elze)).setPos(ex)))
                 case AST.Ternary(cond, None, elze) =>
@@ -333,11 +332,11 @@ object ASTToCFG {
                 case AST.MethodCall(obj, _, args) => 
                     Some(CFG.Assign(v, CFG.PHPAny().setPos(ex)))
                 case AST.StaticMethodCall(cl, AST.StaticMethodRef(id), args) => 
-                    Some(CFG.Assign(v, CFG.StaticMethodCall(cl, id, args.map {a => expr(a.value) }).setPos(ex)))
+                    Some(CFG.Assign(v, CFG.StaticMethodCall(resolveClassRef(cl), id, args.map {a => expr(a.value) }).setPos(ex)))
                 case AST.Array(Nil) =>
                     Some(CFG.Assign(v, CFG.PHPEmptyArray()))
                 case AST.New(cr, args) =>
-                    Some(CFG.Assign(v, CFG.New(cr, args map { a => expr(a.value) })))
+                    Some(CFG.Assign(v, CFG.New(resolveClassRef(cr), args map { a => expr(a.value) })))
                 case _ => 
                     None
             }
@@ -428,11 +427,7 @@ object ASTToCFG {
                             Emit.statement(CFG.Assign(v, CFG.Constant(GlobalSymbols.lookupOrRegisterConstant(id)).setPos(ex)).setPos(ex))
 
                         case AST.ClassConstant(cl, id) =>
-                            cl match {
-                                // TODO
-                                case _ =>
-                                    Emit.statement(CFG.Assign(v, CFG.VariableClassConstant(cl, id).setPos(ex)).setPos(ex))
-                            }
+                            Emit.statement(CFG.Assign(v, CFG.ClassConstant(resolveClassRef(cl), id).setPos(ex)).setPos(ex))
 
                         case AST.Cast(typ, e) =>
                             Emit.statement(CFG.Assign(v, CFG.Cast(typ, expr(e)).setPos(ex)).setPos(ex))
