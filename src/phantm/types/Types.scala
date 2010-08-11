@@ -271,11 +271,6 @@ class TRealObject(val fields: Map[String, Type],
 
         if (RecProtection.objectToStringDepth < 2) {
             r = r+"["+((fields.map(x => x._1 +" => "+ x._2).toList ::: "? -> "+globalType :: Nil).mkString("; "))+"]"
-            ct match {
-                case TClass(cs) =>
-                    r = r+"["+(cs.methods.map(x => x._1+": "+x._2.ftyps.mkString("{", ",", "}")).mkString("; "))+"]"
-                case _ =>
-            }
         } else {
             r = r+"[...]"
         }
