@@ -45,11 +45,8 @@ object TypeAnalyzingPhase extends Phase {
             }
 
             def displaySummary(fs: FunctionSymbol, noticesCount: Int, name: String) = {
-                val lineCount = fs.line_end-fs.line+1;
                 val isAnnotated = SourceAnnotations.Parser.isAnnotated(fs.comment.getOrElse(""))
-                printf(" %3d | %3d | %.2f | %3s | %3s | %-50s | %s \n", noticesCount,
-                                                                  lineCount,
-                                                                  noticesCount*1.0/lineCount,
+                printf(" %3d | %3s | %3s | %-50s | %s \n", noticesCount,
                                                                   if (isAnnotated) "yes" else "no",
                                                                   if (fs.shouldInline) "yes" else "no",
                                                                   name,

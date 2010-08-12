@@ -7,7 +7,6 @@ This is a list of the general TODO items that should be done for phantm:
 * Analyze catch blocks
 * Support for execptions analysis
 * Support for interfaces analysis
-* Support for static methods
-* Improved prototype resolver
+* Dynamic function calls could be resolved during dataflow
 * ...
 

@@ -141,16 +141,12 @@ class Reporter(mainFiles: List[String]) {
                         var indent: String = ""
                         for(i <- 0 until pos.col) indent = indent + " ";
 
-                        val size = if (pos.line == pos.line_end) {
-                            if (pos.col_end > s.length) {
-                                s.length - pos.col
-                            } else {
-                                pos.col_end - pos.col
-                            }
-                        } else if (pos.line < pos.line_end) {
+                        val size = if (pos.length < 1) {
+                            1
+                        } else if (pos.col+pos.length > s.length) {
                             s.length - pos.col
                         } else {
-                            1
+                            pos.length
                         }
 
                         if (Settings.get.format != "termbg") {

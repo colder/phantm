@@ -40,6 +40,18 @@ public final class ParseNode {
     public boolean isToken() { return isToken; }
     public List<ParseNode> children() { return children; }
 
+    public int length() {
+        if (isToken) {
+            return tokenContent.length();
+        } else {
+            int res = 0;
+            for (ParseNode child : children) {
+                res += child.length();
+            }
+            return res;
+        }
+    }
+
     public void parentIs(ParseNode node) {
         parent = node;
     }

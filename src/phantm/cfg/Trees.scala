@@ -125,19 +125,19 @@ object Trees {
   case class ClassConstant(cl: ClassRef, name: AST.Identifier) extends SimpleValue
 
   case class Ternary(cond: SimpleValue,
-                         then: SimpleValue,
-                         elze: SimpleValue) extends SimpleValue
+                     then: SimpleValue,
+                     elze: SimpleValue) extends SimpleValue
 
   case class FunctionCall(id: AST.Identifier,
-                             params: List[SimpleValue]) extends SimpleValue
+                          params: List[SimpleValue]) extends SimpleValue
 
   case class StaticMethodCall(cl: ClassRef,
-                                 id: AST.Identifier,
-                                 params: List[SimpleValue]) extends SimpleValue
+                              id: AST.Identifier,
+                              params: List[SimpleValue]) extends SimpleValue
 
   case class MethodCall(receiver: SimpleValue,
-                                 id: AST.Identifier,
-                                 params: List[SimpleValue]) extends SimpleValue
+                        id: AST.Identifier,
+                        params: List[SimpleValue]) extends SimpleValue
 
   case class New(cl: ClassRef, params: List[SimpleValue]) extends SimpleValue
   case class Clone(obj: SimpleValue) extends SimpleValue

@@ -85,8 +85,7 @@ case class STToAST(parser: Parser, st: ParseNode) {
                 parser.clearPreviousComment(cd.last)
                 (st._1, st._2, st._3, st._4:::cd)
             case List("method_modifiers", "T_FUNCTION", "is_reference", "T_STRING", "T_OPEN_BRACES", "parameter_list", "T_CLOSE_BRACES", "method_body") =>
-                val pos = new Position().setPos(child(n,3));
-                val endpos = new Position().setPos(child(n,7));
+                val pos = new Position().setPos(n);
                 val com = parser.getPreviousComment(pos);
 
                 var md = MethodDecl(identifier(child(n, 3)),
@@ -94,9 +93,6 @@ case class STToAST(parser: Parser, st: ParseNode) {
                                     parameter_list(child(n, 5)),
                                     is_reference(child(n, 2)),
                                     method_body(child(n, 7))).setPos(pos).attachComment(com);
-
-                md.line_end = endpos.line_end;
-                md.col_end  = endpos.col_end;
 
                 (st._1:::List(md), st._2, st._3, st._4)
         }
@@ -750,13 +746,10 @@ case class STToAST(parser: Parser, st: ParseNode) {
     def function_declaration_statement(n: ParseNode): FunctionDecl = {
         childrenNames(n) match {
             case List("T_FUNCTION", "is_reference", "T_STRING", "T_OPEN_BRACES", "parameter_list", "T_CLOSE_BRACES", "T_OPEN_CURLY_BRACES", "inner_statement_list", "T_CLOSE_CURLY_BRACES") =>
-                val pos = new Position().setPos(child(n, 2));
-                val endpos = new Position().setPos(child(n, 8));
+                val pos = new Position().setPos(n);
                 val com = parser.getPreviousComment(pos);
 
                 val fd = FunctionDecl(identifier(child(n, 2)), parameter_list(child(n, 4)), is_reference(child(n, 1)), inner_statement_list(child(n, 7))).setPos(pos).attachComment(com)
-                fd.col_end  = endpos.col;
-                fd.line_end = endpos.line;
                 fd
         }
     }
@@ -1296,9 +1289,9 @@ case class STToAST(parser: Parser, st: ParseNode) {
             case List("T_VARIABLE") =>
                 t_variable(child(n))
             case List("T_VARIABLE", "T_OPEN_RECT_BRACES", "encaps_var_offset", "T_CLOSE_RECT_BRACES") =>
-                ArrayEntry(t_variable(child(n, 0)), encaps_var_offset(child(n, 2))).setPos(child(n, 0))
+                ArrayEntry(t_variable(child(n, 0)), encaps_var_offset(child(n, 2))).setPos(n)
             case List("T_VARIABLE", "T_OBJECT_OPERATOR", "T_STRING") =>
-                ObjectProperty(t_variable(child(n, 0)), identifier(child(n, 2))).setPos(child(n, 0))
+                ObjectProperty(t_variable(child(n, 0)), identifier(child(n, 2))).setPos(n)
             case List("T_DOLLAR_OPEN_CURLY_BRACES", "expr", "T_CLOSE_CURLY_BRACES") =>
                 VariableVariable(expr(child(n, 1))).setPos(child(n, 1))
             case List("T_DOLLAR_OPEN_CURLY_BRACES", "T_STRING_VARNAME", "T_OPEN_RECT_BRACES", "expr", "T_CLOSE_RECT_BRACES", "T_CLOSE_CURLY_BRACES") =>
