@@ -1026,8 +1026,18 @@ case class TypeTransferFunction(silent: Boolean,
 
                     }
 
+                    val gr = ctx.results
+
                     if (sym.shouldInline) {
-                        getInlinedRetType(fcall_params.map(typeFromSV(_)))
+                        if (!(gr.inlineStack contains sym)) {
+                            gr.inlineStack += sym
+                            val r = getInlinedRetType(fcall_params.map(typeFromSV(_)))
+                            gr.inlineStack -= sym
+                            r
+                        } else {
+                            notice("Cyclic inlining detected, falling back to specified return type.", pos)
+                            tf.ret
+                        }
                     } else {
                         tf.ret
                     }

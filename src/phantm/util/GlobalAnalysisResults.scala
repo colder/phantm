@@ -9,4 +9,5 @@ class GlobalAnalysisResults {
     var endGlobals: Option[TypeEnvironment] = None
     var reachableFromMain: Map[FunctionSymbol, Set[FunctionSymbol]] = Map().withDefaultValue(Set())
     var summary: Map[FunctionSymbol, Int] = Map()
+    var inlineStack: Set[FunctionSymbol] = Set()
 }
