@@ -1,6 +1,6 @@
 partial: scalafiles
 
-all: setup cup jflex javafiles scalafiles
+all: setup cup jflex javafiles rebuild
 
 complete: setup build_cup all
 
