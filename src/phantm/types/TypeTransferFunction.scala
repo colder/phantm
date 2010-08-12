@@ -861,7 +861,7 @@ case class TypeTransferFunction(silent: Boolean,
                             case TAnyObject =>
                                 // We need to create one object here
                                 var id = new ObjectId(obj.uniqueID, ObjectIdUse)
-                                var ro = new TRealObject(Map(), TTop, false, TAnyClass).injectField(prop, typ, false)
+                                var ro = new TRealObject(Map(), TTop, true, TAnyClass).injectField(prop, typ, false)
                                 env = env.setObject(id, ro)
                                 new TObjectRef(id)
 
