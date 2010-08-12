@@ -1289,16 +1289,18 @@ case class STToAST(parser: Parser, st: ParseNode) {
             case List("T_VARIABLE") =>
                 t_variable(child(n))
             case List("T_VARIABLE", "T_OPEN_RECT_BRACES", "encaps_var_offset", "T_CLOSE_RECT_BRACES") =>
-                ArrayEntry(t_variable(child(n, 0)), encaps_var_offset(child(n, 2))).setPos(n)
+                ArrayEntry(t_variable(child(n, 0)), encaps_var_offset(child(n, 2)))
             case List("T_VARIABLE", "T_OBJECT_OPERATOR", "T_STRING") =>
-                ObjectProperty(t_variable(child(n, 0)), identifier(child(n, 2))).setPos(n)
+                ObjectProperty(t_variable(child(n, 0)), identifier(child(n, 2)))
+            case List("T_DOLLAR_OPEN_CURLY_BRACES", "T_STRING_VARNAME", "T_CLOSE_CURLY_BRACES") =>
+                SimpleVariable(identifier(child(n, 1)))
             case List("T_DOLLAR_OPEN_CURLY_BRACES", "expr", "T_CLOSE_CURLY_BRACES") =>
-                VariableVariable(expr(child(n, 1))).setPos(child(n, 1))
+                VariableVariable(expr(child(n, 1)))
             case List("T_DOLLAR_OPEN_CURLY_BRACES", "T_STRING_VARNAME", "T_OPEN_RECT_BRACES", "expr", "T_CLOSE_RECT_BRACES", "T_CLOSE_CURLY_BRACES") =>
                 ArrayEntry(SimpleVariable(identifier(child(n, 1))).setPos(child(n, 1)), expr(child(n, 3)))
             case List("T_CURLY_OPEN", "variable", "T_CLOSE_CURLY_BRACES") =>
                 variable(child(n, 1))
-        }).setPos(child(n, 0))
+        }).setPos(n)
     }
 
     def identifier(n: ParseNode): Identifier = {

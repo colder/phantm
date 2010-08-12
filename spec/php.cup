@@ -862,8 +862,7 @@ static_class_constant ::=
 ;
 
 scalar ::=
-      T_STRING_VARNAME
-    | class_constant
+      class_constant
     | namespace_name
     | T_NAMESPACE T_NS_SEPARATOR namespace_name
     | T_NS_SEPARATOR namespace_name
@@ -1084,6 +1083,7 @@ encaps_var ::=
       T_VARIABLE
     | T_VARIABLE T_OPEN_RECT_BRACES encaps_var_offset T_CLOSE_RECT_BRACES
     | T_VARIABLE T_OBJECT_OPERATOR T_STRING
+    | T_DOLLAR_OPEN_CURLY_BRACES T_STRING_VARNAME T_CLOSE_CURLY_BRACES
     | T_DOLLAR_OPEN_CURLY_BRACES expr T_CLOSE_CURLY_BRACES
     | T_DOLLAR_OPEN_CURLY_BRACES T_STRING_VARNAME T_OPEN_RECT_BRACES expr T_CLOSE_RECT_BRACES T_CLOSE_CURLY_BRACES
     | T_CURLY_OPEN variable T_CLOSE_CURLY_BRACES
