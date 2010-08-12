@@ -51,6 +51,16 @@ trait Positional {
         this
     }
 
+    def setPosBetween(from: Positional, to: Positional): self.type = {
+        setPos(from)
+        if (from.line != to.line) {
+            length = -1;
+        } else {
+            length = to.col-from.col;
+        }
+        this
+    }
+
     def setPos(p: Positional): self.type = {
         line   = p.line
         col    = p.col

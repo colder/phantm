@@ -965,28 +965,28 @@ case class STToAST(parser: Parser, st: ParseNode) {
         var ex = baseex
         for(oa <- oaList) {
             oa match {
-                case OAIdentifier(id) => ex = ObjectProperty(ex, id).setPos(id)
+                case OAIdentifier(id) => ex = ObjectProperty(ex, id).setPosBetween(ex, oa)
                 case OAArray(array, indexes) =>
                     array match {
                         case id @ OAIdentifier(name) =>
-                            ex = ObjectProperty(ex, name).setPos(id)
+                            ex = ObjectProperty(ex, name).setPosBetween(ex, oa)
                         case _ =>
                     }
                     for(id <- indexes) id match {
-                        case Some(i) => ex = ArrayEntry(ex, i).setPos(ex)
-                        case None => ex = NextArrayEntry(ex).setPos(ex)
+                        case Some(i) => ex = ArrayEntry(ex, i).setPosBetween(ex, oa) // TODO: Fix precision
+                        case None => ex = NextArrayEntry(ex).setPosBetween(ex, oa)
                     }
-                case OAExpression(exp) => ex = DynamicObjectProperty(ex, exp).setPos(ex)
+                case OAExpression(exp) => ex = DynamicObjectProperty(ex, exp).setPosBetween(ex, oa)
                 case OAMethod(name, args) => name match {
-                    case OAIdentifier(id) => ex = MethodCall(ex, StaticMethodRef(id).setPos(id), args).setPos(id)
-                    case OAExpression(e)  => ex = MethodCall(ex, DynamicMethodRef(e).setPos(e), args).setPos(ex)
+                    case OAIdentifier(id) => ex = MethodCall(ex, StaticMethodRef(id).setPos(id), args).setPosBetween(ex, oa)
+                    case OAExpression(e)  => ex = MethodCall(ex, DynamicMethodRef(e).setPos(e), args).setPosBetween(ex, oa)
                     case OAArray(array, indexes) =>  {
                         for(id <- indexes) id match {
-                            case Some(i) => ex = ArrayEntry(ex, i).setPos(ex)
-                            case None => ex = NextArrayEntry(ex).setPos(ex)
+                            case Some(i) => ex = ArrayEntry(ex, i).setPosBetween(ex, name) // TODO: Fix precision
+                            case None => ex = NextArrayEntry(ex).setPosBetween(ex, name)
                         }
 
-                        ex = FunctionCall(DynamicFunctionRef(ex).setPos(ex), args).setPos(ex)
+                        ex = FunctionCall(DynamicFunctionRef(ex).setPos(ex), args).setPosBetween(ex, oa)
                     }
                 }
             }

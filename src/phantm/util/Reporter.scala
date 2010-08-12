@@ -141,11 +141,11 @@ class Reporter(mainFiles: List[String]) {
                         var indent: String = ""
                         for(i <- 0 until pos.col) indent = indent + " ";
 
-                        val size = if (pos.length < 1) {
-                            1
-                        } else if (pos.col+pos.length > s.length) {
+                        val size = if (pos.length < 0 || pos.col+pos.length > s.length) {
                             s.length - pos.col
-                        } else {
+                        } else if (pos.length < 1) {
+                            1
+                        } else  {
                             pos.length
                         }
 
