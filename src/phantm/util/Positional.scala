@@ -46,7 +46,7 @@ trait Positional {
         file = Some(pLeft.file)
 
         // Then, we calculate the length of the parsenode
-        length = p.length()
+        length = p.columnEnd()-pLeft.column
 
         this
     }
