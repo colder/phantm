@@ -17,7 +17,8 @@ case class TypeFlowAnalyzer(cfg: ControlFlowGraph,
                             ctx: PhasesContext,
                             inlined: Boolean = false,
                             collectGlobals: Boolean = false,
-                            baseEnvInit: TypeEnvironment = new TypeEnvironment) {
+                            baseEnvInit: TypeEnvironment = new TypeEnvironment,
+                            thisObj: Option[TObjectRef] = None) {
 
     type Vertex = VertexImp[Statement]
 
@@ -65,9 +66,13 @@ case class TypeFlowAnalyzer(cfg: ControlFlowGraph,
         // for methods, we inject $this as its always defined
         scope match {
             case ms: MethodSymbol =>
-                // $this is a singleton object
-                baseEnv = baseEnv.setStore(baseEnv.store.initIfNotExist(ObjectId(-1, ObjectIdUse), Some(ms.cs)))
-                injectPredef("this", new TObjectRef(ObjectId(-1, ObjectIdUse)))
+                if (thisObj.isEmpty) {
+                    // $this is a singleton object
+                    baseEnv = baseEnv.setStore(baseEnv.store.initIfNotExist(ObjectId(-1, ObjectIdUse), Some(ms.cs)))
+                    injectPredef("this", new TObjectRef(ObjectId(-1, ObjectIdUse)))
+                } else {
+                    injectPredef("this", thisObj.get)
+                }
             case _ =>
         }
 
