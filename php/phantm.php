@@ -104,11 +104,11 @@ function phantm_dumpanddie(array $vars) {
     $allConsts = get_defined_constants(true);
 
     $consts = !empty($allConsts['user']) ? $allConsts['user'] : array();
-    fwrite($fh, strtr(serialize($consts), array("\\" => "\\\\", "\n" => "\\n"))."\n");
+    fwrite($fh, strtr(serialize($consts), array("\\" => "\\\\", "\n" => "\\n", "\r" => "\\r"))."\n");
 
     fwrite($fh, "# Heap state:\n");
     unset($vars['GLOBALS']);
-    fwrite($fh, strtr(serialize($vars), array("\\" => "\\\\", "\n" => "\\n"))."\n");
+    fwrite($fh, strtr(serialize($vars), array("\\" => "\\\\", "\n" => "\\n", "\r" => "\\r"))."\n");
     fclose($fh);
 
     copy($path, "last.dump");
