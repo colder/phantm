@@ -224,8 +224,8 @@ abstract class LabeledDirectedGraphImp[LabelType] extends LabeledDirectedGraph[L
  
     emit("digraph D {\n")
     emit(" label=\""+title+"\"\n")
-    emit(" entry [color=darkolivegreen1,style=filled];\n")
-    emit(" exit [color=orangered1,style=filled];\n")
+    //emit(" entry [color=darkolivegreen1,style=filled];\n")
+    //emit(" exit [color=orangered1,style=filled];\n")
 
     edges.foreach(edge => {
       arrow(edge.v1.name, edge.name)

@@ -71,6 +71,7 @@ case class CallGraphGeneration(node: Tree,
         type AVertex = Option[FunctionSymbol]
 
         val entry = newVertex
+        entry.name ="\"[main]\""
 
         var mainCallPositions = Map[FunctionSymbol, Set[Positional]]().withDefaultValue(Set())
 
@@ -82,7 +83,7 @@ case class CallGraphGeneration(node: Tree,
                 case Some(v) => v
                 case None =>
                     val v = newVertex
-                    v.name = osym.map(_.name).getOrElse("<main>")
+                    v.name = osym.map(_.name).getOrElse("??")
                     osymToV += (osym -> v)
                     vToOsym += (v -> osym)
                     v
