@@ -38,7 +38,7 @@ object TypeAnalyzingPhase extends Phase {
 
             def limitFileName(s: String) = {
                 if (s.length > 30) {
-                    "..."+s.substring(s.length-30, s.length-1)
+                    "..."+s.substring(s.length-30, s.length)
                 } else {
                     s
                 }

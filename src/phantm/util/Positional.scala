@@ -28,28 +28,21 @@ trait Positional {
     }
 
     def setPos(p: ParseNode): self.type = {
-        import Math.max
+        val file_n = p.fileStart()
 
-        // First, we get the left-most token
-        var pLeft = p
-        var continue = true;
-        while (continue && !pLeft.isToken) {
-            val lst = pLeft.children()
-            if (lst.size() == 0) {
-                continue = false
-            } else {
-                pLeft = pLeft.children().get(0);
-            }
+        if (file_n == null) {
+            file = None
+        } else {
+            file = Some(file_n)
         }
-        line = pLeft.line
-        col = pLeft.column
-        file = Some(pLeft.file)
 
-        // Then, we calculate the length of the parsenode
-        val res = p.lineColumnEnd()
+        val resStart = p.lineColumnStart()
+        line = resStart(0)
+        col  = resStart(1)
 
-        line_end = res(0)
-        col_end  = res(1)
+        val resEnd   = p.lineColumnEnd()
+        line_end = resEnd(0)
+        col_end  = resEnd(1)
 
         this
     }

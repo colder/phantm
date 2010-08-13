@@ -40,6 +40,41 @@ public final class ParseNode {
     public boolean isToken() { return isToken; }
     public List<ParseNode> children() { return children; }
 
+    public String fileStart() {
+        Stack<ParseNode> stack = new Stack<ParseNode>();
+        stack.push(this);
+        while(stack.size() > 0) {
+            ParseNode el = stack.pop();
+            if (el.isToken) {
+                return el.tokenFile;
+            } else {
+                for (ParseNode child : el.children) {
+                    stack.push(child);
+                }
+            }
+        }
+        return null;
+    }
+
+    public int[] lineColumnStart() {
+        int[] res = {-1, -1};
+
+        if (isToken) {
+            res[0] = tokenLine;
+            res[1] = tokenColumn;
+            return res;
+        } else {
+            for (ParseNode child : children) {
+                int[] r = child.lineColumnStart();
+                if (r[0] >= 0) {
+                    if ((res[0] == -1) || (r[0] < res[0]) || (r[0] == res[0] && r[1] < res[1])) {
+                        res = r;
+                    }
+                }
+            }
+            return res;
+        }
+    }
     public int[] lineColumnEnd() {
         int[] res = new int[2];
         if (isToken) {

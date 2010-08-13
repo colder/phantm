@@ -95,7 +95,6 @@ case class STToAST(parser: Parser, st: ParseNode) {
                                     method_body(child(n, 7))).setPos(pos).attachComment(com);
 
                 println(pos);
-                println(md.getPos);
                 (st._1:::List(md), st._2, st._3, st._4)
         }
     }
