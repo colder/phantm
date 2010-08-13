@@ -225,7 +225,7 @@ class Unserializer(content: String) {
                 val size = consumeInt
                 chars = chars.drop(2) // consume the extra ":{"
                 for (e <- 1 to size) {
-                     val k = unser(false)
+                    val k = unser(false)
                     val v = unser(true)
                     map += (k -> v)
                 }

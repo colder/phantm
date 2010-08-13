@@ -14,24 +14,30 @@ case class DumpCollector(path: String) {
     var classes: Map[String, (String, Int)]   = Map()
 
     def restore(str: String): String = {
-        var res = ""
+        var res = new java.lang.StringBuffer(str.length)
 
-        var arr = str.toList
+        var arr = str.toArray
 
-        while(arr != Nil) arr match {
-            case '\\' :: '\\' :: xs =>
-                arr = xs
-                res += '\\'
-            case '\\' :: 'n' :: xs =>
-                arr = xs
-                res += '\n'
-            case c :: xs =>
-                arr = xs
-                res += c
-            case Nil =>
+        var i = 0;
+
+        while(i < arr.length) {
+            if (arr(i) == '\\') {
+                i += 1
+
+                if (arr(i) == 'n') {
+                    res.append('\n')
+                } else if (arr(i) == 'r') {
+                    res.append('\r')
+                } else {
+                    res.append('\\')
+                }
+            } else {
+                res.append(arr(i))
+            }
+            i += 1
         }
 
-        res
+        res.toString
     }
 
     breakable {
