@@ -46,11 +46,14 @@ object TypeAnalyzingPhase extends Phase {
 
             def displaySummary(fs: FunctionSymbol, noticesCount: Int, name: String) = {
                 val isAnnotated = SourceAnnotations.Parser.isAnnotated(fs.comment.getOrElse(""))
-                printf(" %3d | %3s | %3s | %-50s | %s \n", noticesCount,
-                                                                  if (isAnnotated) "yes" else "no",
-                                                                  if (fs.shouldInline) "yes" else "no",
-                                                                  name,
-                                                                  limitFileName(fs.file.map(f => f+":"+fs.line).getOrElse("-- no file --")));
+                val linesCount = fs.line_end - fs.line + 1
+                printf(" %3d | %3d | %.2f | %3s | %3s | %-50s | %s \n", noticesCount,
+                                                                        linesCount,
+                                                                        noticesCount*1.0/linesCount,
+                                                                        if (isAnnotated) "yes" else "no",
+                                                                        if (fs.shouldInline) "yes" else "no",
+                                                                        name,
+                                                                        limitFileName(fs.file.map(f => f+":"+fs.line).getOrElse("-- no file --")));
             }
 
             for ((fs, nc) <- ctx.results.summary) {

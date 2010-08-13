@@ -38,7 +38,7 @@ class Parser(filename: String) {
             val r: ParseNode = p.parse().value.asInstanceOf[ParseNode];
 
             for (c <- JavaListIteratorWrapper[LexerComment](l.comments.iterator)) {
-                comments = (new Position().setPos(c.line, c.col, 1, c.filename), c.content) :: comments;
+                comments = (new Position().setPos(c.line, c.col, c.filename), c.content) :: comments;
             }
 
             comments = comments.reverse

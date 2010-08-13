@@ -40,14 +40,16 @@ public final class ParseNode {
     public boolean isToken() { return isToken; }
     public List<ParseNode> children() { return children; }
 
-    public int columnEnd() {
+    public int[] lineColumnEnd() {
+        int[] res = new int[2];
         if (isToken) {
-            return tokenColumn+tokenContent.length();
+            res[0] = tokenLine;
+            res[1] = tokenColumn+tokenContent.length();
+            return res;
         } else {
-            int res = 0;
             for (ParseNode child : children) {
-                int r = child.columnEnd();
-                if (r > res) {
+                int[] r = child.lineColumnEnd();
+                if ((r[0] > res[0]) || (r[0] == res[0] && r[1] > res[1])) {
                     res = r;
                 }
             }

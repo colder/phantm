@@ -10,7 +10,8 @@ trait Positional {
 
     var line: Int = -1;
     var col: Int = -1;
-    var length: Int = 1;
+    var line_end: Int = -1;
+    var col_end: Int = -1;
     var file: Option[String] = None;
 
     def < (p: Positional) = {
@@ -19,10 +20,9 @@ trait Positional {
 
     def getPos = file.getOrElse("<unknown>")+" line "+line+" column "+col;
 
-    def setPos(line: Int, col: Int, length: Int, file: String): self.type = {
+    def setPos(line: Int, col: Int, file: String): self.type = {
         this.line   = line;
         this.col    = col;
-        this.length = length;
         this.file = Some(file);
         this
     }
@@ -46,26 +46,27 @@ trait Positional {
         file = Some(pLeft.file)
 
         // Then, we calculate the length of the parsenode
-        length = p.columnEnd()-pLeft.column
+        val res = p.lineColumnEnd()
+
+        line_end = res(0)
+        col_end  = res(1)
 
         this
     }
 
     def setPosBetween(from: Positional, to: Positional): self.type = {
         setPos(from)
-        if (from.line != to.line) {
-            length = -1;
-        } else {
-            length = to.col-from.col;
-        }
+        line_end = to.line_end
+        col_end  = to.col_end
         this
     }
 
     def setPos(p: Positional): self.type = {
-        line   = p.line
-        col    = p.col
-        length = p.length
-        file   = p.file
+        line     = p.line
+        col      = p.col
+        line_end = p.line_end
+        col_end  = p.col_end
+        file     = p.file
         this
     }
 
