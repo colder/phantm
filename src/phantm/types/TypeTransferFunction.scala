@@ -186,7 +186,7 @@ case class TypeTransferFunction(silent: Boolean,
                                 val ft = new TFunction(args.map(a => (typeFromSV(a), false, false)), TBottom)
                                 AnnotationsStore.collectFunction(fs, ft);
                             }
-                            checkFCalls(fcall.params, fs, fcall)
+                            checkFCalls(fcall.params, fs, fcall, None)
                     case None =>
                         // handle special functions
                         id.value.toLowerCase match {
@@ -215,7 +215,7 @@ case class TypeTransferFunction(silent: Boolean,
                                             if (collectAnnotations) {
                                                 // TODO: Create a FunctionType and add it to the list of potential prototypes
                                             }
-                                            checkFCalls(args, ms, mcall)
+                                            checkFCalls(args, ms, mcall, Some(or))
                                         case LookupResult(Some(ms), vis, _) if cms.isEmpty =>
                                             notice("Can't access "+vis.get+" method '"+cs.name+"::"+id.value+"'", id)
                                             TBottom
@@ -225,7 +225,7 @@ case class TypeTransferFunction(silent: Boolean,
 
                                         case _ =>
                                             val ms = cms.get
-                                            checkFCalls(args, ms, mcall)
+                                            checkFCalls(args, ms, mcall, Some(or))
                                     }
                                 case TAnyClass =>
                                     // Name based resolution?
@@ -270,7 +270,7 @@ case class TypeTransferFunction(silent: Boolean,
                                 if (collectAnnotations) {
                                     // TODO: Create a FunctionType and add it to the list of potential prototypes
                                 }
-                                checkFCalls(args, ms, mcall)
+                                checkFCalls(args, ms, mcall, None)
                             case LookupResult(Some(ms), vis, _) if csms.isEmpty =>
                                 notice("Can't access "+vis.get+" static method '"+cs.name+"::"+id.value+"'", id)
                                 TBottom
@@ -280,7 +280,7 @@ case class TypeTransferFunction(silent: Boolean,
 
                             case _ =>
                                 val ms = csms.get
-                                checkFCalls(args, ms, mcall)
+                                checkFCalls(args, ms, mcall, None)
                         }
                     case None =>
                         TBottom
@@ -933,7 +933,7 @@ case class TypeTransferFunction(silent: Boolean,
             }
         }
 
-        def checkFCalls(fcall_params: List[SimpleValue], sym: FunctionSymbol, pos: Positional) : Type =  {
+        def checkFCalls(fcall_params: List[SimpleValue], sym: FunctionSymbol, pos: Positional, obj: Option[TObjectRef]) : Type =  {
             def protoErrors(ftyp: FunctionType): Int = {
                 ftyp match {
                     case tf: TFunction =>
@@ -982,7 +982,7 @@ case class TypeTransferFunction(silent: Boolean,
                         }
 
                         // analyze like usual
-                        val tfa = new TypeFlowAnalyzer(cfg, sym, ctx, true, false, new TypeEnvironment unionStore env.store)
+                        val tfa = new TypeFlowAnalyzer(cfg, sym, ctx, true, false, new TypeEnvironment unionStore env.store, obj)
                         val res = tfa.analyze
 
                         val rStore = res(cfg.exit).store
