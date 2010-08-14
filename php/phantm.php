@@ -75,7 +75,7 @@ function phantm_dumpanddie(array $vars) {
         $f = realpath($f);
         if (($f === __FILE__) || ($f === $file)) continue;
 
-        fwrite($fh, $f."\n");
+        fwrite($fh, filemtime($f).":".$f."\n");
     }
 
     fwrite($fh, "# Function declarations:\n");

@@ -43,7 +43,17 @@ case class DumpCollector(path: String) {
     breakable {
         for (l <- content.drop(lineNr)) {
             if (l.startsWith("#")) break
-            files = l :: files
+            l.split(":", 2).toList match {
+                case fmtime :: file :: Nil =>
+                    // Check timestamp against the file
+                    val f = new java.io.File(file)
+                    val t = f.lastModified/1000
+                    if (t > fmtime.toLong) {
+                        Reporter.notice("File '"+file+"' modified after dumping, could result is mismatched line numbers");
+                    }
+                    files = file :: files
+                case _ =>
+            }
         }
     }
 
