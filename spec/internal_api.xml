@@ -1812,8 +1812,6 @@
   <class name="DOMException">
    <fields>
     <field name="message" visibility="protected"><type name="any" /></field>
-
-Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in /home/colder/git/phpanalysis/import_classes.php on line 17
     <field name="code" visibility="public"><type name="NULL" /></field>
     <field name="file" visibility="protected"><type name="any" /></field>
     <field name="line" visibility="protected"><type name="any" /></field>
@@ -6111,8 +6109,6 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
   </class>
   <class name="RegexIterator">
    <fields>
-
-Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in /home/colder/git/phpanalysis/import_classes.php on line 17
     <field name="replacement" visibility="public"><type name="NULL" /></field>
    </fields>
    <staticfields>
@@ -6208,8 +6204,6 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
   </class>
   <class name="RecursiveRegexIterator">
    <fields>
-
-Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in /home/colder/git/phpanalysis/import_classes.php on line 17
     <field name="replacement" visibility="public"><type name="NULL" /></field>
    </fields>
    <staticfields>
@@ -8948,11 +8942,7 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
   </class>
   <class name="php_user_filter">
    <fields>
-
-Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in /home/colder/git/phpanalysis/import_classes.php on line 17
     <field name="filtername" visibility="public"><type name="NULL" /></field>
-
-Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in /home/colder/git/phpanalysis/import_classes.php on line 17
     <field name="params" visibility="public"><type name="NULL" /></field>
    </fields>
    <staticfields>
@@ -9092,8 +9082,6 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
   </class>
   <class name="ReflectionFunctionAbstract">
    <fields>
-
-Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in /home/colder/git/phpanalysis/import_classes.php on line 17
     <field name="name" visibility="public"><type name="NULL" /></field>
    </fields>
    <staticfields>
@@ -9190,8 +9178,6 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
   </class>
   <class name="ReflectionFunction">
    <fields>
-
-Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in /home/colder/git/phpanalysis/import_classes.php on line 17
     <field name="name" visibility="public"><type name="NULL" /></field>
    </fields>
    <staticfields>
@@ -9319,8 +9305,6 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
   </class>
   <class name="ReflectionParameter">
    <fields>
-
-Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in /home/colder/git/phpanalysis/import_classes.php on line 17
     <field name="name" visibility="public"><type name="NULL" /></field>
    </fields>
    <staticfields>
@@ -9412,11 +9396,7 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
   </class>
   <class name="ReflectionMethod">
    <fields>
-
-Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in /home/colder/git/phpanalysis/import_classes.php on line 17
     <field name="name" visibility="public"><type name="NULL" /></field>
-
-Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in /home/colder/git/phpanalysis/import_classes.php on line 17
     <field name="class" visibility="public"><type name="NULL" /></field>
    </fields>
    <staticfields>
@@ -9603,8 +9583,6 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
   </class>
   <class name="ReflectionClass">
    <fields>
-
-Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in /home/colder/git/phpanalysis/import_classes.php on line 17
     <field name="name" visibility="public"><type name="NULL" /></field>
    </fields>
    <staticfields>
@@ -9844,8 +9822,6 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
   </class>
   <class name="ReflectionObject">
    <fields>
-
-Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in /home/colder/git/phpanalysis/import_classes.php on line 17
     <field name="name" visibility="public"><type name="NULL" /></field>
    </fields>
    <staticfields>
@@ -10085,11 +10061,7 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
   </class>
   <class name="ReflectionProperty">
    <fields>
-
-Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in /home/colder/git/phpanalysis/import_classes.php on line 17
     <field name="name" visibility="public"><type name="NULL" /></field>
-
-Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in /home/colder/git/phpanalysis/import_classes.php on line 17
     <field name="class" visibility="public"><type name="NULL" /></field>
    </fields>
    <staticfields>
@@ -10186,8 +10158,6 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
   </class>
   <class name="ReflectionExtension">
    <fields>
-
-Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in /home/colder/git/phpanalysis/import_classes.php on line 17
     <field name="name" visibility="public"><type name="NULL" /></field>
    </fields>
    <staticfields>
@@ -10271,8 +10241,6 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
     <field name="code" visibility="protected"><type name="any" /></field>
     <field name="file" visibility="protected"><type name="any" /></field>
     <field name="line" visibility="protected"><type name="any" /></field>
-
-Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in /home/colder/git/phpanalysis/import_classes.php on line 17
     <field name="errorInfo" visibility="public"><type name="NULL" /></field>
    </fields>
    <staticfields>
@@ -10511,8 +10479,6 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
   </class>
   <class name="PDOStatement">
    <fields>
-
-Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in /home/colder/git/phpanalysis/import_classes.php on line 17
     <field name="queryString" visibility="public"><type name="NULL" /></field>
    </fields>
    <staticfields>
@@ -11316,8 +11282,6 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
     <field name="code" visibility="protected"><type name="any" /></field>
     <field name="file" visibility="protected"><type name="any" /></field>
     <field name="line" visibility="protected"><type name="any" /></field>
-
-Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in /home/colder/git/phpanalysis/import_classes.php on line 17
     <field name="innerException" visibility="public"><type name="NULL" /></field>
    </fields>
    <staticfields>
@@ -11380,8 +11344,6 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
     <field name="code" visibility="protected"><type name="any" /></field>
     <field name="file" visibility="protected"><type name="any" /></field>
     <field name="line" visibility="protected"><type name="any" /></field>
-
-Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in /home/colder/git/phpanalysis/import_classes.php on line 17
     <field name="innerException" visibility="public"><type name="NULL" /></field>
    </fields>
    <staticfields>
@@ -11444,8 +11406,6 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
     <field name="code" visibility="protected"><type name="any" /></field>
     <field name="file" visibility="protected"><type name="any" /></field>
     <field name="line" visibility="protected"><type name="any" /></field>
-
-Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in /home/colder/git/phpanalysis/import_classes.php on line 17
     <field name="innerException" visibility="public"><type name="NULL" /></field>
    </fields>
    <staticfields>
@@ -11508,8 +11468,6 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
     <field name="code" visibility="protected"><type name="any" /></field>
     <field name="file" visibility="protected"><type name="any" /></field>
     <field name="line" visibility="protected"><type name="any" /></field>
-
-Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in /home/colder/git/phpanalysis/import_classes.php on line 17
     <field name="innerException" visibility="public"><type name="NULL" /></field>
    </fields>
    <staticfields>
@@ -11572,8 +11530,6 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
     <field name="code" visibility="protected"><type name="any" /></field>
     <field name="file" visibility="protected"><type name="any" /></field>
     <field name="line" visibility="protected"><type name="any" /></field>
-
-Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in /home/colder/git/phpanalysis/import_classes.php on line 17
     <field name="innerException" visibility="public"><type name="NULL" /></field>
    </fields>
    <staticfields>
@@ -11636,8 +11592,6 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
     <field name="code" visibility="protected"><type name="any" /></field>
     <field name="file" visibility="protected"><type name="any" /></field>
     <field name="line" visibility="protected"><type name="any" /></field>
-
-Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in /home/colder/git/phpanalysis/import_classes.php on line 17
     <field name="innerException" visibility="public"><type name="NULL" /></field>
    </fields>
    <staticfields>
@@ -11700,8 +11654,6 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
     <field name="code" visibility="protected"><type name="any" /></field>
     <field name="file" visibility="protected"><type name="any" /></field>
     <field name="line" visibility="protected"><type name="any" /></field>
-
-Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in /home/colder/git/phpanalysis/import_classes.php on line 17
     <field name="innerException" visibility="public"><type name="NULL" /></field>
    </fields>
    <staticfields>
@@ -11764,8 +11716,6 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
     <field name="code" visibility="protected"><type name="any" /></field>
     <field name="file" visibility="protected"><type name="any" /></field>
     <field name="line" visibility="protected"><type name="any" /></field>
-
-Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in /home/colder/git/phpanalysis/import_classes.php on line 17
     <field name="innerException" visibility="public"><type name="NULL" /></field>
    </fields>
    <staticfields>
@@ -11828,8 +11778,6 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
     <field name="code" visibility="protected"><type name="any" /></field>
     <field name="file" visibility="protected"><type name="any" /></field>
     <field name="line" visibility="protected"><type name="any" /></field>
-
-Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in /home/colder/git/phpanalysis/import_classes.php on line 17
     <field name="innerException" visibility="public"><type name="NULL" /></field>
    </fields>
    <staticfields>
@@ -11892,8 +11840,6 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
     <field name="code" visibility="protected"><type name="any" /></field>
     <field name="file" visibility="protected"><type name="any" /></field>
     <field name="line" visibility="protected"><type name="any" /></field>
-
-Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in /home/colder/git/phpanalysis/import_classes.php on line 17
     <field name="innerException" visibility="public"><type name="NULL" /></field>
    </fields>
    <staticfields>
@@ -11956,8 +11902,6 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
     <field name="code" visibility="protected"><type name="any" /></field>
     <field name="file" visibility="protected"><type name="any" /></field>
     <field name="line" visibility="protected"><type name="any" /></field>
-
-Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in /home/colder/git/phpanalysis/import_classes.php on line 17
     <field name="innerException" visibility="public"><type name="NULL" /></field>
    </fields>
    <staticfields>
@@ -12020,8 +11964,6 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
     <field name="code" visibility="protected"><type name="any" /></field>
     <field name="file" visibility="protected"><type name="any" /></field>
     <field name="line" visibility="protected"><type name="any" /></field>
-
-Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in /home/colder/git/phpanalysis/import_classes.php on line 17
     <field name="innerException" visibility="public"><type name="NULL" /></field>
    </fields>
    <staticfields>
@@ -12084,8 +12026,6 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
     <field name="code" visibility="protected"><type name="any" /></field>
     <field name="file" visibility="protected"><type name="any" /></field>
     <field name="line" visibility="protected"><type name="any" /></field>
-
-Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in /home/colder/git/phpanalysis/import_classes.php on line 17
     <field name="innerException" visibility="public"><type name="NULL" /></field>
    </fields>
    <staticfields>
@@ -12148,8 +12088,6 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
     <field name="code" visibility="protected"><type name="any" /></field>
     <field name="file" visibility="protected"><type name="any" /></field>
     <field name="line" visibility="protected"><type name="any" /></field>
-
-Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in /home/colder/git/phpanalysis/import_classes.php on line 17
     <field name="innerException" visibility="public"><type name="NULL" /></field>
    </fields>
    <staticfields>
@@ -12741,8 +12679,6 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
     <field name="putFile" visibility="private"><type name="any" /></field>
     <field name="putData" visibility="private"><type name="any" /></field>
     <field name="history" visibility="private"><type name="any" /></field>
-
-Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in /home/colder/git/phpanalysis/import_classes.php on line 17
     <field name="recordHistory" visibility="public"><type name="NULL" /></field>
    </fields>
    <staticfields>
@@ -13209,17 +13145,9 @@ Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in 
   </class>
   <class name="HttpRequestDataShare">
    <fields>
-
-Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in /home/colder/git/phpanalysis/import_classes.php on line 17
     <field name="cookie" visibility="public"><type name="NULL" /></field>
-
-Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in /home/colder/git/phpanalysis/import_classes.php on line 17
     <field name="dns" visibility="public"><type name="NULL" /></field>
-
-Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in /home/colder/git/phpanalysis/import_classes.php on line 17
     <field name="ssl" visibility="public"><type name="NULL" /></field>
-
-Warning: ReflectionProperty::getValue() expects exactly 1 parameter, 0 given in /home/colder/git/phpanalysis/import_classes.php on line 17
     <field name="connect" visibility="public"><type name="NULL" /></field>
    </fields>
    <staticfields>
