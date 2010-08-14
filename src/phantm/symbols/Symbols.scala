@@ -127,7 +127,7 @@ object GlobalSymbols extends Scope {
                   Reporter.notice("Potentially undefined constant", id)
               }
               val cs = new ConstantSymbol(id.value, Some(PHPString(id.value)))
-              cs.typ = TString
+              cs.typ = TStringLit(id.value)
 
               registerConstant(cs)
 

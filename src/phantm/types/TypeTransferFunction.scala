@@ -620,6 +620,7 @@ case class TypeTransferFunction(silent: Boolean,
 
                     var svtypCheck  = svvtyp
 
+
                     if (leq(svvtyp, svetyp)) {
                         vtyp
                     } else {
@@ -745,6 +746,10 @@ case class TypeTransferFunction(silent: Boolean,
                                     new TArray().setAny(TTop).inject(IntKey(v), ct)
                                 case TFloatLit(v) =>
                                     new TArray().setAny(TTop).inject(IntKey(v.toLong), ct)
+                                case TString =>
+                                    new TArray().setAnyString(ct)
+                                case t if leq(t, TInt union TFloat) =>
+                                    new TArray().setAnyInt(ct)
                                 case _ =>
                                     new TArray().setAny(ct)
                             }
