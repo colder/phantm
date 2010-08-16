@@ -72,6 +72,10 @@ case class ObjectIdTmp(val offset: Int) extends ObjectIdType {
     override def toString = "#"+offset
 }
 
+case class ObjectIdDump(val offset: Int) extends ObjectIdType {
+    override def toString = "#d"+offset
+}
+
 case class ObjectId(val pos: Int, val typ: ObjectIdType)
 
 // Stores the ref => Real Objects relashionship

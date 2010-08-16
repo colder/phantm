@@ -10,7 +10,7 @@ class UnserializeException(msg: String) extends Exception(msg)
 sealed abstract class UValue;
 
 case class UArray(var entries: Map[UValue, UValue]) extends UValue
-case class UObject(classname: String, var entries: Map[UValue, UValue]) extends UValue
+case class UObject(i: Int, classname: String, var entries: Map[UValue, UValue]) extends UValue
 case class UString(str: String) extends UValue
 case class UInt(v: Int) extends UValue
 case class UFloat(str: Float) extends UValue
@@ -23,6 +23,9 @@ case object UTrue extends UValue
 class Unserializer(content: String) {
     // allocate the first for the outer array
     var valueStore : List[UValue] = List(UNull)
+    var uidToOId: Map[Int, ObjectId] = Map()
+    var objectsStore: Map[ObjectId, TRealObject] = Map()
+
     var chars = content.toList
     var result: UValue = unser(true)
 
@@ -33,6 +36,12 @@ class Unserializer(content: String) {
 
     def getVal(i: Int): UValue = {
         valueStore(i)
+    }
+
+    def uValueToField(v: UValue) = v match {
+        case UString(str) => str
+        case _ =>
+            throw new UnserializeException("Invalid field value: "+v)
     }
 
     def uValueToKey(v: UValue) = v match {
@@ -61,7 +70,35 @@ class Unserializer(content: String) {
         case UInt(i) => TIntLit(i)
         case UString(v) => TStringLit(v)
         case UFloat(f) => TFloatLit(f)
-        case UObject(cl, entries) => TAnyObject
+        case UObject(i, cl, entries) =>
+            uidToOId.get(i) match {
+                case Some(id) =>
+                    new TObjectRef(id)
+                case None =>
+                    val id = new ObjectId(0, ObjectIdDump(i))
+                    uidToOId += i -> id
+
+                    val ct = GlobalSymbols.lookupClass(cl) match {
+                        case Some(cs) =>
+                            new TClass(cs)
+                        case None =>
+                            TAnyClass
+                    }
+
+                    var res = Map[String, Type]()
+
+                    for ((k, v) <- entries) {
+                        res += (uValueToField(k) -> uValueToType(v))
+                    }
+
+                    val ro = new TRealObject(res, TUninitialized, true, ct)
+
+                    objectsStore += id -> ro
+
+                    new TObjectRef(id)
+            }
+
+
         case UArray(entries) =>
             var res = Map[ArrayKey, Type]()
 
@@ -72,15 +109,13 @@ class Unserializer(content: String) {
             new TArray(res, TUninitialized, TUninitialized)
 
         case UObjRef(i) =>
-            recursionLimit += 1
-            val t = if (recursionLimit >= 5) {
-                TTop
-            } else {
-                uValueToType(getVal(i))
+            uidToOId.get(i) match {
+                case Some(oid) =>
+                    new TObjectRef(oid)
+                case _ =>
+                    throw new UnserializeException("Invalid object reference: "+v)
             }
-            recursionLimit -= 1
 
-            t
         case URealRef(i) =>
             recursionLimit += 1
             val t = if (recursionLimit >= 5) {
@@ -109,6 +144,13 @@ class Unserializer(content: String) {
 
             env = env.inject(Identifier(sym), t)
         }
+
+        var st = env.store
+        for ((id, ro) <- objectsStore) {
+            st = st.set(id, ro)
+        }
+        env = env.setStore(st)
+
         env
     }
 
@@ -201,7 +243,7 @@ class Unserializer(content: String) {
                 val cname = consumeString(cnsize)
                 chars = chars.tail // consume the :
 
-                val obj = UObject(cname, map)
+                val obj = UObject(valueStore.size, cname, map)
                 regVal(obj)
 
                 val size = consumeInt
