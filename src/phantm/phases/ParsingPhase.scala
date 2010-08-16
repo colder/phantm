@@ -9,13 +9,16 @@ object ParsingPhase extends Phase {
 
     def run(ctx: PhasesContext): PhasesContext = {
 
-        val sts = ctx.files map { f => val c = new Parser(f); (c, c parse) }
+        val sts = ctx.files map { f => val c = new Parser(f); (f, c, c parse) }
 
-        if (sts exists { _._2 == None} ) {
-            throw PhaseException(this, "Parsing failed")
+        val er = sts find { _._3 == None };
+
+        if (er != None) {
+            val e = er.get
+            throw PhaseException(this, "Parsing  of '"+e._1+"' failed")
         }
 
-        val asts = sts map { c => new STToAST(c._1, c._2.get) getAST }
+        val asts = sts map { c => new STToAST(c._2, c._3.get) getAST }
 
         val ast = asts.reduceLeft {(a,b) => a combine b}
 
