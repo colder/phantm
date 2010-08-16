@@ -43,7 +43,7 @@ class ASTCollector(functs: Map[String, (String, Int)],
 
     def visit(t: Tree): Boolean = {
         t match {
-            case FunctionCall(StaticFunctionRef(_, _, Identifier("phantm_dumpanddie")), _) =>
+            case FunctionCall(StaticFunctionRef(_, _, Identifier("phantm_collect_state")), _) =>
                 // found the call
                 afterDump = true
             case fd @ FunctionDecl(Identifier(name), _, _, _) if !afterDump =>
@@ -74,7 +74,7 @@ class ASTPruner(ast: Program) extends ASTTransform(ast) {
     override def trStmts(sts: List[Statement]): List[Statement] = super.trStmts(sts).filter(_ != Void())
 
     override def trStmt(st: Statement): Statement = st match {
-        case FunctionCall(StaticFunctionRef(_, _, Identifier("phantm_dumpanddie")), _) =>
+        case FunctionCall(StaticFunctionRef(_, _, Identifier("phantm_collect_state")), _) =>
             // found the call
             afterDump = true
             st

@@ -173,7 +173,7 @@ case class TypeTransferFunction(silent: Boolean,
                     case _ =>
                         TAnyObject
                 }
-            case FunctionCall(AST.Identifier("phantm_dumpanddie"), args) =>
+            case FunctionCall(AST.Identifier("phantm_collect_state"), args) =>
                 for (unser <- ctx.dumpedData) {
                     env = unser.heap.importToEnv(env)
                 }

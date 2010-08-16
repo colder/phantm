@@ -5,7 +5,7 @@
  * Dumps the state of all variables, so that it can be precisely imported
  * into phantm
  *
- * Call it like that: phantm_dumpanddie(get_defined_vars());
+ * Call it like that: phantm_collect_state(get_defined_vars());
  * @param string $path
  * @return string
  */
@@ -33,7 +33,7 @@ function phantm_incl($path) {
     return $path;
 }
 
-function phantm_dumpanddie(array $vars) {
+function phantm_collect_state(array $vars) {
 
     $bt = debug_backtrace();
     $file = $bt[0]['file'];
@@ -82,7 +82,7 @@ function phantm_dumpanddie(array $vars) {
 
     $funcs = get_defined_functions();
     foreach ($funcs['user'] as $f) {
-        if ($f == 'phantm_incl' || $f == 'phantm_dumpanddie') continue;
+        if ($f == 'phantm_incl' || $f == 'phantm_collect_state') continue;
 
         $rf = new ReflectionFunction($f);
 

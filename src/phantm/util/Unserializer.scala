@@ -166,7 +166,7 @@ class Unserializer(content: String) {
                     }
                 }
             case _ =>
-                throw new UnserializeException("Invalid non-array input for dumpanddie")
+                throw new UnserializeException("Invalid non-array base input found in dump")
         }
         map
     }
