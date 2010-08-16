@@ -90,7 +90,15 @@ class StronglyConnectedComponents[S](cfg: LabeledDirectedGraphImp[S]) {
         }
 
 
-        tarjan(cfg.entry)
+        var vertices = cfg.V.toSeq
+        while(!vertices.isEmpty) {
+            val node = vertices.head
+            vertices = vertices.tail
+
+            if (!(nodes contains node)) {
+                tarjan(node)
+            }
+        }
 
         // be blunt, traverse again to get adjacent SCC
         for(scc <- sccs) {
