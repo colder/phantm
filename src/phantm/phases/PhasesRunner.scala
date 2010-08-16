@@ -15,6 +15,7 @@ class PhasesRunner(val reporter: Reporter) {
         andThen SymbolsCollectionPhase
         andThen PureStatementsPhase
         andThen CallGraphPhase
+        andThen MethodGraphPhase
         andThen CFGGenerationPhase
         andThen TypeAnalyzingPhase
         andThen APIExportingPhase

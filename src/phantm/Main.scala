@@ -144,6 +144,9 @@ object Main {
             case "--exportcg" :: path :: xs =>
                 settings = settings.copy(exportCGPath = Some(path))
                 handleArgs(xs)
+            case "--exportmg" :: path :: xs =>
+                settings = settings.copy(exportMGPath = Some(path))
+                handleArgs(xs)
             case "--progress" :: xs =>
                 settings = settings.copy(displayProgress = true)
                 handleArgs(xs)
@@ -210,6 +213,8 @@ object Main {
         println("         --importAPI <paths>    Import additional APIs (a.xml:b.xml:...)")
         println("         --importDUMP <paths>   Import dump files (a.xml:b.xml:...)")
         println("         --exportAPI <path>     Use the type analysis to output a likely API")
+        println("         --exportCG <path>      Export the call graph in dot format to <path>")
+        println("         --exportMG <path>      Export the method inheritence graph in dot format to <path>")
         println("         --progress             Display analysis progress")
         println("         --inline <mode>        Perform function/method inlining, default is 'manual'")
         println("                                Mode: none     : no inlining")

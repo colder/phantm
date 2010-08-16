@@ -66,6 +66,11 @@ abstract class LabeledDirectedGraphImp[LabelType] extends LabeledDirectedGraph[L
     new Vertex("v" + counter)
   }
 
+  def +=(v: Vertex) = {
+    vertices += v
+  }
+
+
   def +=(from: Vertex, lab : LabelType, to: Vertex) = {
     val edge = EdgeImp[LabelType](from, lab, to)
     edges += edge
@@ -226,6 +231,10 @@ abstract class LabeledDirectedGraphImp[LabelType] extends LabeledDirectedGraph[L
     emit(" label=\""+title+"\"\n")
     //emit(" entry [color=darkolivegreen1,style=filled];\n")
     //emit(" exit [color=orangered1,style=filled];\n")
+
+    vertices.foreach(v => {
+        emit(v+";\n");
+    })
 
     edges.foreach(edge => {
       arrow(edge.v1.name, edge.name)

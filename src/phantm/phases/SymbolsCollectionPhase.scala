@@ -17,7 +17,7 @@ object SymbolsCollectionPhase extends Phase {
     def description = "Collecting symbols"
 
     def run(ctx: PhasesContext): PhasesContext = {
-        CollectSymbols(ctx.oast.get) execute;
+        CollectSymbols(ctx, ctx.oast.get) execute;
         ctx
     }
 
@@ -25,7 +25,7 @@ object SymbolsCollectionPhase extends Phase {
 
 case class SymContext(varScope: Scope, cl: Option[ClassSymbol], iface: Option[IfaceSymbol]);
 
-case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, SymContext(GlobalSymbols, None, None)) {
+case class CollectSymbols(globalctx: PhasesContext, node: Tree) extends ASTTraversal[SymContext](node, SymContext(GlobalSymbols, None, None)) {
     var classCycleDetectionSet = new HashSet[ClassDecl]
     var classesToPass = List[ClassDecl]()
     var classList: List[(ClassSymbol, ClassDecl)] = Nil
@@ -39,7 +39,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
                 classesToPass = classesToPass ::: List(cl)
             case id @ InterfaceDecl(name, parents, methods, consts) =>
                 // TODO: actually safely register interfaces
-                GlobalSymbols.registerIface(new IfaceSymbol(name.value, Nil))
+                GlobalSymbols.registerIface(new IfaceSymbol(name.value, Nil).setPos(id).setUserland)
 
             case _ =>
         }
@@ -86,7 +86,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
         }
         case None => None
       }
-      val cs = new ClassSymbol(cd.name.value, p, Nil).setPos(cd);
+      val cs = new ClassSymbol(cd.name.value, p, Nil).setPos(cd).setUserland;
       GlobalSymbols.registerClass(cs)
 
       classList = classList ::: List((cs,cd))
@@ -96,7 +96,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
 
     def secondClassPass(cd: ClassDecl, cs: ClassSymbol): Unit = {
         for (m <- cd.methods) {
-            val ms = new MethodSymbol(cs, m.name.value, getVisibility(m.flags)).setPos(m)
+            val ms = new MethodSymbol(cs, m.name.value, getVisibility(m.flags)).setPos(m).setUserland
             cs.registerMethod(ms)
             ms.registerPredefVariables
             for (a <- m.args) {
@@ -110,7 +110,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
                      t = TUnion(t, TNull)
                 }
 
-                val as = new ArgumentSymbol(a.v.name.value, a.byref, a.default != None).setPos(a.v)
+                val as = new ArgumentSymbol(a.v.name.value, a.byref, a.default != None).setPos(a.v).setUserland
                 as.typ = t
                 ms.registerArgument(as);
             }
@@ -161,7 +161,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
         for (p <- cd.props) {
             val th = TypeHelpers.exprToType(p.default)
 
-            val ps = new PropertySymbol(cs, p.v.value, getVisibility(p.flags)).setPos(p)
+            val ps = new PropertySymbol(cs, p.v.value, getVisibility(p.flags)).setPos(p).setUserland
 
             val t = if (p.comment != None) {
                 CommentParser.getVarType(p.comment.get).getOrElse(th)
@@ -176,7 +176,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
         for (p <- cd.static_props) {
             val th = TypeHelpers.exprToType(p.default)
 
-            val ps = new PropertySymbol(cs, p.v.value, getVisibility(p.flags)).setPos(p)
+            val ps = new PropertySymbol(cs, p.v.value, getVisibility(p.flags)).setPos(p).setUserland
 
             val t = if (p.comment != None) {
                 CommentParser.getVarType(p.comment.get).getOrElse(th)
@@ -193,9 +193,9 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
         for (c <- cd.consts) {
             val ccs = c.value match {
                 case sc: Scalar => 
-                    new ClassConstantSymbol(cs, c.v.value, Some(sc)).setPos(c)
+                    new ClassConstantSymbol(cs, c.v.value, Some(sc)).setPos(c).setUserland
                 case _ =>
-                    new ClassConstantSymbol(cs, c.v.value, None).setPos(c)
+                    new ClassConstantSymbol(cs, c.v.value, None).setPos(c).setUserland
             }
 
             val th = TypeHelpers.exprToType(c.value)
@@ -250,65 +250,76 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
 
         node match {
             case fd @ FunctionDecl(name, args, retref, body) =>
-                val fs = new FunctionSymbol(name.value).setPos(fd).setUserland
-                for(a <- args) {
-                    var t = TypeHelpers.typeHintToType(a.hint)
 
-                    if (a.default == Some(PHPNull)) {
-                        /*
-                         * PHP Hack: if you pass null as default value, then null
-                         * is also accepted as type
-                         */
-                         t = t union TNull
-                    }
+                // If the function is declared more than once, we discard other definitions
+                val lc = name.value.toLowerCase
 
-                    val as = new ArgumentSymbol(a.v.name.value, a.byref, a.default != None).setPos(a.v)
-                    as.typ = t
-
-                    fs.registerArgument(as);
-                }
-
-                val t = if (fd.comment != None) {
-                    if (Settings.get.inlineMode != InlineNone) {
-                        fs.shouldInline = CommentParser.shouldInline(fd.comment.get)
-                    }
-                    fs.isPure = CommentParser.isPure(fd.comment.get)
-
-                    val (args, ret) = CommentParser.getFunctionTypes(fd.comment.get)
-
-                    val ftargs = for ((n, as) <- fs.argList) yield {
-                        if (args contains n) {
-                            (args(n), as.byref, as.optional)
-                        } else {
-                            (TAny, as.byref, as.optional)
-                        }
-                    }
-
-                    TFunction(ftargs, ret)
+                if (GlobalSymbols.functions contains lc) {
+                    // Prevent this importation
+                    val fs = GlobalSymbols.functions(lc)
+                    name.setSymbol(fs)
+                    newCtx = SymContext(fs, None, None)
                 } else {
-                    // TODO: The prototypes should be checked
-                    TFunction(Nil, TAny)
-                }
+                    val fs = new FunctionSymbol(name.value).setPos(fd).setUserland
+                    for(a <- args) {
+                        var t = TypeHelpers.typeHintToType(a.hint)
 
-                val ftargs = for (((n, a), i) <- fs.argList.zipWithIndex) yield {
-                    if (t.args.size <= i) {
-                        (a.typ, a.byref, a.optional)
-                    } else {
-                        if (args(i).default != None) {
-                            val tde = TypeHelpers.exprToType(args(i).default)
-                            checkTypeHint(t.args(i)._1, tde, a)
+                        if (a.default == Some(PHPNull)) {
+                            /*
+                             * PHP Hack: if you pass null as default value, then null
+                             * is also accepted as type
+                             */
+                             t = t union TNull
                         }
-                        val newT = checkTypeHint(t.args(i)._1, a.typ, a)
-                        a.typ = newT
-                        (newT, a.byref, a.optional)
-                    }
-                }
-                fs.registerFType(TFunction(ftargs, t.ret))
 
-                fs.registerPredefVariables
-                GlobalSymbols.registerFunction(fs)
-                name.setSymbol(fs)
-                newCtx = SymContext(fs, None, None)
+                        val as = new ArgumentSymbol(a.v.name.value, a.byref, a.default != None).setPos(a.v).setUserland
+                        as.typ = t
+
+                        fs.registerArgument(as);
+                    }
+
+                    val t = if (fd.comment != None) {
+                        if (Settings.get.inlineMode != InlineNone) {
+                            fs.shouldInline = CommentParser.shouldInline(fd.comment.get)
+                        }
+                        fs.isPure = CommentParser.isPure(fd.comment.get)
+
+                        val (args, ret) = CommentParser.getFunctionTypes(fd.comment.get)
+
+                        val ftargs = for ((n, as) <- fs.argList) yield {
+                            if (args contains n) {
+                                (args(n), as.byref, as.optional)
+                            } else {
+                                (TAny, as.byref, as.optional)
+                            }
+                        }
+
+                        TFunction(ftargs, ret)
+                    } else {
+                        // TODO: The prototypes should be checked
+                        TFunction(Nil, TAny)
+                    }
+
+                    val ftargs = for (((n, a), i) <- fs.argList.zipWithIndex) yield {
+                        if (t.args.size <= i) {
+                            (a.typ, a.byref, a.optional)
+                        } else {
+                            if (args(i).default != None) {
+                                val tde = TypeHelpers.exprToType(args(i).default)
+                                checkTypeHint(t.args(i)._1, tde, a)
+                            }
+                            val newT = checkTypeHint(t.args(i)._1, a.typ, a)
+                            a.typ = newT
+                            (newT, a.byref, a.optional)
+                        }
+                    }
+                    fs.registerFType(TFunction(ftargs, t.ret))
+
+                    fs.registerPredefVariables
+                    GlobalSymbols.registerFunction(fs)
+                    name.setSymbol(fs)
+                    newCtx = SymContext(fs, None, None)
+                }
 
             case ClassDecl(name, flags, parent, interfaces, methods, static_props, props, consts) =>
                 GlobalSymbols.lookupClass(name.value) match {
@@ -348,7 +359,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
                     case Some(vs) =>
                         id.setSymbol(vs)
                     case None =>
-                        val vs = new VariableSymbol(id.value).setPos(id)
+                        val vs = new VariableSymbol(id.value).setPos(id).setUserland
                         id.setSymbol(vs);
                         ctx.varScope.registerVariable(vs)
                 }

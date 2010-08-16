@@ -51,6 +51,8 @@ class ASTCollector(functs: Map[String, (String, Int)],
                     val (file, line) = functs(name.toLowerCase)
                     if (file == fd.file.get && line == fd.line) {
                         functionsDecls = fd :: functionsDecls
+                    } else {
+                        println("Excluding function "+name+" because of line/col mismatch")
                     }
                 }
             case cd @ ClassDecl(Identifier(name), _, _, _, _, _, _, _) if !afterDump =>
@@ -58,6 +60,8 @@ class ASTCollector(functs: Map[String, (String, Int)],
                     val (file, line) = classes(name)
                     if (file == cd.file.get && line == cd.line) {
                         classesDecls = cd :: classesDecls
+                    } else {
+                        println("Excluding class "+name+" because of line/col mismatch")
                     }
                 }
             case _ =>
