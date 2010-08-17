@@ -1016,10 +1016,15 @@ case class TypeTransferFunction(silent: Boolean,
                 case Some(cfg) =>
                     val gr = ctx.results
 
-                    if (gr.inlineCache(sym) contains ((params, env.store))) {
+                    // check if the heap is fine cache-wise:
+                    val cachedHeap = gr.inlineHeaps(sym)
+                    val newCachedEnv = env unionStore cachedHeap
+
+
+                    if ((newCachedEnv.store == cachedHeap) && (gr.inlineCache(sym) contains params)) {
                         // cache hit
-                        val (t, store) = gr.inlineCache(sym)((params, env.store))
-                        env = env unionStore store
+                        val (t, store) = gr.inlineCache(sym)(params)
+                        env = env.setStore(store)
                         t
                     } else {
                         if (Settings.get.displayProgress && Settings.get.verbosity <= 2) {
@@ -1039,7 +1044,7 @@ case class TypeTransferFunction(silent: Boolean,
                         }
 
                         // analyze like usual
-                        val tfa = new TypeFlowAnalyzer(cfg, sym, ctx, true, false, new TypeEnvironment unionStore env.store, obj)
+                        val tfa = new TypeFlowAnalyzer(cfg, sym, ctx, true, false, newCachedEnv, obj)
                         val res = tfa.analyze
 
                         val rStore = res(cfg.exit).store
@@ -1057,7 +1062,12 @@ case class TypeTransferFunction(silent: Boolean,
                             sym.argList(i)._2.typ = t
                         }
 
-                        gr.inlineCache = gr.inlineCache + (sym -> (gr.inlineCache(sym) + ((params, env.store) -> (rtyp, rStore))))
+                        if (newCachedEnv.store == cachedHeap) {
+                            gr.inlineCache += sym -> (gr.inlineCache(sym) + (params -> (rtyp, rStore)))
+                        } else {
+                            gr.inlineCache += sym -> Map()
+                            gr.inlineHeaps += sym -> newCachedEnv.store
+                        }
 
                         rtyp
                     }
