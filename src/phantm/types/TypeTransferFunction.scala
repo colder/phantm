@@ -162,7 +162,7 @@ case class TypeTransferFunction(silent: Boolean,
                 TBoolean
 
             case New(cr, params) =>
-                allocObject(node, getClassSymbol(cr))
+                constructObject(getClassSymbol(cr), params, node)
 
             case cl @ Clone(obj) =>
                 typeFromSV(obj) match {
@@ -204,39 +204,32 @@ case class TypeTransferFunction(silent: Boolean,
                 typeFromSV(r) match {
                     case or: TObjectRef =>
                         val ro = env.store.lookup(or);
-                        if (ro.singleton) {
-                            ro.ct match {
-                                case TClass(cs) =>
-                                    // First, we check if __call is here:
-                                    val cms = cs.lookupMethod("__call", env.scope).ms
+                        ro.ct match {
+                            case TClass(cs) =>
+                                // First, we check if __call is here:
+                                val cms = cs.lookupMethod("__call", env.scope).ms
 
-                                    cs.lookupMethod(id.value, env.scope) match {
-                                        case LookupResult(Some(ms), None, _) =>
-                                            if (collectAnnotations) {
-                                                // TODO: Create a FunctionType and add it to the list of potential prototypes
-                                            }
-                                            checkFCalls(args, ms, mcall, Some(or))
-                                        case LookupResult(Some(ms), vis, _) if cms.isEmpty =>
-                                            notice("Can't access "+vis.get+" method '"+cs.name+"::"+id.value+"'", id)
-                                            TBottom
-                                        case LookupResult(None, _, _) if cms.isEmpty =>
-                                            notice("Undefined method '"+cs.name+"::" + id.value + "'", id)
-                                            TBottom
+                                cs.lookupMethod(id.value, env.scope) match {
+                                    case LookupResult(Some(ms), None, _) =>
+                                        if (collectAnnotations) {
+                                            // TODO: Create a FunctionType and add it to the list of potential prototypes
+                                        }
+                                        checkFCalls(args, ms, mcall, Some(or))
+                                    case LookupResult(Some(ms), vis, _) if cms.isEmpty =>
+                                        notice("Can't access "+vis.get+" method '"+cs.name+"::"+id.value+"'", id)
+                                        TBottom
+                                    case LookupResult(None, _, _) if cms.isEmpty =>
+                                        notice("Undefined method '"+cs.name+"::" + id.value + "'", id)
+                                        TBottom
 
-                                        case _ =>
-                                            val ms = cms.get
-                                            checkFCalls(args, ms, mcall, Some(or))
-                                    }
-                                case TAnyClass =>
-                                    // Name based resolution?
-                                    notice("Unable to statically resolve the object class", mcall)
-                                    TAny
-
-                            }
-                        } else {
-                            // TODO: Recovery solution? Name based?
-                            notice("Object non-singularity prevents inlining or precise analysis", mcall)
-                            TAny
+                                    case _ =>
+                                        val ms = cms.get
+                                        checkFCalls(args, ms, mcall, Some(or))
+                                }
+                            case TAnyClass =>
+                                // Name based resolution?
+                                notice("Unable to statically resolve the object class", mcall)
+                                TAny
                         }
                     case _ =>
                         TTop
@@ -374,17 +367,71 @@ case class TypeTransferFunction(silent: Boolean,
               TBottom
         }
 
-        def allocObject(node: Statement, ocs: Option[ClassSymbol]): ObjectType = {
+
+        def constructObject(ocs: Option[ClassSymbol], params: List[SimpleValue], node: Statement): Type = {
             val id = ObjectId(node.uniqueID, ObjectIdUse);
-            env = envInit.store.store.get(id) match {
-                case Some(o) if o.singleton =>
-                    // Object becomes multiton, we merge it with a newly allocated object
-                    val (nenv, obj) = TypeLattice.joinObjects(env, env.store.lookup(id), env.store.newObject(id, ocs));
-                    nenv.setStore(nenv.store.set(id, obj.setMultiton))
+            val t  = new TObjectRef(id)
+
+            // Let's check:
+            //  1) if we need to construct an object
+            //  2) if we have an old object to merge with the new, if any new
+
+            val (oldObject, mustMerge) = env.store.store.get(id) match {
+                case Some(o) =>
+                    (Some(o), o.singleton)
+
                 case _ =>
-                    env.setStore(env.store.initIfNotExist(id, ocs))
+                    (None, true)
             }
-            new TObjectRef(id)
+
+            // If we must merge, we need a new object:
+            if (mustMerge) {
+                val newObject = ocs match {
+                    case Some(cs) =>
+                        // construct a default object for this class, inline its constructor if any
+                        val ro = new TRealObject(Map[String,Type]() ++ cs.properties.mapValues[Type] { x => x.typ }, TUninitialized, true, TClass(cs))
+
+
+                        lookupConstructor(cs) match {
+                            case Some(ms) =>
+                                // Set the newly created object in the store
+                                env = env.setStore(env.store.set(id, ro))
+
+                                // Force inlining
+                                checkFCalls(params, ms, node, Some(t), forceInline = true);
+
+                                env.store.lookup(id)
+                            case None =>
+                                ro
+                        }
+
+                    case None =>
+                        // No class => Stupid empty object
+                        new TRealObject(Map[String,Type](), TUninitialized, true, TAnyClass)
+                }
+
+                if (oldObject != None) {
+                    // in case of an old object, we merge the properties and set the object as non-singleton
+                    val (nenv, obj) = TypeLattice.joinObjects(env, oldObject.get, newObject);
+
+                    env = nenv.setStore(nenv.store.set(id, obj.setMultiton))
+                } else {
+                    env = env.setStore(env.store.set(id, newObject))
+                }
+            } else {
+                // We can keep the oldobject, do nothing
+            }
+
+            t
+        }
+
+        def lookupConstructor(cs: ClassSymbol): Option[MethodSymbol] = {
+            cs.methods.get("__construct") orElse
+            cs.methods.get(cs.name.toLowerCase) orElse
+            (cs.parent match {
+                case Some(cs) => lookupConstructor(cs)
+                case None => None
+            })
         }
 
         def typeError(pos: Positional, etyp: Type, vtyp: Type): Unit =
@@ -938,7 +985,12 @@ case class TypeTransferFunction(silent: Boolean,
             }
         }
 
-        def checkFCalls(fcall_params: List[SimpleValue], sym: FunctionSymbol, pos: Positional, obj: Option[TObjectRef]) : Type =  {
+        def checkFCalls(fcall_params: List[SimpleValue],
+                        sym: FunctionSymbol,
+                        pos: Positional,
+                        obj: Option[TObjectRef],
+                        forceInline: Boolean = false) : Type =  {
+
             def protoErrors(ftyp: FunctionType): Int = {
                 ftyp match {
                     case tf: TFunction =>
@@ -964,9 +1016,9 @@ case class TypeTransferFunction(silent: Boolean,
                 case Some(cfg) =>
                     val gr = ctx.results
 
-                    if (gr.inlineCache(sym) contains params) {
+                    if (gr.inlineCache(sym) contains ((params, env.store))) {
                         // cache hit
-                        val (t, store) = gr.inlineCache(sym)(params)
+                        val (t, store) = gr.inlineCache(sym)((params, env.store))
                         env = env unionStore store
                         t
                     } else {
@@ -995,7 +1047,7 @@ case class TypeTransferFunction(silent: Boolean,
                         // retreive return type
                         val rtyp = AnnotationsStore.getReturnType(sym)
 
-                        env = env unionStore rStore
+                        env = env.setStore(rStore)
 
                         // restore annotations
                         AnnotationsStore.restoreFunctionAnnotations(sym, annots)
@@ -1005,7 +1057,7 @@ case class TypeTransferFunction(silent: Boolean,
                             sym.argList(i)._2.typ = t
                         }
 
-                        gr.inlineCache = gr.inlineCache + (sym -> (gr.inlineCache(sym) + (params -> (rtyp, rStore))))
+                        gr.inlineCache = gr.inlineCache + (sym -> (gr.inlineCache(sym) + ((params, env.store) -> (rtyp, rStore))))
 
                         rtyp
                     }
@@ -1033,7 +1085,7 @@ case class TypeTransferFunction(silent: Boolean,
 
                     val gr = ctx.results
 
-                    if (sym.shouldInline) {
+                    if (sym.shouldInline || forceInline) {
                         if (!(gr.inlineStack contains sym)) {
                             gr.inlineStack += sym
                             val r = getInlinedRetType(fcall_params.map(typeFromSV(_)))
