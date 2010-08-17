@@ -132,7 +132,7 @@ object Main {
             case "--importincludes" :: paths :: xs =>
                 IncludeResolver.importIncludes(paths.split(":").toList)
                 handleArgs(xs)
-            case "--importdump" :: paths :: xs =>
+            case "--importstate" :: paths :: xs =>
                 settings = settings.copy(dumps = paths.split(":").toList)
                 handleArgs(xs)
             case "--importapi" :: aps :: xs =>
@@ -211,7 +211,7 @@ object Main {
         println("         --fixpoint             Display fixpoints")
         println("         --showincludes         Display the list of included files")
         println("         --importAPI <paths>    Import additional APIs (a.xml:b.xml:...)")
-        println("         --importDUMP <paths>   Import dump files (a.xml:b.xml:...)")
+        println("         --importState <paths>  Import state files (i.e. last.dump)")
         println("         --exportAPI <path>     Use the type analysis to output a likely API")
         println("         --exportCG <path>      Export the call graph in dot format to <path>")
         println("         --exportMG <path>      Export the method inheritence graph in dot format to <path>")
