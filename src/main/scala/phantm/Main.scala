@@ -176,7 +176,7 @@ object Main {
     }
 
     def version = {
-        val data = XML.load(getClass().getClassLoader().getResourceAsStream("spec/build.xml"))
+        val data = XML.load(getClass().getClassLoader().getResourceAsStream("build.xml"))
 
         println("phantm "+(data \ "version").text+" (built: "+(data \ "date").text+")")
     }
