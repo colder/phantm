@@ -1,8 +1,10 @@
 classes
 benchs
 builds
-java/phantm/parser/*.java
-java/phantm/parser/*.bin
+src/main/java/phantm/parser/CUPParser.java
+src/main/java/phantm/parser/Lexer.java
+src/main/java/phantm/parser/Symbols.java
+src/main/java/phantm/parser/*.bin
 */*/*/*.sw?
 */*/*.sw?
 */*.sw?
@@ -13,3 +15,7 @@ lib/cup/java/sym.java
 lib/cup/dist
 *.out
 *.dump
+target/
+lib_managed/
+src_managed/
+project/boot/

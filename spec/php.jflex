@@ -7,6 +7,8 @@ package phantm.parser;
 import java.util.*;
 import java_cup.runtime.*;
 
+
+
 %%
 
 %{
@@ -15,19 +17,6 @@ import java_cup.runtime.*;
     private boolean clearMorePrefix;
 
     public ArrayList<Comment> comments;
-
-    public class Comment {
-        public int line;
-        public int col;
-        public String filename;
-        public String content;
-        public Comment(int _line, int _col, String _filename, String _content) {
-            line = _line;
-            col = _col;
-            filename = _filename;
-            content = _content;
-        }
-    }
 
     public void registerComment() {
         Comment c = new Comment(yyline + 1, yycolumn, getFileName(), text());

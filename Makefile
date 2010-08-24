@@ -1,8 +1,12 @@
-partial: scalafiles
+all: warning
 
-all: setup cup jflex javafiles rebuild
+warning:
+	@ echo "THIS MAKEFILE IS ONLY HERE TO BUILD CUP/JFLEX"
+	@ echo "To (re)compile your scala code, use 'sbt'"
+	@ echo "If you really want to (re)generate cup/jflex, run 'make bootstrap'"
 
-complete: setup build_cup all
+
+bootstrap: setup build_cup cup jflex
 
 setup:
 	@ test -d classes || mkdir classes
@@ -11,30 +15,8 @@ setup:
 build_cup:
 	cd lib/cup && ant
 
-clean-all:
-	find java/phantm/parser/ -type f -iname "*.java" -exec rm '{}' \;
-
-clean:
-	find classes -type f -iname "*.class" -exec rm '{}' \;
-
-touch-scala:
-	find src/phantm/ -type f -iname "*.scala" -exec touch '{}' \;
-
-rebuild:
-	@ant build_complete
-	@ant jar
-
 cup:
-	java -jar lib/cup/dist/java-cup-11a.jar -parser CUPParser -package phantm.parser -destdir java/phantm/parser/ -files -symbols Symbols spec/php.cup
+	java -jar lib/cup/dist/java-cup-11a.jar -parser CUPParser -package phantm.parser -destdir src/main/java/phantm/parser/ -files -symbols Symbols spec/php.cup
 
 jflex:
-	java -jar bin/JFlex.jar -d java/phantm/parser/ -nobak spec/php.jflex
-
-javafiles:
-	javac -cp lib/cup/dist/java-cup-11a-runtime.jar -d classes/ `find java -name "*.java"`
-
-scalafiles:
-	@ ant jar
-
-test:
-	scala -verbose -classpath classes phantm.Main tests/*.php
+	java -jar bin/JFlex.jar -d src/main/java/phantm/parser/ -nobak spec/php.jflex
