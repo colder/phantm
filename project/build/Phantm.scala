@@ -1,5 +1,8 @@
 import sbt._
 import java.io._
+import java.util.Date;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import Process._
 
 class PhantmProject(info: ProjectInfo) extends DefaultProject(info) with ProguardProject
@@ -17,9 +20,11 @@ class PhantmProject(info: ProjectInfo) extends DefaultProject(info) with Proguar
         "test -d src/main/resources/tables/" #|| "mkdir src/main/resources/tables/" !;
         log.info("Creating build.xml")
 
+        val dateFormat = new SimpleDateFormat("dd.MM.yyyy HH:mm:ss")
+        val date = new Date()
 
         val f = new BufferedWriter(new FileWriter("src/main/resources/build.xml"))
-        f write "<build><version>"+version+"</version><date>"+version+"</date></build>"
+        f write "<build><version>"+version+"</version><date>"+dateFormat.format(date)+"</date></build>"
         f close
 
 
@@ -42,7 +47,6 @@ class PhantmProject(info: ProjectInfo) extends DefaultProject(info) with Proguar
     override def proguardOptions =
         "-ignorewarnings" ::
         "-keep public class phantm.Main { public static void main(java.lang.String[]); }" ::
-        "-keepclasseswithmembers class scala.ScalaObject" ::
         "-injars"  :: "lib/cup/dist/java-cup-11a-runtime.jar (!META-INF/**)" ::
         "-injars"  :: System.getenv("SCALA_HOME")+"/lib/scala-library.jar (!META-INF/**)" ::
         "-injars"  :: ""+outputPath+"/"+defaultJarName ::
