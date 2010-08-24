@@ -13,12 +13,13 @@ PROPERTIES
 ============================================================================ -->
 
   <property name="source.dir" value="src"/>
+  <property name="target.dir" value="target/scala_2.8.0/classes"/>
 
-  <property file="./build.properties"/>
+  <property file=".build.properties"/>
 
   <!-- the following properties can be set in the above property file -->
   <property name="scala.dir" value="${env.SCALA_HOME}"/>
-  <property name="build.dir" value="classes"/>
+  <property name="build.dir" value="${target.dir}"/>
   <property name="release.dir" value="releases"/>
   <property name="lib.dir" value="lib"/>
   <property name="main.class" value="phantm.Main"/>
@@ -62,53 +63,19 @@ INITIALISATION
   </target>
 
 <!-- ===========================================================================
-BUILD
-============================================================================ -->
-
-  <target name="build" depends="init">
-    <echo level="verbose" message="build.dir=${build.dir}"/>
-    <mkdir dir="${build.dir}"/>
-    <scalac
-      srcdir="${source.dir}"
-      includes="**/*.scala"
-      destdir="${build.dir}"
-      classpathref="build.classpath"
-      unchecked="on"
-      deprecation="on"
-      force="yes"
-      addparams="-make:transitive -dependencyfile ${build.dir}/.scala_dependencies"
-    />
-  </target>
-
-  <target name="build_complete" depends="init">
-    <echo level="verbose" message="build.dir=${build.dir}"/>
-    <mkdir dir="${build.dir}"/>
-    <scalac
-      srcdir="${source.dir}"
-      includes="**/*.scala"
-      destdir="${build.dir}"
-      classpathref="build.classpath"
-      unchecked="on"
-      deprecation="on"
-      force="yes"
-      addparams="-make:all"
-    />
-  </target>
-
-<!-- ===========================================================================
 JAR
 ============================================================================ -->
 
- <target name="jar" depends="build">
+ <target name="jar" depends="init">
      <mkdir dir="builds"/>
-     <mkdir dir="classes/spec"/>
-     <copy file="spec/internal_api.xml" tofile="classes/spec/internal_api.xml" />
-     <copy file="spec/build.xml" tofile="classes/spec/build.xml" />
-     <mkdir dir="classes/tables"/>
-     <copy file="java/phantm/parser/action_table.bin" tofile="classes/tables/action_table.bin" />
-     <copy file="java/phantm/parser/reduce_table.bin" tofile="classes/tables/reduce_table.bin" />
-     <copy file="java/phantm/parser/production_table.bin" tofile="classes/tables/production_table.bin" />
-     <copy file="scala-license.txt" tofile="classes/scala-license.txt" />
+     <mkdir dir="${target.dir}/spec"/>
+     <copy file="spec/internal_api.xml" tofile="${target.dir}/spec/internal_api.xml" />
+     <copy file="spec/build.xml" tofile="${target.dir}/spec/build.xml" />
+     <mkdir dir="${target.dir}/tables"/>
+     <copy file="src/main/java/phantm/parser/action_table.bin" tofile="${target.dir}/tables/action_table.bin" />
+     <copy file="src/main/java/phantm/parser/reduce_table.bin" tofile="${target.dir}/tables/reduce_table.bin" />
+     <copy file="src/main/java/phantm/parser/production_table.bin" tofile="${target.dir}/tables/production_table.bin" />
+     <copy file="scala-license.txt" tofile="${target.dir}/scala-license.txt" />
 
      <delete file="builds/phantm.jar"/>
      <delete file="builds/MANIFEST.mf"/>
@@ -119,13 +86,13 @@ JAR
 
      <jar destfile="builds/phantm.jar"
           manifest="builds/MANIFEST.mf"
-          basedir="classes"
+          basedir="${target.dir}"
           includes="**/*.class,spec/*.xml,tables/*.bin,scala-license.txt"
           />
 
-     <delete file="classes/scala-license.txt"/>
-     <delete file="classes/spec"/>
-     <delete file="classes/tables"/>
+     <delete file="${target.dir}/scala-license.txt"/>
+     <delete file="${target.dir}/spec"/>
+     <delete file="${target.dir}/tables"/>
   </target>
 
 <!-- ===========================================================================

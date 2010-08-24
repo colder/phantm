@@ -2,8 +2,9 @@ all: warning
 
 warning:
 	@ echo "THIS MAKEFILE IS ONLY HERE TO BUILD CUP/JFLEX"
-	@ echo "To (re)compile your scala code, use 'sbt'"
 	@ echo "If you really want to (re)generate cup/jflex, run 'make bootstrap'"
+	@ echo "Starting sbt"
+	sbt
 
 
 bootstrap: setup build_cup cup jflex

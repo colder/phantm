@@ -5,7 +5,7 @@ import phantm.util._
 import phantm.annotations.SourceAnnotations.{Parser => AnnotationsParser}
 
 class Parser(filename: String) {
-    type LexerComment = phantm.parser.Lexer#Comment;
+    type LexerComment = phantm.parser.Comment;
 
     private var comments = List[(Positional, String)]();
 

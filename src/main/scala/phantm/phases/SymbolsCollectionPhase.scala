@@ -17,7 +17,7 @@ object SymbolsCollectionPhase extends Phase {
     def description = "Collecting symbols"
 
     def run(ctx: PhasesContext): PhasesContext = {
-        CollectSymbols(ctx, ctx.oast.get) execute;
+        CollectSymbols(ctx.oast.get) execute;
         ctx
     }
 
@@ -25,7 +25,7 @@ object SymbolsCollectionPhase extends Phase {
 
 case class SymContext(varScope: Scope, cl: Option[ClassSymbol], iface: Option[IfaceSymbol]);
 
-case class CollectSymbols(globalctx: PhasesContext, node: Tree) extends ASTTraversal[SymContext](node, SymContext(GlobalSymbols, None, None)) {
+case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, SymContext(GlobalSymbols, None, None)) {
     var classCycleDetectionSet = new HashSet[ClassDecl]
     var classesToPass = List[ClassDecl]()
     var classList: List[(ClassSymbol, ClassDecl)] = Nil
