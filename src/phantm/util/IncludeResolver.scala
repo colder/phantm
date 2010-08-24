@@ -69,8 +69,13 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
 
     def includeFile(inc: Expression, path: Expression, once: Boolean, require: Boolean): Expression = {
 
-        def shouldInclude(p: String): Boolean = {
-            !once || !IncludeResolver.includedFiles.contains(p)
+        def shouldInclude(p: String, pos: Positional): Boolean = {
+            if (!Settings.get.resolveIncludes) {
+                Reporter.notice("Include resolution is specifically disabled", pos)
+                false
+            } else {
+                !once || !IncludeResolver.includedFiles.contains(p)
+            }
         }
 
         def pathExists(p: String): Option[String] = {
@@ -137,7 +142,7 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
                         if (p(0) == '/') {
                             val realpath = pathExists(p);
                             if (!realpath.isEmpty) {
-                                if (shouldInclude(realpath.get)) {
+                                if (shouldInclude(realpath.get, scalar)) {
                                     getAST(realpath.get)
                                 } else {
                                     PHPFalse()
@@ -158,7 +163,7 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
 
                             foundPath match {
                                 case Some(path) =>
-                                    if (shouldInclude(path)) {
+                                    if (shouldInclude(path, scalar)) {
                                         getAST(path)
                                     } else {
                                         PHPFalse()
