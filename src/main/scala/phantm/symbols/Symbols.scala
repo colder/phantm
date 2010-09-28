@@ -224,8 +224,8 @@ class PropertySymbol(val cs: ClassSymbol,
 
 class ClassConstantSymbol(val cs: ClassSymbol,  name: String, value: Option[Scalar]) extends ConstantSymbol(name, value);
 
-class IfaceMethodSymbol(val cs: IfaceSymbol, name: String, typ: Type, val visibility: MemberVisibility) extends FunctionSymbol(name);
-class IfaceConstantSymbol(val cs: IfaceSymbol,  name: String, value: Option[Scalar]) extends ConstantSymbol(name, value);
+class IfaceMethodSymbol(val is: IfaceSymbol, name: String, val visibility: MemberVisibility) extends FunctionSymbol(name);
+class IfaceConstantSymbol(val is: IfaceSymbol,  name: String, value: Option[Scalar]) extends ConstantSymbol(name, value);
 
 case class LookupResult[T](ms: Option[T], visibError: Option[MemberVisibility], staticClash: Boolean) {
     def isError = ms == None || visibError != None
@@ -234,6 +234,40 @@ case class LookupResult[T](ms: Option[T], visibError: Option[MemberVisibility], 
 class IfaceSymbol(val name: String, val parents: List[IfaceSymbol]) extends Symbol {
   val methods = new HashMap[String, IfaceMethodSymbol]();
   val constants = new HashMap[String, IfaceConstantSymbol]();
+
+  def registerMethod(ms: IfaceMethodSymbol): Unit = methods.get(ms.name.toLowerCase) match {
+      case Some(x) => Reporter.error("Interface Method "+name+"::"+ms.name+" already defined (previously defined "+x.previousPos+")", ms)
+      case None    =>
+          parents.find(_.lookupMethod(ms.name) != None).map(_.lookupMethod(ms.name).get) match {
+            case Some(p) =>
+              Reporter.error("Interface Method "+name+"::"+ms.name+" cannot overwrite "+p.is.name+"::"+p.name+"", ms)
+            case None =>
+              methods += ((ms.name.toLowerCase, ms))
+          }
+  }
+
+  def lookupMethod(name: String): Option[IfaceMethodSymbol] = methods.get(name.toLowerCase) match {
+      case None =>
+        parents.find(p => p.lookupMethod(name) != None).map(p => p.lookupMethod(name).get)
+      case x => x
+  }
+
+  def registerConstant(cs: IfaceConstantSymbol): Unit = constants.get(cs.name.toLowerCase) match {
+      case Some(x) => Reporter.error("Interface Constant "+name+"::"+cs.name+" already defined (previously defined "+x.previousPos+")", cs)
+      case None    =>
+          parents.find(_.lookupConstant(cs.name) != None).map(_.lookupConstant(cs.name).get) match {
+            case Some(p) =>
+              Reporter.error("Interface Constant "+name+"::"+cs.name+" cannot overwrite "+p.is.name+"::"+p.name+"", cs)
+            case None =>
+              constants += ((cs.name.toLowerCase, cs))
+          }
+  }
+
+  def lookupConstant(name: String): Option[IfaceConstantSymbol] = constants.get(name.toLowerCase) match {
+      case None =>
+        parents.find(p => p.lookupConstant(name) != None).map(p => p.lookupConstant(name).get)
+      case x => x
+  }
 }
 
 class ClassSymbol(val name: String, val parent: Option[ClassSymbol], var ifaces: List[IfaceSymbol]) extends Symbol {

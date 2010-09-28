@@ -148,6 +148,28 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
       classCycleDetectionSet -= cd
     }
 
+    def secondIfacePass(id: InterfaceDecl, is: IfaceSymbol): Unit = {
+        for (m <- id.methods) {
+            val ims = new IfaceMethodSymbol(is, m.name.value, getVisibility(m.flags)).setPos(m).setUserland
+            is.registerMethod(ims)
+
+            for (a <- m.args) {
+                var t = TypeHelpers.typeHintToType(a.hint)
+
+                if (a.default == Some(PHPNull)) {
+                    /*
+                     * PHP Hack: if you pass null as default value, then null
+                     * is also accepted as type
+                     */
+                     t = TUnion(t, TNull)
+                }
+
+                val as = new ArgumentSymbol(a.v.name.value, a.byref, a.default != None).setPos(a.v).setUserland
+                as.typ = t
+                ims.registerArgument(as);
+            }
+        }
+    }
 
     def secondClassPass(cd: ClassDecl, cs: ClassSymbol): Unit = {
         for (m <- cd.methods) {
@@ -400,7 +422,8 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
                         case _ => error("Woops?! No such method declared yet: "+cs.name+"::"+name.value+" ??")
                     }
                     case (None, Some(iface)) =>
-                        // nothing
+                        name.setSymbol(iface)
+                        // no body
                     case (None, None) =>
                         error("Woops?!? Got into a method without any class or interface in the context: (Method: "+name.value+", "+name.getPos+")")
                 }
@@ -461,6 +484,10 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
         traverse(visitClasses)
 
         firstIfacePass;
+        for(i <- ifaceList) {
+            secondIfacePass(i._2, i._1);
+        }
+
         firstClassPass;
         for(c <- classList) {
             secondClassPass(c._2, c._1);
