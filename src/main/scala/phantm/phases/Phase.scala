@@ -8,7 +8,7 @@ abstract class Phase {
 
     override def toString = name
 
-    def andThen(phase: Phase) = PhaseSeq() andThen this andThen phase
+    def followedBy(phase: Phase) = PhaseSeq(Seq(this)) followedBy phase
 }
 
 case class PhaseException(ph: Phase, error: String) extends Exception

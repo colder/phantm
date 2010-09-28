@@ -13,7 +13,7 @@ import scala.collection.mutable.HashMap
 
 object SymbolsCollectionPhase extends Phase {
 
-    def name = "Symbols collections"
+    def name = "Symbols collection"
     def description = "Collecting symbols"
 
     def run(ctx: PhasesContext): PhasesContext = {
@@ -61,20 +61,6 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
 
     }
 
-    def firstClassPass : Unit = classesToPass match {
-      case Nil =>
-      case cd :: cds2 =>
-          GlobalSymbols.lookupClass(cd.name.value) match {
-            case None =>
-              firstClassPass0(cd)
-            case Some(x) =>
-              Reporter.notice("Class " + x.name + " already declared (previously declared at "+x.getPos+")", cd)
-          }
-          classesToPass = cds2
-          firstClassPass
-
-    }
-
     def firstIfacePass0(id: InterfaceDecl): Unit = {
       if (ifaceCycleDetectionSet.contains(id)) { 
         Reporter.error("Interface " + ifaceCycleDetectionSet.map(x => x.name.value).mkString(" -> ") + " form an inheritance cycle", id)
@@ -115,39 +101,6 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
       ifaceCycleDetectionSet -= id
     }
 
-    def firstClassPass0(cd: ClassDecl): Unit = {
-      if (classCycleDetectionSet.contains(cd)) { 
-        Reporter.error("Classes " + classCycleDetectionSet.map(x => x.name.value).mkString(" -> ") + " form an inheritance cycle", cd)
-        return;
-      }
-
-      classCycleDetectionSet += cd
-
-      val p: Option[ClassSymbol] = cd.parent match {
-        case Some(x) => GlobalSymbols.lookupClass(x.name.value) match {
-          case None => {
-            var foundParent = false
-            for (c <- classesToPass if c.name.value.equals(x.name.value) && !foundParent) {
-              firstClassPass0(c)
-              foundParent = true
-            }
-              
-            GlobalSymbols.lookupClass(x.name.value) match {
-              case None => Reporter.error("Class " + cd.name.value + " extends non-existent class " + x.name.value, x); None
-              case x => x
-            }
-          }
-          case Some(pcs) => Some(pcs)
-        }
-        case None => None
-      }
-      val cs = new ClassSymbol(cd.name.value, p, Nil).setPos(cd).setUserland;
-      GlobalSymbols.registerClass(cs)
-
-      classList = classList ::: List((cs,cd))
-      classCycleDetectionSet -= cd
-    }
-
     def secondIfacePass(id: InterfaceDecl, is: IfaceSymbol): Unit = {
         for (m <- id.methods) {
             val ims = new IfaceMethodSymbol(is, m.name.value, getVisibility(m.flags)).setPos(m).setUserland
@@ -170,6 +123,67 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
             }
         }
     }
+
+    def firstClassPass : Unit = classesToPass match {
+      case Nil =>
+      case cd :: cds2 =>
+          GlobalSymbols.lookupClass(cd.name.value) match {
+            case None =>
+              firstClassPass0(cd)
+            case Some(x) =>
+              Reporter.notice("Class " + x.name + " already declared (previously declared at "+x.getPos+")", cd)
+          }
+          classesToPass = cds2
+          firstClassPass
+
+    }
+
+    def firstClassPass0(cd: ClassDecl): Unit = {
+      if (classCycleDetectionSet.contains(cd)) { 
+        Reporter.error("Classes " + classCycleDetectionSet.map(x => x.name.value).mkString(" -> ") + " form an inheritance cycle", cd)
+        return;
+      }
+
+      classCycleDetectionSet += cd
+
+      val p: Option[ClassSymbol] = cd.parent match {
+        case Some(x) => GlobalSymbols.lookupClass(x.name.value) match {
+          case None => {
+            var foundParent = false
+            for (c <- classesToPass if c.name.value.equals(x.name.value) && !foundParent) {
+              firstClassPass0(c)
+              foundParent = true
+            }
+
+            GlobalSymbols.lookupClass(x.name.value) match {
+              case None => Reporter.error("Class " + cd.name.value + " extends non-existent class " + x.name.value, x); None
+              case x => x
+            }
+          }
+          case Some(pcs) => Some(pcs)
+        }
+        case None => None
+      }
+
+      var ifaces = List[IfaceSymbol]()
+      for (i <- cd.interfaces) i match {
+        case StaticClassRef(_, _, id) =>
+            GlobalSymbols.lookupIface(id.value) match {
+                case Some(is) =>
+                    ifaces = is :: ifaces
+                case None =>
+                    Reporter.error("Class "+cd.name.value +" implements non-existent interface "+id.value);
+            }
+        case _ =>
+      }
+
+      val cs = new ClassSymbol(cd.name.value, p, ifaces.reverse).setPos(cd).setUserland;
+      GlobalSymbols.registerClass(cs)
+
+      classList = classList ::: List((cs,cd))
+      classCycleDetectionSet -= cd
+    }
+
 
     def secondClassPass(cd: ClassDecl, cs: ClassSymbol): Unit = {
         for (m <- cd.methods) {
