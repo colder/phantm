@@ -27,8 +27,11 @@ case class SymContext(varScope: Scope, cl: Option[ClassSymbol], iface: Option[If
 
 case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, SymContext(GlobalSymbols, None, None)) {
     var classCycleDetectionSet = new HashSet[ClassDecl]
+    var ifaceCycleDetectionSet = new HashSet[InterfaceDecl]
     var classesToPass = List[ClassDecl]()
+    var interfacesToPass = List[InterfaceDecl]()
     var classList: List[(ClassSymbol, ClassDecl)] = Nil
+    var ifaceList: List[(IfaceSymbol, InterfaceDecl)] = Nil
 
     /**
      * Visit classes and add them to a waiting list, so they can be processed in right order
@@ -38,12 +41,24 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
             case cl @ ClassDecl(name, flags, parent, interfaces, methods, static_props, props, consts) =>
                 classesToPass = classesToPass ::: List(cl)
             case id @ InterfaceDecl(name, parents, methods, consts) =>
-                // TODO: actually safely register interfaces
-                GlobalSymbols.registerIface(new IfaceSymbol(name.value, Nil).setPos(id).setUserland)
-
+                interfacesToPass = interfacesToPass ::: List(id)
             case _ =>
         }
         (ctx, true)
+    }
+
+    def firstIfacePass : Unit = interfacesToPass match {
+      case Nil =>
+      case id :: ids2 =>
+          GlobalSymbols.lookupIface(id.name.value) match {
+            case None =>
+              firstIfacePass0(id)
+            case Some(x) =>
+              Reporter.notice("Interface " + x.name + " already declared (previously declared at "+x.getPos+")", id)
+          }
+          interfacesToPass = ids2
+          firstIfacePass
+
     }
 
     def firstClassPass : Unit = classesToPass match {
@@ -58,6 +73,46 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
           classesToPass = cds2
           firstClassPass
 
+    }
+
+    def firstIfacePass0(id: InterfaceDecl): Unit = {
+      if (ifaceCycleDetectionSet.contains(id)) { 
+        Reporter.error("Interface " + ifaceCycleDetectionSet.map(x => x.name.value).mkString(" -> ") + " form an inheritance cycle", id)
+        return;
+      }
+      ifaceCycleDetectionSet += id
+
+      var parentIfaces: List[IfaceSymbol] = Nil;
+
+      for (pi <- id.interfaces) {
+          pi match {
+            case StaticClassRef(_, _, pid) =>
+              GlobalSymbols.lookupIface(pid.value) match {
+                  case None => {
+                    var foundParent = false
+                    for (i <- interfacesToPass if i.name.value.equals(pid.value) && !foundParent) {
+                      firstIfacePass0(i)
+                      foundParent = true
+                    }
+
+                    GlobalSymbols.lookupIface(pid.value) match {
+                      case None =>
+                        Reporter.error("Interface " + id.name.value + " extends non-existent interface " + pid.value, id)
+                      case Some(pis) =>
+                        parentIfaces = pis :: parentIfaces
+                    }
+                  }
+                  case Some(pis) => parentIfaces = pis :: parentIfaces
+              }
+            case _ =>
+
+          }
+      }
+      val is = new IfaceSymbol(id.name.value, parentIfaces).setPos(id).setUserland;
+      GlobalSymbols.registerIface(is)
+
+      ifaceList = ifaceList ::: List((is,id))
+      ifaceCycleDetectionSet -= id
     }
 
     def firstClassPass0(cd: ClassDecl): Unit = {
@@ -405,6 +460,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
     def execute = {
         traverse(visitClasses)
 
+        firstIfacePass;
         firstClassPass;
         for(c <- classList) {
             secondClassPass(c._2, c._1);

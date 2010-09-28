@@ -236,7 +236,7 @@ class IfaceSymbol(val name: String, val parents: List[IfaceSymbol]) extends Symb
   val constants = new HashMap[String, IfaceConstantSymbol]();
 }
 
-class ClassSymbol(val name: String, val parent: Option[ClassSymbol], ifaces: List[IfaceSymbol]) extends Symbol {
+class ClassSymbol(val name: String, val parent: Option[ClassSymbol], var ifaces: List[IfaceSymbol]) extends Symbol {
   val methods = new HashMap[String, MethodSymbol]();
   val properties = new HashMap[String, PropertySymbol]();
   val static_properties = new HashMap[String, PropertySymbol]();
