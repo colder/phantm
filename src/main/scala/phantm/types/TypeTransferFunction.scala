@@ -889,13 +889,13 @@ case class TypeTransferFunction(silent: Boolean,
                         }
                         backPatchType(arr, t)
                     case ObjectProperty(obj, prop) =>
-                        def updateObject(obj: TObjectRef) {
-                            val ro = obj.realObject(env).injectField(prop, typ)
+                        def updateObject(obj: TObjectRef, forceWeak: Boolean) {
+                            val ro = obj.realObject(env).injectField(prop, typ, true, forceWeak)
                             env = env.setObject(obj.id, ro)
                         }
                         val t = typeFromSV(obj) match {
                             case to: TObjectRef =>
-                                updateObject(to)
+                                updateObject(to, false)
                                 to
                             case to: TObjectTmp =>
                                 val ro = to.obj.injectField(prop, typ)
@@ -903,7 +903,7 @@ case class TypeTransferFunction(silent: Boolean,
                             case tu: TUnion =>
                                 for (f <- tu.types) f match {
                                     case to: TObjectRef =>
-                                        updateObject(to)
+                                        updateObject(to, true)
                                     case TAnyObject =>
                                         // TODO
                                     case _ =>
@@ -913,7 +913,7 @@ case class TypeTransferFunction(silent: Boolean,
                             case TAnyObject =>
                                 // We need to create one object here
                                 var id = new ObjectId(obj.uniqueID, ObjectIdUse)
-                                var ro = new TRealObject(Map(), TTop, true, TAnyClass).injectField(prop, typ, false)
+                                var ro = new TRealObject(Map(), TTop, true, TAnyClass).injectField(prop, typ, false, false)
                                 env = env.setObject(id, ro)
                                 new TObjectRef(id)
 

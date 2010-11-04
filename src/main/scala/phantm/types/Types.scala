@@ -228,20 +228,20 @@ class TRealObject(val fields: Map[String, Type],
     }
 
     def injectField(index: CFG.SimpleValue, typ: Type): TRealObject =
-        injectField(index, typ, true)
+        injectField(index, typ, true, false)
 
-    def injectField(index: CFG.SimpleValue, typ: Type, weak: Boolean): TRealObject = index match {
-      case CFG.PHPLong(i)       => injectField(i+"",  typ, weak)
-      case CFG.PHPString(index) => injectField(index, typ, weak)
+    def injectField(index: CFG.SimpleValue, typ: Type, weak: Boolean, forceWeak: Boolean): TRealObject = index match {
+      case CFG.PHPLong(i)       => injectField(i+"",  typ, weak, forceWeak)
+      case CFG.PHPString(index) => injectField(index, typ, weak, forceWeak)
       case _ => injectAnyField(typ)
     }
 
     def injectField(index: String, typ: Type): TRealObject =
-        injectField(index, typ, true)
+        injectField(index, typ, true, false)
 
 
-    def injectField(index: String, typ: Type, weak: Boolean): TRealObject = {
-        val newFields = fields.updated(index, if (weak && !singleton) typ union lookupField(index) else typ)
+    def injectField(index: String, typ: Type, weak: Boolean, forceWeak: Boolean): TRealObject = {
+        val newFields = fields.updated(index, if ((weak && !singleton) || forceWeak) typ union lookupField(index) else typ)
         copy(fields = newFields)
     }
 
