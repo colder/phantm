@@ -23539,7 +23539,7 @@
   </function>
 
   <function name="mysql_fetch_array">
-   <return><type name="array"><type name="string" /></type><type name="false" /></return>
+   <return><type name="array"><anykey><type name="string" /></anykey></type><type name="false" /></return>
    <args>
     <arg><type name="resource" /></arg>
     <arg><type name="numeric" /></arg>
@@ -23547,7 +23547,7 @@
   </function>
 
   <function name="mysql_fetch_assoc">
-   <return><type name="array"><type name="string" /></type><type name="false" /></return>
+   <return><type name="array"><anystringkey><type name="string" /></anystringkey><anyintkey><type name="none" /></anyintkey></type><type name="false" /></return>
    <args>
     <arg><type name="resource" /></arg>
    </args>
@@ -26049,7 +26049,7 @@
    <args>
     <arg><type name="string" /></arg>
     <arg><type name="string" /></arg>
-    <arg byref="1" opt="1"><type name="array"><anyelem><type name="any" /></anyelem></type></arg>
+    <arg byref="1" opt="1"><type name="array"><anykey><type name="any" /></anykey></type></arg>
     <arg opt="1"><type name="numeric" /></arg>
     <arg opt="1"><type name="numeric" /></arg>
    </args>
@@ -26060,7 +26060,7 @@
    <args>
     <arg><type name="string" /></arg>
     <arg><type name="string" /></arg>
-    <arg byref="1" opt="1"><type name="array"><anyelem><type name="array"><anyelem><type name="any" /></anyelem></type></anyelem></type></arg>
+    <arg byref="1" opt="1"><type name="array"><anykey><type name="array"><anykey><type name="any" /></anykey></type></anykey></type></arg>
     <arg opt="1"><type name="numeric" /></arg>
     <arg opt="1"><type name="numeric" /></arg>
    </args>
@@ -31485,7 +31485,7 @@
   </function>
 
   <function name="explode">
-   <return><type name="array"><type name="string" /></type></return>
+   <return><type name="array"><anykey><type name="string" /></anykey></type></return>
    <args>
     <arg><type name="string" /></arg>
     <arg><type name="string" /></arg>
@@ -31676,11 +31676,11 @@
   </function>
 
   <function name="str_replace">
-   <return><type name="array"><type name="string" /></type></return>
+   <return><type name="array"><anykey><type name="string" /></anykey></type></return>
    <args>
     <arg><type name="mixed" /></arg>
     <arg><type name="mixed" /></arg>
-    <arg><type name="array"><type name="string" /></type></arg>
+    <arg><type name="array"><anykey><type name="string" /></anykey></type></arg>
     <arg opt="1"><type name="numeric" /></arg>
    </args>
   </function>

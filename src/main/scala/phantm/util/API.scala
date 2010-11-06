@@ -74,8 +74,14 @@ object API {
                 for (el <- (elem \ "anyintkey")) {
                     anyint = elemsToType(el \ "type")
                 }
+
                 for (el <- (elem \ "anystringkey")) {
                     anystring = elemsToType(el \ "type")
+                }
+
+                for (el <- (elem \ "anykey")) {
+                    anyint = elemsToType(el \ "type")
+                    anystring = anyint
                 }
 
                 if (elems.size == 0 && anyint == TTop && anystring == TTop) {
