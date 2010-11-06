@@ -461,11 +461,26 @@ class TArray(val entries: Map[ArrayKey, Type], val globalInt: Type, val globalSt
         (entries.values.foldLeft(0)((a,b) => a ^ b.hashCode)) + globalString.hashCode + globalInt.hashCode
     }
 
-    override def toText(env: TypeEnvironment) =
-        "Array["+(entries.toList.sortWith((x,y) => x._1 < y._1).map(x => x._1 +" => "+ x._2.toText(env)).toList ::: "?s => "+globalString.toText(env) :: "?i => "+globalInt.toText(env) :: Nil).mkString(", ")+"]"
+    override def toText(env: TypeEnvironment) = {
+        var any = if (globalString == globalInt) {
+            "? => "+globalString.toText(env) :: Nil
+        } else {
+            "?s => "+globalString.toText(env) :: "?i => "+globalInt.toText(env) :: Nil
+        }
 
-    override def toString =
-        "Array["+(entries.toList.sortWith((x,y) => x._1 < y._1).map(x => x._1 +" => "+ x._2).toList ::: "?s => "+globalString :: "?i => "+globalInt :: Nil).mkString("; ")+"]"
+        "Array["+(entries.toList.sortWith((x,y) => x._1 < y._1).map(x => x._1 +" => "+ x._2.toText(env)).toList ::: any).mkString(", ")+"]"
+    }
+
+    override def toString = {
+        var any = if (globalString == globalInt) {
+            "? => "+globalString :: Nil
+        } else {
+            "?s => "+globalString :: "?i => "+globalInt :: Nil
+        }
+
+        "Array["+(entries.toList.sortWith((x,y) => x._1 < y._1).map(x => x._1 +" => "+ x._2).toList ::: any).mkString("; ")+"]"
+
+    }
 }
 
 object TAnyArray extends TArray(Map(), TTop, TTop) {
