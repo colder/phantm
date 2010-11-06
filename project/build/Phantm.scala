@@ -9,7 +9,7 @@ class PhantmProject(info: ProjectInfo) extends DefaultProject(info) with Proguar
 {
     override def mainClass = Some("phantm.Main")
     override def defaultJarName = "phantm-latest.jar"
-    override def compileClasspath = super.compileClasspath
+    override def compileClasspath = super.compileClasspath --- ("lib" / "cup" / "bin" / "JFlex.jar")
 
     lazy val `preparefiles` = prepareFilesAction
 
