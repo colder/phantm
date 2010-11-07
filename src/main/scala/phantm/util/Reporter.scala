@@ -2,16 +2,36 @@ package phantm.util
 import scala.io.Source
 import phantm.Settings
 
-class Reporter(mainFiles: List[String]) {
-    type ErrorFootPrint = (String, String, String);
-    type Error = (String, String, Positional, String);
+sealed abstract class ErrorTag
+case object ENotice extends ErrorTag
 
-    def getFootPrint(typ: String, msg: String, pos: Positional): ErrorFootPrint = {
-        if (Settings.get.compactErrors) {
-            // At most one error per line
-            (typ, "dummy", pos.file+":"+pos.line)
-        } else {
-            (typ, msg, pos.file+":"+pos.line)
+class Reporter(mainFiles: List[String]) {
+
+    case class Error(val message: String, val pos: Positional, var tags: Set[ErrorTag]) {
+        override def equals(o: Any) = o match {
+            case e2: Error =>
+                val basicCheck = tags == e2.tags && pos.getPos == e2.pos.getPos
+
+                if (Settings.get.compactErrors) {
+                    // At most one error per line
+                    basicCheck
+                } else {
+                    basicCheck && message == e2.message
+                }
+            case _ =>
+                false
+        }
+
+        override def hashCode =
+            if (Settings.get.compactErrors) {
+                // At most one error per line
+                tags.hashCode+pos.getPos.hashCode
+            } else {
+                tags.hashCode+pos.getPos.hashCode+message.hashCode
+            }
+
+        def before(e2: Error) = {
+            pos.line < e2.pos.line || (pos.line == e2.pos.line && pos.col < e2.pos.col)
         }
     }
 
@@ -37,53 +57,26 @@ class Reporter(mainFiles: List[String]) {
         }
     }
 
-    var errorsCount = 0
-    var noticesCount = 0
-    var totalErrorsCount = 0
-    var totalNoticesCount = 0
-
     private var files = Map[String, List[String]]();
-    private var errorsCheck = Map[Option[String], Set[ErrorFootPrint]]().withDefaultValue(Set[ErrorFootPrint]())
     private var errors = Map[Option[String], Set[Error]]().withDefaultValue(Set[Error]())
 
-    def error(msg: String): Boolean = {
-        errorsCount += 1;
-        totalErrorsCount += 1;
+    def error(msg: String) = {
         println("Error: "+ msg);
         true
     }
 
-    def error(msg: String, pos: Positional): Boolean = {
-        val error = ("Error: ", msg, pos, pos.getPos);
-        val errorCheck = getFootPrint("error", msg, pos)
+    def error(msg: String, pos: Positional, tags: Set[ErrorTag] = Set()) = addError(Error(msg, pos, tags))
 
-        if (!errorsCheck(pos.file).contains(errorCheck)) {
-            errorsCheck += (pos.file -> (errorsCheck(pos.file) + errorCheck))
-
-            errorsCount += 1;
-            errors += (pos.file -> (errors(pos.file) + error))
-            true
-        } else {
-            false
-        }
-    }
-
-    def notice(msg: String): Boolean = {
-        noticesCount += 1;
-        totalNoticesCount += 1;
+    def notice(msg: String) = {
         println("Notice: "+ msg);
         true
     }
 
-    def notice(msg: String, pos: Positional): Boolean = {
-        val notice = ("Notice: ", msg, pos, pos.getPos);
-        val noticeCheck = getFootPrint("notice", msg, pos)
+    def notice(msg: String, pos: Positional, tags: Set[ErrorTag] = Set()) = addError(Error(msg, pos, tags + ENotice))
 
-        if (!errorsCheck(pos.file).contains(noticeCheck)) {
-            errorsCheck += (pos.file -> (errorsCheck(pos.file) + noticeCheck))
-
-            noticesCount += 1;
-            errors += (pos.file -> (errors(pos.file) + notice))
+    def addError(e: Error): Boolean = {
+        if (!errors(e.pos.file).contains(e)) {
+            errors += (e.pos.file -> (errors(e.pos.file) + e))
             true
         } else {
             false
@@ -92,47 +85,27 @@ class Reporter(mainFiles: List[String]) {
 
 
     def emitAll = {
-        var errorsToDisplay = if (Settings.get.focusOnMainFiles) {
-            var errorSet = Map[Option[String], Set[Error]]()
-            for ((file, errs) <- errors) {
-                if ((file != None) && (mainFiles contains file.get)) {
-                    errorSet += (file -> errs)
-                } else {
-                    // decrement error counts
-                    for (e <- errs) {
-                        if (e._1 == "Error: ") {
-                            errorsCount -= 1;
-                        } else if (e._1 == "Notice: ") {
-                            noticesCount -= 1;
-                        }
-                    }
-
-                }
-            }
-            errorSet
-        } else {
-            errors
-        }
-        for (errsPerFile <- errorsToDisplay.iterator.toList.sortWith((a,b) => a._1.getOrElse("") < b._1.getOrElse("")).map(x => x._2)) {
-            for ((p, msg, pos, _) <- errsPerFile.toList.sortWith{(x,y) => x._3.line < y._3.line || (x._3.line == y._3.line && x._3.col < y._3.col)}) {
-                emit(p, msg, pos)
+        for (errsPerFile <- errors.iterator.toList.sortWith((a,b) => a._1.getOrElse("") < b._1.getOrElse("")).map(x => x._2)) {
+            for (e <- errsPerFile.toList.sortWith{(x, y) => x before y}) {
+                emit(e.tags, e.message, e.pos)
             }
         }
-
-        clear
     }
 
     def clear = {
-        noticesCount = 0
-        errorsCount  = 0
-        totalErrorsCount = 0
-        totalNoticesCount = 0
         errors = errors.empty
-        errorsCheck = errorsCheck.empty
     }
 
-    private def emitNormal(prefix: String, msg: String, pos: Positional) = {
-        println(pos.file.getOrElse("?")+":"+(if (pos.line < 0) "?" else pos.line)+"  "+prefix+msg)
+    def clearTag(tag: ErrorTag) = {
+        for ((f,ers) <- errors) {
+            errors += (f -> ers.filter(e => !(e.tags contains tag)))
+        }
+    }
+
+    private def emitNormal(tags: Set[ErrorTag], msg: String, pos: Positional) = {
+        val kind = if(tags contains ENotice) "Notice: " else "Error: ";
+
+        println(pos.file.getOrElse("?")+":"+(if (pos.line < 0) "?" else pos.line)+"  "+kind+msg)
         pos.file match {
             case Some(file) =>
                 getFileLine(file, pos.line) match {
@@ -185,15 +158,16 @@ class Reporter(mainFiles: List[String]) {
         }
     }
 
-    private def emitQuickFix(prefix: String, msg: String, pos: Positional) = {
-        println(pos.file.getOrElse("?")+":"+(if (pos.line < 0) "?" else pos.line)+":"+(if (pos.col < 0) "?" else pos.col+1)+"  "+prefix+msg)
+    private def emitQuickFix(tags: Set[ErrorTag], msg: String, pos: Positional) = {
+        val kind = if(tags contains ENotice) "Notice: " else "Error: "
+        println(pos.file.getOrElse("?")+":"+(if (pos.line < 0) "?" else pos.line)+":"+(if (pos.col < 0) "?" else pos.col+1)+"  "+kind+msg)
     }
 
-    private def emit(prefix: String, msg: String, pos: Positional) = {
+    private def emit(tags: Set[ErrorTag], msg: String, pos: Positional) = {
         if (Settings.get.format == "quickfix") {
-            emitQuickFix(prefix, msg, pos)
+            emitQuickFix(tags, msg, pos)
         } else {
-            emitNormal(prefix, msg, pos)
+            emitNormal(tags, msg, pos)
         }
     }
 
@@ -226,6 +200,15 @@ class Reporter(mainFiles: List[String]) {
         }
     }
 
+    def emitSummary = {
+
+        val (notices, errs) = errors.values.foldRight(Set[Error]())(_ ++ _).partition(e => e.tags contains ENotice)
+        val noticeCount = notices.size
+        val errorCount  = errs.size
+
+        println(noticeCount+" notice"+(if (noticeCount>1) "s" else "")+" and "+errorCount+" error"+(if (errorCount>1) "s" else "")+" occured.")
+    }
+
 }
 
 object Reporter {
@@ -238,14 +221,14 @@ object Reporter {
     def error(msg: String) =
         get.error(msg)
 
-    def error(msg: String, pos: Positional) =
-        get.error(msg, pos)
+    def error(msg: String, pos: Positional, tags: Set[ErrorTag] = Set()) =
+        get.error(msg, pos, tags)
 
     def notice(msg: String) =
         get.notice(msg)
 
-    def notice(msg: String, pos: Positional) =
-        get.notice(msg, pos)
+    def notice(msg: String, pos: Positional, tags: Set[ErrorTag] = Set()) =
+        get.notice(msg, pos, tags)
 }
 
 case class ErrorException(en: Int, nn: Int, etn: Int, ntn: Int) extends RuntimeException;

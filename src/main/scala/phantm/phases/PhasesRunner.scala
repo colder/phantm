@@ -42,21 +42,12 @@ class PhasesRunner(val reporter: Reporter) {
             }
         }
 
-        val ec  = reporter.errorsCount
-        val tec = reporter.totalErrorsCount
-        val nc  = reporter.noticesCount
-        val tnc = reporter.totalNoticesCount
-
         if (!Settings.get.summaryOnly) {
             reporter.emitAll
         }
 
-        if (Settings.get.focusOnMainFiles) {
-            println(nc+" notice"+(if (nc>1) "s" else "")+" and "+ec+" error"+(if (ec>1) "s" else "")+" occured in main files.")
-            println(tnc+" notice"+(if (tnc>1) "s" else "")+" and "+tec+" error"+(if (tec>1) "s" else "")+" occured in total.")
-        } else {
-            println(nc+" notice"+(if (nc>1) "s" else "")+" and "+ec+" error"+(if (ec>1) "s" else "")+" occured.")
+        reporter.emitSummary
 
-        }
+        reporter.clear
     }
 }
