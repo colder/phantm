@@ -118,7 +118,7 @@ case class TypeTransferFunction(silent: Boolean,
             case PHPNull()           => TNull
             case PHPThis()           => new TObjectRef(ObjectId(-1, ObjectIdUse))
             case PHPEmptyArray()     => new TArray()
-            case Instanceof(lhs, cl) => TBoolean
+            case SubTypeOf(lhs, cl)  => TBoolean
             case ArrayNext(ar)       => typeFromSV(ar)
             case ArrayCurElement(id: SimpleVariable) =>
                 env.lookup(id) match {

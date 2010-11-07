@@ -114,7 +114,7 @@ object Trees {
   case class PHPThis() extends StaticValue
   case class PHPEmptyArray() extends StaticValue
 
-  case class Instanceof(lhs: SimpleValue, cl: ClassRef) extends SimpleValue
+  case class SubTypeOf(lhs: SimpleValue, cl: ClassRef) extends SimpleValue
   case class Cast(to: AST.CastType, e: SimpleValue) extends SimpleValue
   case class ArrayNext(ar: SimpleValue) extends SimpleValue
   case class ArrayCurElement(ar: SimpleValue) extends SimpleValue
@@ -221,7 +221,7 @@ object Trees {
       case ArrayCurKey(a) => a + ".key"
       case ArrayCurElement(a) => a + ".current"
       case ArrayCurIsValid(a) => a + ".valid"
-      case Instanceof(obj, cl) => obj + " instanceof "+cl
+      case SubTypeOf(obj, cl) => obj + " instanceof "+cl
       case Identifier(sym) => sym.name
       case TempID(value) => value
       case VariableVar(v) => "*("+v+")"

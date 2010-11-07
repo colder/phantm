@@ -309,7 +309,7 @@ object ASTToCFG {
                 case AST.BitwiseNot(rhs) =>
                     Some(CFG.AssignUnary(v, CFG.BITSIWENOT, expr(rhs)))
                 case AST.InstanceOf(lhs, cr) =>
-                    Some(CFG.Assign(v, CFG.Instanceof(expr(lhs), resolveClassRef(cr)).setPos(ex)))
+                    Some(CFG.Assign(v, CFG.SubTypeOf(expr(lhs), resolveClassRef(cr)).setPos(ex)))
                 case AST.Ternary(cond, Some(then), elze) =>
                     Some(CFG.Assign(v, CFG.Ternary(expr(cond), expr(then), expr(elze)).setPos(ex)))
                 case AST.Ternary(cond, None, elze) =>
@@ -588,8 +588,8 @@ object ASTToCFG {
                     Emit.setPC(dispatchExceptionV)
 
                     // Connect the dispatcher to that catch
-                    Emit.statementCont(CFG.Assume(CFG.Instanceof(ex, cd), EQUALS, CFG.PHPTrue), beginCatchV)
-                    Emit.statementCont(CFG.Assume(CFG.Instanceof(ex, cd), NOTEQUALS, CFG.PHPTrue), nextCatchV)
+                    Emit.statementCont(CFG.Assume(CFG.SubTypeOf(ex, cd), EQUALS, CFG.PHPTrue), beginCatchV)
+                    Emit.statementCont(CFG.Assume(CFG.SubTypeOf(ex, cd), NOTEQUALS, CFG.PHPTrue), nextCatchV)
 
                     Emit.setPC(beginCatchV)
                     stmt(catchBody)
