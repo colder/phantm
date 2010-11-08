@@ -10,7 +10,6 @@ case class Settings(
     val displayFixPoint: Boolean      = false,
     val displayIncludes: Boolean      = false,
     val displayProgress: Boolean      = false,
-    val focusOnMainFiles: Boolean     = false,
     val onlyLint: Boolean             = false,
     val typeFlowFilter: List[String]  = Nil,
     val includePaths: List[String]    = List("."),

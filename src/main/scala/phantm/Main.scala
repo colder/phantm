@@ -99,9 +99,6 @@ object Main {
             case "--only" :: filter :: xs =>
                 settings = settings.copy(typeFlowFilter = filter.replace("::", "/").split(":").map(_.replace("/", "::")).toList)
                 handleArgs(xs)
-            case "--focus" :: xs =>
-                settings = settings.copy(focusOnMainFiles = true)
-                handleArgs(xs)
             case "--noapi" :: xs =>
                 settings = settings.copy(importAPI = false)
                 handleArgs(xs)
@@ -203,7 +200,6 @@ object Main {
         println("         --verbose              Display more notices")
         println("         --compactErrors yes|no Group errors per line. Useful when inlining")
         println("         --vverbose             Be nitpicking and display even more notices")
-        println("         --focus                Focus on main files and ignore errors in dependencies")
         println
         println("  - Additional features/infos:")
         println("         --noapi                Do not load the main API")
