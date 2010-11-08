@@ -7,11 +7,11 @@ import scala.util.control.Breaks._
 class PhasesRunner(val reporter: Reporter) {
     def getPhasesToRun: PhaseSeq = (
         DumpsCollectionPhase
+        followedBy APIImportationPhase
         followedBy ParsingPhase
         followedBy ASTPruningPhase
         followedBy IncludesConstantsResolutionPhase
         followedBy ASTChecksPhase
-        followedBy APIImportationPhase
         followedBy SymbolsCollectionPhase
         followedBy SymbolsChecksPhase
         followedBy PureStatementsPhase

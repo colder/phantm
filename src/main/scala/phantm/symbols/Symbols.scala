@@ -137,7 +137,7 @@ object GlobalSymbols extends Scope {
 
   def registerConstant(cs: ConstantSymbol) : Unit = constants.get(cs.name) match {
     case None => constants += ((cs.name, cs))
-    case Some(x) => Reporter.notice("Function " + cs.name + " already declared (previously declared "+x.previousPos+")", cs)
+    case Some(x) => Reporter.notice("Constant " + cs.name + " already declared (previously declared "+x.previousPos+")", cs)
   }
 
   def getClasses: List[ClassSymbol] = classes map { x => x._2 } toList
