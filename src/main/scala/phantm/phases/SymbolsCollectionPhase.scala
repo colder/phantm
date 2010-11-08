@@ -393,7 +393,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
                 }
 
                 val ftargs = for (((n, a), i) <- fs.argList.zipWithIndex) yield {
-                    if (t.args.size <= i) {
+                    if (t.args.size <= i || args.size <= i) {
                         (a.typ, a.byref, a.optional)
                     } else {
                         if (args(i).default != None) {
