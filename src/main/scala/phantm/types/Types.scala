@@ -296,6 +296,8 @@ object ArrayKey {
 }
 
 sealed abstract class ArrayKey {
+    def vToString: String;
+
     def < (o: ArrayKey) = (this, o) match {
         case (IntKey(v1), IntKey(v2)) => v1 < v2
         case (IntKey(v1), StringKey(_)) => true
@@ -305,10 +307,13 @@ sealed abstract class ArrayKey {
 }
 
 case class StringKey(v: String) extends ArrayKey {
-    override def toString = "\""+v+"\""
+    override def toString = "\""+v.replaceAll("\"", "\\\"")+"\""
+    def vToString = v
+
 }
 case class IntKey(v: Long) extends ArrayKey {
     override def toString = v.toString
+    def vToString = v.toString
 }
 
 

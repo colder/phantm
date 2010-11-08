@@ -345,11 +345,9 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
                 // If the function is declared more than once, we discard other definitions
                 val lc = name.value.toLowerCase
 
-                if (GlobalSymbols.functions contains lc) {
+                val fs = if (GlobalSymbols.functions contains lc) {
                     // Prevent this importation
-                    val fs = GlobalSymbols.functions(lc)
-                    name.setSymbol(fs)
-                    newCtx = SymContext(fs, None, None)
+                    GlobalSymbols.functions(lc)
                 } else {
                     val fs = new FunctionSymbol(name.value).setPos(fd).setUserland
                     for(a <- args) {
@@ -368,49 +366,50 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
 
                         fs.registerArgument(as);
                     }
-
-                    val t = if (fd.comment != None) {
-                        if (Settings.get.inlineMode != InlineNone) {
-                            fs.shouldInline = CommentParser.shouldInline(fd.comment.get)
-                        }
-                        fs.isPure = CommentParser.isPure(fd.comment.get)
-
-                        val (args, ret) = CommentParser.getFunctionTypes(fd.comment.get)
-
-                        val ftargs = for ((n, as) <- fs.argList) yield {
-                            if (args contains n) {
-                                (args(n), as.byref, as.optional)
-                            } else {
-                                (TAny, as.byref, as.optional)
-                            }
-                        }
-
-                        TFunction(ftargs, ret)
-                    } else {
-                        // TODO: The prototypes should be checked
-                        TFunction(Nil, TAny)
-                    }
-
-                    val ftargs = for (((n, a), i) <- fs.argList.zipWithIndex) yield {
-                        if (t.args.size <= i) {
-                            (a.typ, a.byref, a.optional)
-                        } else {
-                            if (args(i).default != None) {
-                                val tde = TypeHelpers.exprToType(args(i).default)
-                                checkTypeHint(t.args(i)._1, tde, a)
-                            }
-                            val newT = checkTypeHint(t.args(i)._1, a.typ, a)
-                            a.typ = newT
-                            (newT, a.byref, a.optional)
-                        }
-                    }
-                    fs.registerFType(TFunction(ftargs, t.ret))
-
-                    fs.registerPredefVariables
                     GlobalSymbols.registerFunction(fs)
-                    name.setSymbol(fs)
-                    newCtx = SymContext(fs, None, None)
+                    fs
                 }
+
+                val t = if (fd.comment != None) {
+                    if (Settings.get.inlineMode != InlineNone) {
+                        fs.shouldInline = CommentParser.shouldInline(fd.comment.get)
+                    }
+                    fs.isPure = CommentParser.isPure(fd.comment.get)
+
+                    val (args, ret) = CommentParser.getFunctionTypes(fd.comment.get)
+
+                    val ftargs = for ((n, as) <- fs.argList) yield {
+                        if (args contains n) {
+                            (args(n), as.byref, as.optional)
+                        } else {
+                            (TAny, as.byref, as.optional)
+                        }
+                    }
+
+                    TFunction(ftargs, ret)
+                } else {
+                    // TODO: The prototypes should be checked
+                    TFunction(Nil, TAny)
+                }
+
+                val ftargs = for (((n, a), i) <- fs.argList.zipWithIndex) yield {
+                    if (t.args.size <= i) {
+                        (a.typ, a.byref, a.optional)
+                    } else {
+                        if (args(i).default != None) {
+                            val tde = TypeHelpers.exprToType(args(i).default)
+                            checkTypeHint(t.args(i)._1, tde, a)
+                        }
+                        val newT = checkTypeHint(t.args(i)._1, a.typ, a)
+                        a.typ = newT
+                        (newT, a.byref, a.optional)
+                    }
+                }
+                fs.registerFType(TFunction(ftargs, t.ret))
+
+                fs.registerPredefVariables
+                name.setSymbol(fs)
+                newCtx = SymContext(fs, None, None)
 
             case ClassDecl(name, flags, parent, interfaces, methods, static_props, props, consts) =>
                 GlobalSymbols.lookupClass(name.value) match {

@@ -272,7 +272,11 @@ object API {
                 def simpleTypVal(name: String, value: String) = "<type name=\""+name+"\" value=\""+value+"\" />"
 
                 def escapeVal(s: String): String = {
-                    s.replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll("\"", "&quot;")
+                    s.replaceAll("&", "&amp;")
+                     .replaceAll("<", "&lt;")
+                     .replaceAll(">", "&gt;")
+                     .replaceAll("'", "&apos;")
+                     .replaceAll("\"", "&quot;")
                 }
 
                 widen(typ) match {
@@ -298,7 +302,7 @@ object API {
                         tu.types.map(typeToXML(_, widen)).mkString
 
                     case ta: TArray      =>
-                        val es = ta.entries.map(e => "<elem key=\""+e._1.toString.replaceAll("\"", "\\\"")+"\">"+typeToXML(e._2, widen)+"</elem>").mkString
+                        val es = ta.entries.map(e => "<elem key=\""+escapeVal(e._1.vToString)+"\">"+typeToXML(e._2, widen)+"</elem>").mkString
                         val gie = "<anyintkey>"+typeToXML(ta.globalInt, widen)+"</anyintkey>"
                         val gse = "<anystringkey>"+typeToXML(ta.globalString, widen)+"</anystringkey>"
                         "<type name=\"array\">"+es+gie+gse+"</type>"
