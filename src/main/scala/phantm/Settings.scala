@@ -19,7 +19,8 @@ case class Settings(
     val exportCGPath: Option[String]  = None,
     val exportMGPath: Option[String]  = None,
     val inlineMode: InlineMode        = InlineManual,
-    val compactErrors: Boolean        = true
+    val compactErrors: Boolean        = true,
+    val anyInput: Boolean             = false
 )
 
 sealed abstract class InlineMode;

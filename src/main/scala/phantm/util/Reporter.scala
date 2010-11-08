@@ -8,15 +8,13 @@ case object ENotice extends ErrorTag
 class Reporter(mainFiles: List[String]) {
 
     case class Error(val message: String, val pos: Positional, var tags: Set[ErrorTag]) {
-        override def equals(o: Any) = o match {
+        override def equals(o: Any): Boolean = o match {
             case e2: Error =>
-                val basicCheck = tags == e2.tags && pos.getPos == e2.pos.getPos
-
                 if (Settings.get.compactErrors) {
                     // At most one error per line
-                    basicCheck
+                    (tags == e2.tags) && (pos.line == e2.pos.line)
                 } else {
-                    basicCheck && message == e2.message
+                    (tags == e2.tags) && (pos.getPos == e2.pos.getPos) && message == e2.message
                 }
             case _ =>
                 false
@@ -25,7 +23,7 @@ class Reporter(mainFiles: List[String]) {
         override def hashCode =
             if (Settings.get.compactErrors) {
                 // At most one error per line
-                tags.hashCode+pos.getPos.hashCode
+                tags.hashCode+pos.line.hashCode
             } else {
                 tags.hashCode+pos.getPos.hashCode+message.hashCode
             }

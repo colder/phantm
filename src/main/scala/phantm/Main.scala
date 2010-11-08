@@ -87,6 +87,15 @@ object Main {
             case "--format" :: f :: xs =>
                 println("Invalid format "+f)
                 displayUsage = true
+            case "--anyinput" :: "yes" :: xs =>
+                settings = settings.copy(anyInput = true)
+                handleArgs(xs)
+            case "--anyInput" :: "no" :: xs =>
+                settings = settings.copy(anyInput = false)
+                handleArgs(xs)
+            case "--anyinput" :: xs =>
+                settings = settings.copy(anyInput = true)
+                handleArgs(xs)
             case "--compacterrors" :: "yes" :: xs =>
                 settings = settings.copy(compactErrors = true)
                 handleArgs(xs)
@@ -217,6 +226,7 @@ object Main {
         println("                                      manual   : Inline methods specified in the code")
         println("                                      leaves   : Inline leaves in the callgraph")
         println("                                      full     : Inline acyclic functions")
+        println("         --anyError yes|[no]    Assume correct inputs")
         println
         println("  - Misc.:")
         println("         --tests                Enable internal consistency checks")
