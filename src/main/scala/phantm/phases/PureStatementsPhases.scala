@@ -147,6 +147,8 @@ case class PureStatementsChecks(node: Tree) extends ASTSimpleTraversal(node) {
                 false
             case StaticMethodCall(_, _, _) =>
                 false
+            case VoidExpr() =>
+                false
             case _: Scalar =>
                 true
 

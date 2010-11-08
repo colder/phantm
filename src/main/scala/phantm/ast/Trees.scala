@@ -76,7 +76,7 @@ object Trees {
     case class OAArray(array: OAScalar, indexes: List[Option[Expression]]) extends ObjectAccess
     case class OAMethod(name: ObjectAccess, args: List[CallArg]) extends ObjectAccess
 
-    abstract class Statement extends Tree;
+    sealed abstract class Statement extends Tree;
 
     case class FunctionDecl(name: Identifier, args: List[ArgumentDecl], retref: Boolean, body: Statement) extends Statement
 
@@ -181,6 +181,7 @@ object Trees {
     case class FunctionCall(name: FunctionRef, args: List[CallArg]) extends Expression
     case class MethodCall(obj: Expression, name: MethodRef, args: List[CallArg]) extends Expression
     case class StaticMethodCall(cl: ClassRef, name: MethodRef, args: List[CallArg]) extends Expression
+    case class VoidExpr() extends Expression
 
 
     abstract class Scalar extends Expression

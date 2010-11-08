@@ -101,16 +101,16 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
                     // We include-resolve this file too
                     ast = IncludeResolver(ast).transform
 
-                    Block(ast.stmts)
+                    Block(ast.stmts).setPos(inc)
                 case None =>
                     Reporter.notice("Cannot preprocess \""+path+"\": sub-compilation failed", inc)
-                    PHPNull()
+                    VoidExpr().setPos(inc)
             }
         }
 
         def notfound(p: String): Expression = {
             Reporter.notice("Cannot preprocess \""+p+"\": file not found", inc)
-            PHPFalse()
+            VoidExpr().setPos(inc)
         }
 
         IncludeResolver.begin
@@ -145,7 +145,7 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
                                 if (shouldInclude(realpath.get, scalar)) {
                                     getAST(realpath.get)
                                 } else {
-                                    PHPFalse()
+                                    VoidExpr().setPos(inc)
                                 }
                             } else {
                                 notfound(p)
@@ -166,7 +166,7 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
                                     if (shouldInclude(path, scalar)) {
                                         getAST(path)
                                     } else {
-                                        PHPFalse()
+                                        VoidExpr().setPos(inc)
                                     }
                                 case None =>
                                     notfound(p)
@@ -176,7 +176,7 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
                     val asts = paths map (astFromScalar _)
 
                     if (asts.size > 1) {
-                        Alternatives(asts)
+                        Alternatives(asts).setPos(inc)
                     } else {
                         asts.head
                     }
@@ -184,11 +184,11 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
                     if (Settings.get.verbosity >= 0 && !instr) {
                         Reporter.notice("Include with non trivial argument will be ignored", inc)
                     }
-                    PHPFalse()
+                    VoidExpr().setPos(inc)
             }
         } else {
             Reporter.error("Include nesting level too deep: "+IncludeResolver.deepNess, inc)
-            PHPFalse()
+            VoidExpr().setPos(inc)
         }
 
         IncludeResolver.end

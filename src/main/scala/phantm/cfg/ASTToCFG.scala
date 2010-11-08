@@ -247,6 +247,8 @@ object ASTToCFG {
         Some(CFG.PHPTrue().setPos(ex))
       case AST.PHPFalse() =>
         Some(CFG.PHPFalse().setPos(ex))
+      case AST.VoidExpr() =>
+        Some(CFG.PHPNull().setPos(ex))
       case AST.PHPNull() =>
         Some(CFG.PHPNull().setPos(ex))
       case AST.MCFile() =>
@@ -630,6 +632,8 @@ object ASTToCFG {
                     stmts(tss, nextCaseV)
                     curCaseV = nextCaseV
                     nextCaseV = cfg.newVertex
+                case (_, _) =>
+                    error("Unexpected Switch content")
             }
 
 
