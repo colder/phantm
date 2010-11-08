@@ -31,7 +31,7 @@ case class TypeFlowAnalyzer(cfg: ControlFlowGraph,
                 val map = ctx.dumpedData.flatMap(d => d.heap.toTypeMap).toMap
                 map.getOrElse(name, TNull)
             } else if (Settings.get.anyInput) {
-                TBottom
+                new TArray(TBottom)
             } else {
                 new TArray(TTop)
             }
