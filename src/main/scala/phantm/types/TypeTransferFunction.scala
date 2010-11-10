@@ -283,6 +283,7 @@ case class TypeTransferFunction(silent: Boolean,
                 typeFromSV(then) union typeFromSV(elze)
 
             case Cast(typ, v) =>
+                expOrRef(v, TAny);
                 typ match {
                     case AST.CastUnset => TNull
                     case AST.CastInt => TInt
