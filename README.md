@@ -17,9 +17,10 @@ You only need Java 1.6 or higher to run a release of phantm.
 
 
 In order to compile this tool, you need
-* ant
-* Java 1.6 or higher
-* Scala 2.8.0 or higher
+*   ant
+*   sbt
+*   Java 1.6 or higher
+*   Scala 2.8.0 or higher
 
 Also, make sure you've the $SCALA_HOME environment variable pointing to your scala distribution.
 
