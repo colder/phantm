@@ -28933,7 +28933,7 @@
   <function name="count">
    <return><type name="int" /></return>
    <args>
-    <arg><type name="mixed" /></arg>
+    <arg><type name="array" /><type name="object" /></arg>
     <arg><type name="numeric" /></arg>
    </args>
   </function>
