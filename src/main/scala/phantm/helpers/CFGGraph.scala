@@ -51,7 +51,7 @@ case class CFGGraphs(node: Tree) extends ASTTraversal[CheckContext](node, CheckC
                         cfg.writeDottyToFile("result.cfg-"+n, name.value);
                         n = n + 1;
                     case _ =>
-                        error("Incoherent symbol type, should be function")
+                        sys.error("Incoherent symbol type, should be function")
                 }
 
             case ClassDecl(name, flags, parent, interfaces, methods, static_props, props, consts) =>
@@ -62,7 +62,7 @@ case class CFGGraphs(node: Tree) extends ASTTraversal[CheckContext](node, CheckC
                             cfg.writeDottyToFile("result.cfg-"+n, name.value+"::"+m.name.value);
                             n = n + 1;
                         case _ =>
-                            error("Incoherent symbol type, should be Method")
+                            sys.error("Incoherent symbol type, should be Method")
                     }
                 }
 

@@ -189,7 +189,7 @@ class Reporter(mainFiles: List[String]) {
             }
             val lines = files(file)
             if (l >= lines.size || l < 0) {
-                scala.Predef.error("Line out of range")
+                sys.error("Line out of range")
             }
             Some(lines(l))
         } catch {

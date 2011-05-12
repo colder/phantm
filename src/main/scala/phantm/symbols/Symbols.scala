@@ -17,7 +17,7 @@ trait Symbolic {
   def hasSymbol: Boolean = opt_sym != None
   def getSymbol: Symbol = opt_sym  match {
       case Some(x) => x
-      case None => scala.Predef.error("Cannot access undefined Symbol")
+      case None => sys.error("Cannot access undefined Symbol")
   }
 }
 

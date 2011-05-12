@@ -23,7 +23,7 @@ object IncludesConstantsResolutionPhase extends Phase {
 
                     GlobalSymbols.registerConstant(cs)
                 case _ =>
-                    error("Unnexpected non-evaluable scalar value")
+                    sys.error("Unnexpected non-evaluable scalar value")
             }
         }
 

@@ -15,4 +15,4 @@ echo '   -- / /_/ / __ \/ __ `/ __ \/ __/ __ `__ \  --'
 echo '  -- / ____/ / / / /_/ / / / / /_/ / / / / / --'
 echo ' -- /_/   /_/ /_/\__,_/_/ /_/\__/_/ /_/ /_/ --'
 echo ' '
-scala -classpath $DIR/target/scala_2.8.0/phantm-latest.jar:$DIR/lib/cup/dist/java-cup-11a-runtime.jar phantm.Main  $* 2>&1 | tee ${FILENAME}--${TIMESTAMP}.out | tee last.out | less -eRFEX
+scala -classpath $DIR/target/scala_2.9.0.RC1/phantm-latest.jar:$DIR/lib/cup/dist/java-cup-11a-runtime.jar phantm.Main  $* 2>&1 | tee ${FILENAME}--${TIMESTAMP}.out | tee last.out | less -eRFEX

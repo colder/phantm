@@ -416,14 +416,14 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
                     case Some(cs) =>
                         name.setSymbol(cs);
                         newCtx = SymContext(ctx.varScope, Some(cs), None)
-                    case None => error("Woops ?!? Came across a phantom class");
+                    case None => sys.error("Woops ?!? Came across a phantom class");
                 }
 
             case InterfaceDecl(name, parents, methods, consts) =>
                 GlobalSymbols.lookupIface(name.value) match {
                     case Some(iface) =>
                         newCtx = SymContext(ctx.varScope, None, Some(iface))
-                    case None => error("Woops ?!? Came across a phantom interface");
+                    case None => sys.error("Woops ?!? Came across a phantom interface");
                 }
 
             case MethodDecl(name, flags, args, retref, body) =>
@@ -432,13 +432,13 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
                         case LookupResult(Some(ms: MethodSymbol), _, _) =>
                             name.setSymbol(ms)
                             newCtx = SymContext(ms, Some(cs), None)
-                        case _ => error("Woops?! No such method declared yet: "+cs.name+"::"+name.value+" ??")
+                        case _ => sys.error("Woops?! No such method declared yet: "+cs.name+"::"+name.value+" ??")
                     }
                     case (None, Some(iface)) =>
                         name.setSymbol(iface)
                         // no body
                     case (None, None) =>
-                        error("Woops?!? Got into a method without any class or interface in the context: (Method: "+name.value+", "+name.getPos+")")
+                        sys.error("Woops?!? Got into a method without any class or interface in the context: (Method: "+name.value+", "+name.getPos+")")
                 }
             case _: ArgumentDecl =>
                 // Skip SimpleVariables contained inside arguments declarations

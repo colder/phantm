@@ -14,9 +14,9 @@ class Lint extends Helper{
             printStream.println("No syntax errors detected in "+input);
         } catch {
             case e: FileNotFoundException =>
-                error("File not found: "+input);
+                sys.error("File not found: "+input);
             case e: IOException =>
-                error("IOException: " + e.getMessage);
+                sys.error("IOException: " + e.getMessage);
             case e: Exception =>
         }
 

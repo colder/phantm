@@ -88,7 +88,7 @@ case class ObjectStore(val store: Map[ObjectId, TRealObject]) {
 
     def lookup(id: ObjectId): TRealObject = store.get(id) match {
         case Some(o) => o
-        case None => error("Woops incoherent store")
+        case None => sys.error("Woops incoherent store")
     }
 
     def unset(id: ObjectId): ObjectStore = new ObjectStore(store - id);

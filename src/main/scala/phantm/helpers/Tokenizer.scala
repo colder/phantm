@@ -23,8 +23,8 @@ class Tokenizer extends Helper{
                }
 
             } catch {
-               case e: FileNotFoundException => error("File not found: "+input); None
-               case e: IOException => error("IOException: " + e.getMessage); None
+               case e: FileNotFoundException => sys.error("File not found: "+input); None
+               case e: IOException => sys.error("IOException: " + e.getMessage); None
             }
 
     }

@@ -12,5 +12,5 @@ foreach($ppl as $p) {
 }
 
 if ($last) {
-    echo $last['name']." is ".$last['age']." years old!";
+    echo $last['name']." is ".$last['agE']." years old!";
 }

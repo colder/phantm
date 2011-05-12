@@ -105,7 +105,7 @@ case class CallGraphGeneration(node: Tree,
                     this -= (vFrom, e.lab, vTo)
                     this += (vFrom, e.lab+1, vTo)
                 case _ =>
-                    error("More than one edge between call vertices")
+                    sys.error("More than one edge between call vertices")
             }
         }
 

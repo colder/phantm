@@ -829,7 +829,7 @@ case class TypeTransferFunction(silent: Boolean,
             case NoVar() =>
                 (None, ct, hasTmp)
             case v =>
-                Predef.error("Woops, unexpected Variable("+v+") inside checktype of!")
+                sys.error("Woops, unexpected Variable("+v+") inside checktype of!")
         }
 
         def assign(v: Variable, ext: Type): Type = {
@@ -930,7 +930,7 @@ case class TypeTransferFunction(silent: Boolean,
                         typ
 
                     case _ =>
-                        Predef.error("Woops, unexpected Variable inside checktype of!")
+                        sys.error("Woops, unexpected Variable inside checktype of!")
                 }
 
                 def limitType(typ: Type, l: Int): Type = typ match {

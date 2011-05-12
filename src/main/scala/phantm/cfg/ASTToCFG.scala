@@ -224,7 +224,7 @@ object ASTToCFG {
         id.getSymbol match {
             case vs: VariableSymbol =>
                 CFG.Identifier(vs).setPos(id)
-            case _ => error("Woooot?");
+            case _ => sys.error("Woooot?");
         }
     }
     
@@ -464,7 +464,7 @@ object ASTToCFG {
                             Emit.setPC(cfg.newVertex)
                             retval = Some(new CFG.NoVar().setPos(ex))
 
-                        case _ => error("expr() not handling correctly: "+ ex +"("+ex.getPos+")")
+                        case _ => sys.error("expr() not handling correctly: "+ ex +"("+ex.getPos+")")
                     }
                 }
                 retval match {
@@ -633,7 +633,7 @@ object ASTToCFG {
                     curCaseV = nextCaseV
                     nextCaseV = cfg.newVertex
                 case (_, _) =>
-                    error("Unexpected Switch content")
+                    sys.error("Unexpected Switch content")
             }
 
 

@@ -118,7 +118,7 @@ abstract class LabeledDirectedGraphImp[LabelType] extends LabeledDirectedGraph[L
      def closeGroup(vertOut: Vertex) = {
         this.vertOut match {
             case None => this.vertOut = Some(vertOut)
-            case Some(x) => error("Group already closed")
+            case Some(x) => sys.error("Group already closed")
         }
      }
 
@@ -145,7 +145,7 @@ abstract class LabeledDirectedGraphImp[LabelType] extends LabeledDirectedGraph[L
          var alreadyIn: Set[Vertex] = Set[Vertex]()
          val myVertOut = vertOut match {
             case Some(x) => x
-            case None => error("Non-closed group");
+            case None => sys.error("Non-closed group");
          }
          alreadyIn += myVertOut
 

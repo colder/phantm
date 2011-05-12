@@ -51,7 +51,7 @@ case class CFGGenerator(initCtx: PhasesContext, node: Tree) extends ASTSimpleTra
 
                         ctx = ctx.copy(cfgs = ctx.cfgs + (Some(fs) -> cfg))
                     case _ =>
-                        error("Incoherent symbol type, should be function")
+                        sys.error("Incoherent symbol type, should be function")
                 }
 
 
@@ -65,11 +65,11 @@ case class CFGGenerator(initCtx: PhasesContext, node: Tree) extends ASTSimpleTra
                                     val cfg = ASTToCFG.convertAST(List(m.body.get), ms)
                                     ctx = ctx.copy(cfgs = ctx.cfgs + (Some(ms) -> cfg))
                                 case _ =>
-                                    error("Incoherent symbol type, should be method")
+                                    sys.error("Incoherent symbol type, should be method")
                             }
                         }
                     case _ =>
-                        error("Incoherent symbol type, should be class")
+                        sys.error("Incoherent symbol type, should be class")
 
                 }
 

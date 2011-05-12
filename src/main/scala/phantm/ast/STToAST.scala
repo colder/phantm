@@ -1049,14 +1049,14 @@ case class STToAST(parser: Parser, st: ParseNode) {
     def variable_w(n: ParseNode): Variable = {
         variable(n) match {
             case v: Variable => v
-            case _ => error("Cannot write to non-variable");
+            case _ => sys.error("Cannot write to non-variable");
         }
     }
 
     def variable_u(n: ParseNode): Variable = {
         variable(n) match {
             case v: Variable => v
-            case _ => error("Unnexpected non-variable, expecting variable");
+            case _ => sys.error("Unnexpected non-variable, expecting variable");
         }
     }
     def variable(n: ParseNode): Expression = {

@@ -80,7 +80,7 @@ case class TypeFlowAnalysis(initCtx: PhasesContext, node: Tree) extends ASTSimpl
     var ctx = initCtx
 
     def getCFG(sym: Option[FunctionSymbol]): ControlFlowGraph = {
-        ctx.cfgs.get(sym).getOrElse(error("Unknown CFG: "+sym))
+        ctx.cfgs.get(sym).getOrElse(sys.error("Unknown CFG: "+sym))
     }
 
     def display(content: String) = {
@@ -123,7 +123,7 @@ case class TypeFlowAnalysis(initCtx: PhasesContext, node: Tree) extends ASTSimpl
                             tfa.analyze
                         }
                     case _ =>
-                        error("Incoherent symbol type, should be function")
+                        sys.error("Incoherent symbol type, should be function")
                 }
 
 
@@ -139,11 +139,11 @@ case class TypeFlowAnalysis(initCtx: PhasesContext, node: Tree) extends ASTSimpl
                                         tfa.analyze
                                     }
                                 case _ =>
-                                    error("Incoherent symbol type, should be method")
+                                    sys.error("Incoherent symbol type, should be method")
                             }
                         }
                     case _ =>
-                        error("Incoherent symbol type, should be class")
+                        sys.error("Incoherent symbol type, should be class")
 
                 }
 
