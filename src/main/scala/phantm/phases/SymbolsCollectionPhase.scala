@@ -467,7 +467,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
                                 } else if (id.value == "parent") {
                                     cs.parent match {
                                         case Some(pcs) =>
-                                            id.setSymbol(cs)
+                                            id.setSymbol(pcs)
                                         case None =>
                                             Reporter.error("Class '"+cs.name+"' has no parent", id);
                                     }
