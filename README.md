@@ -21,7 +21,7 @@ In order to compile this tool, you need
 * ant
 * sbt
 * Java 1.6 or higher
-* Scala 2.8.0 or higher
+* Scala 2.9.1 or higher
 
 Also, make sure you've the $SCALA_HOME environment variable pointing to your scala distribution.
 
