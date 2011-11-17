@@ -27,11 +27,27 @@ Also, make sure you've the $SCALA_HOME environment variable pointing to your sca
 
 Installation
 ------------
-Simply run:
+The first time you compile phantm, run:
 
-    $ make complete
+    $ make bootstrap
 
-This will, in order, build customized CUP, generate lexer using JFlex, generate parser using CUP, build generated java files, build the scala analyzer.
+This will, in order, build customized CUP, generate lexer using JFlex, generate parser using CUP, and build the generated java files.
+
+To build the core component of phantm, the analyzer, you need sbt (specifically, you need a version <u>older</u> than sbt 0.10. You should be able to download sbt 0.7.7 from <a href="http://code.google.com/p/simple-build-tool/">here</a>).
+
+Invoke sbt as follows:
+
+    $ sbt package
+
+This will download the required version of Scala and other dependencies using Ivy, and produce a jar file containing phantm, as well as a script called "phantm". You can use this script to analyze your PHP programs.
+
+You can also package everything into a single jar by invoking
+
+    $ sbt proguard
+
+You can then also run phantm with
+
+    $ java -jar phantm-1.?.?.jar
 
 Usage
 -----
