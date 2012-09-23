@@ -8,7 +8,7 @@ import phantm.cfg.{Trees => CFG}
 import phantm.ast.ASTSimpleTraversal
 import phantm.util._
 import phantm.symbols._
-import phantm.types.{Type,TypeFlowAnalyzer}
+import phantm.types.{TypeEnvironment, Type, TypeFlowAnalyzer}
 import phantm.cfg.ControlFlowGraph
 
 object TypeAnalyzingPhase extends Phase {
@@ -114,7 +114,7 @@ case class TypeFlowAnalysis(initCtx: PhasesContext, node: Tree) extends ASTSimpl
                     Reporter.get.clear
                 }
 
-            case FunctionDecl(name, args, retref, body) if filter(name.value) =>
+            case FunctionDecl( name, args, retref, body) if filter(name.value) =>
                 name.getSymbol match {
                     case fs: FunctionSymbol =>
                         if (!fs.shouldInline) {
@@ -127,7 +127,7 @@ case class TypeFlowAnalysis(initCtx: PhasesContext, node: Tree) extends ASTSimpl
                 }
 
 
-            case ClassDecl(name, flags, parent, interfaces, methods, static_props, props, consts) =>
+            case ClassDecl( name, flags, parent, interfaces, methods, static_props, props, consts) =>
                 name.getSymbol match {
                     case cl: ClassSymbol =>
                         for (m <- methods) if (m.body != None) {
@@ -135,7 +135,7 @@ case class TypeFlowAnalysis(initCtx: PhasesContext, node: Tree) extends ASTSimpl
                                 case ms: MethodSymbol =>
                                     if (!ms.shouldInline && (filter(cl.name+"::"+m.name.value) || filter(cl.name+"::_"))) {
                                         display("Analyzing method "+cl.name+"::"+m.name.value+"...")
-                                        val tfa = new TypeFlowAnalyzer(getCFG(Some(ms)), ms, ctx)
+                                        val tfa = new TypeFlowAnalyzer(getCFG(Some(ms)), ms, ctx,false,false , new TypeEnvironment(Some(cl)))
                                         tfa.analyze
                                     }
                                 case _ =>
