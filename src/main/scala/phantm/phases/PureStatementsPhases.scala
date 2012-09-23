@@ -5,6 +5,7 @@ import phantm.symbols._
 import phantm.ast.Trees._
 import phantm.ast.ASTSimpleTraversal
 import phantm.util.Reporter
+import phantm.helpers.NamespaceContext
 
 object PureStatementsPhase  extends Phase {
 
@@ -19,14 +20,21 @@ object PureStatementsPhase  extends Phase {
 }
 
 case class PureStatementsChecks(node: Tree) extends ASTSimpleTraversal(node) {
+     var nsContext = new NamespaceContext
 
     def checkPures(stmts: List[Statement]) = {
         stmts foreach (checkPure _)
     }
 
     def isPure(stmt: Statement): Boolean = stmt match {
-        case ex: Expression => ex match {
-            case Block(_) =>
+      case  ns : NSDeclaration  =>
+        nsContext.setNamespace(ns)
+        false
+      case use : UseStatement =>
+        nsContext.addUseStatement(use)
+        false
+      case ex: Expression => ex match {
+          case Block(_) =>
                 false
             case DynamicObjectProperty(obj: Expression, property: Expression) =>
                 isPure(obj) && isPure(property)
@@ -130,8 +138,8 @@ case class PureStatementsChecks(node: Tree) extends ASTSimpleTraversal(node) {
                 true
             case New(_, _) =>
                 false
-            case FunctionCall(StaticFunctionRef(_, _, id), args) =>
-                GlobalSymbols.lookupFunction(id.value) match {
+            case FunctionCall(sfr : StaticFunctionRef, args) =>
+                GlobalSymbols.lookupFunction(sfr.qName(nsContext)) match {
                   case Some(fs) =>
                     if (fs.isPure) {
                         args.forall(a => isPure(a.value))
@@ -164,6 +172,10 @@ case class PureStatementsChecks(node: Tree) extends ASTSimpleTraversal(node) {
 
     def visit(tr: Tree): Boolean = {
         tr match {
+          case ns : NSDeclaration  =>
+                nsContext.setNamespace(ns)
+          case use : UseStatement =>
+                nsContext.addUseStatement(use)
             case Block(stmts) =>
                 checkPures(stmts)
             case FunctionDecl(_, _, _, stmt) =>

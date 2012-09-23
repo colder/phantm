@@ -128,8 +128,9 @@ object Trees {
                      then: SimpleValue,
                      elze: SimpleValue) extends SimpleValue
 
-  case class FunctionCall(id: AST.Identifier,
-                          params: List[SimpleValue]) extends SimpleValue
+  case class FunctionCall( ids: List[AST.Identifier],params: List[SimpleValue]) extends SimpleValue {
+     def qName : String = ids.map { (n) => n.value }.mkString("\\")
+  }
 
   case class StaticMethodCall(cl: ClassRef,
                               id: AST.Identifier,
@@ -183,6 +184,7 @@ object Trees {
   case object POSTDEC extends UnaryOperator { override def toString = "-- (post)" }
   case object SILENCE extends UnaryOperator { override def toString = "@" }
 
+
   def stringRepr(tree: Tree): String = {
     val assOp = " := "
 
@@ -191,7 +193,7 @@ object Trees {
       case AssignBinary(v, l, b, r) => v + assOp + l + " " + b + " " + r
       case StaticMethodCall(r, mid, p) => r + "::" + mid.value + p.mkString("(", ", ", ")")
       case MethodCall(r, mid, p) => r + "->" + mid.value + p.mkString("(", ", ", ")")
-      case FunctionCall(fid, p) => fid.value + p.mkString("(", ", ", ")")
+      case fc : FunctionCall  => fc.qName + fc.params.mkString("(", ", ", ")")
       case Constant(cs) => cs.name
       case ClassConstant(cl, cid) => cl + "::" + cid.value
       case Ternary(i, then, elze) => i + " ? " + then + " : " + elze

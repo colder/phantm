@@ -46,7 +46,7 @@ class ASTCollector(functs: Map[String, (String, Int)],
             case FunctionCall(StaticFunctionRef(_, _, Identifier("phantm_collect_state")), _) =>
                 // found the call
                 afterDump = true
-            case fd @ FunctionDecl(Identifier(name), _, _, _) if !afterDump =>
+            case fd @ FunctionDecl( Identifier(name), _, _, _) if !afterDump =>
                 if (functs contains name.toLowerCase) {
                     val (file, line) = functs(name.toLowerCase)
                     if (file == fd.file.get && line == fd.line) {
@@ -55,7 +55,7 @@ class ASTCollector(functs: Map[String, (String, Int)],
                         println("Excluding function "+name+" because of line/col mismatch")
                     }
                 }
-            case cd @ ClassDecl(Identifier(name), _, _, _, _, _, _, _) if !afterDump =>
+            case cd @ ClassDecl( Identifier(name), _, _, _, _, _, _, _) if !afterDump =>
                 if (classes contains name) {
                     val (file, line) = classes(name)
                     if (file == cd.file.get && line == cd.line) {

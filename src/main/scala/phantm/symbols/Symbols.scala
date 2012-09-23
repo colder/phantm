@@ -89,22 +89,22 @@ object GlobalSymbols extends Scope {
 
   def lookupIface(n: String): Option[IfaceSymbol] = ifaces.get(n)
 
-  def registerIface(is: IfaceSymbol) : Unit = ifaces.get(is.name) match {
-    case None => ifaces += ((is.name, is))
-    case Some(x) => Reporter.notice("Interface " + is.name + " already declared (previously declared "+x.previousPos+")", is)
+  def registerIface(is: IfaceSymbol) : Unit = ifaces.get(is.qName) match {
+    case None => ifaces += ((is.qName, is))
+    case Some(x) => Reporter.notice("Interface " + is.qName + " already declared (previously declared "+x.previousPos+")", is)
   }
 
-  def lookupClass(n: String): Option[ClassSymbol] = classes.get(n.toLowerCase)
+  def lookupClass(n: String): Option[ClassSymbol] = classes.get(n)
 
-  def registerClass(cs: ClassSymbol) : Unit = classes.get(cs.name.toLowerCase) match {
-    case None => classes += ((cs.name.toLowerCase, cs))
+  def registerClass(cs: ClassSymbol) : Unit = classes.get(cs.qName) match {
+    case None => classes += ((cs.qName, cs))
     case Some(x) => Reporter.notice("Class " + cs.name + " already declared (previously declared "+x.previousPos+")", cs)
   }
 
-  def lookupFunction(n: String): Option[FunctionSymbol] = functions.get(n.toLowerCase)
+  def lookupFunction(n: String): Option[FunctionSymbol] = functions.get(n)
 
   def registerFunction(fs: FunctionSymbol) : Unit = {
-      functions.get(fs.name.toLowerCase) match {
+      functions.get(fs.qName) match {
           case Some(x) =>
               if (!x.overwriteable) {
                   Reporter.notice("Function " + fs.name + " already declared (previously declared "+x.previousPos+")", fs)
@@ -113,7 +113,7 @@ object GlobalSymbols extends Scope {
           case None =>
       }
 
-      functions += ((fs.name.toLowerCase, fs))
+      functions += ((fs.qName, fs))
   }
 
   def lookupConstant(n: String): Option[ConstantSymbol] = constants.get(n)
@@ -145,7 +145,13 @@ object GlobalSymbols extends Scope {
   def getConstants: List[ConstantSymbol] = constants map { x => x._2 } toList
 }
 
-class FunctionSymbol(val name: String) extends Symbol with Scope with FunctionTypeAnnotation with CommentAnnotation with FunctionAnnotation {
+trait QName {
+  val namespace: List[String]
+  val name: String
+
+  def qName = ( namespace ::: List(name)).mkString("\\");
+}
+class FunctionSymbol(val namespace: List[String], val name: String) extends Symbol with Scope with FunctionTypeAnnotation with CommentAnnotation with FunctionAnnotation with QName {
   val args = new HashMap[String, ArgumentSymbol]();
   var argList: List[(String, ArgumentSymbol)] = Nil;
 
@@ -170,7 +176,7 @@ class FunctionSymbol(val name: String) extends Symbol with Scope with FunctionTy
   }
 
   override def toString = {
-      name+argList.map {x => x._1}.mkString("(", ",", ")")
+     ( namespace ::: List(name)).mkString("\\") +argList.map {x => x._1}.mkString("(", ",", ")")
   }
 
   def getArgsVariables: List[VariableSymbol] = getArguments ::: super.getVariables
@@ -210,7 +216,7 @@ object MVProtected extends MemberVisibility {
 
 class MethodSymbol(val cs: ClassSymbol,
                    name: String,
-                   val visibility: MemberVisibility) extends FunctionSymbol(name) {
+                   val visibility: MemberVisibility) extends FunctionSymbol(null, name) {
 
   override def registerPredefVariables = {
       super.registerPredefVariables
@@ -224,14 +230,14 @@ class PropertySymbol(val cs: ClassSymbol,
 
 class ClassConstantSymbol(val cs: ClassSymbol,  name: String, value: Option[Scalar]) extends ConstantSymbol(name, value);
 
-class IfaceMethodSymbol(val is: IfaceSymbol, name: String, val visibility: MemberVisibility) extends FunctionSymbol(name);
+class IfaceMethodSymbol(val is: IfaceSymbol, name: String, val visibility: MemberVisibility) extends FunctionSymbol(null, name);
 class IfaceConstantSymbol(val is: IfaceSymbol,  name: String, value: Option[Scalar]) extends ConstantSymbol(name, value);
 
 case class LookupResult[T](ms: Option[T], visibError: Option[MemberVisibility], staticClash: Boolean) {
     def isError = ms == None || visibError != None
 }
 
-class IfaceSymbol(val name: String, val parents: List[IfaceSymbol]) extends Symbol {
+class IfaceSymbol(val namespace: List[String], val name: String, val parents: List[IfaceSymbol]) extends Symbol with QName {
   val methods = new HashMap[String, IfaceMethodSymbol]();
   val constants = new HashMap[String, IfaceConstantSymbol]();
 
@@ -270,7 +276,7 @@ class IfaceSymbol(val name: String, val parents: List[IfaceSymbol]) extends Symb
   }
 }
 
-class ClassSymbol(val name: String, val parent: Option[ClassSymbol], var ifaces: List[IfaceSymbol]) extends Symbol {
+class ClassSymbol(val namespace: List[String], val name: String, val parent: Option[ClassSymbol], var ifaces: List[IfaceSymbol]) extends Symbol with QName {
   val methods = new HashMap[String, MethodSymbol]();
   val properties = new HashMap[String, PropertySymbol]();
   val static_properties = new HashMap[String, PropertySymbol]();
@@ -365,7 +371,7 @@ class ClassSymbol(val name: String, val parent: Option[ClassSymbol], var ifaces:
       case Some(ps) => ps.visibility match {
           case MVPublic => LookupResult(Some(ps), None, false)
           case MVProtected => from match {
-              case Some(from_cs) => 
+              case Some(from_cs) =>
                   if (from_cs subclassOf this) {
                       LookupResult(Some(ps), None, false)
                   } else {
@@ -375,7 +381,7 @@ class ClassSymbol(val name: String, val parent: Option[ClassSymbol], var ifaces:
                   LookupResult(Some(ps), Some(MVProtected), false)
           }
           case MVPrivate => from match {
-              case Some(from_cs) => 
+              case Some(from_cs) =>
                   if (from_cs == this) {
                       LookupResult(Some(ps), None, false)
                   } else {
