@@ -95,12 +95,18 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
             val p = new Parser(path)
             p parse match {
                 case Some(node) =>
-                    var ast: Program = new STToAST(p, node) getAST;
-                    // We define/resolve constants there too
-                    ast = ConstantsResolver(ast, false).transform
-                    // We include-resolve this file too
-                    ast = IncludeResolver(ast).transform
+                    var ast: Program = Program(List(VoidExpr()));
 
+                    try {
+                        ast = new STToAST(p, node) getAST;
+                        // We define/resolve constants there too
+                        ast = ConstantsResolver(ast, false).transform
+                        // We include-resolve this file too
+                        ast = IncludeResolver(ast).transform
+                    } catch {
+                      case e : Exception =>
+                           Reporter.error("Failed to process \"" + path + "\": " + e.getMessage)
+                    }
                     Block(ast.stmts).setPos(inc)
                 case None =>
                     Reporter.notice("Cannot preprocess \""+path+"\": sub-compilation failed", inc)

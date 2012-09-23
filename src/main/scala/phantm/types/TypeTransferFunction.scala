@@ -9,6 +9,7 @@ import phantm.symbols._
 import phantm.Settings
 import phantm.annotations.AnnotationsStore
 import phantm.dataflow.TransferFunction
+import phantm.ast.Trees.NSNone
 
 case class TypeTransferFunction(silent: Boolean,
                                 ctx: PhasesContext,
@@ -173,14 +174,14 @@ case class TypeTransferFunction(silent: Boolean,
                     case _ =>
                         TAnyObject
                 }
-            case FunctionCall(AST.Identifier("phantm_collect_state"), args) =>
+            case FunctionCall(List(AST.Identifier("phantm_collect_state")), args) =>
                 for (unser <- ctx.dumpedData) {
                     env = unser.heap.importToEnv(env)
                 }
                 TBottom
 
-            case fcall @ FunctionCall(id, args) =>
-                GlobalSymbols.lookupFunction(id.value) match {
+            case fcall @ FunctionCall(_, args) =>
+                GlobalSymbols.lookupFunction(fcall.qName) match {
                     case Some(fs) =>
                             if (collectAnnotations) {
                                 val ft = new TFunction(args.map(a => (typeFromSV(a), false, false)), TBottom)
@@ -189,14 +190,14 @@ case class TypeTransferFunction(silent: Boolean,
                             checkFCalls(fcall.params, fs, fcall, None)
                     case None =>
                         // handle special functions
-                        id.value.toLowerCase match {
+                        fcall.qName match {
                             case "eval" =>
-                                notice("eval() statements are ignored.", id)
+                                notice("eval() statements are ignored.", fcall.ids.last)
                                 TAny
-                            case "isset" | "empty" =>
+                            case "\\isset" | "\\empty" =>
                                 TBoolean // no need to check the args, this is a no-error function
                             case _ =>
-                                notice("Function "+id.value+" appears to be undefined!", id)
+                                notice("Function "+fcall.qName+" appears to be undefined!", fcall.ids.last)
                                 TBottom
                         }
                 }
