@@ -400,7 +400,7 @@ case class TypeTransferFunction(silent: Boolean,
                                 env = env.setStore(env.store.set(id, ro))
 
                                 // Force inlining
-                                checkFCalls(params, ms, node, Some(t), forceInline = true);
+                                checkFCalls(params, ms, node, Some(t), forceInline = ms.userland);
 
                                 env.store.lookup(id)
                             case None =>
