@@ -84,6 +84,8 @@ object ASTToCFG {
     }
 
     val assumeFuncs  = Map[String, CFG.Property]() +
+      ("is_set" -> CFG.Isset) +("isset" -> CFG.Isset) +
+    ("empty" -> CFG.Empty) + ("count" -> CFG.Count) +
             ("is_string" -> CFG.IsString) + ("is_bool" -> CFG.IsBool) +
             ("is_array" -> CFG.IsArray) + ("is_float" -> CFG.IsFloat) +
             ("is_real" -> CFG.IsFloat) + ("is_double" -> CFG.IsFloat) +
@@ -157,8 +159,8 @@ object ASTToCFG {
           case AST.Empty(v) =>
             assumeProp(CFG.Empty, v :: Nil)
           case AST.FunctionCall(sfr : AST.StaticFunctionRef, AST.CallArg(v: AST.Variable, _) :: Nil)
-            if assumeFuncs.contains(sfr.qName(nsContext)) =>
-                assumeProp(assumeFuncs(sfr.qName(nsContext)), v :: Nil)
+            if assumeFuncs.contains(sfr.name.value) =>
+                assumeProp(assumeFuncs(sfr.name.value), v :: Nil)
           case _ =>
             val e = expr(ex)
             Emit.statementCont(CFG.Assume(e, CFG.EQUALS, CFG.PHPTrue().setPos(ex)).setPos(ex), trueCont)
@@ -333,7 +335,12 @@ object ASTToCFG {
                 case AST.Empty(va) =>
                     Some(CFG.Assign(v, CFG.FunctionCall(internalFunction("empty",ex), List(expr(va))).setPos(ex)))
                 case AST.FunctionCall(sfr : AST.StaticFunctionRef, args) =>
-                    Some(CFG.Assign(v, CFG.FunctionCall(sfr.getIds(nsContext), args map { a => expr(a.value) }).setPos(ex)))
+                        val name : List[AST.Identifier] =
+                              if (assumeFuncs.contains(sfr.name.value))
+                                   internalFunction(sfr.name.value,ex)
+                              else
+                                    sfr.getIds(nsContext)
+                    Some(CFG.Assign(v, CFG.FunctionCall(name, args map { a => expr(a.value) }).setPos(ex)))
                 case fc @ AST.FunctionCall(_, args) =>
                     Reporter.notice("Dynamic function call ignored", fc)
                     Some(CFG.Assign(v, CFG.PHPAny().setPos(fc)))

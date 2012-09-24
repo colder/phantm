@@ -8,7 +8,7 @@ import phantm.util.Positional
 
 class NamespaceContext extends Cloneable {
   private var currentNS: NSDeclaration = NSRootDeclaration;
-  private var importedNS = new mutable.HashMap[List[Identifier], List[Identifier]]
+  private var importedNS = new mutable.HashMap[Identifier, List[Identifier]]
 
   def setNamespace(ns: NSDeclaration) {
     currentNS = ns.resolve(currentNS); Unit
@@ -21,16 +21,15 @@ class NamespaceContext extends Cloneable {
   def addUseDeclaration(use: UseDeclaration) {
      val imported = Identifier("") :: use.ids
     use.alias match {
-      case Some(alias: Identifier) => importedNS += List(alias) -> imported
-      case None => importedNS += imported -> imported
+      case Some(alias: Identifier) => importedNS += alias -> imported
+      case None => importedNS += imported.last -> imported
     }
   }
 
-  def getImport(namespace: List[Identifier], name: Identifier): List[Identifier] = {
-    val qName = namespace ::: List(name)
-    importedNS.get(qName) match {
+  def getImport(name: Identifier): List[Identifier] = {
+    importedNS.get(name) match {
       case None =>
-        currentNS.ids ::: namespace ::: List(name)
+        currentNS.ids ::: List(name)
       case Some(imported)                 =>
            imported
     }
@@ -56,7 +55,7 @@ trait QualifiedRef extends Positional {
   def getIds(ctx: NamespaceContext): List[Identifier] = nsroot match {
     case NSCurrent => ctx.getCurrent.ids  ::: nss ::: List(name)
     case NSGlobal =>Identifier("") :: nss ::: List(name)
-    case NSNone => ctx.getImport(nss, name)
+    case NSNone => ctx.getImport(name)
   }
 
   def namespace(ctx: NamespaceContext) = getIds(ctx).map {

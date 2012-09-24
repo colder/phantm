@@ -4,43 +4,43 @@ namespace foo;
 
 use SplFileInfo;
 use big\blah\boondoggle;
-use \Exception as Ex;
+use SplFileObject as SFO;
 
-/**
- * Simple type inferences
- */
+$a = new \Exception;                    // pass absolute
+$x = new SplFileInfo("a");      // pass use
+$e = new SFO();                              // pass alias
+$xxx = SFO::READ_AHEAD;              // pass alias
+$y = isset($x);
+$z = is_int(3);
+$a = empty($a);
+$b = count(array());
 
-if (isset($_GET['id'])) {
-    $a = (int)$_GET['id'];
-} else {
-    $a = array();
-}
-
-if ($c = is_int($a)) {
-        $b = $a/2;
-            echo $b + 2;
-}
+bah\fiddle();                              // pass - current
 
 namespace bah;
 
-function fiddle() {
+function fiddle() {}
 
-}
+fiddle();                                   // pass current
 
 namespace rum\diddle;
 
-class echos {
+class echos {}
 
-}
+$xxx = new echos(); // pass - current
 
-fiddler();
+fiddler(); // fail -- unknown
 
-\whoknows\funcme();
+\whoknows\funcme(); // fail - unknown, global
 
-blah\func3();
+blah\func3(); // fail - unknown, current
 
-bah\fiddle();
+bah\fiddle(); // fail - current
 
-foo\bah\fiddle();
+foo\bah\fiddle(); // fail - current
 
-\foo\bar\fiddle();
+\foo\bah\fiddle(); // pass - global
+
+$xx = new echos(); // fail - current
+
+$xxxx = new \foo\bah\rum\diddle\echos();

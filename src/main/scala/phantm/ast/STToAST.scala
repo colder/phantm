@@ -1210,7 +1210,8 @@ def use_declaration(n: ParseNode): UseDeclaration = {
         (childrenNames(n) match {
             case List("namespace_name", "T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") =>
                 val parts = namespace_name(child(n, 0))
-                FunctionCall(StaticFunctionRef(NSNone.setPos(child(n, 0)).setPos(child(n, 0)), parts.init, parts.last), function_call_parameter_list(child(n, 2)))
+                val ns = if (parts.isEmpty) NSNone else NSCurrent
+                FunctionCall(StaticFunctionRef(ns.setPos(child(n, 0)).setPos(child(n, 0)), parts.init, parts.last), function_call_parameter_list(child(n, 2)))
             case List("T_NAMESPACE", "T_NS_SEPARATOR", "namespace_name", "T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") =>
                 val parts = namespace_name(child(n, 2))
                 FunctionCall(StaticFunctionRef(NSCurrent.setPos(child(n, 0)).setPos(child(n, 0)), parts.init, parts.last), function_call_parameter_list(child(n, 4)))

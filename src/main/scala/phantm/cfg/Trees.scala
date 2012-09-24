@@ -42,6 +42,7 @@ object Trees {
 
   // Assume property used for type filterings on branches
   sealed abstract class Property
+  case object Count       extends Property
   case object Isset       extends Property
   case object Empty       extends Property
   case object IsNull      extends Property
