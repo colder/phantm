@@ -18,7 +18,7 @@ import org.scalatest.FunSuite
 import org.scalatest.matchers._
 
 class TestResult(var errors: Set[String] = Set(), var notices: Set[String] = Set()) {
-  def isSuccess = errors.isEmpty
+  def isSuccess = errors.isEmpty && notices.isEmpty
   def containsError(str: String) = errors.exists(_ contains str)
   def containsOnlyError(str: String) = errors.forall(_ contains str)
   def containsNotice(str: String) = notices.exists(_ contains str)
@@ -31,9 +31,19 @@ trait PhantmTestDriver {
 
   class IsTestSuccessful extends BeMatcher[TestResult] {
     def apply(left: TestResult) = {
-      MatchResult(left.isSuccess, "Errors found: "+left.errors.mkString(", "), "No error found")
+      MatchResult(left.isSuccess, "Errors found: "+(left.errors ++ left.notices).mkString(", "), "No error found")
     }
   }
+
+  case class ContainsNotice(msg: String) extends BeMatcher[TestResult] {
+    def apply(left: TestResult) = {
+      MatchResult(left.containsNotice(msg), 
+        "Notices mismatch: "+left.notices.mkString(", ")+" (was looking for "+msg+")",
+        "Notice "+msg+" detected!")
+    }
+  }
+
+
   val successful = new IsTestSuccessful
   val failing  = new IsTestSuccessful
 
@@ -95,5 +105,12 @@ trait PhantmTestDriver {
   }
   def testString(settings: Settings, str: String): TestResult = {
     testFile(settings, tmpFileWithContent(str))
+  }
+
+  def findTests(in: String, pattern: String): List[File] = {
+    findTests(new File(in), pattern)
+  }
+  def findTests(in: File, pattern: String): List[File] = {
+    in.listFiles.filter(_.getName().startsWith(pattern)).toList.sorted
   }
 }
