@@ -17,10 +17,12 @@ import scala.io.Source
 import org.scalatest.FunSuite
 import org.scalatest.matchers._
 
-class TestResult(var errors: Set[String] = Set()) {
-
+class TestResult(var errors: Set[String] = Set(), var notices: Set[String] = Set()) {
   def isSuccess = errors.isEmpty
   def containsError(str: String) = errors.exists(_ contains str)
+  def containsOnlyError(str: String) = errors.forall(_ contains str)
+  def containsNotice(str: String) = notices.exists(_ contains str)
+  def containsOnlyNotice(str: String) = notices.forall(_ contains str)
 }
 
 class CrashedResult(e: Throwable) extends TestResult(Set(e.getMessage))
@@ -48,12 +50,12 @@ trait PhantmTestDriver {
     tmpFile
   }
 
-  def testStringInput(settings: Settings, str: String): TestResult = {
+  def testFile(settings: Settings, file: File): TestResult = {
     var tr = new TestResult
 
     class TestReporter(files: List[String]) extends Reporter(files) {
       override def notice(e: String): Boolean = {
-        tr.errors += e
+        tr.notices += e
         true
       }
       override def error(e: String): Boolean = {
@@ -61,12 +63,19 @@ trait PhantmTestDriver {
         true
       }
       override def addError(e: Error): Boolean = {
-        tr.errors += e.message
+        if (e.tags contains ENotice) {
+          tr.notices += e.message
+        } else {
+          tr.errors += e.message
+        }
         true
+      }
+
+      override def emitSummary = {
+
       }
     }
 
-    val file = tmpFileWithContent(str);
 
     try {
       val files = List(file.getAbsolutePath)
@@ -78,6 +87,13 @@ trait PhantmTestDriver {
     } catch {
       case e: Throwable => new CrashedResult(e)
     }
+  }
 
+
+  def testFilePath(settings: Settings, path: String): TestResult = {
+    testFile(settings, new File(path))
+  }
+  def testString(settings: Settings, str: String): TestResult = {
+    testFile(settings, tmpFileWithContent(str))
   }
 }
