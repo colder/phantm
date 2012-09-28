@@ -10,7 +10,12 @@ object APIImportationPhase extends Phase {
 
     def run(ctx: PhasesContext): PhasesContext = {
         if (Settings.get.importAPI) {
-            new API.Reader(getClass().getClassLoader().getResourceAsStream("spec/internal_api.xml")).load
+            var internal_api = getClass().getClassLoader().getResourceAsStream("spec/internal_api.xml")
+
+            if (internal_api == null) {
+              // Second approach, if not run from jar
+              internal_api = new java.io.FileInputStream("spec/internal_api.xml")
+            }
 
             for (api <- Settings.get.apis){
                 if (new File(api).exists()) {
