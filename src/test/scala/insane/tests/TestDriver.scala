@@ -17,12 +17,10 @@ import scala.io.Source
 import org.scalatest.FunSuite
 import org.scalatest.matchers._
 
-class TestResult(var errors: Set[String] = Set(), var notices: Set[String] = Set()) {
-  def isSuccess = errors.isEmpty && notices.isEmpty
+class TestResult(var errors: Set[String] = Set()) {
+  def isSuccess = errors.isEmpty
   def containsError(str: String) = errors.exists(_ contains str)
   def containsOnlyError(str: String) = errors.forall(_ contains str)
-  def containsNotice(str: String) = notices.exists(_ contains str)
-  def containsOnlyNotice(str: String) = notices.forall(_ contains str)
 }
 
 class CrashedResult(e: Throwable) extends TestResult(Set(e.getMessage))
@@ -31,14 +29,14 @@ trait PhantmTestDriver {
 
   class IsTestSuccessful extends BeMatcher[TestResult] {
     def apply(left: TestResult) = {
-      MatchResult(left.isSuccess, "Errors found: "+(left.errors ++ left.notices).mkString(", "), "No error found")
+      MatchResult(left.isSuccess, "Errors found: "+left.errors.mkString(", "), "No error found")
     }
   }
 
-  case class ContainsNotice(msg: String) extends BeMatcher[TestResult] {
+  case class ContainsError(msg: String) extends BeMatcher[TestResult] {
     def apply(left: TestResult) = {
-      MatchResult(left.containsNotice(msg), 
-        "Notices mismatch: "+left.notices.mkString(", ")+" (was looking for "+msg+")",
+      MatchResult(left.containsError(msg), 
+        "Errors mismatch: "+left.errors.mkString(", ")+" (was looking for "+msg+")",
         "Notice "+msg+" detected!")
     }
   }
@@ -65,7 +63,7 @@ trait PhantmTestDriver {
 
     class TestReporter(files: List[String]) extends Reporter(files) {
       override def notice(e: String): Boolean = {
-        tr.notices += e
+        tr.errors += e
         true
       }
       override def error(e: String): Boolean = {
@@ -73,11 +71,7 @@ trait PhantmTestDriver {
         true
       }
       override def addError(e: Error): Boolean = {
-        if (e.tags contains ENotice) {
-          tr.notices += e.message
-        } else {
-          tr.errors += e.message
-        }
+        tr.errors += e.message +" @ "+e.pos.file.getOrElse("?")+":"+e.pos.line
         true
       }
 

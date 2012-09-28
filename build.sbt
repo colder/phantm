@@ -9,3 +9,5 @@ libraryDependencies ++= Seq(
 )
 
 mainClass in (Compile, run) := Some("phantm.Main")
+
+parallelExecution in Test := false
