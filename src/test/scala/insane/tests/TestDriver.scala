@@ -25,7 +25,7 @@ class TestResult(var errors: Set[String] = Set()) {
 
 class CrashedResult(e: Throwable) extends TestResult(Set(e.getMessage))
 
-trait PhantmTestDriver {
+trait PhantmTestDriver extends FunSuite with MustMatchers {
 
   class IsTestSuccessful extends BeMatcher[TestResult] {
     def apply(left: TestResult) = {
@@ -106,5 +106,27 @@ trait PhantmTestDriver {
   }
   def findTests(in: File, pattern: String): List[File] = {
     in.listFiles.filter(_.getName().startsWith(pattern)).toList.sorted
+  }
+
+  def testAndExpect(path: String, error: String, settings: Settings = Settings(verbosity = 2)) {
+    test(path) {
+      val tr = testFilePath(settings, path)
+      tr must be (ContainsError(error))
+    }
+  }
+
+  def testPass(path: String, settings: Settings = Settings(verbosity = 2)) {
+    test(path) {
+      val tr = testFilePath(settings, path)
+      tr must be (successful)
+    }
+  }
+
+  def testFail(path: String, settings: Settings = Settings(verbosity = 2)) {
+    var settings = Settings(verbosity = 2)
+    test(path) {
+      val tr = testFilePath(settings, path)
+      tr must not be (successful)
+    }
   }
 }
