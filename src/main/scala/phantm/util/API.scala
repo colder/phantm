@@ -112,8 +112,9 @@ object API {
 
                 // classes
                 for (c <- data \\ "class") {
-                    val name = (c \ "@name").text
-                    val parent = (c \ "@parent").text
+                  val name = (c \ "@name").text
+                  val namespace = (c \ "@namespace").text
+                  val parent = (c \ "@parent").text
 
                     val pcs = if (parent != "") {
                         GlobalSymbols.lookupClass(parent) match {
@@ -127,7 +128,7 @@ object API {
                         None
                     }
 
-                    val cs = new ClassSymbol(name, pcs, Nil).setPos(APIPos(c))
+                    val cs = new ClassSymbol(List(namespace), name, pcs, Nil).setPos(APIPos(c))
                     cs.setOverwriteable(userland).setUserland(userland)
 
                     // Register class methods
@@ -208,7 +209,8 @@ object API {
 
                 // functions
                 for (f <- data \\ "function") {
-                    val name = (f \ "@name").text
+                  val name = (f \ "@name").text
+                  val namespace = (f \ "@namespace").text
                     val args: List[(Node, Type, Boolean, Boolean)] = ((f \ "args" \\ "arg") map {
                         a => (a,
                               elemsToType(a \ "type"),
@@ -217,7 +219,7 @@ object API {
                               )
                     }).toList
 
-                    val fs = new FunctionSymbol(name).setPos(APIPos(f))
+                    val fs = new FunctionSymbol(namespace.split('\\').toList, name).setPos(APIPos(f))
                     fs.setOverwriteable(userland).setUserland(userland)
 
                     fs.isPure = optArg(f, "pure");
@@ -336,7 +338,7 @@ object API {
                         val args = if (data._1.size > 0) (data._1 reduceLeft reduceFT).args else Nil;
                         val ret  = if (data._2.isEmpty) TNull else (data._2 reduceLeft TypeLattice.join);
 
-                        emit("  <function name=\""+name+"\">")
+                        emit("  <function name=\""+fs.name+"\" namespace=\""+fs.namespace+"\">")
                         emit("   <return>"+typeToXML(ret, t => t)+"</return>")
                         emit("   <args>")
                         for (arg <- args) {

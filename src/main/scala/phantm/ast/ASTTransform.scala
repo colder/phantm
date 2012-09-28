@@ -12,7 +12,7 @@ abstract class ASTTransform(p: Program) {
     }
 
     def trMethod(md: MethodDecl): MethodDecl = md.body match {
-        case Some(b) => 
+        case Some(b) =>
             MethodDecl(md.name, md.flags, md.args, md.retref, Some(trStmt(b))).setPos(md).annotateFromC(md)
         case None =>
             md
@@ -109,10 +109,10 @@ abstract class ASTTransform(p: Program) {
 
     def trStmt(st: Statement): Statement = {
         var r = st match {
-            case FunctionDecl(name, args, retref, body) =>
-                FunctionDecl(name, args, retref, trStmt(body))
-            case ClassDecl(name, flags, parent, interfaces, methods, static_props, props, consts) =>
-                ClassDecl(name, flags, parent, interfaces, methods map trMethod, static_props map trProperty, props map trProperty, consts)
+            case FunctionDecl( name, args, retref, body) =>
+                FunctionDecl( name, args, retref, trStmt(body))
+            case ClassDecl( name, flags, parent, interfaces, methods, static_props, props, consts) =>
+                ClassDecl( name, flags, parent, interfaces, methods map trMethod, static_props map trProperty, props map trProperty, consts)
             case Try(body, catches) =>
                 Try(trStmt(body), catches map { c => Catch(c.cl, c.v, trStmt(c.body) )})
             case Block(stmts) =>

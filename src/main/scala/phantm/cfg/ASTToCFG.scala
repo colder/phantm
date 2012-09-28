@@ -5,6 +5,12 @@ import phantm.ast.{Trees => AST}
 import phantm.cfg.{Trees => CFG}
 import phantm.symbols._
 import scala.collection.mutable.{Map,HashMap}
+import phantm.ast.Trees._
+import scala.Some
+import phantm.ast.Trees.NSDeclaration
+import phantm.symbols.LookupResult
+import collection.mutable
+import phantm.helpers.NamespaceContext
 
 object ASTToCFG {
 
@@ -19,7 +25,7 @@ object ASTToCFG {
 
     val cfg = new ControlFlowGraph
     val assertionsEnabled: Boolean = true
-
+    val nsContext = new NamespaceContext
     type Vertex = cfg.Vertex
 
     /** Creates fresh variable names on demand. */
@@ -51,7 +57,7 @@ object ASTToCFG {
       def statementBetween(from: Vertex, stat: CFG.Statement, to : Vertex): Unit = {
         cfg += (from, stat, to)
       }
-      
+
       // emits a statement from the current PC and sets the new PC after it
       def statement(stat: CFG.Statement): Unit = {
         val v = cfg.newVertex
@@ -78,6 +84,8 @@ object ASTToCFG {
     }
 
     val assumeFuncs  = Map[String, CFG.Property]() +
+      ("is_set" -> CFG.Isset) +("isset" -> CFG.Isset) +
+    ("empty" -> CFG.Empty) + ("count" -> CFG.Count) +
             ("is_string" -> CFG.IsString) + ("is_bool" -> CFG.IsBool) +
             ("is_array" -> CFG.IsArray) + ("is_float" -> CFG.IsFloat) +
             ("is_real" -> CFG.IsFloat) + ("is_double" -> CFG.IsFloat) +
@@ -150,9 +158,9 @@ object ASTToCFG {
             assumeProp(CFG.Isset, vs)
           case AST.Empty(v) =>
             assumeProp(CFG.Empty, v :: Nil)
-          case AST.FunctionCall(AST.StaticFunctionRef(AST.NSNone, Nil, id), AST.CallArg(v: AST.Variable, _) :: Nil)
-            if assumeFuncs.contains(id.value.toLowerCase) =>
-                assumeProp(assumeFuncs(id.value.toLowerCase), v :: Nil)
+          case AST.FunctionCall(sfr : AST.StaticFunctionRef, AST.CallArg(v: AST.Variable, _) :: Nil)
+            if assumeFuncs.contains(sfr.name.value) =>
+                assumeProp(assumeFuncs(sfr.name.value), v :: Nil)
           case _ =>
             val e = expr(ex)
             Emit.statementCont(CFG.Assume(e, CFG.EQUALS, CFG.PHPTrue().setPos(ex)).setPos(ex), trueCont)
@@ -227,7 +235,7 @@ object ASTToCFG {
             case _ => sys.error("Woooot?");
         }
     }
-    
+
     /** If an expression can be translated without flattening, does it and
       * returns the result in a Some(...) instance. Otherwise returns None. */
     def alreadySimple(ex: AST.Expression): Option[CFG.SimpleValue] = ex match {
@@ -267,7 +275,7 @@ object ASTToCFG {
         Some(CFG.PHPString("__NAMESPACE__").setPos(ex))
       case _ => None
     }
- 
+
     def notyet(ex: AST.Expression) = throw new Exception("Not yet implemented in CFG.: "+ex+"("+ex.getPos+")");
 
     // If the assignation can easily be done, do it already
@@ -319,37 +327,42 @@ object ASTToCFG {
                 case AST.Silence(value) =>
                     Some(CFG.Assign(v, expr(value)))
                 case AST.Execute(value) =>
-                    Some(CFG.Assign(v, CFG.FunctionCall(internalFunction("shell_exec").setPos(ex), List(CFG.PHPString(value).setPos(ex))).setPos(ex)))
+                    Some(CFG.Assign(v, CFG.FunctionCall(internalFunction("shell_exec",ex), List(CFG.PHPString(value).setPos(ex))).setPos(ex)))
                 case AST.Print(value) =>
-                    Some(CFG.Assign(v, CFG.FunctionCall(internalFunction("print").setPos(ex), List(expr(value))).setPos(ex)))
+                    Some(CFG.Assign(v, CFG.FunctionCall(internalFunction("print",ex), List(expr(value))).setPos(ex)))
                 case AST.Eval(value) =>
-                    Some(CFG.Assign(v, CFG.FunctionCall(internalFunction("eval").setPos(ex), List(expr(value))).setPos(ex)))
+                    Some(CFG.Assign(v, CFG.FunctionCall(internalFunction("eval",ex), List(expr(value))).setPos(ex)))
                 case AST.Empty(va) =>
-                    Some(CFG.Assign(v, CFG.FunctionCall(internalFunction("empty").setPos(ex), List(expr(va))).setPos(ex)))
-                case AST.FunctionCall(AST.StaticFunctionRef(_, _, name), args) =>
+                    Some(CFG.Assign(v, CFG.FunctionCall(internalFunction("empty",ex), List(expr(va))).setPos(ex)))
+                case AST.FunctionCall(sfr : AST.StaticFunctionRef, args) =>
+                        val name : List[AST.Identifier] =
+                              if (assumeFuncs.contains(sfr.name.value))
+                                   internalFunction(sfr.name.value,ex)
+                              else
+                                    sfr.getIds(nsContext)
                     Some(CFG.Assign(v, CFG.FunctionCall(name, args map { a => expr(a.value) }).setPos(ex)))
                 case fc @ AST.FunctionCall(_, args) =>
                     Reporter.notice("Dynamic function call ignored", fc)
                     Some(CFG.Assign(v, CFG.PHPAny().setPos(fc)))
-                case AST.MethodCall(obj, AST.StaticMethodRef(id), args) => 
+                case AST.MethodCall(obj, AST.StaticMethodRef(id), args) =>
                     Some(CFG.Assign(v, CFG.MethodCall(expr(obj), id, args.map {a => expr(a.value) }).setPos(ex)))
-                case AST.MethodCall(obj, _, args) => 
+                case AST.MethodCall(obj, _, args) =>
                     Some(CFG.Assign(v, CFG.PHPAny().setPos(ex)))
-                case AST.StaticMethodCall(cl, AST.StaticMethodRef(id), args) => 
+                case AST.StaticMethodCall(cl, AST.StaticMethodRef(id), args) =>
                     Some(CFG.Assign(v, CFG.StaticMethodCall(resolveClassRef(cl), id, args.map {a => expr(a.value) }).setPos(ex)))
                 case AST.Array(Nil) =>
                     Some(CFG.Assign(v, CFG.PHPEmptyArray()))
                 case AST.New(cr, args) =>
                     Some(CFG.Assign(v, CFG.New(resolveClassRef(cr), args map { a => expr(a.value) })))
-                case _ => 
+                case _ =>
                     None
             }
     }
 
-    def internalFunction(name: String): AST.Identifier = {
+    def internalFunction(name: String, pos : Positional): List[AST.Identifier] = {
         GlobalSymbols.lookupFunction(name) match {
-            case Some(s) => AST.Identifier(name).setSymbol(s)
-            case None => AST.Identifier(name);
+            case Some(s) => List(AST.Identifier(""),AST.Identifier(name).setSymbol(s).setPos(pos))
+            case None => List(AST.Identifier(""),AST.Identifier(name).setPos(pos));
         }
     }
 
@@ -412,9 +425,9 @@ object ASTToCFG {
                             Emit.setPC(afterV)
                         case AST.Isset(vs) =>
                             if (vs.length > 1) {
-                                Emit.statement(CFG.Assign(v, CFG.FunctionCall(internalFunction("isset"), vs.map{expr(_)}).setPos(ex)).setPos(ex))
+                                Emit.statement(CFG.Assign(v, CFG.FunctionCall(internalFunction("isset",ex), vs.map{expr(_)}).setPos(ex)).setPos(ex))
                             } else {
-                                Emit.statement(CFG.Assign(v, CFG.FunctionCall(internalFunction("isset"), List(expr(vs.head))).setPos(ex)).setPos(ex))
+                                Emit.statement(CFG.Assign(v, CFG.FunctionCall(internalFunction("isset",ex), List(expr(vs.head))).setPos(ex)).setPos(ex))
                             }
                         case AST.Array(values) =>
                             Emit.statement(CFG.Assign(v, CFG.PHPEmptyArray().setPos(ex)).setPos(ex))
@@ -487,7 +500,7 @@ object ASTToCFG {
     }
 
     /** Emits a single statement. cont = where to continue after the statement */
-    def stmt(s: AST.Statement, cont: Vertex): Unit = { 
+    def stmt(s: AST.Statement, cont: Vertex): Unit = {
       s match {
         case AST.LabelDecl(name) =>
             val v = Emit.getPC
@@ -550,7 +563,7 @@ object ASTToCFG {
             condExpr(cond, cont, beginV)
             controlStack = controlStack.tail
             cfg.closeGroup(cont)
-        case AST.For(init, cond, step, then) => 
+        case AST.For(init, cond, step, then) =>
             cfg.openGroup("for", Emit.getPC)
             val beginCondV = cfg.newVertex
             val beginBodyV = cfg.newVertex
@@ -640,7 +653,7 @@ object ASTToCFG {
             // Then, we link to conditions
             Emit.setPC(beginSwitchV)
             for(c <- conds) c match {
-                case (ex, v) => 
+                case (ex, v) =>
                     condExpr(AST.Equal(input, ex), nextCondV, v)
                     Emit.setPC(nextCondV)
                     nextCondV = cfg.newVertex
@@ -684,7 +697,6 @@ object ASTToCFG {
                     Emit.statementCont(CFG.Assign(idFromId(id), CFG.PHPNull().setPos(id)).setPos(s), cont)
                     Emit.setPC(cont);
                 case _ => // ignore
-                    Emit.goto(cont)
             }
         case AST.Global(vars) =>
             var nextGlobal = cfg.newVertex
@@ -765,7 +777,13 @@ object ASTToCFG {
 
             Emit.setPC(nextV)
             Emit.statementCont(CFG.Assign(v, CFG.ArrayNext(v).setPos(s)).setPos(s), condV)
-        case _: AST.FunctionDecl | _: AST.ClassDecl | _: AST.InterfaceDecl => 
+         case ns : AST.NSDeclaration =>
+            nsContext.setNamespace(ns)
+            Emit.goto(cont);
+        case use : AST.UseStatement =>
+            nsContext.addUseStatement(use)
+            Emit.goto(cont);
+        case _: AST.FunctionDecl | _: AST.ClassDecl | _: AST.InterfaceDecl =>
             /* ignore */
             Emit.goto(cont);
         case e: AST.Exit =>
@@ -816,7 +834,7 @@ object ASTToCFG {
     Emit.setPC(codeEnd)
 
     scope match {
-        case fs: FunctionSymbol => 
+        case fs: FunctionSymbol =>
             if (!cfg.inEdges(codeEnd).isEmpty) {
                 // We add implicit "return null;"
                 Emit.statementCont(CFG.Return(CFG.PHPNull().setPos(fs)).setPos(fs), cfg.exit)

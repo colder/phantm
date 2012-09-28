@@ -1,15 +1,15 @@
 package phantm.phases
 
 import phantm._
-import phantm.util.{Reporter, Positional, Evaluator}
+import helpers.NamespaceContext
+import phantm.util.{Reporter, Positional}
 import phantm.ast.Trees._
-import phantm.ast.ASTTraversal
+import ast.ASTTraversal
 import phantm.types._
 import phantm.symbols._
 import phantm.annotations.SourceAnnotations.{Parser => CommentParser}
-
+import scala.None
 import scala.collection.mutable.HashSet
-import scala.collection.mutable.HashMap
 
 object SymbolsCollectionPhase extends Phase {
 
@@ -23,47 +23,66 @@ object SymbolsCollectionPhase extends Phase {
 
 }
 
+case class IsA[T](clazz : Class[_ <:  T]) {
+  def unapply(obj : T):Option[T] = {
+    if (clazz.isInstance(obj))  Some(obj) else  None
+  }
+}
+
 case class SymContext(varScope: Scope, cl: Option[ClassSymbol], iface: Option[IfaceSymbol]);
 
 case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, SymContext(GlobalSymbols, None, None)) {
     var classCycleDetectionSet = new HashSet[ClassDecl]
     var ifaceCycleDetectionSet = new HashSet[InterfaceDecl]
-    var classesToPass = List[ClassDecl]()
-    var interfacesToPass = List[InterfaceDecl]()
+    var classesToPass = List[AnyRef]()
+    var interfacesToPass = List[AnyRef]()
     var classList: List[(ClassSymbol, ClassDecl)] = Nil
     var ifaceList: List[(IfaceSymbol, InterfaceDecl)] = Nil
-
+     var nsContext : NamespaceContext = new NamespaceContext
     /**
      * Visit classes and add them to a waiting list, so they can be processed in right order
      */
     def visitClasses(node: Tree, ctx: SymContext): (SymContext, Boolean) = {
         node match {
-            case cl @ ClassDecl(name, flags, parent, interfaces, methods, static_props, props, consts) =>
+          case use : UseStatement  =>
+               nsContext.addUseStatement(use)
+          case ns : NSDeclaration  =>
+                nsContext.setNamespace(ns)
+               classesToPass = classesToPass ::: List(nsContext.clone)
+               interfacesToPass = interfacesToPass ::: List(nsContext.clone)
+            case cl : ClassDecl =>
                 classesToPass = classesToPass ::: List(cl)
-            case id @ InterfaceDecl(name, parents, methods, consts) =>
+            case id : InterfaceDecl =>
                 interfacesToPass = interfacesToPass ::: List(id)
             case _ =>
         }
         (ctx, true)
     }
 
-    def firstIfacePass : Unit = interfacesToPass match {
-      case Nil =>
-      case id :: ids2 =>
-          GlobalSymbols.lookupIface(id.name.value) match {
+    val IsNamespaceContext = new IsA(classOf[NamespaceContext])
+    val IsClassDecl = new IsA(classOf[ClassDecl])
+    val IsInterfaceDecl = new IsA(classOf[InterfaceDecl])
+
+    def firstIfacePass(interfaces : List[ AnyRef], ns: NamespaceContext) : Unit = {
+      interfaces match {
+
+        case Nil =>
+        case IsNamespaceContext(ns1) :: theRest =>
+          firstIfacePass(theRest,ns1.asInstanceOf[NamespaceContext])
+        case IsInterfaceDecl(id) :: theRest =>
+          GlobalSymbols.lookupIface(id.qName(ns)) match {
             case None =>
-              firstIfacePass0(id)
+              firstIfacePass0(ns, id.asInstanceOf[InterfaceDecl])
             case Some(x) =>
-              Reporter.notice("Interface " + x.name + " already declared (previously declared at "+x.getPos+")", id)
+              Reporter.notice("Interface " + x.qName + " already declared (previously declared at "+x.getPos+")", id)
           }
-          interfacesToPass = ids2
-          firstIfacePass
+          firstIfacePass(theRest, ns)
+      }
+     }
 
-    }
-
-    def firstIfacePass0(id: InterfaceDecl): Unit = {
-      if (ifaceCycleDetectionSet.contains(id)) { 
-        Reporter.error("Interface " + ifaceCycleDetectionSet.map(x => x.name.value).mkString(" -> ") + " form an inheritance cycle", id)
+    def firstIfacePass0(ns: NamespaceContext, id: InterfaceDecl): Unit = {
+      if (ifaceCycleDetectionSet.contains(id)) {
+        Reporter.error("Interface " + ifaceCycleDetectionSet.map(x => x.qName(ns)).mkString(" -> ") + " form an inheritance cycle", id)
         return;
       }
       ifaceCycleDetectionSet += id
@@ -72,18 +91,18 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
 
       for (pi <- id.interfaces) {
           pi match {
-            case StaticClassRef(_, _, pid) =>
-              GlobalSymbols.lookupIface(pid.value) match {
+            case scr @ StaticClassRef(_, _, _) =>
+              GlobalSymbols.lookupIface(scr.qName(ns)) match {
                   case None => {
                     var foundParent = false
-                    for (i <- interfacesToPass if i.name.value.equals(pid.value) && !foundParent) {
-                      firstIfacePass0(i)
+                    for (i <-interfacesToPass.asInstanceOf[List[InterfaceDecl]] if i.qName(ns).equals(scr.qName(ns)) && !foundParent) {
+                      firstIfacePass0(ns, i.asInstanceOf)
                       foundParent = true
                     }
 
-                    GlobalSymbols.lookupIface(pid.value) match {
+                    GlobalSymbols.lookupIface(scr.qName(ns)) match {
                       case None =>
-                        Reporter.error("Interface " + id.name.value + " extends non-existent interface " + pid.value, id)
+                        Reporter.error("Interface " + id.qName(ns) + " extends non-existent interface " + scr.qName(ns), id)
                       case Some(pis) =>
                         parentIfaces = pis :: parentIfaces
                     }
@@ -94,7 +113,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
 
           }
       }
-      val is = new IfaceSymbol(id.name.value, parentIfaces).setPos(id).setUserland;
+      val is = new IfaceSymbol(ns.getCurrent.names, id.name.value, parentIfaces).setPos(id).setUserland;
       GlobalSymbols.registerIface(is)
 
       ifaceList = ifaceList ::: List((is,id))
@@ -124,39 +143,43 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
         }
     }
 
-    def firstClassPass : Unit = classesToPass match {
+    def firstClassPass(classes : List[AnyRef], ns: NamespaceContext) : Unit = {
+     classes match {
       case Nil =>
-      case cd :: cds2 =>
-          GlobalSymbols.lookupClass(cd.name.value) match {
+      case IsNamespaceContext(ns1) :: theRest =>
+         firstClassPass(theRest, ns1.asInstanceOf[NamespaceContext])
+      case IsClassDecl(cd) :: theRest =>
+          GlobalSymbols.lookupClass(cd.qName(ns)) match {
             case None =>
-              firstClassPass0(cd)
+              firstClassPass0(ns, cd.asInstanceOf[ClassDecl])
             case Some(x) =>
-              Reporter.notice("Class " + x.name + " already declared (previously declared at "+x.getPos+")", cd)
+              Reporter.notice("Class " + x.qName + " already declared (previously declared at "+x.getPos+")", cd)
           }
-          classesToPass = cds2
-          firstClassPass
+          firstClassPass(theRest, ns)
+
+     }
 
     }
 
-    def firstClassPass0(cd: ClassDecl): Unit = {
-      if (classCycleDetectionSet.contains(cd)) { 
-        Reporter.error("Classes " + classCycleDetectionSet.map(x => x.name.value).mkString(" -> ") + " form an inheritance cycle", cd)
+    def firstClassPass0(ns: NamespaceContext, cd: ClassDecl): Unit = {
+      if (classCycleDetectionSet.contains(cd)) {
+        Reporter.error("Classes " + classCycleDetectionSet.map(x => x.qName(ns)).mkString(" -> ") + " form an inheritance cycle", cd)
         return;
       }
 
       classCycleDetectionSet += cd
 
       val p: Option[ClassSymbol] = cd.parent match {
-        case Some(x) => GlobalSymbols.lookupClass(x.name.value) match {
+        case Some(x) => GlobalSymbols.lookupClass(x.qName(ns)) match {
           case None => {
             var foundParent = false
-            for (c <- classesToPass if c.name.value.equals(x.name.value) && !foundParent) {
-              firstClassPass0(c)
+            for (c <- classesToPass.asInstanceOf[List[ClassDecl]] if c.qName(ns).equals(x.qName(ns)) && !foundParent) {
+              firstClassPass0(ns,c)
               foundParent = true
             }
 
-            GlobalSymbols.lookupClass(x.name.value) match {
-              case None => Reporter.error("Class " + cd.name.value + " extends non-existent class " + x.name.value, x); None
+            GlobalSymbols.lookupClass(x.qName(ns)) match {
+              case None => Reporter.error("Class " + cd.qName(ns) + " extends non-existent class " + x.qName(ns), x); None
               case x => x
             }
           }
@@ -172,12 +195,12 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
                 case Some(is) =>
                     ifaces = is :: ifaces
                 case None =>
-                    Reporter.error("Class "+cd.name.value +" implements non-existent interface "+id.value);
+                    Reporter.error("Class "+cd.qName(ns) +" implements non-existent interface "+id.value);
             }
         case _ =>
       }
 
-      val cs = new ClassSymbol(cd.name.value, p, ifaces.reverse).setPos(cd).setUserland;
+      val cs = new ClassSymbol(ns.getCurrent.names,cd.name.value, p, ifaces.reverse).setPos(cd).setUserland;
       GlobalSymbols.registerClass(cs)
 
       classList = classList ::: List((cs,cd))
@@ -283,7 +306,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
 
         for (c <- cd.consts) {
             val ccs = c.value match {
-                case sc: Scalar => 
+                case sc: Scalar =>
                     new ClassConstantSymbol(cs, c.v.value, Some(sc)).setPos(c).setUserland
                 case _ =>
                     new ClassConstantSymbol(cs, c.v.value, None).setPos(c).setUserland
@@ -340,16 +363,16 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
         var continue = true;
 
         node match {
-            case fd @ FunctionDecl(name, args, retref, body) =>
+            case fd @ FunctionDecl( name, args, retref, body) =>
 
                 // If the function is declared more than once, we discard other definitions
-                val lc = name.value.toLowerCase
+                val lc = fd.qName(nsContext)
 
                 val fs = if (GlobalSymbols.functions contains lc) {
                     // Prevent this importation
                     GlobalSymbols.functions(lc)
                 } else {
-                    val fs = new FunctionSymbol(name.value).setPos(fd).setUserland
+                    val fs = new FunctionSymbol(nsContext.getCurrent.names,name.value).setPos(fd).setUserland
                     for(a <- args) {
                         var t = TypeHelpers.typeHintToType(a.hint)
 
@@ -411,19 +434,19 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
                 name.setSymbol(fs)
                 newCtx = SymContext(fs, None, None)
 
-            case ClassDecl(name, flags, parent, interfaces, methods, static_props, props, consts) =>
-                GlobalSymbols.lookupClass(name.value) match {
+            case cd @ ClassDecl( name, flags, parent, interfaces, methods, static_props, props, consts) =>
+                GlobalSymbols.lookupClass(cd.qName(nsContext)) match {
                     case Some(cs) =>
                         name.setSymbol(cs);
                         newCtx = SymContext(ctx.varScope, Some(cs), None)
-                    case None => sys.error("Woops ?!? Came across a phantom class");
+                    case None => sys.error("Woops ?!? Came across a phantom class: " + cd.qName(nsContext));
                 }
 
-            case InterfaceDecl(name, parents, methods, consts) =>
-                GlobalSymbols.lookupIface(name.value) match {
+            case id @ InterfaceDecl( name, parents, methods, consts) =>
+                GlobalSymbols.lookupIface(id.qName(nsContext)) match {
                     case Some(iface) =>
                         newCtx = SymContext(ctx.varScope, None, Some(iface))
-                    case None => sys.error("Woops ?!? Came across a phantom interface");
+                    case None => sys.error("Woops ?!? Came across a phantom interface: " + id.qName(nsContext));
                 }
 
             case MethodDecl(name, flags, args, retref, body) =>
@@ -455,8 +478,8 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
                         ctx.varScope.registerVariable(vs)
                 }
 
-            case StaticClassRef(_, _, id) =>
-                GlobalSymbols.lookupClass(id.value) match {
+            case scr @ StaticClassRef(_, _, id) =>
+                GlobalSymbols.lookupClass(scr.qName(nsContext)) match {
                     case Some(cs) =>
                         id.setSymbol(cs)
                     case None =>
@@ -478,7 +501,10 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
                                 }
                         }
                 }
-
+            case use : UseStatement =>
+              nsContext.addUseStatement(use)
+            case ns : NSDeclaration =>
+                nsContext.setNamespace(ns)
             case _ =>
         }
 
@@ -496,16 +522,16 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
     def execute = {
         traverse(visitClasses)
 
-        firstIfacePass;
+        firstIfacePass(interfacesToPass, new NamespaceContext);
         for(i <- ifaceList) {
             secondIfacePass(i._2, i._1);
         }
 
-        firstClassPass;
+        firstClassPass(classesToPass, new NamespaceContext);
         for(c <- classList) {
             secondClassPass(c._2, c._1);
         }
-
+        nsContext = new NamespaceContext
         traverse(visit)
 
         GlobalSymbols.registerPredefVariables

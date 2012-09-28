@@ -1,13 +1,13 @@
 package phantm.phases
 
 import phantm._
-import phantm.util.{API, Reporter, Positional}
+import helpers.NamespaceContext
+import phantm.util.Positional
 import phantm.symbols._
 import phantm.ast.Trees._
 import phantm.ast.ASTTraversal
 import phantm.cfg.LabeledDirectedGraphImp
 import phantm.dataflow.StronglyConnectedComponents
-import java.io.{PrintStream,FileOutputStream}
 
 object CallGraphPhase extends Phase {
     def name = "Generating callgraph"
@@ -62,7 +62,7 @@ object CallGraphPhase extends Phase {
     }
 }
 
-case class CGContext(scope: Option[FunctionSymbol]);
+case class CGContext(scope: Option[FunctionSymbol], ns: NamespaceContext);
 
 case class CallGraphGeneration(node: Tree,
                               context: CGContext) extends ASTTraversal[CGContext](node, context) {
@@ -138,7 +138,7 @@ case class CallGraphGeneration(node: Tree,
         }
     }
 
-    def this(node: Tree) = this(node, CGContext(None))
+    def this(node: Tree) = this(node, CGContext(None, new NamespaceContext))
 
     /**
      * Visit the nodes and aggregate information inside the context to provide
@@ -155,17 +155,21 @@ case class CallGraphGeneration(node: Tree,
         var newCtx = ctx
 
         node match {
+          case ns : NSDeclaration =>
+            ctx.ns.setNamespace(ns)
+          case use : UseStatement =>
+            ctx.ns.addUseStatement(use)
             case fd : FunctionDecl =>
                 val fid = scopeFromSym(fd.name.getSymbol)
                 CallGraph.addNode(fid)
-                newCtx = CGContext(fid);
+                newCtx = CGContext(fid, ctx.ns);
             case md: MethodDecl =>
                 val fid = scopeFromSym(md.name.getSymbol)
                 CallGraph.addNode(fid)
-                newCtx = CGContext(fid);
+                newCtx = CGContext(fid, ctx.ns);
 
-            case fcall @ FunctionCall(StaticFunctionRef(_, _, name), args) =>
-                GlobalSymbols.lookupFunction(name.value) match {
+            case fcall @ FunctionCall(sfr @ StaticFunctionRef(_, _, _), args) =>
+                GlobalSymbols.lookupFunction(sfr.qName(ctx.ns)) match {
                     case Some(fs) if (fs.userland) =>
                         if (ctx.scope == None) {
                             CallGraph.addCallLocation(fs, fcall);
@@ -173,8 +177,8 @@ case class CallGraphGeneration(node: Tree,
                         CallGraph.addEdge(ctx.scope, Some(fs))
                     case _ =>
                 }
-            case fcall @ StaticMethodCall(StaticClassRef(_, _, id), StaticMethodRef(mid), args) =>
-                GlobalSymbols.lookupClass(id.value) match {
+            case fcall @ StaticMethodCall(scr @ StaticClassRef(_,_,_), StaticMethodRef(mid), args) =>
+                GlobalSymbols.lookupClass(scr.qName(ctx.ns)) match {
                     case Some(cs) =>
                         val cscope = ctx.scope match {
                             case ms: MethodSymbol =>

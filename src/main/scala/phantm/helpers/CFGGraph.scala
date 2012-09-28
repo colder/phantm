@@ -44,7 +44,7 @@ case class CFGGraphs(node: Tree) extends ASTTraversal[CheckContext](node, CheckC
                 val cfg = ASTToCFG.convertAST(stmts, GlobalSymbols)
                 cfg.writeDottyToFile("result.cfg-"+n, "Main");
                 n = n + 1;
-            case FunctionDecl(name, args, retref, body) =>
+            case FunctionDecl( name, args, retref, body) =>
                 name.getSymbol match {
                     case fs: FunctionSymbol =>
                         val cfg = ASTToCFG.convertAST(List(body), fs)
@@ -54,7 +54,7 @@ case class CFGGraphs(node: Tree) extends ASTTraversal[CheckContext](node, CheckC
                         sys.error("Incoherent symbol type, should be function")
                 }
 
-            case ClassDecl(name, flags, parent, interfaces, methods, static_props, props, consts) =>
+            case ClassDecl( name, flags, parent, interfaces, methods, static_props, props, consts) =>
                 for (m <- methods) if (m.body != None) {
                     m.name.getSymbol match {
                         case ms: MethodSymbol =>

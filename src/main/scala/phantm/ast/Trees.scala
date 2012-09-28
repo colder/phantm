@@ -3,6 +3,7 @@ package phantm.ast
 import phantm.util.Positional
 import phantm.annotations.CommentAnnotation
 import phantm.symbols.Symbolic
+import phantm.helpers.{QualifiedRef, QualifiedDecl}
 
 // todo, namespaces
 object Trees {
@@ -33,6 +34,7 @@ object Trees {
     case object MFFinal extends MemberFlag
     case object MFStatic extends MemberFlag
 
+    // tokens to represent the starting point for Class/Function/Interface references
     abstract class NSRoot extends Tree
     case object NSNone extends NSRoot /* foo\Bar */
     case object NSGlobal extends NSRoot /* \foo\Bar */
@@ -41,15 +43,15 @@ object Trees {
     abstract class ClassRef extends Tree
     case class VarClassRef(v: Variable) extends ClassRef
     case class DynamicClassRef(ex: Expression) extends ClassRef
-    case class StaticClassRef(nsroot: NSRoot, nss: List[Identifier], name: Identifier) extends ClassRef with Symbolic
+    case class StaticClassRef(nsroot: NSRoot, nss: List[Identifier], name: Identifier) extends ClassRef with Symbolic with QualifiedRef
     case class CalledClass() extends ClassRef
 
     abstract class FunctionRef extends Tree
     case class VarFunctionRef(v: Variable) extends FunctionRef
     case class DynamicFunctionRef(ex: Expression) extends FunctionRef
-    case class StaticFunctionRef(nsroot: NSRoot, nss: List[Identifier], name: Identifier) extends FunctionRef
+    case class StaticFunctionRef(nsroot: NSRoot, nss: List[Identifier], name: Identifier) extends FunctionRef with QualifiedRef
 
-    abstract class MethodRef extends Tree 
+    abstract class MethodRef extends Tree
     case class DynamicMethodRef(ex: Expression) extends MethodRef
     case class StaticMethodRef(id: Identifier) extends MethodRef
 
@@ -78,21 +80,37 @@ object Trees {
 
     sealed abstract class Statement extends Tree;
 
-    case class FunctionDecl(name: Identifier, args: List[ArgumentDecl], retref: Boolean, body: Statement) extends Statement
+  case class UseStatement(uses : List[UseDeclaration]) extends Statement
 
-    case class ClassDecl(name: Identifier,
+  case class UseDeclaration(ids : List[Identifier], alias : Option[Identifier]) extends Tree with Positional with QualifiedRef  {
+     val name  = ids.last
+    val nss = ids.dropRight(1)
+    val nsroot = NSGlobal
+  }
+
+  case class NSDeclaration(ids : List[Identifier] = List(Identifier(""))) extends Statement with QualifiedDecl {
+    def names = ids.map(x => x.value)
+    val name = Identifier(names.mkString("\\"))
+    def resolve(base : NSDeclaration) = NSDeclaration(base.ids::: ids)
+    def qNameOf(tip: Identifier) = List( name.value, tip.value).mkString("\\")
+  }
+  case object NSRootDeclaration extends NSDeclaration
+
+    case class FunctionDecl( name: Identifier, args: List[ArgumentDecl], retref: Boolean, body: Statement) extends Statement with QualifiedDecl
+
+    case class ClassDecl( name: Identifier,
                          flags: ClassFlag,
                          parent: Option[StaticClassRef],
                          interfaces: List[StaticClassRef],
                          methods: List[MethodDecl],
                          static_props: List[PropertyDecl],
                          props: List[PropertyDecl],
-                         consts: List[ConstantDecl]) extends Statement
+                         consts: List[ConstantDecl]) extends Statement with QualifiedDecl
 
-    case class InterfaceDecl(name: Identifier,
+    case class InterfaceDecl( name: Identifier,
                          interfaces: List[ClassRef],
                          methods: List[MethodDecl],
-                         consts: List[ConstantDecl]) extends Statement
+                         consts: List[ConstantDecl]) extends Statement  with QualifiedDecl
 
     case class Try(body: Statement, catches: List[Catch]) extends Statement
     case class Catch(cl: ClassRef, v: SimpleVariable, body: Statement) extends Tree
@@ -178,7 +196,7 @@ object Trees {
     case class Constant(name: Identifier) extends Expression
     case class ClassConstant(cl: ClassRef, const: Identifier) extends Expression
     case class New(cl: ClassRef, args: List[CallArg]) extends Expression
-    case class FunctionCall(name: FunctionRef, args: List[CallArg]) extends Expression
+    case class FunctionCall( name: FunctionRef, args: List[CallArg]) extends Expression
     case class MethodCall(obj: Expression, name: MethodRef, args: List[CallArg]) extends Expression
     case class StaticMethodCall(cl: ClassRef, name: MethodRef, args: List[CallArg]) extends Expression
     case class VoidExpr() extends Expression

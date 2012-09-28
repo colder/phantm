@@ -18877,14 +18877,6 @@
    </args>
   </function>
 
-  <function name="enchant_broker_get_dict_path">
-   <return><type name="string" /></return>
-   <args>
-    <arg><type name="resource" /></arg>
-    <arg><type name="numeric" /></arg>
-   </args>
-  </function>
-
   <function name="enchant_broker_get_error">
    <return><type name="string" /></return>
    <args>

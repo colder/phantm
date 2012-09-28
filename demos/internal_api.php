@@ -14,3 +14,4 @@ if ($req) {
     }
 }
 
+$x = new Exception;
