@@ -15,13 +15,13 @@ object IncludesConstantsResolutionPhase extends Phase {
 
         // We register all constants found in dumped state
         val consts = ctx.dumpedData.flatMap(d => d.constants.toScalarMap).toMap
-        for ((name, expr) <- consts if GlobalSymbols.lookupConstant(name) == None) {
-            Evaluator.staticEval(expr, false) match {
+        for ((name, expr) <- consts if ctx.globalSymbols.lookupConstant(name) == None) {
+            Evaluator.staticEval(expr, ctx, false) match {
                 case Some(v) =>
                     val cs = new ConstantSymbol(name, Some(v))
                     cs.typ = TypeHelpers.exprToType(v)
 
-                    GlobalSymbols.registerConstant(cs)
+                    ctx.globalSymbols.registerConstant(cs)
                 case _ =>
                     sys.error("Unnexpected non-evaluable scalar value")
             }
@@ -33,9 +33,9 @@ object IncludesConstantsResolutionPhase extends Phase {
             IncludeResolver.includedFiles += f
         }
 
-        ast = ConstantsResolver(ast, false).transform
-        ast = IncludeResolver(ast).transform
-        ast = ConstantsResolver(ast, false).transform
+        ast = ConstantsResolver(ast, false, ctx).transform
+        ast = IncludeResolver(ast, ctx).transform
+        ast = ConstantsResolver(ast, false, ctx).transform
 
         if (Settings.get.displayIncludes) {
             println("     - Files sucessfully imported:")

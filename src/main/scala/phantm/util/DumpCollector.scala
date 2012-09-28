@@ -3,9 +3,11 @@ import io.{Source, Codec}
 import java.io.File
 import java.nio.charset.Charset
 
+import phantm.phases.PhasesContext
+
 import scala.util.control.Breaks._
 
-case class DumpCollector(path: String) {
+case class DumpCollector(path: String, ctx: PhasesContext) {
     private val content = Source.fromFile(new File(path))(new Codec(Charset.forName("ISO-8859-1"))).getLines.toList
     var lineNr = 3
 
@@ -85,6 +87,6 @@ case class DumpCollector(path: String) {
 
     lineNr += classes.size + 1
 
-    val constants: Unserializer = new Unserializer(restore(content(lineNr)))
-    val heap: Unserializer      = new Unserializer(restore(content(lineNr+2)))
+    val constants: Unserializer = new Unserializer(restore(content(lineNr)), ctx)
+    val heap: Unserializer      = new Unserializer(restore(content(lineNr+2)), ctx)
 }

@@ -2,6 +2,7 @@ package phantm.helpers
 
 import phantm.util.Reporter
 import phantm.Settings
+import phantm.phases.PhasesContext
 
 object Main {
     // Defaults params
@@ -15,6 +16,8 @@ object Main {
 
             handle_options(args toList)
 
+            val ctx = PhasesContext()
+
             val rep = new Reporter(input.get :: Nil)
             Reporter.set(rep)
 
@@ -24,9 +27,9 @@ object Main {
                         output match {
                             case Some(opath) =>
                                 println("Generating "+opath+"...");
-                                helper.generate(path, opath)
+                                helper.generate(path, opath, ctx)
                             case None =>
-                                helper.generate(path, System.out)
+                                helper.generate(path, System.out, ctx)
                         }
                     } catch {
                         case e => System.err.println(path+": "+e.getMessage); e.printStackTrace

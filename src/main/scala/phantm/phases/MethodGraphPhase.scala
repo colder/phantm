@@ -16,7 +16,7 @@ object MethodGraphPhase  extends Phase {
     def run(initCtx: PhasesContext): PhasesContext = {
         var ctx = initCtx
 
-        val mgGenerator = new MethodGraphGeneration()
+        val mgGenerator = new MethodGraphGeneration(ctx)
         mgGenerator.execute
 
         val mg = mgGenerator.MethodGraph;
@@ -34,7 +34,7 @@ object MethodGraphPhase  extends Phase {
     }
 }
 
-class MethodGraphGeneration() {
+class MethodGraphGeneration(ctx: PhasesContext) {
 
     object MethodGraph extends LabeledDirectedGraphImp[String] {
         type AVertex = MethodSymbol
@@ -69,7 +69,7 @@ class MethodGraphGeneration() {
 
     def execute = {
         // Parent Classes first
-        for ((cname, cs) <- GlobalSymbols.classes if cs.userland) {
+        for ((cname, cs) <- ctx.globalSymbols.classes if cs.userland) {
             for ((mname, ms) <- cs.methods) {
                 // look for parent method
                 lookupParentMethod(cs.parent, ms) match {

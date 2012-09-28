@@ -104,7 +104,7 @@ case class TypeFlowAnalysis(initCtx: PhasesContext, node: Tree) extends ASTSimpl
             case Program(stmts) =>
                 display("Analyzing main...")
                 val cfg = getCFG(None)
-                val tfa = new TypeFlowAnalyzer(cfg, GlobalSymbols, ctx, collectGlobals = true)
+                val tfa = new TypeFlowAnalyzer(cfg, ctx.globalSymbols, ctx, collectGlobals = true)
                 val results = tfa.analyze
 
                 // get exit TypeEnvironment

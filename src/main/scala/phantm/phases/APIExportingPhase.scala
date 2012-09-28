@@ -9,7 +9,7 @@ object APIExportingPhase extends Phase {
 
     def run(ctx: PhasesContext): PhasesContext = {
         if (!Settings.get.exportAPIPath.isEmpty) {
-            new API.Writer(Settings.get.exportAPIPath.get).emitXML
+            new API.Writer(Settings.get.exportAPIPath.get, ctx).emitXML
         }
         ctx
     }

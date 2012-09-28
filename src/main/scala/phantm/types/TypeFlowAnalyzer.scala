@@ -109,12 +109,12 @@ case class TypeFlowAnalyzer(cfg: ControlFlowGraph,
                 }
 
                 injectPredef("GLOBALS",  globalsType)
-            case GlobalSymbols =>
+            case gs: GlobalSymbols =>
                 injectPredef("GLOBALS",  new TArray(TAny))
         }
 
         // we inject vars for static class properties
-        for(cs <- GlobalSymbols.getClasses) {
+        for(cs <- ctx.globalSymbols.getClasses) {
             for(ps <- cs.getStaticProperties) {
                 baseEnv = baseEnv.inject(ClassProperty(ps), ps.typ)
             }

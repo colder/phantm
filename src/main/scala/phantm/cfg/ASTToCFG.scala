@@ -4,12 +4,13 @@ import phantm.util.{Reporter, Positional}
 import phantm.ast.{Trees => AST}
 import phantm.cfg.{Trees => CFG}
 import phantm.symbols._
+import phantm.phases.PhasesContext
 import scala.collection.mutable.{Map,HashMap}
 
 object ASTToCFG {
 
   /** Builds a control flow graph from a method declaration. */
-  def convertAST(statements: List[AST.Statement], scope: Scope): ControlFlowGraph = {
+  def convertAST(statements: List[AST.Statement], scope: Scope, ctx: PhasesContext): ControlFlowGraph = {
     // Contains the entry+exit vertices for continue/break
     var gotoLabels = Map[String, Vertex]();
     var forwardGotos = Map[String, List[(Vertex, Positional)]]();
@@ -234,7 +235,7 @@ object ASTToCFG {
       case v: AST.Variable =>
         Some(varFromVar(v))
       case AST.Constant(id) =>
-        Some(CFG.Constant(GlobalSymbols.lookupOrRegisterConstant(id)).setPos(ex))
+        Some(CFG.Constant(ctx.globalSymbols.lookupOrRegisterConstant(id)).setPos(ex))
       case AST.ClassConstant(c, i) =>
         Some(CFG.ClassConstant(resolveClassRef(c), i).setPos(ex))
       case AST.PHPInteger(v) =>
@@ -347,7 +348,7 @@ object ASTToCFG {
     }
 
     def internalFunction(name: String): AST.Identifier = {
-        GlobalSymbols.lookupFunction(name) match {
+        ctx.globalSymbols.lookupFunction(name) match {
             case Some(s) => AST.Identifier(name).setSymbol(s)
             case None => AST.Identifier(name);
         }
@@ -428,7 +429,7 @@ object ASTToCFG {
                             }
 
                         case AST.Constant(id) =>
-                            Emit.statement(CFG.Assign(v, CFG.Constant(GlobalSymbols.lookupOrRegisterConstant(id)).setPos(ex)).setPos(ex))
+                            Emit.statement(CFG.Assign(v, CFG.Constant(ctx.globalSymbols.lookupOrRegisterConstant(id)).setPos(ex)).setPos(ex))
 
                         case AST.ClassConstant(cl, id) =>
                             Emit.statement(CFG.Assign(v, CFG.ClassConstant(resolveClassRef(cl), id).setPos(ex)).setPos(ex))

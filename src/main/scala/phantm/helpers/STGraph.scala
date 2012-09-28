@@ -1,12 +1,13 @@
 package phantm.helpers
 
 import phantm.parser._
+import phantm.phases.PhasesContext
 import phantm.util.JavaListIteratorWrapper
 import java.io._
 
 class STGraph extends Helper {
 
-    def generate(input: String, printStream: java.io.PrintStream): Unit = {
+    def generate(input: String, printStream: java.io.PrintStream, ctx: PhasesContext): Unit = {
             new Parser(input) parse match {
                 case Some(node) =>
                     generateDotGraph(node, printStream)

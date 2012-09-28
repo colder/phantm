@@ -1,11 +1,12 @@
 package phantm.helpers;
 
+import phantm.phases.PhasesContext;
 import phantm.parser._;
 import java.io._;
 
 class Tokenizer extends Helper{
 
-    def generate(input: String, printStream: java.io.PrintStream): Unit = {
+    def generate(input: String, printStream: java.io.PrintStream, ctx: PhasesContext): Unit = {
         try {
                val l = new Lexer(new java.io.FileReader(input));
                l.setFileName(input);

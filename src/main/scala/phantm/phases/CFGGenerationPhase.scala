@@ -39,7 +39,7 @@ case class CFGGenerator(initCtx: PhasesContext, node: Tree) extends ASTSimpleTra
         node match {
             case Program(stmts) =>
                 display("Converting main scope...")
-                val cfg = ASTToCFG.convertAST(stmts, GlobalSymbols)
+                val cfg = ASTToCFG.convertAST(stmts, ctx.globalSymbols, ctx)
 
                 ctx = ctx.copy(cfgs = ctx.cfgs + (None -> cfg))
 
@@ -47,7 +47,7 @@ case class CFGGenerator(initCtx: PhasesContext, node: Tree) extends ASTSimpleTra
                 name.getSymbol match {
                     case fs: FunctionSymbol =>
                         display("Converting function "+name.value+"...")
-                        val cfg = ASTToCFG.convertAST(List(body), fs)
+                        val cfg = ASTToCFG.convertAST(List(body), fs, ctx)
 
                         ctx = ctx.copy(cfgs = ctx.cfgs + (Some(fs) -> cfg))
                     case _ =>
@@ -62,7 +62,7 @@ case class CFGGenerator(initCtx: PhasesContext, node: Tree) extends ASTSimpleTra
                             m.name.getSymbol match {
                                 case ms: MethodSymbol =>
                                     display("Converting method "+cl.name+"::"+m.name.value+"...")
-                                    val cfg = ASTToCFG.convertAST(List(m.body.get), ms)
+                                    val cfg = ASTToCFG.convertAST(List(m.body.get), ms, ctx)
                                     ctx = ctx.copy(cfgs = ctx.cfgs + (Some(ms) -> cfg))
                                 case _ =>
                                     sys.error("Incoherent symbol type, should be method")

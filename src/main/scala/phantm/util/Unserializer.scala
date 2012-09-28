@@ -2,6 +2,7 @@ package phantm.util
 
 import phantm.symbols._
 import phantm.types._
+import phantm.phases.PhasesContext
 import phantm.ast.Trees.{Scalar, PHPInteger, PHPString, PHPNull, PHPTrue, PHPFalse, PHPFloat}
 import phantm.cfg.Trees.Identifier
 
@@ -20,7 +21,7 @@ case object UNull extends UValue
 case object UFalse extends UValue
 case object UTrue extends UValue
 
-class Unserializer(content: String) {
+class Unserializer(content: String, ctx: PhasesContext) {
     // allocate the first for the outer array
     var valueStore : List[UValue] = List(UNull)
     var uidToOId: Map[Int, ObjectId] = Map()
@@ -78,7 +79,7 @@ class Unserializer(content: String) {
                     val id = new ObjectId(0, ObjectIdDump(i))
                     uidToOId += i -> id
 
-                    val ct = GlobalSymbols.lookupClass(cl) match {
+                    val ct = ctx.globalSymbols.lookupClass(cl) match {
                         case Some(cs) =>
                             new TClass(cs)
                         case None =>
@@ -133,12 +134,12 @@ class Unserializer(content: String) {
     def importToEnv(envInit: TypeEnvironment): TypeEnvironment = {
         var env = envInit
         for ((k, t) <- toMap.mapValues(uValueToType _)) {
-            val sym = GlobalSymbols.lookupVariable(k) match {
+            val sym = ctx.globalSymbols.lookupVariable(k) match {
                 case Some(vs) =>
                     vs
                 case None =>
                     val vs = new VariableSymbol(k)
-                    GlobalSymbols.registerVariable(vs)
+                    ctx.globalSymbols.registerVariable(vs)
                     vs
             }
 

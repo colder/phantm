@@ -81,7 +81,7 @@ sealed trait Scope {
 
 }
 
-object GlobalSymbols extends Scope {
+class GlobalSymbols extends Scope {
   var classes: HashMap[String,ClassSymbol] = new HashMap[String,ClassSymbol]
   var ifaces: HashMap[String,IfaceSymbol] = new HashMap[String,IfaceSymbol]
   var functions: HashMap[String,FunctionSymbol] = new HashMap[String,FunctionSymbol]

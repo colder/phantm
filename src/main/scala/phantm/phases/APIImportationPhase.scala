@@ -19,7 +19,7 @@ object APIImportationPhase extends Phase {
 
             for (api <- Settings.get.apis){
                 if (new File(api).exists()) {
-                    new API.Reader(api).load
+                    new API.Reader(api, ctx).load
                 } else {
                     Reporter.get.error("Failed to load API file '"+api+"': File not found");
                 }

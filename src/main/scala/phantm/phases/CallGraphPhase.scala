@@ -16,7 +16,7 @@ object CallGraphPhase extends Phase {
     def run(initCtx: PhasesContext): PhasesContext = {
         var ctx = initCtx
 
-        val cgGenerator = new CallGraphGeneration(ctx.oast.get)
+        val cgGenerator = new CallGraphGeneration(ctx.oast.get, ctx)
         cgGenerator.execute
 
         val cg = cgGenerator.CallGraph;
@@ -65,7 +65,8 @@ object CallGraphPhase extends Phase {
 case class CGContext(scope: Option[FunctionSymbol]);
 
 case class CallGraphGeneration(node: Tree,
-                              context: CGContext) extends ASTTraversal[CGContext](node, context) {
+                              context: CGContext,
+                              pctx: PhasesContext) extends ASTTraversal[CGContext](node, context) {
 
     object CallGraph extends LabeledDirectedGraphImp[Int] {
         type AVertex = Option[FunctionSymbol]
@@ -138,7 +139,7 @@ case class CallGraphGeneration(node: Tree,
         }
     }
 
-    def this(node: Tree) = this(node, CGContext(None))
+    def this(node: Tree, pctx: PhasesContext) = this(node, CGContext(None), pctx)
 
     /**
      * Visit the nodes and aggregate information inside the context to provide
@@ -165,7 +166,7 @@ case class CallGraphGeneration(node: Tree,
                 newCtx = CGContext(fid);
 
             case fcall @ FunctionCall(StaticFunctionRef(_, _, name), args) =>
-                GlobalSymbols.lookupFunction(name.value) match {
+                pctx.globalSymbols.lookupFunction(name.value) match {
                     case Some(fs) if (fs.userland) =>
                         if (ctx.scope == None) {
                             CallGraph.addCallLocation(fs, fcall);
@@ -174,7 +175,7 @@ case class CallGraphGeneration(node: Tree,
                     case _ =>
                 }
             case fcall @ StaticMethodCall(StaticClassRef(_, _, id), StaticMethodRef(mid), args) =>
-                GlobalSymbols.lookupClass(id.value) match {
+                pctx.globalSymbols.lookupClass(id.value) match {
                     case Some(cs) =>
                         val cscope = ctx.scope match {
                             case ms: MethodSymbol =>

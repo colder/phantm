@@ -2,6 +2,7 @@ package phantm.util
 
 import phantm.symbols.GlobalSymbols
 import phantm.types._
+import phantm.phases.PhasesContext
 import phantm.ast.Trees._
 import java.io.File
 
@@ -39,23 +40,23 @@ object Evaluator {
             }
     }
 
-    def staticEval(ex: Expression): Option[Scalar] = staticEval(ex, true)
+    def staticEval(ex: Expression, ctx: PhasesContext): Option[Scalar] = staticEval(ex, ctx, true)
 
-    def staticEval(ex: Expression, issueErrors: Boolean): Option[Scalar] = ex match {
+    def staticEval(ex: Expression, ctx: PhasesContext, issueErrors: Boolean): Option[Scalar] = ex match {
         case Concat (lhs, rhs) =>
-            (staticEval(lhs, issueErrors), staticEval(rhs, issueErrors)) match {
+            (staticEval(lhs, ctx, issueErrors), staticEval(rhs, ctx, issueErrors)) match {
                 case (Some(slhs), Some(srhs)) => Some(PHPString(scalarToString(slhs)+scalarToString(srhs)).setPos(slhs))
                 case _ => None
             }
         case FunctionCall(StaticFunctionRef(_,_,Identifier("dirname")), List(CallArg(arg, _))) =>
-            staticEval(arg, issueErrors) match {
+            staticEval(arg, ctx, issueErrors) match {
                 case Some(a) =>
                     Some(PHPString(dirname(scalarToString(a))).setPos(ex))
                 case None =>
                     None
             }
         case Constant(name) =>
-            GlobalSymbols.lookupOrRegisterConstant(name).value
+            ctx.globalSymbols.lookupOrRegisterConstant(name).value
         case ClassConstant(_:StaticClassRef, _) =>
             Some(PHPString("CLASSCONSTANT").setPos(ex))
         case sc: Scalar =>

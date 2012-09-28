@@ -6,18 +6,18 @@ import phantm.cfg.ASTToCFG
 import phantm.ast.Trees._
 import phantm.ast.{ASTTraversal, STToAST}
 import phantm.symbols._
-import phantm.phases.CollectSymbols
+import phantm.phases.{CollectSymbols, PhasesContext}
 
 class CFGGraph extends Helper {
 
-    def generate(input: String, printStream: java.io.PrintStream): Unit = {
+    def generate(input: String, printStream: java.io.PrintStream, ctx: PhasesContext): Unit = {
             val p = new Parser(input)
             p parse match {
                 case Some(node) =>
-                    val ast = IncludeResolver(STToAST(p, node).getAST).transform;
-                    CollectSymbols(ast) execute;
+                    val ast = IncludeResolver(STToAST(p, node).getAST, ctx).transform;
+                    CollectSymbols(ast, ctx) execute;
 
-                    CFGGraphs(ast).execute
+                    CFGGraphs(ast, ctx).execute
                 case None =>
                     throw new Exception("Compilation failed");
 
@@ -28,7 +28,7 @@ class CFGGraph extends Helper {
 
 case class CheckContext();
 
-case class CFGGraphs(node: Tree) extends ASTTraversal[CheckContext](node, CheckContext()) {
+case class CFGGraphs(node: Tree, pctx: PhasesContext) extends ASTTraversal[CheckContext](node, CheckContext()) {
     var result: String = "";
     var n = 1;
 
@@ -41,13 +41,13 @@ case class CFGGraphs(node: Tree) extends ASTTraversal[CheckContext](node, CheckC
 
         node match {
             case Program(stmts) =>
-                val cfg = ASTToCFG.convertAST(stmts, GlobalSymbols)
+                val cfg = ASTToCFG.convertAST(stmts, pctx.globalSymbols, pctx)
                 cfg.writeDottyToFile("result.cfg-"+n, "Main");
                 n = n + 1;
             case FunctionDecl(name, args, retref, body) =>
                 name.getSymbol match {
                     case fs: FunctionSymbol =>
-                        val cfg = ASTToCFG.convertAST(List(body), fs)
+                        val cfg = ASTToCFG.convertAST(List(body), fs, pctx)
                         cfg.writeDottyToFile("result.cfg-"+n, name.value);
                         n = n + 1;
                     case _ =>
@@ -58,7 +58,7 @@ case class CFGGraphs(node: Tree) extends ASTTraversal[CheckContext](node, CheckC
                 for (m <- methods) if (m.body != None) {
                     m.name.getSymbol match {
                         case ms: MethodSymbol =>
-                            val cfg = ASTToCFG.convertAST(List(m.body.get), ms)
+                            val cfg = ASTToCFG.convertAST(List(m.body.get), ms, pctx)
                             cfg.writeDottyToFile("result.cfg-"+n, name.value+"::"+m.name.value);
                             n = n + 1;
                         case _ =>

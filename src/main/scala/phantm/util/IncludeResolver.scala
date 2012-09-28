@@ -1,6 +1,7 @@
 package phantm.util
 import phantm.Settings
 import phantm.parser.Parser
+import phantm.phases.PhasesContext
 import phantm.ast.Trees._
 import phantm.ast.ASTTransform
 
@@ -56,7 +57,7 @@ object IncludeResolver {
 }
 
 
-case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
+case class IncludeResolver(ast: Program, ctx: PhasesContext) extends ASTTransform(ast) {
 
     override def trExpr(ex: Expression): Expression = ex match {
         case Include(path, once) =>
@@ -97,9 +98,9 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
                 case Some(node) =>
                     var ast: Program = new STToAST(p, node) getAST;
                     // We define/resolve constants there too
-                    ast = ConstantsResolver(ast, false).transform
+                    ast = ConstantsResolver(ast, false, ctx).transform
                     // We include-resolve this file too
-                    ast = IncludeResolver(ast).transform
+                    ast = IncludeResolver(ast, ctx).transform
 
                     Block(ast.stmts).setPos(inc)
                 case None =>
@@ -116,7 +117,7 @@ case class IncludeResolver(ast: Program) extends ASTTransform(ast) {
         IncludeResolver.begin
 
         val result = if (IncludeResolver.deepNess < 20) {
-            val eval = Evaluator.staticEval(path, false)
+            val eval = Evaluator.staticEval(path, ctx, false)
             val pathres = (eval, path) match {
                 case (Some(scal), _) =>
                     (false, Some(List(scal)))

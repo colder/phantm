@@ -12,13 +12,13 @@ object PureStatementsPhase  extends Phase {
     def description = "Checking for pure statements"
 
     def run(ctx: PhasesContext): PhasesContext = {
-        new PureStatementsChecks(ctx.oast.get) execute;
+        new PureStatementsChecks(ctx.oast.get, ctx) execute;
         ctx
     }
 
 }
 
-case class PureStatementsChecks(node: Tree) extends ASTSimpleTraversal(node) {
+case class PureStatementsChecks(node: Tree, ctx: PhasesContext) extends ASTSimpleTraversal(node) {
 
     def checkPures(stmts: List[Statement]) = {
         stmts foreach (checkPure _)
@@ -131,7 +131,7 @@ case class PureStatementsChecks(node: Tree) extends ASTSimpleTraversal(node) {
             case New(_, _) =>
                 false
             case FunctionCall(StaticFunctionRef(_, _, id), args) =>
-                GlobalSymbols.lookupFunction(id.value) match {
+                ctx.globalSymbols.lookupFunction(id.value) match {
                   case Some(fs) =>
                     if (fs.isPure) {
                         args.forall(a => isPure(a.value))

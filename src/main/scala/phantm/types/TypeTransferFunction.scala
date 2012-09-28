@@ -86,7 +86,7 @@ case class TypeTransferFunction(silent: Boolean,
             case ClassRefFixed(cs) =>
                 Some(cs)
             case ClassRefDynamic(sv) => typeFromSV(sv) match {
-                case TStringLit(str) => GlobalSymbols.lookupClass(str) match {
+                case TStringLit(str) => ctx.globalSymbols.lookupClass(str) match {
                         case Some(cs) =>
                             Some(cs)
                         case None =>
@@ -180,7 +180,7 @@ case class TypeTransferFunction(silent: Boolean,
                 TBottom
 
             case fcall @ FunctionCall(id, args) =>
-                GlobalSymbols.lookupFunction(id.value) match {
+                ctx.globalSymbols.lookupFunction(id.value) match {
                     case Some(fs) =>
                             if (collectAnnotations) {
                                 val ft = new TFunction(args.map(a => (typeFromSV(a), false, false)), TBottom)

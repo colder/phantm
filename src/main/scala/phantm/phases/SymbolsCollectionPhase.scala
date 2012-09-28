@@ -17,7 +17,7 @@ object SymbolsCollectionPhase extends Phase {
     def description = "Collecting symbols"
 
     def run(ctx: PhasesContext): PhasesContext = {
-        CollectSymbols(ctx.oast.get) execute;
+        CollectSymbols(ctx.oast.get, ctx) execute;
         ctx
     }
 
@@ -25,7 +25,7 @@ object SymbolsCollectionPhase extends Phase {
 
 case class SymContext(varScope: Scope, cl: Option[ClassSymbol], iface: Option[IfaceSymbol]);
 
-case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, SymContext(GlobalSymbols, None, None)) {
+case class CollectSymbols(node: Tree, pctx: PhasesContext) extends ASTTraversal[SymContext](node, SymContext(pctx.globalSymbols, None, None)) {
     var classCycleDetectionSet = new HashSet[ClassDecl]
     var ifaceCycleDetectionSet = new HashSet[InterfaceDecl]
     var classesToPass = List[ClassDecl]()
@@ -50,7 +50,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
     def firstIfacePass : Unit = interfacesToPass match {
       case Nil =>
       case id :: ids2 =>
-          GlobalSymbols.lookupIface(id.name.value) match {
+          pctx.globalSymbols.lookupIface(id.name.value) match {
             case None =>
               firstIfacePass0(id)
             case Some(x) =>
@@ -73,7 +73,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
       for (pi <- id.interfaces) {
           pi match {
             case StaticClassRef(_, _, pid) =>
-              GlobalSymbols.lookupIface(pid.value) match {
+              pctx.globalSymbols.lookupIface(pid.value) match {
                   case None => {
                     var foundParent = false
                     for (i <- interfacesToPass if i.name.value.equals(pid.value) && !foundParent) {
@@ -81,7 +81,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
                       foundParent = true
                     }
 
-                    GlobalSymbols.lookupIface(pid.value) match {
+                    pctx.globalSymbols.lookupIface(pid.value) match {
                       case None =>
                         Reporter.error("Interface " + id.name.value + " extends non-existent interface " + pid.value, id)
                       case Some(pis) =>
@@ -95,7 +95,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
           }
       }
       val is = new IfaceSymbol(id.name.value, parentIfaces).setPos(id).setUserland;
-      GlobalSymbols.registerIface(is)
+      pctx.globalSymbols.registerIface(is)
 
       ifaceList = ifaceList ::: List((is,id))
       ifaceCycleDetectionSet -= id
@@ -127,7 +127,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
     def firstClassPass : Unit = classesToPass match {
       case Nil =>
       case cd :: cds2 =>
-          GlobalSymbols.lookupClass(cd.name.value) match {
+          pctx.globalSymbols.lookupClass(cd.name.value) match {
             case None =>
               firstClassPass0(cd)
             case Some(x) =>
@@ -147,7 +147,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
       classCycleDetectionSet += cd
 
       val p: Option[ClassSymbol] = cd.parent match {
-        case Some(x) => GlobalSymbols.lookupClass(x.name.value) match {
+        case Some(x) => pctx.globalSymbols.lookupClass(x.name.value) match {
           case None => {
             var foundParent = false
             for (c <- classesToPass if c.name.value.equals(x.name.value) && !foundParent) {
@@ -155,7 +155,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
               foundParent = true
             }
 
-            GlobalSymbols.lookupClass(x.name.value) match {
+            pctx.globalSymbols.lookupClass(x.name.value) match {
               case None => Reporter.error("Class " + cd.name.value + " extends non-existent class " + x.name.value, x); None
               case x => x
             }
@@ -168,7 +168,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
       var ifaces = List[IfaceSymbol]()
       for (i <- cd.interfaces) i match {
         case StaticClassRef(_, _, id) =>
-            GlobalSymbols.lookupIface(id.value) match {
+            pctx.globalSymbols.lookupIface(id.value) match {
                 case Some(is) =>
                     ifaces = is :: ifaces
                 case None =>
@@ -178,7 +178,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
       }
 
       val cs = new ClassSymbol(cd.name.value, p, ifaces.reverse).setPos(cd).setUserland;
-      GlobalSymbols.registerClass(cs)
+      pctx.globalSymbols.registerClass(cs)
 
       classList = classList ::: List((cs,cd))
       classCycleDetectionSet -= cd
@@ -345,9 +345,9 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
                 // If the function is declared more than once, we discard other definitions
                 val lc = name.value.toLowerCase
 
-                val fs = if (GlobalSymbols.functions contains lc) {
+                val fs = if (pctx.globalSymbols.functions contains lc) {
                     // Prevent this importation
-                    GlobalSymbols.functions(lc)
+                    pctx.globalSymbols.functions(lc)
                 } else {
                     val fs = new FunctionSymbol(name.value).setPos(fd).setUserland
                     for(a <- args) {
@@ -366,7 +366,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
 
                         fs.registerArgument(as);
                     }
-                    GlobalSymbols.registerFunction(fs)
+                    pctx.globalSymbols.registerFunction(fs)
                     fs
                 }
 
@@ -412,7 +412,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
                 newCtx = SymContext(fs, None, None)
 
             case ClassDecl(name, flags, parent, interfaces, methods, static_props, props, consts) =>
-                GlobalSymbols.lookupClass(name.value) match {
+                pctx.globalSymbols.lookupClass(name.value) match {
                     case Some(cs) =>
                         name.setSymbol(cs);
                         newCtx = SymContext(ctx.varScope, Some(cs), None)
@@ -420,7 +420,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
                 }
 
             case InterfaceDecl(name, parents, methods, consts) =>
-                GlobalSymbols.lookupIface(name.value) match {
+                pctx.globalSymbols.lookupIface(name.value) match {
                     case Some(iface) =>
                         newCtx = SymContext(ctx.varScope, None, Some(iface))
                     case None => sys.error("Woops ?!? Came across a phantom interface");
@@ -456,7 +456,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
                 }
 
             case StaticClassRef(_, _, id) =>
-                GlobalSymbols.lookupClass(id.value) match {
+                pctx.globalSymbols.lookupClass(id.value) match {
                     case Some(cs) =>
                         id.setSymbol(cs)
                     case None =>
@@ -508,7 +508,7 @@ case class CollectSymbols(node: Tree) extends ASTTraversal[SymContext](node, Sym
 
         traverse(visit)
 
-        GlobalSymbols.registerPredefVariables
+        pctx.globalSymbols.registerPredefVariables
     }
 
 }

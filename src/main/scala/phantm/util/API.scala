@@ -2,6 +2,7 @@ package phantm.util
 
 import phantm.ast.Trees._
 import phantm.symbols._
+import phantm.phases.PhasesContext
 import phantm.types._
 import phantm.annotations.AnnotationsStore
 
@@ -9,9 +10,9 @@ import scala.xml._
 
 object API {
     // Load an API into the symbol tables
-    class Reader(is: java.io.InputStream) {
-        def this(path: String) = {
-            this(new java.io.FileInputStream(new java.io.File(path)))
+    class Reader(is: java.io.InputStream, ctx: PhasesContext) {
+        def this(path: String, ctx: PhasesContext) = {
+            this(new java.io.FileInputStream(new java.io.File(path)), ctx)
         }
 
         case class APIPos(elem: Node) extends Positional {
@@ -116,7 +117,7 @@ object API {
                     val parent = (c \ "@parent").text
 
                     val pcs = if (parent != "") {
-                        GlobalSymbols.lookupClass(parent) match {
+                        ctx.globalSymbols.lookupClass(parent) match {
                             case Some(ocs) =>
                                 Some(ocs)
                             case None =>
@@ -203,7 +204,7 @@ object API {
                         cs.registerConstant(ccs)
                     }
 
-                    GlobalSymbols.registerClass(cs)
+                    ctx.globalSymbols.registerClass(cs)
                 }
 
                 // functions
@@ -233,11 +234,11 @@ object API {
                     val ftyp = TFunction(fs.argList.map { a => (a._2.typ, a._2.byref, a._2.optional) }, elemsToType(f \ "return" \ "type"))
                     fs.registerFType(ftyp)
 
-                    GlobalSymbols.lookupFunction(name) match {
+                    ctx.globalSymbols.lookupFunction(name) match {
                         case Some(fs) =>
                             fs.registerFType(ftyp)
                         case None =>
-                            GlobalSymbols.registerFunction(fs)
+                            ctx.globalSymbols.registerFunction(fs)
                     }
                 }
 
@@ -247,7 +248,7 @@ object API {
                     ccs.typ = elemsToType(cc \ "type")
                     ccs.setOverwriteable(userland).setUserland(userland)
 
-                    GlobalSymbols.registerConstant(ccs)
+                    ctx.globalSymbols.registerConstant(ccs)
                 }
 
             } catch {
@@ -257,7 +258,7 @@ object API {
         }
     }
 
-    class Writer(path: String) {
+    class Writer(path: String, ctx: PhasesContext) {
         // Compacts collected annotations and exports them
         def reduceFT(ft1: TFunction, ft2: TFunction): TFunction = {
             new TFunction(ft1.args.zipAll(ft2.args, (TBottom, false, true), (TBottom, false, true)).map {
@@ -331,7 +332,7 @@ object API {
             // functions
             emit(" <functions>")
             for ((name, data) <- AnnotationsStore.functions) {
-                GlobalSymbols.lookupFunction(name) match {
+                ctx.globalSymbols.lookupFunction(name) match {
                     case Some(fs) if fs.userland =>
                         val args = if (data._1.size > 0) (data._1 reduceLeft reduceFT).args else Nil;
                         val ret  = if (data._2.isEmpty) TNull else (data._2 reduceLeft TypeLattice.join);

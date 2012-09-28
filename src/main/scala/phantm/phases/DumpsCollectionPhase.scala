@@ -17,7 +17,7 @@ object DumpsCollectionPhase extends Phase {
 
         if (Settings.get.dumps != Nil) {
             for (path <- Settings.get.dumps) {
-                val dc = new DumpCollector(path)
+                val dc = new DumpCollector(path, ctx)
                 data = dc :: data
                 files = files ++ dc.files
             }
