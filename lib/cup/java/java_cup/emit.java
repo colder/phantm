@@ -805,6 +805,9 @@ public class emit {
   protected static void emit_load_table(PrintWriter out, String filename, String property) {
     out.println("    try {");
     out.println("      InputStream is = getClass().getClassLoader().getResourceAsStream(\"tables/"+filename+"\");");
+    out.println("      if (is == null) {");
+    out.println("        is = new FileInputStream(\"src/main/java/phantm/parser/"+filename+"\");");
+    out.println("      }");
     out.println("      ObjectInputStream ois = new ObjectInputStream(is);");
     out.println("      this."+property+" = (short[][]) ois.readObject();");
     out.println("      ois.close();");
