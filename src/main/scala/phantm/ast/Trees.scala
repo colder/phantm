@@ -14,7 +14,7 @@ object Trees {
     case class ArgumentDecl(v: SimpleVariable, hint: Option[TypeHint], default: Option[Expression], byref: Boolean) extends Tree;
     case class MethodDecl(name: Identifier, flags: List[MemberFlag], args: List[ArgumentDecl], retref: Boolean, body: Option[Statement]) extends Tree
     case class PropertyDecl(v: Identifier, flags: List[MemberFlag], default: Option[Expression]) extends Tree;
-    case class ConstantDecl(v: Identifier, value: Expression) extends Tree;
+    case class ConstantDecl(v: Identifier, value: Expression) extends Statement;
 
     abstract class ClassFlag extends Tree
     case object CFNormal extends ClassFlag
@@ -79,6 +79,9 @@ object Trees {
     sealed abstract class Statement extends Tree;
 
     case class FunctionDecl(name: Identifier, args: List[ArgumentDecl], retref: Boolean, body: Statement) extends Statement
+
+    case class NamespaceStart(name: List[Identifier]) extends Statement // Eliminated during parsing already
+    case class Namespaced(name: List[Identifier], body: List[Statement]) extends Statement
 
     case class ClassDecl(name: Identifier,
                          flags: ClassFlag,

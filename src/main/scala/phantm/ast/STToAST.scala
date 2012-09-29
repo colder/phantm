@@ -13,28 +13,81 @@ case class STToAST(parser: Parser, st: ParseNode) {
     def S(n: ParseNode): Program = new Program(top_statement_list(child(n, 0))).setPos(n)
 
     def top_statement_list(n: ParseNode): List[Statement] = {
+        def top_statement_list0(n: ParseNode): List[Statement] = {
+          childrenNames(n) match {
+              case List() => Nil
+              case List("top_statement_list", "top_statement") => 
+                  top_statement_list0(child(n, 0)) ::: top_statement(child(n, 1))
+              case _ => unspecified(n)
+          }
+        }
+
+        val stmts = top_statement_list0(n);
+
+        var result = List[Statement]();
+        var lastNS: Option[NamespaceStart] = None
+        var soFar = List[Statement]();
+
+        def appenSoFar() {
+          lastNS match {
+            case Some(ns) =>
+              result = result ::: List(Namespaced(ns.name, soFar.reverse))
+            case None =>
+              result = result ::: (soFar.reverse)
+          }
+        }
+
+        for (s <- stmts) {
+          s match {
+            case ns: NamespaceStart =>
+              appenSoFar()
+              lastNS = Some(ns)
+              soFar = Nil
+            case _ =>
+              soFar = s :: soFar
+          }
+        }
+        appenSoFar()
+
+        result
+    }
+
+    def top_statement(n: ParseNode): List[Statement] = {
         childrenNames(n) match {
-            case List() => Nil
-            case List("top_statement_list", "top_statement") => 
-                top_statement_list(child(n, 0)) ::: List(top_statement(child(n, 1)))
-            case _ => unspecified(n)
+            case List("statement") =>
+              List(statement(child(n)))
+            case List("function_declaration_statement") =>
+              List(function_declaration_statement(child(n)))
+            case List("class_declaration_statement") =>
+              List(class_declaration_statement(child(n)))
+            case List("T_HALT_COMPILER", "T_OPEN_BRACES", "T_CLOSE_BRACES", "T_SEMICOLON") =>
+              notyet(n)
+            case List("T_NAMESPACE", "namespace_name", "T_SEMICOLON") =>
+              List(NamespaceStart(namespace_name(child(n, 1))))
+            case List("T_NAMESPACE", "namespace_name", "T_OPEN_CURLY_BRACES", "top_statement_list", "T_CLOSE_CURLY_BRACES") =>
+              List(Namespaced(namespace_name(child(n, 1)), top_statement_list(child(n, 3))))
+            case List("T_NAMESPACE", "T_OPEN_CURLY_BRACES", "top_statement_list", "T_CLOSE_CURLY_BRACES") =>
+              List(Namespaced(Nil, top_statement_list(child(n, 2))))
+            case List("T_USE", "use_declarations", "T_SEMICOLON") =>
+              notyet(n)
+            case List("constant_declaration", "T_SEMICOLON") =>
+              constant_declaration(child(n))
+            case _ =>
+              unspecified(n)
         }
     }
 
-    def top_statement(n: ParseNode): Statement = {
-        (childrenNames(n) match {
-            case List("statement") => statement(child(n))
-            case List("function_declaration_statement") => function_declaration_statement(child(n))
-            case List("class_declaration_statement") => class_declaration_statement(child(n))
-            case List("T_HALT_COMPILER", "T_OPEN_BRACES", "T_CLOSE_BRACES", "T_SEMICOLON") => notyet(n)
-            case List("T_NAMESPACE", "namespace_name", "T_SEMICOLON") => notyet(n)
-            case List("T_NAMESPACE", "namespace_name", "T_OPEN_CURLY_BRACES", "top_statement_list", "T_CLOSE_CURLY_BRACES") => notyet(n)
-            case List("T_NAMESPACE", "T_OPEN_CURLY_BRACES", "top_statement_list", "T_CLOSE_CURLY_BRACES") => notyet(n)
-            case List("T_USE", "use_declarations", "T_SEMICOLON") => notyet(n)
-            case List("constant_declaration", "T_SEMICOLON") => notyet(n)
-            case _ => unspecified(n)
-        }).setPos(child(n))
+    def constant_declaration(n: ParseNode): List[Statement] = {
+        childrenNames(n) match {
+          case List("constant_declaration", "T_COMMA", "T_STRING", "T_ASSIGN", "static_expr") =>
+            constant_declaration(child(n, 0)) ::: List(ConstantDecl(identifier(child(n, 2)), static_expr(child(n, 4))).setPos(child(n, 2)))
+          case List("T_CONST", "T_STRING", "T_ASSIGN", "static_expr") =>
+            List(ConstantDecl(identifier(child(n, 1)), static_expr(child(n, 3))).setPos(child(n, 1)))
+            case _ =>
+              unspecified(n)
+        }
     }
+
     def class_declaration_statement(n: ParseNode): Statement = {
         (childrenNames(n) match {
             case List("class_entry_type", "T_STRING", "extends_from", "implements_list", "T_OPEN_CURLY_BRACES", "class_statement_list", "T_CLOSE_CURLY_BRACES") =>
