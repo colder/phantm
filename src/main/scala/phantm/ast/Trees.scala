@@ -81,7 +81,8 @@ object Trees {
     case class FunctionDecl(name: Identifier, args: List[ArgumentDecl], retref: Boolean, body: Statement) extends Statement
 
     case class NamespaceStart(name: List[Identifier]) extends Statement // Eliminated during parsing already
-    case class Namespaced(name: List[Identifier], body: List[Statement]) extends Statement
+    case class Namespaced(name: List[Identifier], body: List[Statement]) extends Statement // Eliminated during ResolveNamespaces
+    case class Import(src: List[Identifier], to: Identifier) extends Statement // Eliminated during ResolveNamespaces
 
     case class ClassDecl(name: Identifier,
                          flags: ClassFlag,

@@ -69,7 +69,7 @@ case class STToAST(parser: Parser, st: ParseNode) {
             case List("T_NAMESPACE", "T_OPEN_CURLY_BRACES", "top_statement_list", "T_CLOSE_CURLY_BRACES") =>
               List(Namespaced(Nil, top_statement_list(child(n, 2))))
             case List("T_USE", "use_declarations", "T_SEMICOLON") =>
-              notyet(n)
+              use_declarations(child(n, 1))
             case List("constant_declaration", "T_SEMICOLON") =>
               constant_declaration(child(n))
             case _ =>
@@ -83,9 +83,32 @@ case class STToAST(parser: Parser, st: ParseNode) {
             constant_declaration(child(n, 0)) ::: List(ConstantDecl(identifier(child(n, 2)), static_expr(child(n, 4))).setPos(child(n, 2)))
           case List("T_CONST", "T_STRING", "T_ASSIGN", "static_expr") =>
             List(ConstantDecl(identifier(child(n, 1)), static_expr(child(n, 3))).setPos(child(n, 1)))
-            case _ =>
-              unspecified(n)
+          case _ => unspecified(n)
         }
+    }
+
+    def use_declarations(n: ParseNode): List[Statement] = {
+      childrenNames(n) match {
+        case List("use_declarations", "T_COMMA", "use_declaration") =>
+          use_declarations(child(n, 0)) ::: List(use_declaration(child(n, 2)))
+        case List("use_declaration") =>
+          List(use_declaration(child(n, 2)))
+        case _ => unspecified(n)
+      }
+    }
+
+    def use_declaration(n: ParseNode): Statement = {
+      childrenNames(n) match {
+        case List("namespace_name") =>
+          notyet(n)
+        case List("namespace_name", "T_AS", "T_STRING") =>
+          notyet(n)
+        case List("T_NS_SEPARATOR", "namespace_name") =>
+          notyet(n)
+        case List("T_NS_SEPARATOR", "namespace_name", "T_AS", "T_STRING") =>
+          notyet(n)
+        case _ => unspecified(n)
+      }
     }
 
     def class_declaration_statement(n: ParseNode): Statement = {
