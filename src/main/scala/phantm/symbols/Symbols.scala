@@ -118,7 +118,7 @@ class GlobalSymbols extends Scope {
 
   def lookupConstant(n: String): Option[ConstantSymbol] = constants.get(n)
 
-  def lookupOrRegisterConstant(id: Identifier): ConstantSymbol = {
+  def lookupOrRegisterConstant(id: NSIdentifier): ConstantSymbol = {
       lookupConstant(id.value) match {
           case Some(cs) => cs
           case None =>

@@ -11,7 +11,7 @@ import phantm.ast.ASTTransform
 case class ConstantsResolver(ast: Program, issueErrors: Boolean, ctx: PhasesContext) extends ASTTransform(ast) {
 
     override def trExpr(ex: Expression): Expression = ex match {
-        case FunctionCall(StaticFunctionRef(_, _, Identifier("define")), List(CallArg(PHPString(name), _), CallArg(expr, _))) =>
+        case FunctionCall(StaticFunctionRef(NSName("\\defined")), List(CallArg(PHPString(name), _), CallArg(expr, _))) =>
             ctx.globalSymbols.lookupConstant(name) match {
                 case None =>
                     Evaluator.staticEval(expr, ctx, issueErrors) match {
@@ -35,7 +35,7 @@ case class ConstantsResolver(ast: Program, issueErrors: Boolean, ctx: PhasesCont
             }
             ex
 
-        case FunctionCall(StaticFunctionRef(_, _, Identifier("define")), _) =>
+        case FunctionCall(StaticFunctionRef(NSName("\\define")), _) =>
             if (issueErrors && Settings.get.verbosity >= 2) {
                 Reporter.notice("Dynamic constant declaration ignored", ex)
             }

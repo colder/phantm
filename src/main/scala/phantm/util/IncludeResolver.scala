@@ -121,7 +121,7 @@ case class IncludeResolver(ast: Program, ctx: PhasesContext) extends ASTTransfor
             val pathres = (eval, path) match {
                 case (Some(scal), _) =>
                     (false, Some(List(scal)))
-                case (None, fc @ FunctionCall(StaticFunctionRef(_, _, Identifier("phantm_incl")), _)) =>
+                case (None, fc @ FunctionCall(StaticFunctionRef(nsid), _)) if nsid.value == "\\phantm_incl"=>
                     // probably instrumentalized, let's check if the position can be found
                     val absPath = if (inc.file.isEmpty) "?" else new File(inc.file.get).getAbsolutePath;
                     IncludeResolver.inclsInstr.get((absPath, inc.line)) match {

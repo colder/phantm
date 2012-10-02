@@ -165,8 +165,8 @@ case class CallGraphGeneration(node: Tree,
                 CallGraph.addNode(fid)
                 newCtx = CGContext(fid);
 
-            case fcall @ FunctionCall(StaticFunctionRef(_, _, name), args) =>
-                pctx.globalSymbols.lookupFunction(name.value) match {
+            case fcall @ FunctionCall(StaticFunctionRef(id), args) =>
+                pctx.globalSymbols.lookupFunction(id.value) match {
                     case Some(fs) if (fs.userland) =>
                         if (ctx.scope == None) {
                             CallGraph.addCallLocation(fs, fcall);
@@ -174,7 +174,7 @@ case class CallGraphGeneration(node: Tree,
                         CallGraph.addEdge(ctx.scope, Some(fs))
                     case _ =>
                 }
-            case fcall @ StaticMethodCall(StaticClassRef(_, _, id), StaticMethodRef(mid), args) =>
+            case fcall @ StaticMethodCall(StaticClassRef(id), StaticMethodRef(mid), args) =>
                 pctx.globalSymbols.lookupClass(id.value) match {
                     case Some(cs) =>
                         val cscope = ctx.scope match {

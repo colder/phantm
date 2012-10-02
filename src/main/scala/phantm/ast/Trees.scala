@@ -14,7 +14,8 @@ object Trees {
     case class ArgumentDecl(v: SimpleVariable, hint: Option[TypeHint], default: Option[Expression], byref: Boolean) extends Tree;
     case class MethodDecl(name: Identifier, flags: List[MemberFlag], args: List[ArgumentDecl], retref: Boolean, body: Option[Statement]) extends Tree
     case class PropertyDecl(v: Identifier, flags: List[MemberFlag], default: Option[Expression]) extends Tree;
-    case class ConstantDecl(v: Identifier, value: Expression) extends Statement;
+    case class ClassConstantDecl(v: Identifier, value: Expression) extends Tree;
+    case class ConstantDecl(v: NSIdentifier, value: Expression) extends Statement;
 
     abstract class ClassFlag extends Tree
     case object CFNormal extends ClassFlag
@@ -33,21 +34,51 @@ object Trees {
     case object MFFinal extends MemberFlag
     case object MFStatic extends MemberFlag
 
-    abstract class NSRoot extends Tree
-    case object NSNone extends NSRoot /* foo\Bar */
-    case object NSGlobal extends NSRoot /* \foo\Bar */
-    case object NSCurrent extends NSRoot /* namespace\foo\Bar */
+    abstract class NSRoot extends Tree {
+      def value: String
+    }
+    case object NSNone extends NSRoot /* foo\Bar */ {
+      def value = ""
+    }
+    case object NSGlobal extends NSRoot /* \foo\Bar */ {
+      def value = "\\"
+    }
+    case object NSCurrent extends NSRoot /* namespace\foo\Bar */ {
+      def value = "namespace\\"
+    }
+
+    case class Identifier(value: String) extends Tree with Symbolic
+    case class NSIdentifier(root: NSRoot, parts: List[String]) extends Tree with Symbolic {
+      def isFullyQualified = root == NSGlobal
+
+      def value: String = root.value+parts.mkString("\\")
+
+      def defWithin(parent: NSIdentifier): NSIdentifier = {
+        root match {
+          case NSGlobal =>
+            this
+          case NSCurrent =>
+            NSIdentifier(NSGlobal, parent.parts ::: parts)
+          case NSNone =>
+            NSIdentifier(NSGlobal, parent.parts ::: parts)
+        }
+      }
+    }
+
+    object NSName {
+      def unapply(ns: NSIdentifier): Option[String] = Some(ns.value)
+    }
 
     abstract class ClassRef extends Tree
     case class VarClassRef(v: Variable) extends ClassRef
     case class DynamicClassRef(ex: Expression) extends ClassRef
-    case class StaticClassRef(nsroot: NSRoot, nss: List[Identifier], name: Identifier) extends ClassRef with Symbolic
+    case class StaticClassRef(name: NSIdentifier) extends ClassRef with Symbolic
     case class CalledClass() extends ClassRef
 
     abstract class FunctionRef extends Tree
     case class VarFunctionRef(v: Variable) extends FunctionRef
     case class DynamicFunctionRef(ex: Expression) extends FunctionRef
-    case class StaticFunctionRef(nsroot: NSRoot, nss: List[Identifier], name: Identifier) extends FunctionRef
+    case class StaticFunctionRef(name: NSIdentifier) extends FunctionRef
 
     abstract class MethodRef extends Tree 
     case class DynamicMethodRef(ex: Expression) extends MethodRef
@@ -65,7 +96,6 @@ object Trees {
     case class InitVariable(v: Variable, init: Option[Expression]) extends Tree
 
     case class Label(name: Identifier) extends Tree
-    case class Identifier(value: String) extends Tree with Symbolic
 
     case class CallArg(value: Expression, forceref: Boolean) extends Tree
 
@@ -78,25 +108,25 @@ object Trees {
 
     sealed abstract class Statement extends Tree;
 
-    case class FunctionDecl(name: Identifier, args: List[ArgumentDecl], retref: Boolean, body: Statement) extends Statement
+    case class FunctionDecl(name: NSIdentifier, args: List[ArgumentDecl], retref: Boolean, body: Statement) extends Statement
 
-    case class NamespaceStart(name: List[Identifier]) extends Statement // Eliminated during parsing already
-    case class Namespaced(name: List[Identifier], body: List[Statement]) extends Statement // Eliminated during ResolveNamespaces
-    case class Import(src: List[Identifier], to: Identifier) extends Statement // Eliminated during ResolveNamespaces
+    case class NamespaceStart(name: NSIdentifier) extends Statement // Eliminated during NamespacesResolver
+    case class Namespaced(name: NSIdentifier, body: List[Statement]) extends Statement // Eliminated during NamespacesResolver
+    case class Import(src: NSIdentifier, to: NSIdentifier) extends Statement // Eliminated during NamespacesResolver
 
-    case class ClassDecl(name: Identifier,
+    case class ClassDecl(name: NSIdentifier,
                          flags: ClassFlag,
                          parent: Option[StaticClassRef],
                          interfaces: List[StaticClassRef],
                          methods: List[MethodDecl],
                          static_props: List[PropertyDecl],
                          props: List[PropertyDecl],
-                         consts: List[ConstantDecl]) extends Statement
+                         consts: List[ClassConstantDecl]) extends Statement
 
-    case class InterfaceDecl(name: Identifier,
-                         interfaces: List[ClassRef],
+    case class InterfaceDecl(name: NSIdentifier,
+                         interfaces: List[StaticClassRef],
                          methods: List[MethodDecl],
-                         consts: List[ConstantDecl]) extends Statement
+                         consts: List[ClassConstantDecl]) extends Statement
 
     case class Try(body: Statement, catches: List[Catch]) extends Statement
     case class Catch(cl: ClassRef, v: SimpleVariable, body: Statement) extends Tree
@@ -125,7 +155,7 @@ object Trees {
     case class Foreach(what: Expression, as: Variable, asbyref: Boolean, key: Option[Variable], keybyref: Boolean, body: Statement) extends Statement
     case class Void() extends Statement;
 
-    abstract class Expression extends Statement;
+    sealed abstract class Expression extends Statement;
     abstract class Variable extends Expression;
     case class SimpleVariable(name: Identifier) extends Variable
     case class VariableVariable(name: Expression) extends Variable
@@ -179,7 +209,7 @@ object Trees {
     case class Empty(v: Variable) extends Expression
     case class Include(path: Expression, once: Boolean) extends Expression
     case class Require(path: Expression, once: Boolean) extends Expression
-    case class Constant(name: Identifier) extends Expression
+    case class Constant(name: NSIdentifier) extends Expression
     case class ClassConstant(cl: ClassRef, const: Identifier) extends Expression
     case class New(cl: ClassRef, args: List[CallArg]) extends Expression
     case class FunctionCall(name: FunctionRef, args: List[CallArg]) extends Expression

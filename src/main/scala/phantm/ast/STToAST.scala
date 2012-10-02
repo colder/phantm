@@ -13,43 +13,12 @@ case class STToAST(parser: Parser, st: ParseNode) {
     def S(n: ParseNode): Program = new Program(top_statement_list(child(n, 0))).setPos(n)
 
     def top_statement_list(n: ParseNode): List[Statement] = {
-        def top_statement_list0(n: ParseNode): List[Statement] = {
-          childrenNames(n) match {
-              case List() => Nil
-              case List("top_statement_list", "top_statement") => 
-                  top_statement_list0(child(n, 0)) ::: top_statement(child(n, 1))
-              case _ => unspecified(n)
-          }
-        }
-
-        val stmts = top_statement_list0(n);
-
-        var result = List[Statement]();
-        var lastNS: Option[NamespaceStart] = None
-        var soFar = List[Statement]();
-
-        def appenSoFar() {
-          lastNS match {
-            case Some(ns) =>
-              result = result ::: List(Namespaced(ns.name, soFar.reverse))
-            case None =>
-              result = result ::: (soFar.reverse)
-          }
-        }
-
-        for (s <- stmts) {
-          s match {
-            case ns: NamespaceStart =>
-              appenSoFar()
-              lastNS = Some(ns)
-              soFar = Nil
-            case _ =>
-              soFar = s :: soFar
-          }
-        }
-        appenSoFar()
-
-        result
+      childrenNames(n) match {
+          case List() => Nil
+          case List("top_statement_list", "top_statement") => 
+              top_statement_list(child(n, 0)) ::: top_statement(child(n, 1))
+          case _ => unspecified(n)
+      }
     }
 
     def top_statement(n: ParseNode): List[Statement] = {
@@ -63,11 +32,11 @@ case class STToAST(parser: Parser, st: ParseNode) {
             case List("T_HALT_COMPILER", "T_OPEN_BRACES", "T_CLOSE_BRACES", "T_SEMICOLON") =>
               notyet(n)
             case List("T_NAMESPACE", "namespace_name", "T_SEMICOLON") =>
-              List(NamespaceStart(namespace_name(child(n, 1))))
+              List(NamespaceStart(namespace_name(child(n, 1), NSNone)))
             case List("T_NAMESPACE", "namespace_name", "T_OPEN_CURLY_BRACES", "top_statement_list", "T_CLOSE_CURLY_BRACES") =>
-              List(Namespaced(namespace_name(child(n, 1)), top_statement_list(child(n, 3))))
+              List(Namespaced(namespace_name(child(n, 1), NSNone), top_statement_list(child(n, 3))))
             case List("T_NAMESPACE", "T_OPEN_CURLY_BRACES", "top_statement_list", "T_CLOSE_CURLY_BRACES") =>
-              List(Namespaced(Nil, top_statement_list(child(n, 2))))
+              List(Namespaced(NSIdentifier(NSGlobal, Nil), top_statement_list(child(n, 2))))
             case List("T_USE", "use_declarations", "T_SEMICOLON") =>
               use_declarations(child(n, 1))
             case List("constant_declaration", "T_SEMICOLON") =>
@@ -80,9 +49,9 @@ case class STToAST(parser: Parser, st: ParseNode) {
     def constant_declaration(n: ParseNode): List[Statement] = {
         childrenNames(n) match {
           case List("constant_declaration", "T_COMMA", "T_STRING", "T_ASSIGN", "static_expr") =>
-            constant_declaration(child(n, 0)) ::: List(ConstantDecl(identifier(child(n, 2)), static_expr(child(n, 4))).setPos(child(n, 2)))
+            constant_declaration(child(n, 0)) ::: List(ConstantDecl(nsidentifier(child(n, 2)), static_expr(child(n, 4))).setPos(child(n, 2)))
           case List("T_CONST", "T_STRING", "T_ASSIGN", "static_expr") =>
-            List(ConstantDecl(identifier(child(n, 1)), static_expr(child(n, 3))).setPos(child(n, 1)))
+            List(ConstantDecl(nsidentifier(child(n, 1)), static_expr(child(n, 3))).setPos(child(n, 1)))
           case _ => unspecified(n)
         }
     }
@@ -116,7 +85,7 @@ case class STToAST(parser: Parser, st: ParseNode) {
             case List("class_entry_type", "T_STRING", "extends_from", "implements_list", "T_OPEN_CURLY_BRACES", "class_statement_list", "T_CLOSE_CURLY_BRACES") =>
                 class_statement_list(child(n, 5)) match {
                     case (methods, static_props, props, consts) =>
-                        ClassDecl(identifier(child(n, 1)),
+                        ClassDecl(nsidentifier(child(n, 1)),
                                   class_entry_type(child(n, 0)),
                                   extends_from(child(n, 2)),
                                   implements_list(child(n, 3)),
@@ -129,7 +98,7 @@ case class STToAST(parser: Parser, st: ParseNode) {
             case List("interface_entry", "T_STRING", "interface_extends_list", "T_OPEN_CURLY_BRACES", "class_statement_list", "T_CLOSE_CURLY_BRACES") =>
                 class_statement_list(child(n, 4)) match {
                     case (methods, static_props, props, consts) =>
-                        InterfaceDecl(identifier(child(n, 1)),
+                        InterfaceDecl(nsidentifier(child(n, 1)),
                                   interface_extends_list(child(n, 2)),
                                   methods,
                                   consts)
@@ -138,7 +107,7 @@ case class STToAST(parser: Parser, st: ParseNode) {
         }).setPos(child(n))
     }
 
-    def class_statement_list(n: ParseNode): (List[MethodDecl], List[PropertyDecl], List[PropertyDecl], List[ConstantDecl]) = {
+    def class_statement_list(n: ParseNode): (List[MethodDecl], List[PropertyDecl], List[PropertyDecl], List[ClassConstantDecl]) = {
         childrenNames(n) match {
             case List("class_statement_list", "class_statement") =>
                 class_statement(child(n, 1), class_statement_list(child(n, 0)));
@@ -148,7 +117,7 @@ case class STToAST(parser: Parser, st: ParseNode) {
         }
     }
 
-    def class_statement(n: ParseNode, st: (List[MethodDecl], List[PropertyDecl], List[PropertyDecl], List[ConstantDecl])): (List[MethodDecl], List[PropertyDecl], List[PropertyDecl], List[ConstantDecl]) = { 
+    def class_statement(n: ParseNode, st: (List[MethodDecl], List[PropertyDecl], List[PropertyDecl], List[ClassConstantDecl])): (List[MethodDecl], List[PropertyDecl], List[PropertyDecl], List[ClassConstantDecl]) = { 
         childrenNames(n) match {
             case List("variable_modifiers", "class_variable_declaration", "T_SEMICOLON") =>
                 val vm = variable_modifiers(child(n, 0))
@@ -277,16 +246,16 @@ case class STToAST(parser: Parser, st: ParseNode) {
         }
     }
 
-    def class_constant_declaration(n: ParseNode): List[ConstantDecl] = {
+    def class_constant_declaration(n: ParseNode): List[ClassConstantDecl] = {
         childrenNames(n) match {
             case List("class_constant_declaration", "T_COMMA", "T_STRING", "T_ASSIGN", "static_expr") =>
                 val pos = new Position().setPos(child(n, 2))
                 val com = parser.getPreviousComment(pos);
-                class_constant_declaration(child(n, 0)) ::: List(ConstantDecl(identifier(child(n, 2)), static_expr(child(n, 4))).setPos(child(n, 2)).attachComment(com))
+                class_constant_declaration(child(n, 0)) ::: List(ClassConstantDecl(identifier(child(n, 2)), static_expr(child(n, 4))).setPos(child(n, 2)).attachComment(com))
             case List("T_CONST", "T_STRING", "T_ASSIGN", "static_expr") =>
                 val pos = new Position().setPos(child(n, 1))
                 val com = parser.getPreviousComment(pos);
-                List(ConstantDecl(identifier(child(n, 1)), static_expr(child(n, 3))).setPos(child(n, 1)).attachComment(com))
+                List(ClassConstantDecl(identifier(child(n, 1)), static_expr(child(n, 3))).setPos(child(n, 1)).attachComment(com))
             case _ => unspecified(n)
         }
     }
@@ -352,7 +321,7 @@ case class STToAST(parser: Parser, st: ParseNode) {
         }
     }
 
-    def interface_extends_list(n: ParseNode): List[ClassRef] = {
+    def interface_extends_list(n: ParseNode): List[StaticClassRef] = {
         childrenNames(n) match {
             case List() =>
                 List()
@@ -489,29 +458,31 @@ case class STToAST(parser: Parser, st: ParseNode) {
     }
 
     def static_constant(n: ParseNode): Expression = {
-        var root: NSRoot = NSNone
-        var c: ParseNode = childrenNames(n) match {
-            case List("namespace_name") => root = NSNone; child(n)
-            case List("T_NAMESPACE", "T_NS_SEPARATOR", "namespace_name") => root = NSCurrent; child(n, 2)
-            case List("T_NS_SEPARATOR", "namespace_name") => root = NSGlobal; child(n, 1)
+        var nsid = childrenNames(n) match {
+            case List("namespace_name") =>
+              namespace_name(child(n), NSNone)
+            case List("T_NAMESPACE", "T_NS_SEPARATOR", "namespace_name") =>
+              namespace_name(child(n, 2), NSCurrent)
+            case List("T_NS_SEPARATOR", "namespace_name") =>
+              namespace_name(child(n, 1), NSGlobal)
             case _ => unspecified(n)
         }
-        val parts = namespace_name(c);
-        root.setPos(child(n, 0))
 
-        if (parts.length == 1) {
-            var res : Expression = Constant(parts.head);
-            if (parts.head.value.toLowerCase.equals("true")){
-                res = PHPTrue()
-            } else if (parts.head.value.toLowerCase.equals("false")) {
-                res = PHPFalse()
-            } else if (parts.head.value.toLowerCase.equals("null")) {
-                res = PHPNull()
+        var res: Expression = if (nsid.parts.length == 1) {
+            if (nsid.parts.head.toLowerCase.equals("true")){
+              PHPTrue()
+            } else if (nsid.parts.head.toLowerCase.equals("false")) {
+              PHPFalse()
+            } else if (nsid.parts.head.toLowerCase.equals("null")) {
+              PHPNull()
+            } else {
+              Constant(nsid)
             }
-            res.setPos(parts.head)
         } else {
-            unspecified(n)
+            Constant(nsid)
         }
+
+        res.setPos(nsid)
     }
     def static_expr(n: ParseNode): Expression = {
         val pos = new Position().setPos(child(n, 0))
@@ -617,10 +588,14 @@ case class STToAST(parser: Parser, st: ParseNode) {
 
     def class_name(n: ParseNode): ClassRef = {
         (childrenNames(n) match {
-            case List("T_STATIC") => CalledClass()
-            case List("namespace_name") => fully_qualified_class_name(n)
-            case List("T_NAMESPACE", "T_NS_SEPARATOR", "namespace_name") => fully_qualified_class_name(n)
-            case List("T_NS_SEPARATOR", "namespace_name") => fully_qualified_class_name(n)
+            case List("T_STATIC") =>
+              CalledClass()
+            case List("namespace_name") =>
+              fully_qualified_class_name(n)
+            case List("T_NAMESPACE", "T_NS_SEPARATOR", "namespace_name") =>
+              fully_qualified_class_name(n)
+            case List("T_NS_SEPARATOR", "namespace_name") =>
+              fully_qualified_class_name(n)
             case _ => unspecified(n)
         }).setPos(child(n))
     }
@@ -755,28 +730,32 @@ case class STToAST(parser: Parser, st: ParseNode) {
         }
     }
 
-    def namespace_name(n: ParseNode): List[Identifier] = {
-        childrenNames(n) match {
+    def namespace_name(n: ParseNode, root: NSRoot): NSIdentifier = {
+        def ns_name(n: ParseNode): List[String] = {
+          childrenNames(n) match {
             case List("T_STRING") => 
-                List(identifier(child(n)))
+              List(child(n).tokenContent)
             case List("namespace_name", "T_NS_SEPARATOR", "T_STRING") =>
-                namespace_name(child(n, 0)) ::: List(identifier(child(n, 2)))
+              ns_name(child(n, 0)) ::: List(child(n, 2).tokenContent)
             case _ => unspecified(n)
+          }
         }
+
+        NSIdentifier(root, ns_name(n))
     }
 
     def fully_qualified_class_name(n: ParseNode): StaticClassRef = {
-        var root: NSRoot = NSNone
-        var c: ParseNode = childrenNames(n) match {
-            case List("namespace_name") => root = NSNone; child(n)
-            case List("T_NAMESPACE", "T_NS_SEPARATOR", "namespace_name") => root = NSCurrent; child(n, 2)
-            case List("T_NS_SEPARATOR", "namespace_name") => root = NSGlobal; child(n, 1)
+        var nsid = childrenNames(n) match {
+            case List("namespace_name") =>
+              namespace_name(child(n), NSNone)
+            case List("T_NAMESPACE", "T_NS_SEPARATOR", "namespace_name") =>
+              namespace_name(child(n, 2), NSCurrent)
+            case List("T_NS_SEPARATOR", "namespace_name") =>
+              namespace_name(child(n, 1), NSGlobal)
             case _ => unspecified(n)
         }
 
-        root.setPos(child(n, 0))
-        val parts = namespace_name(c);
-        StaticClassRef(root, parts.init, parts.last).setPos(root)
+        StaticClassRef(nsid).setPos(nsid)
     }
 
     def variable_list(n: ParseNode): List[Variable] = {
@@ -875,7 +854,7 @@ case class STToAST(parser: Parser, st: ParseNode) {
                 val pos = new Position().setPos(n);
                 val com = parser.getPreviousComment(pos);
 
-                val fd = FunctionDecl(identifier(child(n, 2)), parameter_list(child(n, 4)), is_reference(child(n, 1)), inner_statement_list(child(n, 7))).setPos(pos).attachComment(com)
+                val fd = FunctionDecl(nsidentifier(child(n, 2)), parameter_list(child(n, 4)), is_reference(child(n, 1)), inner_statement_list(child(n, 7))).setPos(pos).attachComment(com)
                 fd
             case _ => unspecified(n)
         }
@@ -1244,24 +1223,32 @@ case class STToAST(parser: Parser, st: ParseNode) {
     def function_call(n: ParseNode): Expression = {
         (childrenNames(n) match {
             case List("namespace_name", "T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") =>
-                val parts = namespace_name(child(n, 0))
-                FunctionCall(StaticFunctionRef(NSNone.setPos(child(n, 0)).setPos(child(n, 0)), parts.init, parts.last), function_call_parameter_list(child(n, 2)))
+                val nsid = namespace_name(child(n, 0), NSNone)
+                FunctionCall(StaticFunctionRef(nsid).setPos(child(n, 0)), function_call_parameter_list(child(n, 2)))
+
             case List("T_NAMESPACE", "T_NS_SEPARATOR", "namespace_name", "T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") =>
-                val parts = namespace_name(child(n, 2))
-                FunctionCall(StaticFunctionRef(NSCurrent.setPos(child(n, 0)).setPos(child(n, 0)), parts.init, parts.last), function_call_parameter_list(child(n, 4)))
+                val nsid = namespace_name(child(n, 2), NSCurrent)
+                FunctionCall(StaticFunctionRef(nsid).setPos(child(n, 0)), function_call_parameter_list(child(n, 4)))
+
             case List("T_NS_SEPARATOR", "namespace_name", "T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") =>
-                val parts = namespace_name(child(n, 1))
-                FunctionCall(StaticFunctionRef(NSGlobal.setPos(child(n, 0)).setPos(child(n, 0)), parts.init, parts.last), function_call_parameter_list(child(n, 4)))
+                val nsid = namespace_name(child(n, 1), NSGlobal)
+                FunctionCall(StaticFunctionRef(nsid).setPos(child(n, 0)), function_call_parameter_list(child(n, 4)))
+
             case List("class_name", "T_DOUBLE_COLON", "T_STRING", "T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") =>
                 StaticMethodCall(class_name(child(n, 0)), StaticMethodRef(identifier(child(n, 2))).setPos(child(n, 2)), function_call_parameter_list(child(n, 4)))
+
             case List("class_name", "T_DOUBLE_COLON", "variable_without_objects", "T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") =>
                 StaticMethodCall(class_name(child(n, 0)), DynamicMethodRef(variable_without_objects(child(n, 2))).setPos(child(n, 2)), function_call_parameter_list(child(n, 4)))
+
             case List("reference_variable", "T_DOUBLE_COLON", "T_STRING", "T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") =>
                 StaticMethodCall(DynamicClassRef(reference_variable(child(n, 0))).setPos(child(n, 0)), StaticMethodRef(identifier(child(n, 2))).setPos(child(n, 2)), function_call_parameter_list(child(n, 4)))
+
             case List("reference_variable", "T_DOUBLE_COLON", "variable_without_objects", "T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") =>
                 StaticMethodCall(DynamicClassRef(reference_variable(child(n, 0))).setPos(child(n, 0)), DynamicMethodRef(variable_without_objects(child(n, 2))).setPos(child(n, 2)), function_call_parameter_list(child(n, 4)))
+
             case List("variable_without_objects", "T_OPEN_BRACES", "function_call_parameter_list", "T_CLOSE_BRACES") =>
                 FunctionCall(VarFunctionRef(variable_without_objects(child(n, 0))).setPos(child(n, 0)), function_call_parameter_list(child(n, 2)))
+
             case _ => unspecified(n)
         }).setPos(child(n, 0))
     }
@@ -1458,6 +1445,10 @@ case class STToAST(parser: Parser, st: ParseNode) {
                 variable(child(n, 1))
             case _ => unspecified(n)
         }).setPos(n)
+    }
+
+    def nsidentifier(n: ParseNode): NSIdentifier = {
+        NSIdentifier(NSNone, List(n.tokenContent)).setPos(n)
     }
 
     def identifier(n: ParseNode): Identifier = {

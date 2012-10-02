@@ -9,6 +9,7 @@ class PhasesRunner(val reporter: Reporter) {
         DumpsCollectionPhase
         followedBy APIImportationPhase
         followedBy ParsingPhase
+        followedBy NamespaceResolverPhase
         followedBy ASTPruningPhase
         followedBy IncludesConstantsResolutionPhase
         followedBy ASTChecksPhase

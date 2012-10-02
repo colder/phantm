@@ -101,29 +101,73 @@ abstract class ASTTransform(p: Program) {
                 Print(trExpr(value))
             case Eval(value) =>
                 Eval(trExpr(value))
+            case FunctionCall(name, args) =>
+                FunctionCall(name, args map trCallArg)
+            case MethodCall(obj, name, args) =>
+                MethodCall(trExpr(obj), name, args map trCallArg)
+            case StaticMethodCall(cl, name, args) =>
+                StaticMethodCall(cl, name, args map trCallArg)
+            case Constant(name) =>
+                Constant(trNSId(name))
+            case ClassConstant(cl, const) =>
+                ClassConstant(trClassRef(cl), const)
             case ex => ex
         }
 
         r.setPos(ex).annotateFromC(ex)
     }
 
+    def trNSId(nsid: NSIdentifier): NSIdentifier = {
+      nsid
+    }
+
+    def trCallArg(ca: CallArg): CallArg = {
+      ca.copy(value = trExpr(ca.value))
+    }
+
+    def trFuncRef(fr: FunctionRef): FunctionRef = {
+      fr
+    }
+
+    def trClassRef(cr: ClassRef): ClassRef = {
+      cr
+    }
+
+    def trStaticClassRef(scr: StaticClassRef): StaticClassRef = {
+      scr
+    }
+
     def trStmt(st: Statement): Statement = {
         var r = st match {
             case FunctionDecl(name, args, retref, body) =>
-                FunctionDecl(name, args, retref, trStmt(body))
+                FunctionDecl(trNSId(name),
+                             args,
+                             retref, trStmt(body))
+
+            case InterfaceDecl(name, interfaces, methods, consts) =>
+                InterfaceDecl(trNSId(name),
+                         interfaces map trStaticClassRef,
+                         methods map trMethod,
+                         consts)
+
             case ClassDecl(name, flags, parent, interfaces, methods, static_props, props, consts) =>
-                ClassDecl(name, flags, parent, interfaces, methods map trMethod, static_props map trProperty, props map trProperty, consts)
+                ClassDecl(trNSId(name),
+                         flags,
+                         parent map trStaticClassRef,
+                         interfaces map trStaticClassRef,
+                         methods map trMethod,
+                         static_props map trProperty,
+                         props map trProperty,
+                         consts)
+            case ConstantDecl(name, value) =>
+                ConstantDecl(trNSId(name), trExpr(value))
             case Try(body, catches) =>
-                Try(trStmt(body), catches map { c => Catch(c.cl, c.v, trStmt(c.body) )})
+                Try(trStmt(body),
+                    catches map { c => Catch(c.cl, c.v, trStmt(c.body) )})
             case Block(stmts) =>
                 Block(stmts map trStmt)
             case If(cond, then, elze) =>
-                elze match {
-                    case Some(e) =>
-                        If(trExpr(cond), trStmt(then), Some(trStmt(e)))
-                    case None =>
-                        If(trExpr(cond), trStmt(then), None)
-                }
+                If(trExpr(cond), trStmt(then), elze map trStmt)
             case While(cond, then) =>
                 While(trExpr(cond), trStmt(then))
             case DoWhile(body, cond) =>
@@ -147,8 +191,7 @@ abstract class ASTTransform(p: Program) {
                 Foreach(trExpr(what), as, asbyref, key, keybyref, trStmt(body))
             case e: Expression =>
                 trExpr(e)
-            case _ =>
-                st
+            case st => st
         }
 
         r.setPos(st).annotateFromC(st)

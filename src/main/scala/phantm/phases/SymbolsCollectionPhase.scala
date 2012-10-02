@@ -72,7 +72,7 @@ case class CollectSymbols(node: Tree, pctx: PhasesContext) extends ASTTraversal[
 
       for (pi <- id.interfaces) {
           pi match {
-            case StaticClassRef(_, _, pid) =>
+            case StaticClassRef(pid) =>
               pctx.globalSymbols.lookupIface(pid.value) match {
                   case None => {
                     var foundParent = false
@@ -167,7 +167,7 @@ case class CollectSymbols(node: Tree, pctx: PhasesContext) extends ASTTraversal[
 
       var ifaces = List[IfaceSymbol]()
       for (i <- cd.interfaces) i match {
-        case StaticClassRef(_, _, id) =>
+        case StaticClassRef(id) =>
             pctx.globalSymbols.lookupIface(id.value) match {
                 case Some(is) =>
                     ifaces = is :: ifaces
@@ -455,7 +455,7 @@ case class CollectSymbols(node: Tree, pctx: PhasesContext) extends ASTTraversal[
                         ctx.varScope.registerVariable(vs)
                 }
 
-            case StaticClassRef(_, _, id) =>
+            case StaticClassRef(id) =>
                 pctx.globalSymbols.lookupClass(id.value) match {
                     case Some(cs) =>
                         id.setSymbol(cs)
