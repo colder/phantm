@@ -4,7 +4,6 @@ import phantm.util.Positional
 import phantm.annotations.CommentAnnotation
 import phantm.symbols.Symbolic
 
-// todo, namespaces
 object Trees {
     abstract class Tree extends Positional with CommentAnnotation;
 
@@ -109,7 +108,7 @@ object Trees {
     sealed abstract class Statement extends Tree;
 
     case class FunctionDecl(name: NSIdentifier, args: List[ArgumentDecl], retref: Boolean, body: Statement) extends Statement
-
+Decl
     case class NamespaceStart(name: NSIdentifier) extends Statement // Eliminated during NamespacesResolver
     case class Namespaced(name: NSIdentifier, body: List[Statement]) extends Statement // Eliminated during NamespacesResolver
     case class Import(src: NSIdentifier, to: NSIdentifier) extends Statement // Eliminated during NamespacesResolver
@@ -155,8 +154,8 @@ object Trees {
     case class Foreach(what: Expression, as: Variable, asbyref: Boolean, key: Option[Variable], keybyref: Boolean, body: Statement) extends Statement
     case class Void() extends Statement;
 
-    sealed abstract class Expression extends Statement;
-    abstract class Variable extends Expression;
+    abstract class Expression extends Statement;
+    sealed abstract class Variable extends Expression;
     case class SimpleVariable(name: Identifier) extends Variable
     case class VariableVariable(name: Expression) extends Variable
     case class ArrayEntry(array: Expression, index: Expression) extends Variable
@@ -218,7 +217,7 @@ object Trees {
     case class VoidExpr() extends Expression
 
 
-    abstract class Scalar extends Expression
+    sealed abstract class Scalar extends Expression
     case class PHPTrue() extends Scalar
     case class PHPFalse() extends Scalar
     case class PHPInteger(value: Long) extends Scalar
