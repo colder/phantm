@@ -111,7 +111,7 @@ object Trees {
 
     case class NamespaceStart(name: NSIdentifier) extends Statement // Eliminated during NamespacesResolver
     case class Namespaced(name: NSIdentifier, body: List[Statement]) extends Statement // Eliminated during NamespacesResolver
-    case class Import(src: NSIdentifier, to: NSIdentifier) extends Statement // Eliminated during NamespacesResolver
+    case class Import(src: NSIdentifier, to: String) extends Statement // Eliminated during NamespacesResolver
 
     case class ClassDecl(name: NSIdentifier,
                          flags: ClassFlag,

@@ -61,7 +61,7 @@ case class STToAST(parser: Parser, st: ParseNode) {
         case List("use_declarations", "T_COMMA", "use_declaration") =>
           use_declarations(child(n, 0)) ::: List(use_declaration(child(n, 2)))
         case List("use_declaration") =>
-          List(use_declaration(child(n, 2)))
+          List(use_declaration(child(n)))
         case _ => unspecified(n)
       }
     }
@@ -69,14 +69,19 @@ case class STToAST(parser: Parser, st: ParseNode) {
     def use_declaration(n: ParseNode): Statement = {
       childrenNames(n) match {
         case List("namespace_name") =>
-          notyet(n)
+          val nsid = namespace_name(child(n), NSGlobal)
+          Import(nsid, nsid.parts.last)
         case List("namespace_name", "T_AS", "T_STRING") =>
-          notyet(n)
+          val nsid = namespace_name(child(n, 0), NSGlobal)
+          Import(nsid, child(n, 2).tokenContent)
         case List("T_NS_SEPARATOR", "namespace_name") =>
-          notyet(n)
+          val nsid = namespace_name(child(n, 0), NSGlobal)
+          Import(nsid, nsid.parts.last)
         case List("T_NS_SEPARATOR", "namespace_name", "T_AS", "T_STRING") =>
-          notyet(n)
-        case _ => unspecified(n)
+          val nsid = namespace_name(child(n, 1), NSGlobal)
+          Import(nsid, child(n, 3).tokenContent)
+        case _ =>
+          unspecified(n)
       }
     }
 

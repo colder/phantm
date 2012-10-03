@@ -226,7 +226,7 @@ abstract class ASTTransform(p: Program) {
       Namespaced(trNSId(name), body map trStmt)
 
     case Import(from, as) =>
-      Import(trNSId(from), trNSId(as))
+      Import(trNSId(from), as)
 
     case InterfaceDecl(name, interfaces, methods, consts) =>
       InterfaceDecl(trNSId(name),
