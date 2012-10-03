@@ -108,7 +108,7 @@ object Trees {
     sealed abstract class Statement extends Tree;
 
     case class FunctionDecl(name: NSIdentifier, args: List[ArgumentDecl], retref: Boolean, body: Statement) extends Statement
-Decl
+
     case class NamespaceStart(name: NSIdentifier) extends Statement // Eliminated during NamespacesResolver
     case class Namespaced(name: NSIdentifier, body: List[Statement]) extends Statement // Eliminated during NamespacesResolver
     case class Import(src: NSIdentifier, to: NSIdentifier) extends Statement // Eliminated during NamespacesResolver
