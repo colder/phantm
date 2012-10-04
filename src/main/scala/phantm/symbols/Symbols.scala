@@ -124,7 +124,7 @@ class GlobalSymbols extends Scope {
           case None =>
               // In case of an undefined constant, PHP falls back to its name as string value
               if (Settings.get.verbosity > 0) {
-                  Reporter.notice("Potentially undefined constant", id)
+                  Reporter.notice("Potentially undefined constant: "+id.value, id)
               }
               val cs = new ConstantSymbol(id.value, Some(PHPString(id.value)))
               cs.typ = TStringLit(id.value)
