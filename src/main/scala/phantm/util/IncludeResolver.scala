@@ -89,23 +89,27 @@ case class IncludeResolver(ast: Program, ctx: PhasesContext) extends ASTTransfor
         }
 
         def getAST(path: String): Expression = {
-            import phantm.ast.STToAST
+            import phantm.phases._
 
             IncludeResolver.includedFiles += path
 
-            val p = new Parser(path)
-            p parse match {
-                case Some(node) =>
-                    var ast: Program = new STToAST(p, node) getAST;
-                    // We define/resolve constants there too
-                    ast = ConstantsResolver(ast, false, ctx).transform
-                    // We include-resolve this file too
-                    ast = IncludeResolver(ast, ctx).transform
+            val phases = List(ParsingPhase,
+                              NamespaceResolverPhase,
+                              ASTPruningPhase,
+                              IncludesConstantsResolutionPhase)
 
-                    Block(ast.stmts).setPos(inc)
-                case None =>
-                    Reporter.notice("Cannot preprocess \""+path+"\": sub-compilation failed", inc)
-                    VoidExpr().setPos(inc)
+
+            var tmpctx = ctx.copy(files = List(path), oast = None)
+            for (ph <- phases) {
+              tmpctx = ph.run(tmpctx)
+            }
+
+            tmpctx.oast match {
+              case Some(p @ Program(stmts)) =>
+                Block(ast.stmts).setPos(inc)
+              case _ =>
+                Reporter.notice("Cannot preprocess \""+path+"\": sub-compilation failed", inc)
+                VoidExpr().setPos(inc)
             }
         }
 
