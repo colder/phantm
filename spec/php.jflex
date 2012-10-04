@@ -291,6 +291,7 @@ NEWLINE = ("\r"|"\n"|"\r\n")
     "__NAMESPACE__" { return symbol(Symbols.T_FUNC_C, "T_NS_C"); }
     "__LINE__" { return symbol(Symbols.T_LINE, "T_LINE"); }
     "__FILE__" { return symbol(Symbols.T_FILE, "T_FILE"); }
+    "__DIR__" { return symbol(Symbols.T_DIR, "T_DIR"); }
     {LNUM}|{HNUM} { return symbol(Symbols.T_LNUMBER, "T_LNUMBER"); }
     {DNUM}|{EXPONENT_DNUM} { return symbol(Symbols.T_DNUMBER, "T_DNUMBER"); }
 }
