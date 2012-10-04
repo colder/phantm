@@ -2,6 +2,7 @@ package phantm.phases
 
 import phantm.Settings
 import phantm.util._
+import phantm.helpers.ASTGraph
 import scala.util.control.Breaks._
 
 class PhasesRunner(val reporter: Reporter) {
@@ -35,6 +36,15 @@ class PhasesRunner(val reporter: Reporter) {
                         println((i+1)+": "+ph.name+"...")
                     }
                     ctx = ph.run(ctx)
+
+                    if (Settings.get.printAfter(ph.name)) {
+                      // TODO
+                    }
+
+                    if (Settings.get.dumpAfter(ph.name)) {
+                      val ps = new java.io.PrintStream("dump-"+ph.name+".dot");
+                      new ASTGraph().generateDotGraph(ctx.oast.get, ps)
+                    }
                 } catch {
                     case e: PhaseException =>
                         reporter.error("Processing failed at phase "+(i+1)+" ("+e.ph.name+"): "+e.error)

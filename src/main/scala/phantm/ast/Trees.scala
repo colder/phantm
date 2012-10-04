@@ -48,7 +48,7 @@ object Trees {
     }
 
     case object NSResolved extends NSRoot {
-      def value = "\\"
+      def value = ""
     }
 
     case class Identifier(value: String) extends Tree with Symbolic
