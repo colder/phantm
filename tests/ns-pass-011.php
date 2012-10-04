@@ -1,6 +1,6 @@
 <?php
 namespace Foo\Bar;
-include __DIR__'/ns017_inc.php';
+include __DIR__.'/_ns-pass-011_inc.php';
 
 const FOO = 2;
 function foo() {}
