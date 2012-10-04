@@ -33,7 +33,7 @@ object Trees {
     case object MFFinal extends MemberFlag
     case object MFStatic extends MemberFlag
 
-    abstract class NSRoot extends Tree {
+    sealed abstract class NSRoot extends Tree {
       def value: String
     }
     case object NSNone extends NSRoot /* foo\Bar */ {
@@ -42,8 +42,13 @@ object Trees {
     case object NSGlobal extends NSRoot /* \foo\Bar */ {
       def value = "\\"
     }
+
     case object NSCurrent extends NSRoot /* namespace\foo\Bar */ {
       def value = "namespace\\"
+    }
+
+    case object NSResolved extends NSRoot {
+      def value = "\\"
     }
 
     case class Identifier(value: String) extends Tree with Symbolic
@@ -54,12 +59,14 @@ object Trees {
 
       def defWithin(parent: NSIdentifier): NSIdentifier = {
         root match {
-          case NSGlobal =>
+          case NSResolved =>
             this
+          case NSGlobal =>
+            NSIdentifier(NSResolved, parts)
           case NSCurrent =>
-            NSIdentifier(NSGlobal, parent.parts ::: parts)
+            NSIdentifier(NSResolved, parent.parts ::: parts)
           case NSNone =>
-            NSIdentifier(NSGlobal, parent.parts ::: parts)
+            NSIdentifier(NSResolved, parent.parts ::: parts)
         }
       }
     }

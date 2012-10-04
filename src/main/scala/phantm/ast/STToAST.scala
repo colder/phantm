@@ -32,11 +32,11 @@ case class STToAST(parser: Parser, st: ParseNode) {
             case List("T_HALT_COMPILER", "T_OPEN_BRACES", "T_CLOSE_BRACES", "T_SEMICOLON") =>
               notyet(n)
             case List("T_NAMESPACE", "namespace_name", "T_SEMICOLON") =>
-              List(NamespaceStart(namespace_name(child(n, 1), NSNone)))
+              List(NamespaceStart(namespace_name(child(n, 1), NSResolved)))
             case List("T_NAMESPACE", "namespace_name", "T_OPEN_CURLY_BRACES", "top_statement_list", "T_CLOSE_CURLY_BRACES") =>
-              List(Namespaced(namespace_name(child(n, 1), NSNone), top_statement_list(child(n, 3))))
+              List(Namespaced(namespace_name(child(n, 1), NSResolved), top_statement_list(child(n, 3))))
             case List("T_NAMESPACE", "T_OPEN_CURLY_BRACES", "top_statement_list", "T_CLOSE_CURLY_BRACES") =>
-              List(Namespaced(NSIdentifier(NSGlobal, Nil), top_statement_list(child(n, 2))))
+              List(Namespaced(NSIdentifier(NSResolved, Nil), top_statement_list(child(n, 2))))
             case List("T_USE", "use_declarations", "T_SEMICOLON") =>
               use_declarations(child(n, 1))
             case List("constant_declaration", "T_SEMICOLON") =>
@@ -69,16 +69,16 @@ case class STToAST(parser: Parser, st: ParseNode) {
     def use_declaration(n: ParseNode): Statement = {
       childrenNames(n) match {
         case List("namespace_name") =>
-          val nsid = namespace_name(child(n), NSGlobal)
+          val nsid = namespace_name(child(n), NSResolved)
           Import(nsid, nsid.parts.last)
         case List("namespace_name", "T_AS", "T_STRING") =>
-          val nsid = namespace_name(child(n, 0), NSGlobal)
+          val nsid = namespace_name(child(n, 0), NSResolved)
           Import(nsid, child(n, 2).tokenContent)
         case List("T_NS_SEPARATOR", "namespace_name") =>
-          val nsid = namespace_name(child(n, 0), NSGlobal)
+          val nsid = namespace_name(child(n, 0), NSResolved)
           Import(nsid, nsid.parts.last)
         case List("T_NS_SEPARATOR", "namespace_name", "T_AS", "T_STRING") =>
-          val nsid = namespace_name(child(n, 1), NSGlobal)
+          val nsid = namespace_name(child(n, 1), NSResolved)
           Import(nsid, child(n, 3).tokenContent)
         case _ =>
           unspecified(n)
