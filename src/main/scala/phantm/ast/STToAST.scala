@@ -746,7 +746,7 @@ case class STToAST(parser: Parser, st: ParseNode) {
           }
         }
 
-        NSIdentifier(root, ns_name(n))
+        NSIdentifier(root, ns_name(n)).setPos(n)
     }
 
     def fully_qualified_class_name(n: ParseNode): StaticClassRef = {

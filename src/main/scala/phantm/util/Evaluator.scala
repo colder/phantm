@@ -48,7 +48,7 @@ object Evaluator {
                 case (Some(slhs), Some(srhs)) => Some(PHPString(scalarToString(slhs)+scalarToString(srhs)).setPos(slhs))
                 case _ => None
             }
-        case FunctionCall(StaticFunctionRef(nsid), List(CallArg(arg, _))) if nsid.value == "\\dirname" =>
+        case FunctionCall(StaticFunctionRef(nsid), List(CallArg(arg, _))) if nsid.value == "dirname" =>
             staticEval(arg, ctx, issueErrors) match {
                 case Some(a) =>
                     Some(PHPString(dirname(scalarToString(a))).setPos(ex))

@@ -1,10 +1,6 @@
 package phantm.tests
 
-import scala.io.Source
 import phantm.Settings
-
-import org.scalatest.FunSuite
-import org.scalatest.matchers._
 
 class DetectionTests extends PhantmTestDriver {
 

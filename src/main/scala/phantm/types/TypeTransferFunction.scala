@@ -173,7 +173,7 @@ case class TypeTransferFunction(silent: Boolean,
                     case _ =>
                         TAnyObject
                 }
-            case FunctionCall(FuncRef(AST.NSName("\\phantm_collect_state")), args) =>
+            case FunctionCall(FuncRef(AST.NSName("phantm_collect_state")), args) =>
                 for (unser <- ctx.dumpedData) {
                     env = unser.heap.importToEnv(env)
                 }
@@ -190,13 +190,13 @@ case class TypeTransferFunction(silent: Boolean,
                     case None =>
                         // handle special functions
                         fun.id.value.toLowerCase match {
-                            case "\\eval" =>
+                            case "eval" =>
                                 notice("eval() statements are ignored.", fun)
                                 TAny
-                            case "\\isset" | "\\empty" =>
+                            case "isset" | "empty" =>
                                 TBoolean // no need to check the args, this is a no-error function
                             case _ =>
-                                notice("Function "+fun.id.value+" appears to be undefined or symbol is not attached!", fun)
+                                notice("Function "+fun.id.value+" appears to be undefined!", fun)
                                 TBottom
                         }
                 }
