@@ -43,10 +43,10 @@ class ASTCollector(functs: Map[String, (String, Int)],
 
     def visit(t: Tree): Boolean = {
         t match {
-            case FunctionCall(StaticFunctionRef(_, _, Identifier("phantm_collect_state")), _) =>
+            case FunctionCall(StaticFunctionRef(NSName("phantm_collect_state")), _) =>
                 // found the call
                 afterDump = true
-            case fd @ FunctionDecl(Identifier(name), _, _, _) if !afterDump =>
+            case fd @ FunctionDecl(NSName(name), _, _, _) if !afterDump =>
                 if (functs contains name.toLowerCase) {
                     val (file, line) = functs(name.toLowerCase)
                     if (file == fd.file.get && line == fd.line) {
@@ -55,7 +55,7 @@ class ASTCollector(functs: Map[String, (String, Int)],
                         println("Excluding function "+name+" because of line/col mismatch")
                     }
                 }
-            case cd @ ClassDecl(Identifier(name), _, _, _, _, _, _, _) if !afterDump =>
+            case cd @ ClassDecl(NSName(name), _, _, _, _, _, _, _) if !afterDump =>
                 if (classes contains name) {
                     val (file, line) = classes(name)
                     if (file == cd.file.get && line == cd.line) {
@@ -78,7 +78,7 @@ class ASTPruner(ast: Program) extends ASTTransform(ast) {
     override def trStmts(sts: List[Statement]): List[Statement] = super.trStmts(sts).filter(_ != Void())
 
     override def trStmt(st: Statement): Statement = st match {
-        case FunctionCall(StaticFunctionRef(_, _, Identifier("phantm_collect_state")), _) =>
+        case FunctionCall(StaticFunctionRef(NSName("phantm_collect_state")), _) =>
             // found the call
             afterDump = true
             st

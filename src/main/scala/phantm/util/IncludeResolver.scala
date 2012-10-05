@@ -7,11 +7,8 @@ import phantm.ast.ASTTransform
 
 import scala.io.Source
 import java.io.File
-import scala.collection.mutable.Set;
 
 object IncludeResolver {
-    val includedFiles = Set[String]();
-
     var deepNess = 0;
 
     def begin = {
@@ -75,7 +72,7 @@ case class IncludeResolver(ast: Program, ctx: PhasesContext) extends ASTTransfor
                 Reporter.notice("Include resolution is specifically disabled", pos)
                 false
             } else {
-                !once || !IncludeResolver.includedFiles.contains(p)
+                !once || !ctx.includedFiles.contains(p)
             }
         }
 
@@ -89,23 +86,29 @@ case class IncludeResolver(ast: Program, ctx: PhasesContext) extends ASTTransfor
         }
 
         def getAST(path: String): Expression = {
-            import phantm.ast.STToAST
+            import phantm.phases._
 
-            IncludeResolver.includedFiles += path
+            ctx.includedFiles += path
 
-            val p = new Parser(path)
-            p parse match {
-                case Some(node) =>
-                    var ast: Program = new STToAST(p, node) getAST;
-                    // We define/resolve constants there too
-                    ast = ConstantsResolver(ast, false, ctx).transform
-                    // We include-resolve this file too
-                    ast = IncludeResolver(ast, ctx).transform
+            val phases = List(ParsingPhase,
+                              NamespaceResolverPhase,
+                              ASTPruningPhase,
+                              IncludesConstantsResolutionPhase)
 
-                    Block(ast.stmts).setPos(inc)
-                case None =>
-                    Reporter.notice("Cannot preprocess \""+path+"\": sub-compilation failed", inc)
-                    VoidExpr().setPos(inc)
+
+            var tmpctx = ctx.copy(files = List(path), oast = None)
+            for (ph <- phases) {
+              tmpctx = ph.run(tmpctx)
+            }
+
+            ctx.includedFiles ++= tmpctx.includedFiles
+
+            tmpctx.oast match {
+              case Some(p @ Program(stmts)) =>
+                Block(stmts).setPos(inc)
+              case _ =>
+                Reporter.notice("Cannot preprocess \""+path+"\": sub-compilation failed", inc)
+                VoidExpr().setPos(inc)
             }
         }
 
@@ -121,7 +124,7 @@ case class IncludeResolver(ast: Program, ctx: PhasesContext) extends ASTTransfor
             val pathres = (eval, path) match {
                 case (Some(scal), _) =>
                     (false, Some(List(scal)))
-                case (None, fc @ FunctionCall(StaticFunctionRef(_, _, Identifier("phantm_incl")), _)) =>
+                case (None, fc @ FunctionCall(StaticFunctionRef(nsid), _)) if nsid.value == "phantm_incl"=>
                     // probably instrumentalized, let's check if the position can be found
                     val absPath = if (inc.file.isEmpty) "?" else new File(inc.file.get).getAbsolutePath;
                     IncludeResolver.inclsInstr.get((absPath, inc.line)) match {
@@ -198,6 +201,6 @@ case class IncludeResolver(ast: Program, ctx: PhasesContext) extends ASTTransfor
     }
 
     if (ast.file != None) {
-        IncludeResolver.includedFiles += ast.file.get
+        ctx.includedFiles += ast.file.get
     }
 }

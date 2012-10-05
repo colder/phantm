@@ -173,14 +173,14 @@ case class TypeTransferFunction(silent: Boolean,
                     case _ =>
                         TAnyObject
                 }
-            case FunctionCall(AST.Identifier("phantm_collect_state"), args) =>
+            case FunctionCall(FuncRef(AST.NSName("phantm_collect_state")), args) =>
                 for (unser <- ctx.dumpedData) {
                     env = unser.heap.importToEnv(env)
                 }
                 TBottom
 
-            case fcall @ FunctionCall(id, args) =>
-                ctx.globalSymbols.lookupFunction(id.value) match {
+            case fcall @ FunctionCall(fun, args) =>
+                ctx.globalSymbols.lookupFunction(fun.id.value) match {
                     case Some(fs) =>
                             if (collectAnnotations) {
                                 val ft = new TFunction(args.map(a => (typeFromSV(a), false, false)), TBottom)
@@ -189,14 +189,14 @@ case class TypeTransferFunction(silent: Boolean,
                             checkFCalls(fcall.params, fs, fcall, None)
                     case None =>
                         // handle special functions
-                        id.value.toLowerCase match {
+                        fun.id.value.toLowerCase match {
                             case "eval" =>
-                                notice("eval() statements are ignored.", id)
+                                notice("eval() statements are ignored.", fun)
                                 TAny
                             case "isset" | "empty" =>
                                 TBoolean // no need to check the args, this is a no-error function
                             case _ =>
-                                notice("Function "+id.value+" appears to be undefined!", id)
+                                notice("Function "+fun.id.value+" appears to be undefined!", fun)
                                 TBottom
                         }
                 }

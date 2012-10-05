@@ -74,6 +74,11 @@ object Trees {
     override def toString = stringRepr(this)
   }
 
+  case class FuncRef(id: AST.NSIdentifier) extends Symbolic with Positional {
+
+    setPos(id)
+  }
+
   abstract class ClassRef extends Positional
 
   case class  ClassRefDynamic(sv: SimpleValue) extends ClassRef {
@@ -128,7 +133,7 @@ object Trees {
                      then: SimpleValue,
                      elze: SimpleValue) extends SimpleValue
 
-  case class FunctionCall(id: AST.Identifier,
+  case class FunctionCall(fun: FuncRef,
                           params: List[SimpleValue]) extends SimpleValue
 
   case class StaticMethodCall(cl: ClassRef,
@@ -191,7 +196,7 @@ object Trees {
       case AssignBinary(v, l, b, r) => v + assOp + l + " " + b + " " + r
       case StaticMethodCall(r, mid, p) => r + "::" + mid.value + p.mkString("(", ", ", ")")
       case MethodCall(r, mid, p) => r + "->" + mid.value + p.mkString("(", ", ", ")")
-      case FunctionCall(fid, p) => fid.value + p.mkString("(", ", ", ")")
+      case FunctionCall(fun, p) => fun.id.value + p.mkString("(", ", ", ")")
       case Constant(cs) => cs.name
       case ClassConstant(cl, cid) => cl + "::" + cid.value
       case Ternary(i, then, elze) => i + " ? " + then + " : " + elze

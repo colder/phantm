@@ -17,6 +17,8 @@ object APIImportationPhase extends Phase {
               internal_api = new java.io.FileInputStream("spec/internal_api.xml")
             }
 
+            new API.Reader(internal_api, ctx).load
+
             for (api <- Settings.get.apis){
                 if (new File(api).exists()) {
                     new API.Reader(api, ctx).load

@@ -13,6 +13,7 @@ lib/cup/dist/java-cup-11a.jar
 lib/cup/java/parser.java
 lib/cup/java/sym.java
 lib/cup/dist
+lib/phantm-files.jar
 *.out
 *.dump
 target/

@@ -130,7 +130,7 @@ case class PureStatementsChecks(node: Tree, ctx: PhasesContext) extends ASTSimpl
                 true
             case New(_, _) =>
                 false
-            case FunctionCall(StaticFunctionRef(_, _, id), args) =>
+            case FunctionCall(StaticFunctionRef(id), args) =>
                 ctx.globalSymbols.lookupFunction(id.value) match {
                   case Some(fs) =>
                     if (fs.isPure) {

@@ -45,9 +45,19 @@ object Main {
 
     def handleArgs(args: List[String]): Unit= {
         if (args == Nil) return;
+
+        val dumpMatcher  = "--dump:([a-z]+)".r
+        val printMatcher = "--print:([a-z]+)".r
+
         (args.head.toLowerCase :: args.tail) match {
             case "--help" :: xs =>
                 displayUsage = true
+            case printMatcher(ph) :: xs =>
+                settings = settings.copy(printAfter = Set(ph))
+                handleArgs(xs)
+            case dumpMatcher(ph) :: xs =>
+                settings = settings.copy(dumpAfter = Set(ph))
+                handleArgs(xs)
             case "--showincludes" :: xs =>
                 settings = settings.copy(displayIncludes = true)
                 handleArgs(xs)
@@ -184,7 +194,7 @@ object Main {
     def version = {
         val data = XML.load(getClass().getClassLoader().getResourceAsStream("build.xml"))
 
-        println("phantm "+(data \ "version").text+" (built: "+(data \ "date").text+")")
+        println("phantm "+(data \ "version").text.trim+" (built: "+(data \ "date").text.trim+")")
     }
 
     def usage = {

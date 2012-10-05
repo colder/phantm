@@ -6,7 +6,7 @@ warning:
 	@ echo "To (re)compile scala/java code, use 'sbt package'"
 
 
-bootstrap: setup build_cup cup jflex
+bootstrap: setup build_cup cup jflex makejar
 
 setup:
 	@ test -d classes || mkdir classes
@@ -20,3 +20,17 @@ cup:
 
 jflex:
 	java -jar bin/JFlex.jar -d src/main/java/phantm/parser/ -nobak spec/php.jflex
+
+makejar:
+	@ mkdir -p tmp/spec tmp/tables
+	@ echo -n "<build><version>"                           > tmp/build.xml
+	@ grep -o 'version := ".\+"' build.sbt | cut -d'"' -f2 >> tmp/build.xml
+	@ echo -n "</version><date>"                           >> tmp/build.xml
+	@ date                                                 >> tmp/build.xml
+	@ echo -n "</date></build>"                            >> tmp/build.xml
+	@ cp spec/internal_api.xml tmp/spec
+	@ cp src/main/java/phantm/parser/action_table.bin      tmp/tables
+	@ cp src/main/java/phantm/parser/production_table.bin  tmp/tables
+	@ cp src/main/java/phantm/parser/reduce_table.bin      tmp/tables
+	jar cf lib/phantm-files.jar -C tmp build.xml -C tmp spec -C tmp tables
+	@ rm -rf tmp

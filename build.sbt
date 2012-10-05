@@ -1,3 +1,5 @@
+import AssemblyKeys._ // put this at the top of the file
+
 name := "phantm"
 
 version := "1.0.6"
@@ -11,3 +13,7 @@ libraryDependencies ++= Seq(
 mainClass in (Compile, run) := Some("phantm.Main")
 
 parallelExecution in Test := false
+
+assemblySettings
+
+mainClass in assembly := Some("phantm.Main")

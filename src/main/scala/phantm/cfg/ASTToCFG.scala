@@ -151,7 +151,7 @@ object ASTToCFG {
             assumeProp(CFG.Isset, vs)
           case AST.Empty(v) =>
             assumeProp(CFG.Empty, v :: Nil)
-          case AST.FunctionCall(AST.StaticFunctionRef(AST.NSNone, Nil, id), AST.CallArg(v: AST.Variable, _) :: Nil)
+          case AST.FunctionCall(AST.StaticFunctionRef(id), AST.CallArg(v: AST.Variable, _) :: Nil)
             if assumeFuncs.contains(id.value.toLowerCase) =>
                 assumeProp(assumeFuncs(id.value.toLowerCase), v :: Nil)
           case _ =>
@@ -169,7 +169,7 @@ object ASTToCFG {
         case AST.DynamicClassRef(ex) =>
             CFG.ClassRefDynamic(expr(ex)).setPos(cr)
 
-        case AST.StaticClassRef(_, _, id) =>
+        case AST.StaticClassRef(id) =>
             if (id.hasSymbol) {
                 id.getSymbol match {
                     case cs: ClassSymbol =>
@@ -197,7 +197,7 @@ object ASTToCFG {
             // We try to resolve the class symbol, if so, we return a
             // static class property, otherwise it will be dynamic
             val res = (cl, property) match {
-                case (AST.StaticClassRef(_, _, cid), AST.SimpleVariable(pid)) =>
+                case (AST.StaticClassRef(cid), AST.SimpleVariable(pid)) =>
                     cid.getSymbol match {
                         case cs: ClassSymbol =>
                             cs.lookupStaticProperty(pid.value, scopeClassSymbol) match {
@@ -327,8 +327,8 @@ object ASTToCFG {
                     Some(CFG.Assign(v, CFG.FunctionCall(internalFunction("eval").setPos(ex), List(expr(value))).setPos(ex)))
                 case AST.Empty(va) =>
                     Some(CFG.Assign(v, CFG.FunctionCall(internalFunction("empty").setPos(ex), List(expr(va))).setPos(ex)))
-                case AST.FunctionCall(AST.StaticFunctionRef(_, _, name), args) =>
-                    Some(CFG.Assign(v, CFG.FunctionCall(name, args map { a => expr(a.value) }).setPos(ex)))
+                case AST.FunctionCall(AST.StaticFunctionRef(id), args) =>
+                    Some(CFG.Assign(v, CFG.FunctionCall(CFG.FuncRef(id), args map { a => expr(a.value) }).setPos(ex)))
                 case fc @ AST.FunctionCall(_, args) =>
                     Reporter.notice("Dynamic function call ignored", fc)
                     Some(CFG.Assign(v, CFG.PHPAny().setPos(fc)))
@@ -347,11 +347,13 @@ object ASTToCFG {
             }
     }
 
-    def internalFunction(name: String): AST.Identifier = {
-        ctx.globalSymbols.lookupFunction(name) match {
-            case Some(s) => AST.Identifier(name).setSymbol(s)
-            case None => AST.Identifier(name);
-        }
+    def internalFunction(name: String): CFG.FuncRef = {
+      val fref = CFG.FuncRef(new AST.NSIdentifier(AST.NSGlobal, List(name)))
+
+      ctx.globalSymbols.lookupFunction(name) match {
+        case Some(s) => fref.setSymbol(s)
+        case None => fref
+      }
     }
 
     def expr(ex: AST.Expression): CFG.SimpleValue = alreadySimple(ex) match {
