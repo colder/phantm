@@ -23,7 +23,7 @@ In order to compile this tool, you need
 * Java 1.6 or higher
 * Scala 2.9.1 or higher
 
-Also, make sure you've the $SCALA_HOME environment variable pointing to your scala distribution.
+Also, make sure you've the `$SCALA_HOME` environment variable pointing to your scala distribution.
 
 Installation
 ------------
@@ -33,21 +33,21 @@ The first time you compile phantm, run:
 
 This will, in order, build customized CUP, generate lexer using JFlex, generate parser using CUP, and build the generated java files.
 
-To build the core component of phantm, the analyzer, you need sbt (specifically, you need a version <u>older</u> than sbt 0.10. You should be able to download sbt 0.7.7 from <a href="http://code.google.com/p/simple-build-tool/">here</a>).
+To build the core component of phantm, the analyzer, you need sbt (specifically, you need xsbt 0.12.0).
 
 Invoke sbt as follows:
 
-    $ sbt package
+    $ sbt assembly
 
-This will download the required version of Scala and other dependencies using Ivy, and produce a jar file containing phantm, as well as a script called "phantm". You can use this script to analyze your PHP programs.
-
-You can also package everything into a single jar by invoking
-
-    $ sbt proguard
+This will download the required version of Scala and other dependencies using Ivy, and produce a jar file containing phantm. You can use this script to analyze your PHP programs.
 
 You can then also run phantm with
 
-    $ java -jar phantm-1.?.?.jar
+    $ java -jar target/phantm-assembly-1.?.?.jar
+
+You can also run phantm directly from sbt, as follows:
+
+    $ sbt "run <phantm options> path/to/scripts.php"
 
 Usage
 -----
