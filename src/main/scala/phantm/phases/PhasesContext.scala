@@ -9,6 +9,7 @@ import phantm.cfg.ControlFlowGraph
 
 case class PhasesContext(
     val files: List[String] = Nil,
+    var includedFiles: Set[String] = Set(),
     val oast: Option[Program] = None,
     val dumpedData: List[DumpCollector] = Nil,
     val symbol: Option[Symbol] = None,

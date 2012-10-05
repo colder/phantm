@@ -30,7 +30,7 @@ object IncludesConstantsResolutionPhase extends Phase {
         // We register every files as included already
 
         for (f <- ctx.dumpedData.flatMap(d => d.files)) {
-            IncludeResolver.includedFiles += f
+            ctx.includedFiles += f
         }
 
         ast = ConstantsResolver(ast, false, ctx).transform
@@ -39,7 +39,7 @@ object IncludesConstantsResolutionPhase extends Phase {
 
         if (Settings.get.displayIncludes) {
             println("     - Files sucessfully imported:")
-            for (f <- IncludeResolver.includedFiles) {
+            for (f <- ctx.includedFiles) {
                 println("       * "+f)
             }
         }

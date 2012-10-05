@@ -7,7 +7,7 @@ import phantm.util.Reporter
 
 object ASTChecksPhase extends Phase {
 
-    def name = "AST checks"
+    def name = "astchecks"
     def description = "Checking AST integrity"
 
     def run(ctx: PhasesContext): PhasesContext = {

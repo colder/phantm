@@ -7,11 +7,8 @@ import phantm.ast.ASTTransform
 
 import scala.io.Source
 import java.io.File
-import scala.collection.mutable.Set;
 
 object IncludeResolver {
-    val includedFiles = Set[String]();
-
     var deepNess = 0;
 
     def begin = {
@@ -75,7 +72,7 @@ case class IncludeResolver(ast: Program, ctx: PhasesContext) extends ASTTransfor
                 Reporter.notice("Include resolution is specifically disabled", pos)
                 false
             } else {
-                !once || !IncludeResolver.includedFiles.contains(p)
+                !once || !ctx.includedFiles.contains(p)
             }
         }
 
@@ -91,7 +88,7 @@ case class IncludeResolver(ast: Program, ctx: PhasesContext) extends ASTTransfor
         def getAST(path: String): Expression = {
             import phantm.phases._
 
-            IncludeResolver.includedFiles += path
+            ctx.includedFiles += path
 
             val phases = List(ParsingPhase,
                               NamespaceResolverPhase,
@@ -104,9 +101,11 @@ case class IncludeResolver(ast: Program, ctx: PhasesContext) extends ASTTransfor
               tmpctx = ph.run(tmpctx)
             }
 
+            ctx.includedFiles ++= tmpctx.includedFiles
+
             tmpctx.oast match {
               case Some(p @ Program(stmts)) =>
-                Block(ast.stmts).setPos(inc)
+                Block(stmts).setPos(inc)
               case _ =>
                 Reporter.notice("Cannot preprocess \""+path+"\": sub-compilation failed", inc)
                 VoidExpr().setPos(inc)
@@ -202,6 +201,6 @@ case class IncludeResolver(ast: Program, ctx: PhasesContext) extends ASTTransfor
     }
 
     if (ast.file != None) {
-        IncludeResolver.includedFiles += ast.file.get
+        ctx.includedFiles += ast.file.get
     }
 }
