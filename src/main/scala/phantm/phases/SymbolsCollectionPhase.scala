@@ -39,7 +39,6 @@ case class CollectSymbols(node: Tree, pctx: PhasesContext) extends ASTTraversal[
     def visitClasses(node: Tree, ctx: SymContext): (SymContext, Boolean) = {
         node match {
             case cl @ ClassDecl(name, flags, parent, interfaces, methods, static_props, props, consts) =>
-                println("Found classdecl: "+cl+"@"+cl.getPos)
                 classesToPass = classesToPass ::: List(cl)
             case id @ InterfaceDecl(name, parents, methods, consts) =>
                 interfacesToPass = interfacesToPass ::: List(id)
