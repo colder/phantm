@@ -17,4 +17,6 @@ class BasicTests extends FunSuite with MustMatchers with PhantmTestDriver {
   for (t <- findTests("tests/", "fail-")) {
     testFail("tests/"+t.getName())
   }
+
+  testPass("tests/inc-001.php")
 }
