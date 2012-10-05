@@ -194,7 +194,7 @@ object Main {
     def version = {
         val data = XML.load(getClass().getClassLoader().getResourceAsStream("build.xml"))
 
-        println("phantm "+(data \ "version").text+" (built: "+(data \ "date").text+")")
+        println("phantm "+(data \ "version").text.trim+" (built: "+(data \ "date").text.trim+")")
     }
 
     def usage = {
