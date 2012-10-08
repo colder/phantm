@@ -6,7 +6,7 @@ warning:
 	@ echo "To (re)compile scala/java code, use 'sbt package'"
 
 
-bootstrap: setup build_cup cup jflex makejar
+bootstrap: setup build_cup cup jflex bootstrapjar
 
 setup:
 	@ test -d classes || mkdir classes
@@ -21,7 +21,7 @@ cup:
 jflex:
 	java -jar bin/JFlex.jar -d src/main/java/phantm/parser/ -nobak spec/php.jflex
 
-makejar:
+bootstrapjar:
 	@ mkdir -p tmp/spec tmp/tables
 	@ echo -n "<build><version>"                           > tmp/build.xml
 	@ grep -o 'version := ".\+"' build.sbt | cut -d'"' -f2 >> tmp/build.xml
@@ -34,3 +34,6 @@ makejar:
 	@ cp src/main/java/phantm/parser/reduce_table.bin      tmp/tables
 	jar cf lib/phantm-files.jar -C tmp build.xml -C tmp spec -C tmp tables
 	@ rm -rf tmp
+
+release:
+	java -jar bin/proguard.jar @proguard.conf
