@@ -97,17 +97,23 @@ case class IncludeResolver(ast: Program, ctx: PhasesContext) extends ASTTransfor
 
 
             var tmpctx = ctx.copy(files = List(path), oast = None)
-            for (ph <- phases) {
-              tmpctx = ph.run(tmpctx)
-            }
+            try {
+              for (ph <- phases) {
+                tmpctx = ph.run(tmpctx)
+              }
 
-            ctx.includedFiles ++= tmpctx.includedFiles
+              ctx.includedFiles ++= tmpctx.includedFiles
 
-            tmpctx.oast match {
-              case Some(p @ Program(stmts)) =>
-                Block(stmts).setPos(inc)
-              case _ =>
-                Reporter.notice("Cannot preprocess \""+path+"\": sub-compilation failed", inc)
+              tmpctx.oast match {
+                case Some(p @ Program(stmts)) =>
+                  Block(stmts).setPos(inc)
+                case _ =>
+                  Reporter.notice("Cannot preprocess \""+path+"\": sub-compilation failed", inc)
+                  VoidExpr().setPos(inc)
+              }
+            } catch {
+              case e: Throwable =>
+                Reporter.error("Failed to include \""+path+"\": " + e.getMessage) 
                 VoidExpr().setPos(inc)
             }
         }
