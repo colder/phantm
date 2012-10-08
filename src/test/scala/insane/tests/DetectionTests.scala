@@ -12,4 +12,5 @@ class DetectionTests extends PhantmTestDriver {
   testAndExpect("tests/target005.php", "Type mismatch")
   testAndExpect("tests/target007.php", "no side-effect")
   testAndExpect("tests/target009.php", "Type mismatch")
+  testAndExpect("tests/target025.php", "file not found")
 }
