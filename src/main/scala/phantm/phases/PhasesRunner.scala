@@ -9,7 +9,7 @@ class PhasesRunner(val reporter: Reporter) {
     def getPhasesToRun: PhaseSeq = (
         DumpsCollectionPhase
         followedBy APIImportationPhase
-        followedBy ParsingPhase
+        followedBy ParsingPhaseNew
         followedBy NamespaceResolverPhase
         followedBy ASTPruningPhase
         followedBy IncludesConstantsResolutionPhase
@@ -36,10 +36,6 @@ class PhasesRunner(val reporter: Reporter) {
                         println((i+1)+": "+ph.name+"...")
                     }
                     ctx = ph.run(ctx)
-
-                    if (Settings.get.printAfter(ph.name)) {
-                      // TODO
-                    }
 
                     if (Settings.get.dumpAfter(ph.name)) {
                       val ps = new java.io.PrintStream("dump-"+ph.name+".dot");

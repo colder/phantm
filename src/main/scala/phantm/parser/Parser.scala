@@ -28,34 +28,35 @@ class Parser(filename: String) {
         comm
     }
 
-    def parse: Option[ParseNode] = {
-         var l: Lexer = null;
+    def parse: Option[ParseNode] = None
+    //def parse: Option[ParseNode] = {
+    //     var l: Lexer = null;
 
-         try {
-            l = new Lexer(new java.io.FileReader(filename));
-            l.setFileName(filename);
-            val p = new CUPParser(l);
-            val r: ParseNode = p.parse().value.asInstanceOf[ParseNode];
+    //     try {
+    //        l = new Lexer(new java.io.FileReader(filename));
+    //        l.setFileName(filename);
+    //        val p = new CUPParser(l);
+    //        val r: ParseNode = p.parse().value.asInstanceOf[ParseNode];
 
-            for (c <- JavaListIteratorWrapper[LexerComment](l.comments.iterator)) {
-                comments = (new Position().setPos(c.line, c.col, c.filename), c.content) :: comments;
-            }
+    //        for (c <- JavaListIteratorWrapper[LexerComment](l.comments.iterator)) {
+    //            comments = (new Position().setPos(c.line, c.col, c.filename), c.content) :: comments;
+    //        }
 
-            comments = comments.reverse
+    //        comments = comments.reverse
 
-            // We import and define typedefs
-            for (c <- comments) {
-                AnnotationsParser.importTypeDefs(c._2)
-            }
+    //        // We import and define typedefs
+    //        for (c <- comments) {
+    //            AnnotationsParser.importTypeDefs(c._2)
+    //        }
 
-            Some(r)
+    //        Some(r)
 
-         } catch {
-            case e: FileNotFoundException => error("File not found: "+filename); None
-            case e: IOException => error("IOException: " + e.getMessage); None
-            case e: Exception => error("Parsing failed"); None
-         }
-    }
+    //     } catch {
+    //        case e: FileNotFoundException => error("File not found: "+filename); None
+    //        case e: IOException => error("IOException: " + e.getMessage); None
+    //        case e: Exception => error("Parsing failed"); None
+    //     }
+    //}
 
     def error(msg: String) {
         println("Error: "+msg);

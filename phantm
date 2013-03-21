@@ -15,4 +15,4 @@ echo '   -- / /_/ / __ \/ __ `/ __ \/ __/ __ `__ \  --'
 echo '  -- / ____/ / / / /_/ / / / / /_/ / / / / / --'
 echo ' -- /_/   /_/ /_/\__,_/_/ /_/\__/_/ /_/ /_/ --'
 echo ' '
-scala -classpath $DIR/target/scala_2.9.0/phantm-latest.jar:$DIR/lib/cup/dist/java-cup-11a-runtime.jar phantm.Main  $* 2>&1 | tee ${FILENAME}--${TIMESTAMP}.out | tee last.out
+scala29 -classpath $DIR/target/scala-2.9.2/classes/:$DIR/lib/cup2-scala.jar:$DIR/lib/cup2.jar phantm.Main  $* 2>&1 | tee ${FILENAME}--${TIMESTAMP}.out | tee last.out
