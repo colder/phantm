@@ -250,7 +250,6 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
         implements_list,
         inner_statement,
         inner_statement_list,
-        interface_entry,
         interface_extends_list,
         interface_list,
         internal_functions_in_yacc,
@@ -338,17 +337,66 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
       right(T_STATIC, T_ABSTRACT, T_FINAL, T_PRIVATE, T_PROTECTED, T_PUBLIC)
   );
 
-  class S                   extends SymbolValue[Program]
-  class top_statement_list  extends SymbolValue[List[Statement]]
-  class top_statement       extends SymbolValue[Statement]
-  class T_STRING            extends SymbolValue[String]
+  class S                               extends SymbolValue[Program]
+  class top_statement_list              extends SymbolValue[List[Statement]]
+  class top_statement                   extends SymbolValue[Statement]
+  class additional_catches              extends SymbolValue[List[Catch]]
+  class non_empty_additional_catches    extends SymbolValue[List[Catch]]
+  class additional_catch                extends SymbolValue[Catch]
+  class variable_list                   extends SymbolValue[List[Variable]]
+  class variable                        extends SymbolValue[Variable]
+  class is_reference                    extends SymbolValue[Boolean]
+  class function_declaration_statement  extends SymbolValue[FunctionDecl]
+  class parameter_list                  extends SymbolValue[List[ArgumentDecl]]
+  class class_declaration_statement     extends SymbolValue[Statement]
+  class class_entry_type                extends SymbolValue[ClassFlag]
+  class extends_from                    extends SymbolValue[Option[StaticClassRef]]
+  class interface_extends_list          extends SymbolValue[List[StaticClassRef]]
+  class implements_list                 extends SymbolValue[List[StaticClassRef]]
+  class interface_list                  extends SymbolValue[List[StaticClassRef]]
+  class foreach_optional_arg            extends SymbolValue[Option[(Variable, Boolean)]]
+  class foreach_variable                extends SymbolValue[(Variable, Boolean)]
+  class for_statement                   extends SymbolValue[Statement]
+  class foreach_statement               extends SymbolValue[Statement]
+  class declare_statement               extends SymbolValue[Statement]
+  class declare_list                    extends SymbolValue[List[String]]
+  class switch_case_list                extends SymbolValue[List[(Option[Expression], Statement)]]
+  class case_list                       extends SymbolValue[List[(Option[Expression], Statement)]]
+  class case_separator                  extends SymbolValue[Option[Nothing]]
+  class while_statement                 extends SymbolValue[Statement]
+  class elseif_list                     extends SymbolValue[List[(Expression, Statement)]]
+  class new_elseif_list                 extends SymbolValue[List[(Expression, Statement)]]
+  class else_single                     extends SymbolValue[Option[Statement]]
+  class new_else_single                 extends SymbolValue[Option[Statement]]
+  class non_empty_parameter_list        extends SymbolValue[List[ArgumentDecl]]
+  class optional_class_type             extends SymbolValue[Option[TypeHint]]
+  class function_call_parameter_list    extends SymbolValue[List[CallArg]]
+  class non_empty_function_call_parameter_list extends SymbolValue[List[CallArg]]
+  class global_var_list                  extends SymbolValue[List[Variable]]
+  class global_var                       extends SymbolValue[Variable]
+  class static_var_list                  extends SymbolValue[List[InitVariable]]
+  class class_statement_list             extends SymbolValue[(List[MethodDecl], List[PropertyDecl], List[PropertyDecl], List[ClassConstantDecl])]
+  class class_statement                  extends SymbolValue[(List[MethodDecl], List[PropertyDecl], List[PropertyDecl], List[ClassConstantDecl])]
+  class method_body                      extends SymbolValue[Option[Statement]]
+  class variable_modifiers               extends SymbolValue[List[MemberFlag]]
+  class method_modifiers                 extends SymbolValue[List[MemberFlag]]
+  class non_empty_member_modifiers       extends SymbolValue[List[MemberFlag]]
+  class member_modifier                  extends SymbolValue[MemberFlag]
 
-  def _empty_[A] = rhs() ^^ { () => List[A]() }
+  // Terminals
+  class T_STRING                        extends SymbolValue[String]
+  class T_INLINE_HTML                   extends SymbolValue[String]
+  class T_VARIABLE                      extends SymbolValue[SimpleVariable]
+
+  def _empty_[A]    = rhs() ^^ { () => List[A]() }
+  def _emptyOpt_[A] = rhs() ^^ { () => Option.empty[A] }
 
   def id[T](v: T): T = v
   def inList[T](v: T): List[T] = List(v)
+  def inOpt[T](v: T): Option[T] = Some(v)
 
   def idOf(name: String) = NSIdentifier(NSNone, List(name))
+  def simpleIdOf(name: String) = Identifier(name)
 
   def notyet() { throw new RuntimeException("Not yet implemented") }
 
@@ -429,282 +477,463 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
         | T_DO  ~ statement ~ T_WHILE ~ T_OPEN_BRACES  ~ expr ~ T_CLOSE_BRACES ~ T_SEMICOLON ^^ {
             (body: Statement, c: Expression) => DoWhile(body, c)
           }
-        | T_FOR
-                T_OPEN_BRACES
-                    for_expr
-                T_SEMICOLON 
-                    for_expr
-                T_SEMICOLON 
-                    for_expr
-                T_CLOSE_BRACES 
-                for_statement
-        | T_SWITCH T_OPEN_BRACES expr T_CLOSE_BRACES	 switch_case_list
-        | T_BREAK T_SEMICOLON
-        | T_BREAK expr T_SEMICOLON
-        | T_CONTINUE T_SEMICOLON
-        | T_CONTINUE expr T_SEMICOLON
-        | T_RETURN T_SEMICOLON
-        | T_RETURN expr T_SEMICOLON
-        | T_GLOBAL global_var_list T_SEMICOLON
-        | T_STATIC static_var_list T_SEMICOLON
-        | T_ECHO echo_expr_list T_SEMICOLON
-        | T_INLINE_HTML
-        | expr T_SEMICOLON
-        | T_UNSET T_OPEN_BRACES variable_list T_CLOSE_BRACES T_SEMICOLON
-        | T_FOREACH T_OPEN_BRACES expr T_AS
-            foreach_variable foreach_optional_arg T_CLOSE_BRACES 
-            foreach_statement
-        | T_DECLARE  T_OPEN_BRACES declare_list T_CLOSE_BRACES declare_statement
-        | T_SEMICOLON		/* empty statement */
-        | T_TRY  T_OPEN_CURLY_BRACES inner_statement_list T_CLOSE_CURLY_BRACES
-            T_CATCH T_OPEN_BRACES 
-            fully_qualified_class_name 
-            T_VARIABLE T_CLOSE_BRACES 
-            T_OPEN_CURLY_BRACES inner_statement_list T_CLOSE_CURLY_BRACES 
-            additional_catches
-        | T_THROW expr T_SEMICOLON
-        | T_GOTO T_STRING T_SEMICOLON
-        | T_STRING T_COLON
+        | T_FOR ~
+                T_OPEN_BRACES ~
+                    for_expr ~
+                T_SEMICOLON ~
+                    for_expr ~
+                T_SEMICOLON ~
+                    for_expr ~
+                T_CLOSE_BRACES ~
+                for_statement ^^ {
+            (si: List[Expression], sc: List[Expression], ss: List[Expression], stmt: Statement) =>
+              val condition = if (sc.isEmpty) {
+                PHPTrue()
+              } else {
+                sc.reduceLeft{ BooleanAnd(_, _) }
+              }
+              For(Block(si), condition, Block(ss), stmt)
+          }
+        | T_SWITCH ~ T_OPEN_BRACES ~ expr ~ T_CLOSE_BRACES ~ switch_case_list ^^ {
+          (ex: Expression, scs: List[(Option[Expression], Statement)]) =>
+          Switch(ex, scs)
+        }
+        | T_BREAK ~ T_SEMICOLON ^^ {
+          () => Break(PHPInteger(1))
+        }
+        | T_BREAK ~ expr ~ T_SEMICOLON ^^ {
+          (ex: Expression) => Break(ex)
+        }
+        | T_CONTINUE ~ T_SEMICOLON ^^ {
+          () => Continue(PHPInteger(1))
+        }
+        | T_CONTINUE ~ expr ~ T_SEMICOLON ^^ {
+          (ex: Expression) => Continue(ex)
+        }
+        | T_RETURN ~ T_SEMICOLON ^^ {
+          () => Return(PHPNull())
+        }
+        | T_RETURN ~ expr ~ T_SEMICOLON ^^ {
+          (ex: Expression) => Return(ex)
+        }
+        | T_GLOBAL ~ global_var_list ~ T_SEMICOLON ^^ {
+          (gls: List[Variable]) =>
+            Global(gls)
+        }
+        | T_STATIC ~ static_var_list ~ T_SEMICOLON ^^ {
+          (sts: List[InitVariable]) =>
+            Static(sts)
+        }
+        | T_ECHO ~ echo_expr_list ~ T_SEMICOLON ^^ {
+          (ecs: List[Expression]) =>
+            Echo(ecs)
+        }
+        | T_INLINE_HTML ^^ {
+          (content: String) =>
+            Html(content)
+        }
+        | expr ~ T_SEMICOLON ^^ {
+          (ex: Expression) =>
+            ex
+        }
+        | T_UNSET ~ T_OPEN_BRACES ~ variable_list ~ T_CLOSE_BRACES ~ T_SEMICOLON ^^ {
+          (vs: List[Variable]) =>
+            Unset(vs)
+        }
+        | T_FOREACH ~ T_OPEN_BRACES ~ expr ~ T_AS ~
+            foreach_variable ~ foreach_optional_arg ~ T_CLOSE_BRACES ~
+            foreach_statement ^^ {
+            (ex: Expression, f1: (Variable, Boolean), f2: Option[(Variable, Boolean)], stmt: Statement) =>
+
+            f2 match {
+              case Some((v2, byref)) =>
+                Foreach(ex, v2, byref, Some(f1._1), f1._2, stmt)
+              case None =>
+                Foreach(ex, f1._1, f1._2, None, false, stmt)
+            }
+        }
+        | T_DECLARE ~ T_OPEN_BRACES ~ declare_list ~ T_CLOSE_BRACES ~ declare_statement ^^ {
+          (dl: List[String], stmt: Statement) => Void()
+        }
+        | T_SEMICOLON /* empty statement */ ^^ {
+          () => Void()
+        }
+        | T_TRY ~ T_OPEN_CURLY_BRACES ~ inner_statement_list ~ T_CLOSE_CURLY_BRACES ~
+            T_CATCH ~ T_OPEN_BRACES ~
+            fully_qualified_class_name ~
+            T_VARIABLE ~ T_CLOSE_BRACES ~
+            T_OPEN_CURLY_BRACES ~ inner_statement_list ~ T_CLOSE_CURLY_BRACES ~
+            additional_catches ^^ {
+
+          (st: Block, cl: StaticClassRef, v: SimpleVariable, clbody: Block, catches: List[Catch]) =>
+            Try(st, Catch(cl, v, clbody) :: catches)
+        }
+        | T_THROW ~ expr ~ T_SEMICOLON ^^ {
+          (ex: Expression) =>
+            Throw(ex)
+        }
+        | T_GOTO ~ T_STRING ~ T_SEMICOLON ^^ {
+          (s: String) =>
+            Goto(Label(Identifier(s)))
+        }
+        | T_STRING ~ T_COLON ^^ {
+          (s: String) =>
+            LabelDecl(Identifier(s))
+        }
     ),
 
     additional_catches -> (
-          non_empty_additional_catches
-        | /* empty */
+          non_empty_additional_catches ^^ id _
+        | _empty_
     ),
 
     non_empty_additional_catches -> (
-          additional_catch
-        | non_empty_additional_catches additional_catch
+          additional_catch ^^ inList _
+        | non_empty_additional_catches ~ additional_catch ^^ {
+          (ls: List[Catch], c: Catch) =>
+            ls ::: List(c)
+        }
     ),
 
     additional_catch -> (
-          T_CATCH T_OPEN_BRACES fully_qualified_class_name  T_VARIABLE T_CLOSE_BRACES  T_OPEN_CURLY_BRACES inner_statement_list T_CLOSE_CURLY_BRACES
+        T_CATCH ~ T_OPEN_BRACES ~ fully_qualified_class_name ~ T_VARIABLE ~ T_CLOSE_BRACES ~ T_OPEN_CURLY_BRACES ~ inner_statement_list ~ T_CLOSE_CURLY_BRACES ^^ {
+          (cl: StaticClassRef, v: SimpleVariable, b: Block) =>
+            Catch(cl, v, b)
+        }
     ),
 
     variable_list -> (
-          variable
-        | variable_list T_COMMA variable
+          variable ^^ inList _
+        | variable_list ~ T_COMMA ~ variable ^^ {
+          (ls: List[Variable], v: Variable) =>
+            ls ::: List(v)
+        }
     ),
 
     is_reference -> (
-          /* empty */
-        | T_BITWISE_AND
+          rhs() ^^ { () => false }
+        | T_BITWISE_AND ^^ { () => true }
     ),
 
     function_declaration_statement -> (
-          T_FUNCTION is_reference T_STRING 
-                T_OPEN_BRACES parameter_list T_CLOSE_BRACES T_OPEN_CURLY_BRACES inner_statement_list T_CLOSE_CURLY_BRACES
+          T_FUNCTION ~ is_reference ~ T_STRING ~
+                T_OPEN_BRACES ~ parameter_list ~ T_CLOSE_BRACES ~ T_OPEN_CURLY_BRACES ~ inner_statement_list ~ T_CLOSE_CURLY_BRACES ^^ {
+
+            (byRef: Boolean, name: String, params: List[ArgumentDecl], body: Block) =>
+              FunctionDecl(idOf(name), params, byRef, body)
+          }
     ),
 
     class_declaration_statement -> (
-          class_entry_type T_STRING extends_from
-                
-                implements_list
-                T_OPEN_CURLY_BRACES
-                    class_statement_list
-                T_CLOSE_CURLY_BRACES
-        | interface_entry T_STRING
-                
-                interface_extends_list
-                T_OPEN_CURLY_BRACES
-                    class_statement_list
-                T_CLOSE_CURLY_BRACES
+          class_entry_type ~ T_STRING ~ extends_from ~
+                implements_list ~
+                T_OPEN_CURLY_BRACES ~
+                    class_statement_list ~
+                T_CLOSE_CURLY_BRACES ^^ {
+                  (flag: ClassFlag, name: String, exts: Option[StaticClassRef], ifaces: List[StaticClassRef], stmts: (List[MethodDecl], List[PropertyDecl], List[PropertyDecl], List[ClassConstantDecl])) =>
+            val (methods, static_props, props, consts) = stmts
+            ClassDecl(idOf(name), flag, exts, ifaces, methods, static_props, props, consts)
+          }
+        | T_INTERFACE ~ T_STRING ~
+                interface_extends_list ~
+                T_OPEN_CURLY_BRACES ~
+                    class_statement_list ~
+                T_CLOSE_CURLY_BRACES ^^ {
+                  (flag: ClassFlag, name: String, ifaces: List[StaticClassRef], stmts: (List[MethodDecl], List[PropertyDecl], List[PropertyDecl], List[ClassConstantDecl])) =>
+            val (methods, static_props, props, consts) = stmts
+            InterfaceDecl(idOf(name), ifaces, methods, consts)
+          }
     ),
 
     class_entry_type -> (
-          T_CLASS
-        | T_ABSTRACT T_CLASS
-        | T_FINAL T_CLASS
+          T_CLASS ^^ { () => CFNormal }
+        | T_ABSTRACT ~ T_CLASS ^^ { () => CFAbstract }
+        | T_FINAL ~ T_CLASS ^^ { () => CFFinal }
     ),
 
     extends_from -> (
-          /* empty */
-        | T_EXTENDS fully_qualified_class_name
-    ),
-
-    interface_entry -> (
-          T_INTERFACE
+          _emptyOpt_ /* empty */
+        | T_EXTENDS ~ fully_qualified_class_name ^^ {
+          (r: StaticClassRef) => Some(r)
+        }
     ),
 
     interface_extends_list -> (
-          /* empty */
-        | T_EXTENDS interface_list
+          _empty_
+        | T_EXTENDS ~ interface_list ^^ id _
     ),
 
     implements_list -> (
-          /* empty */
-        | T_IMPLEMENTS interface_list
+          _empty_
+        | T_IMPLEMENTS ~ interface_list ^^ id _
     ),
 
     interface_list -> (
-          fully_qualified_class_name
-        | interface_list T_COMMA fully_qualified_class_name
+          fully_qualified_class_name ^^ inList _
+        | interface_list ~ T_COMMA ~ fully_qualified_class_name ^^ {
+          (ls: List[StaticClassRef], r: StaticClassRef) =>
+            ls ::: List(r)
+        }
     ),
 
     foreach_optional_arg -> (
-          /* empty */
-        | T_DOUBLE_ARROW foreach_variable
+          _emptyOpt_
+        | T_DOUBLE_ARROW ~ foreach_variable ^^ inOpt _
     ),
 
     foreach_variable -> (
-          variable
-        | T_BITWISE_AND variable
+          variable ^^ { (v: Variable) => (v, false) }
+        | T_BITWISE_AND ~ variable ^^ { (v: Variable) => (v, true) }
     ),
 
     for_statement -> (
-          statement
-        | T_COLON inner_statement_list T_ENDFOR T_SEMICOLON
+          statement ^^ id _
+        | T_COLON ~ inner_statement_list ~ T_ENDFOR ~ T_SEMICOLON ^^ id _
     ),
 
     foreach_statement -> (
-          statement
-        | T_COLON inner_statement_list T_ENDFOREACH T_SEMICOLON
+          statement ^^ id _
+        | T_COLON ~ inner_statement_list ~ T_ENDFOREACH ~ T_SEMICOLON ^^ id _
     ),
 
     declare_statement -> (
-          statement
-        | T_COLON inner_statement_list T_ENDDECLARE T_SEMICOLON
+          statement ^^ id _
+        | T_COLON ~ inner_statement_list ~ T_ENDDECLARE ~ T_SEMICOLON ^^ id _
     ),
 
+    /* Todo */
     declare_list -> (
-          T_STRING T_ASSIGN static_expr
-        | declare_list T_COMMA T_STRING T_ASSIGN static_expr
+          T_STRING ~ T_ASSIGN ~ static_expr ^^ {
+          (name: String, v: Expression) => Nil
+        }
+        | declare_list ~ T_COMMA ~ T_STRING ~ T_ASSIGN ~ static_expr ^^ {
+          (ls: List[String], name: String, v: Expression) => Nil
+        }
     ),
 
     switch_case_list -> (
-          T_OPEN_CURLY_BRACES case_list T_CLOSE_CURLY_BRACES
-        | T_OPEN_CURLY_BRACES T_SEMICOLON case_list T_CLOSE_CURLY_BRACES
-        | T_COLON case_list T_ENDSWITCH T_SEMICOLON
-        | T_COLON T_SEMICOLON case_list T_ENDSWITCH T_SEMICOLON
+          T_OPEN_CURLY_BRACES ~ case_list ~ T_CLOSE_CURLY_BRACES ^^ id _
+        | T_OPEN_CURLY_BRACES ~ T_SEMICOLON ~ case_list ~ T_CLOSE_CURLY_BRACES ^^ id _
+        | T_COLON ~ case_list ~ T_ENDSWITCH ~ T_SEMICOLON ^^ id _
+        | T_COLON ~ T_SEMICOLON ~ case_list ~ T_ENDSWITCH ~ T_SEMICOLON ^^ id _
     ),
 
     case_list -> (
-          /* empty */
-        | case_list T_CASE expr case_separator  inner_statement_list
-        | case_list T_DEFAULT case_separator  inner_statement_list
+          _empty_
+        | case_list ~ T_CASE ~ expr ~ case_separator ~ inner_statement_list ^^ {
+          (ls: List[(Option[Expression], Statement)], ex: Expression, st: Statement) =>
+            ls ::: List((Some(ex), st))
+        }
+        | case_list ~ T_DEFAULT ~ case_separator ~ inner_statement_list ^^ {
+          (ls: List[(Option[Expression], Statement)], st: Statement) =>
+            ls ::: List((None, st))
+        }
     ),
 
     case_separator -> (
-          T_COLON
-        | T_SEMICOLON
+          T_COLON ^^ { () => None }
+        | T_SEMICOLON ^^ { () => None }
     ),
 
     while_statement -> (
-          statement
-        | T_COLON inner_statement_list T_ENDWHILE T_SEMICOLON
+          statement ^^ id _
+        | T_COLON ~ inner_statement_list ~ T_ENDWHILE ~ T_SEMICOLON ^^ id _
     ),
 
     elseif_list -> (
-          /* empty */
-        | elseif_list T_ELSEIF T_OPEN_BRACES expr T_CLOSE_BRACES  statement
+          _empty_
+        | elseif_list ~ T_ELSEIF ~ T_OPEN_BRACES ~ expr ~ T_CLOSE_BRACES ~ statement ^^ {
+          (ls: List[(Expression, Statement)], ex: Expression, st: Statement) =>
+            ls ::: List((ex, st))
+        }
     ),
 
     new_elseif_list -> (
-          /* empty */
-        | new_elseif_list T_ELSEIF T_OPEN_BRACES expr T_CLOSE_BRACES T_COLON  inner_statement_list
+          _empty_
+        | new_elseif_list ~ T_ELSEIF ~ T_OPEN_BRACES ~ expr ~ T_CLOSE_BRACES ~ T_COLON ~ inner_statement_list ^^ {
+          (ls: List[(Expression, Statement)], ex: Expression, st: Statement) =>
+            ls ::: List((ex, st))
+        }
     ),
 
     else_single -> (
-          /* empty */
-        | T_ELSE statement
+          _emptyOpt_ /* empty */
+        | T_ELSE ~ statement ^^ inOpt _
     ),
 
     new_else_single -> (
-          /* empty */
-        | T_ELSE T_COLON inner_statement_list
+          _emptyOpt_ /* empty */
+        | T_ELSE ~ T_COLON ~ inner_statement_list ^^ inOpt _
     ),
 
     parameter_list -> (
-          non_empty_parameter_list
-        | /* empty */
+          non_empty_parameter_list ^^ id _
+        | _empty_ /* empty */
     ),
 
     non_empty_parameter_list -> (
-          optional_class_type T_VARIABLE
-        | optional_class_type T_BITWISE_AND T_VARIABLE
-        | optional_class_type T_BITWISE_AND T_VARIABLE T_ASSIGN static_expr
-        | optional_class_type T_VARIABLE T_ASSIGN static_expr
-        | non_empty_parameter_list T_COMMA optional_class_type T_VARIABLE
-        | non_empty_parameter_list T_COMMA optional_class_type T_BITWISE_AND T_VARIABLE
-        | non_empty_parameter_list T_COMMA optional_class_type T_BITWISE_AND T_VARIABLE	 T_ASSIGN static_expr
-        | non_empty_parameter_list T_COMMA optional_class_type T_VARIABLE T_ASSIGN static_expr
+          optional_class_type ~ T_VARIABLE ^^ {
+            (hint: Option[TypeHint], v: SimpleVariable) =>
+              List(ArgumentDecl(v, hint, None, false))
+          }
+        | optional_class_type ~ T_VARIABLE ~ T_ASSIGN ~ static_expr ^^ {
+            (hint: Option[TypeHint], v: SimpleVariable, ex: Expression) =>
+              List(ArgumentDecl(v, hint, Some(ex), false))
+          }
+        | optional_class_type ~ T_BITWISE_AND ~ T_VARIABLE ^^ {
+            (hint: Option[TypeHint], v: SimpleVariable) =>
+              List(ArgumentDecl(v, hint, None, true))
+          }
+        | optional_class_type ~ T_BITWISE_AND ~ T_VARIABLE ~ T_ASSIGN ~ static_expr ^^ {
+            (hint: Option[TypeHint], v: SimpleVariable, ex: Expression) =>
+              List(ArgumentDecl(v, hint, Some(ex), true))
+          }
+        | non_empty_parameter_list ~ T_COMMA ~ optional_class_type ~ T_VARIABLE ^^ {
+            (ls: List[ArgumentDecl], hint: Option[TypeHint], v: SimpleVariable) =>
+              ls ::: List(ArgumentDecl(v, hint, None, false))
+          }
+        | non_empty_parameter_list ~ T_COMMA ~ optional_class_type ~ T_VARIABLE ~ T_ASSIGN ~ static_expr ^^ {
+            (ls: List[ArgumentDecl], hint: Option[TypeHint], v: SimpleVariable, ex: Expression) =>
+              ls ::: List(ArgumentDecl(v, hint, Some(ex), false))
+          }
+        | non_empty_parameter_list ~ T_COMMA ~ optional_class_type ~ T_BITWISE_AND ~ T_VARIABLE ^^ {
+            (ls: List[ArgumentDecl], hint: Option[TypeHint], v: SimpleVariable) =>
+              ls ::: List(ArgumentDecl(v, hint, None, true))
+          }
+        | non_empty_parameter_list ~ T_COMMA ~ optional_class_type ~ T_BITWISE_AND ~ T_VARIABLE ~ T_ASSIGN ~ static_expr ^^ {
+            (ls: List[ArgumentDecl], hint: Option[TypeHint], v: SimpleVariable, ex: Expression) =>
+              ls ::: List(ArgumentDecl(v, hint, Some(ex), true))
+          }
     ),
 
     optional_class_type -> (
-          /* empty */
-        | fully_qualified_class_name
-        | T_ARRAY
+          _emptyOpt_ /* empty */
+        | fully_qualified_class_name ^^ {
+          (r: StaticClassRef) => Some(THObject(r))
+        }
+        | T_ARRAY ^^ {
+          () => Some(THArray)
+        }
     ),
 
     function_call_parameter_list -> (
-          non_empty_function_call_parameter_list
-        | /* empty */
+          non_empty_function_call_parameter_list ^^ id _
+        | _empty_ /* empty */
     ),
 
     non_empty_function_call_parameter_list -> (
-          expr
-        | T_BITWISE_AND variable
-        | non_empty_function_call_parameter_list T_COMMA expr
-        | non_empty_function_call_parameter_list T_COMMA T_BITWISE_AND variable
+          expr ^^ {
+            (ex: Expression) =>
+              List(CallArg(ex, false))
+          }
+        | T_BITWISE_AND ~ variable ^^ {
+            (ex: Expression) =>
+              List(CallArg(ex, true))
+        }
+        | non_empty_function_call_parameter_list ~ T_COMMA ~ expr ^^ {
+            (ls: List[CallArg], ex: Expression) =>
+              ls ::: List(CallArg(ex, false))
+        }
+        | non_empty_function_call_parameter_list ~ T_COMMA ~ T_BITWISE_AND ~ variable ^^ {
+            (ls: List[CallArg], ex: Expression) =>
+              ls ::: List(CallArg(ex, true))
+        }
     ),
 
     global_var_list -> (
-          global_var_list T_COMMA global_var
-        | global_var
+          global_var_list ~ T_COMMA ~ global_var ^^ {
+            (gls: List[Variable], v: Variable) =>
+              gls ::: List(v)
+          }
+        | global_var ^^ inList _
     ),
 
     global_var -> (
-          T_VARIABLE
-        | T_DOLLAR variable
-        | T_DOLLAR T_OPEN_CURLY_BRACES expr T_CLOSE_CURLY_BRACES
+          T_VARIABLE ^^ id _
+        | T_DOLLAR ~ variable ^^ {
+            (v: Variable) => VariableVariable(v)
+          }
+        | T_DOLLAR ~ T_OPEN_CURLY_BRACES ~ expr ~ T_CLOSE_CURLY_BRACES ^^ {
+            (ex: Expression) => VariableVariable(ex)
+          }
     ),
 
     static_var_list -> (
-          static_var_list T_COMMA T_VARIABLE
-        | static_var_list T_COMMA T_VARIABLE T_ASSIGN static_expr
-        | T_VARIABLE
-        | T_VARIABLE T_ASSIGN static_expr
+          static_var_list ~ T_COMMA ~ T_VARIABLE ^^ {
+            (ls: List[InitVariable], v: SimpleVariable) =>
+              ls ::: List(InitVariable(v, None))
+          }
+        | static_var_list ~ T_COMMA ~ T_VARIABLE ~ T_ASSIGN ~ static_expr ^^ {
+            (ls: List[InitVariable], v: SimpleVariable, ex: Expression) =>
+              ls ::: List(InitVariable(v, Some(ex)))
+          }
+        | T_VARIABLE ^^ {
+            (v: SimpleVariable) =>
+              List(InitVariable(v, None))
+          }
+        | T_VARIABLE ~ T_ASSIGN ~ static_expr ^^ {
+            (v: SimpleVariable, ex: Expression) =>
+              List(InitVariable(v, Some(ex)))
+          }
     ),
 
     class_statement_list -> (
-          class_statement_list class_statement
-        | /* empty */
+          class_statement_list ~ class_statement ^^ {
+            (ls: (List[MethodDecl], List[PropertyDecl], List[PropertyDecl], List[ClassConstantDecl]), cst: (List[MethodDecl], List[PropertyDecl], List[PropertyDecl], List[ClassConstantDecl])) =>
+            (ls._1 ::: cst._1, ls._2 ::: cst._2, ls._3 ::: cst._3, ls._4 ::: cst._4)
+          }
+        | rhs() ^^ { () => (Nil, Nil, Nil, Nil) }
     ),
 
     class_statement -> (
-          variable_modifiers  class_variable_declaration T_SEMICOLON
-        | class_constant_declaration T_SEMICOLON
-        | method_modifiers T_FUNCTION is_reference T_STRING  T_OPEN_BRACES
-                parameter_list T_CLOSE_BRACES method_body
+          variable_modifiers ~ class_variable_declaration ~ T_SEMICOLON ^^ {
+            (flags: List[MemberFlag], prop: PropertyDecl) =>
+              if (flags contains MFStatic) {
+                (Nil, List(prop), Nil, Nil)
+              } else {
+                (Nil, Nil, List(prop), Nil)
+              }
+          }
+        | class_constant_declaration ~ T_SEMICOLON ^^ {
+            (ccd: ClassConstantDecl) =>
+              (Nil, Nil, Nil, List(ccd))
+          }
+        | method_modifiers ~ T_FUNCTION ~ is_reference ~ T_STRING ~ T_OPEN_BRACES ~
+                parameter_list ~ T_CLOSE_BRACES ~ method_body ^^ {
+            (flags: List[MemberFlag], isRef: Boolean, name: String, params: List[ArgumentDecl], body: Option[Statement]) =>
+              (List(MethodDecl(simpleIdOf(name), flags, params, isRef, body)), Nil, Nil, Nil)
+          }
     ),
 
     method_body -> (
-          T_SEMICOLON /* abstract method */
-        | T_OPEN_CURLY_BRACES inner_statement_list T_CLOSE_CURLY_BRACES
+          T_SEMICOLON ^^ { () => None } /* abstract method */
+        | T_OPEN_CURLY_BRACES ~ inner_statement_list ~ T_CLOSE_CURLY_BRACES ^^ inOpt _
     ),
 
     variable_modifiers -> (
-          non_empty_member_modifiers
-        | T_VAR
+          non_empty_member_modifiers ^^ id _
+        | T_VAR ^^ { () => List(MFPublic) }
     ),
 
     method_modifiers -> (
-          /* empty */
-        | non_empty_member_modifiers
+          _empty_ /* empty */
+        | non_empty_member_modifiers ^^ id _
     ),
 
     non_empty_member_modifiers -> (
-          member_modifier
-        | non_empty_member_modifiers member_modifier
+          member_modifier ^^ inList _
+        | non_empty_member_modifiers ~ member_modifier ^^ {
+          (ls :List[MemberFlag], f: MemberFlag) => ls ::: List(f)
+        }
     ),
 
     member_modifier -> (
-          T_PUBLIC
-        | T_PROTECTED
-        | T_PRIVATE
-        | T_STATIC
-        | T_ABSTRACT
-        | T_FINAL
+          T_PUBLIC ^^     { () => MFPublic }
+        | T_PROTECTED ^^  { () => MFProtected }
+        | T_PRIVATE ^^    { () => MFPrivate }
+        | T_STATIC ^^     { () => MFStatic }
+        | T_ABSTRACT ^^   { () => MFAbstract }
+        | T_FINAL ^^      { () => MFFinal }
     ),
 
     class_variable_declaration -> (
