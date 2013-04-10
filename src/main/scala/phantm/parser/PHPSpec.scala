@@ -307,6 +307,8 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
   val terminals = Terminals
   val nonTerminals = NonTerminals
 
+  case class IntWrapper(v: Int)
+
   precedences(
       left(T_INCLUDE, T_INCLUDE_ONCE, T_EVAL, T_REQUIRE, T_REQUIRE_ONCE),
       left(T_COMMA),
@@ -338,102 +340,113 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
   );
 
   class S                               extends SymbolValue[Program]
-  class top_statement_list              extends SymbolValue[List[Statement]]
-  class top_statement                   extends SymbolValue[List[Statement]]
-  class additional_catches              extends SymbolValue[List[Catch]]
-  class non_empty_additional_catches    extends SymbolValue[List[Catch]]
   class additional_catch                extends SymbolValue[Catch]
-  class variable_list                   extends SymbolValue[List[Variable]]
-  class is_reference                    extends SymbolValue[Boolean]
-  class function_declaration_statement  extends SymbolValue[FunctionDecl]
-  class parameter_list                  extends SymbolValue[List[ArgumentDecl]]
-  class class_declaration_statement     extends SymbolValue[Statement]
-  class class_entry_type                extends SymbolValue[ClassFlag]
-  class extends_from                    extends SymbolValue[Option[StaticClassRef]]
-  class interface_extends_list          extends SymbolValue[List[StaticClassRef]]
-  class implements_list                 extends SymbolValue[List[StaticClassRef]]
-  class interface_list                  extends SymbolValue[List[StaticClassRef]]
-  class foreach_optional_arg            extends SymbolValue[Option[(Variable, Boolean)]]
-  class foreach_variable                extends SymbolValue[(Variable, Boolean)]
-  class for_statement                   extends SymbolValue[Statement]
-  class foreach_statement               extends SymbolValue[Statement]
-  class declare_statement               extends SymbolValue[Statement]
-  class declare_list                    extends SymbolValue[List[String]]
-  class switch_case_list                extends SymbolValue[List[(Option[Expression], Statement)]]
-  class case_list                       extends SymbolValue[List[(Option[Expression], Statement)]]
-  class case_separator                  extends SymbolValue[Option[Nothing]]
-  class while_statement                 extends SymbolValue[Statement]
-  class elseif_list                     extends SymbolValue[List[(Expression, Statement)]]
-  class new_elseif_list                 extends SymbolValue[List[(Expression, Statement)]]
-  class else_single                     extends SymbolValue[Option[Statement]]
-  class new_else_single                 extends SymbolValue[Option[Statement]]
-  class non_empty_parameter_list        extends SymbolValue[List[ArgumentDecl]]
-  class optional_class_type             extends SymbolValue[Option[TypeHint]]
-  class function_call_parameter_list    extends SymbolValue[List[CallArg]]
-  class non_empty_function_call_parameter_list extends SymbolValue[List[CallArg]]
-  class global_var_list                 extends SymbolValue[List[Variable]]
-  class global_var                      extends SymbolValue[Variable]
-  class static_var_list                 extends SymbolValue[List[InitVariable]]
-  class class_statement_list            extends SymbolValue[(List[MethodDecl], List[PropertyDecl], List[PropertyDecl], List[ClassConstantDecl])]
-  class class_statement                 extends SymbolValue[(List[MethodDecl], List[PropertyDecl], List[PropertyDecl], List[ClassConstantDecl])]
-  class method_body                     extends SymbolValue[Option[Statement]]
-  class variable_modifiers              extends SymbolValue[List[MemberFlag]]
-  class method_modifiers                extends SymbolValue[List[MemberFlag]]
-  class non_empty_member_modifiers      extends SymbolValue[List[MemberFlag]]
-  class member_modifier                 extends SymbolValue[MemberFlag]
-  class class_variable_declaration      extends SymbolValue[List[PropertyDecl]]
-  class class_constant_declaration      extends SymbolValue[List[ClassConstantDecl]]
-  class echo_expr_list                  extends SymbolValue[List[Expression]]
-  class for_expr                        extends SymbolValue[List[Expression]]
-  class non_empty_for_expr              extends SymbolValue[List[Expression]]
-  class lexical_vars                    extends SymbolValue[List[ArgumentDecl]]
-  class lexical_var_list                extends SymbolValue[List[ArgumentDecl]]
-  class function_call                   extends SymbolValue[Expression]
-  class class_name                      extends SymbolValue[ClassRef]
-  class fully_qualified_class_name      extends SymbolValue[StaticClassRef]
-  class class_name_reference            extends SymbolValue[ClassRef]
-  class dynamic_class_name_reference    extends SymbolValue[ClassRef]
-  class dynamic_class_name_variable_properties extends SymbolValue[List[ObjectAccess]]
-  class exit_expr                       extends SymbolValue[Option[Expression]]
-  class backticks_expr                  extends SymbolValue[Option[Expression]]
-  class ctor_arguments                  extends SymbolValue[List[CallArg]]
-  class common_scalar                   extends SymbolValue[Expression]
-  class static_expr                     extends SymbolValue[Expression]
-  class static_class_constant           extends SymbolValue[Expression]
-  class scalar                          extends SymbolValue[Expression]
-  class static_array_pair_list          extends SymbolValue[List[(Option[Expression], Expression, Boolean)]]
-  class possible_comma                  extends SymbolValue[Boolean]
-  class non_empty_static_array_pair_list extends SymbolValue[List[(Option[Expression], Expression, Boolean)]]
-  class expr                            extends SymbolValue[Expression]
-  class variable                        extends SymbolValue[Expression]
-  class variable_properties             extends SymbolValue[List[ObjectAccess]]
-  class variable_property               extends SymbolValue[ObjectAccess]
-  class method_or_not                   extends SymbolValue[Option[List[ObjectAccess]]]
-  class variable_without_objects        extends SymbolValue[Variable]
-  class simple_indirect_reference       extends SymbolValue[Int]
-  class static_member                   extends SymbolValue[ClassProperty]
-  class base_variable_with_function_calls extends SymbolValue[Expression]
-  class base_variable                   extends SymbolValue[Variable]
-  class reference_variable              extends SymbolValue[Variable]
-  class compound_variable               extends SymbolValue[Variable]
-  class dim_offset                      extends SymbolValue[Option[Expression]]
-  class object_property                 extends SymbolValue[ObjectAccess]
-  class object_dim_list                 extends SymbolValue[ObjectAccess]
-  class variable_name                   extends SymbolValue[OAScalar]
+  class additional_catches              extends SymbolValue[List[Catch]]
+  class array_pair_list                 extends SymbolValue[List[(Option[Expression], Expression, Boolean)]]
   class assignment_list                 extends SymbolValue[List[Option[Variable]]]
   class assignment_list_element         extends SymbolValue[Option[Variable]]
-  class array_pair_list                 extends SymbolValue[List[(Option[Expression], Expression, Boolean)]]
-  class non_empty_array_pair_list       extends SymbolValue[List[(Option[Expression], Expression, Boolean)]]
+  class backticks_expr                  extends SymbolValue[Option[Expression]]
+  class base_variable                   extends SymbolValue[Variable]
+  class base_variable_with_function_calls extends SymbolValue[Expression]
+  class case_list                       extends SymbolValue[List[(Option[Expression], Statement)]]
+  class case_separator                  extends SymbolValue[Option[Nothing]]
+  class class_constant                  extends SymbolValue[ClassConstant]
+  class class_constant_declaration      extends SymbolValue[List[ClassConstantDecl]]
+  class class_declaration_statement     extends SymbolValue[Statement]
+  class class_entry_type                extends SymbolValue[ClassFlag]
+  class class_name                      extends SymbolValue[ClassRef]
+  class class_name_reference            extends SymbolValue[ClassRef]
+  class class_statement                 extends SymbolValue[(List[MethodDecl], List[PropertyDecl], List[PropertyDecl], List[ClassConstantDecl])]
+  class class_statement_list            extends SymbolValue[(List[MethodDecl], List[PropertyDecl], List[PropertyDecl], List[ClassConstantDecl])]
+  class class_variable_declaration      extends SymbolValue[List[PropertyDecl]]
+  class common_scalar                   extends SymbolValue[Expression]
+  class compound_variable               extends SymbolValue[Variable]
+  class constant_declaration            extends SymbolValue[List[ConstantDecl]]
+  class ctor_arguments                  extends SymbolValue[List[CallArg]]
+  class declare_list                    extends SymbolValue[List[String]]
+  class declare_statement               extends SymbolValue[Statement]
+  class dim_offset                      extends SymbolValue[Option[Expression]]
+  class dynamic_class_name_reference    extends SymbolValue[ClassRef]
+  class dynamic_class_name_variable_properties extends SymbolValue[List[ObjectAccess]]
+  class echo_expr_list                  extends SymbolValue[List[Expression]]
+  class else_single                     extends SymbolValue[Option[Statement]]
+  class elseif_list                     extends SymbolValue[List[(Expression, Statement)]]
   class encaps_list                     extends SymbolValue[Expression]
   class encaps_var                      extends SymbolValue[Variable]
   class encaps_var_offset               extends SymbolValue[Expression]
-  class class_constant                  extends SymbolValue[ClassConstant]
+  class exit_expr                       extends SymbolValue[Option[Expression]]
+  class expr                            extends SymbolValue[Expression]
+  class extends_from                    extends SymbolValue[Option[StaticClassRef]]
+  class for_expr                        extends SymbolValue[List[Expression]]
+  class for_statement                   extends SymbolValue[Statement]
+  class foreach_optional_arg            extends SymbolValue[Option[(Variable, Boolean)]]
+  class foreach_statement               extends SymbolValue[Statement]
+  class foreach_variable                extends SymbolValue[(Variable, Boolean)]
+  class fully_qualified_class_name      extends SymbolValue[StaticClassRef]
+  class function_call                   extends SymbolValue[Expression]
+  class function_call_parameter_list    extends SymbolValue[List[CallArg]]
+  class function_declaration_statement  extends SymbolValue[FunctionDecl]
+  class global_var                      extends SymbolValue[Variable]
+  class global_var_list                 extends SymbolValue[List[Variable]]
+  class implements_list                 extends SymbolValue[List[StaticClassRef]]
+  class inner_statement                 extends SymbolValue[Statement]
+  class inner_statement_list            extends SymbolValue[List[Statement]]
+  class interface_extends_list          extends SymbolValue[List[StaticClassRef]]
+  class interface_list                  extends SymbolValue[List[StaticClassRef]]
+  class internal_functions_in_yacc      extends SymbolValue[Expression]
+  class is_reference                    extends SymbolValue[Option[Boolean]]
+  class isset_variables                 extends SymbolValue[List[Variable]]
+  class lexical_var_list                extends SymbolValue[List[ArgumentDecl]]
+  class lexical_vars                    extends SymbolValue[List[ArgumentDecl]]
+  class member_modifier                 extends SymbolValue[MemberFlag]
+  class method_body                     extends SymbolValue[Option[Statement]]
+  class method_modifiers                extends SymbolValue[List[MemberFlag]]
+  class method_or_not                   extends SymbolValue[Option[List[ObjectAccess]]]
+  class namespace_name                  extends SymbolValue[NSIdentifier]
+  class new_else_single                 extends SymbolValue[Option[Statement]]
+  class new_elseif_list                 extends SymbolValue[List[(Expression, Statement)]]
+  class non_empty_additional_catches    extends SymbolValue[List[Catch]]
+  class non_empty_array_pair_list       extends SymbolValue[List[(Option[Expression], Expression, Boolean)]]
+  class non_empty_for_expr              extends SymbolValue[List[Expression]]
+  class non_empty_function_call_parameter_list extends SymbolValue[List[CallArg]]
+  class non_empty_member_modifiers      extends SymbolValue[List[MemberFlag]]
+  class non_empty_parameter_list        extends SymbolValue[List[ArgumentDecl]]
+  class non_empty_static_array_pair_list extends SymbolValue[List[(Option[Expression], Expression, Boolean)]]
+  class object_dim_list                 extends SymbolValue[ObjectAccess]
+  class object_property                 extends SymbolValue[ObjectAccess]
+  class optional_class_type             extends SymbolValue[Option[TypeHint]]
+  class parameter_list                  extends SymbolValue[List[ArgumentDecl]]
+  class possible_comma                  extends SymbolValue[Option[Boolean]]
+  class reference_variable              extends SymbolValue[Variable]
+  class scalar                          extends SymbolValue[Expression]
+  class simple_indirect_reference       extends SymbolValue[IntWrapper]
+  class statement                       extends SymbolValue[Statement]
+  class static_array_pair_list          extends SymbolValue[List[(Option[Expression], Expression, Boolean)]]
+  class static_class_constant           extends SymbolValue[ClassConstant]
+  class static_expr                     extends SymbolValue[Expression]
+  class static_member                   extends SymbolValue[ClassProperty]
+  class static_var_list                 extends SymbolValue[List[InitVariable]]
+  class switch_case_list                extends SymbolValue[List[(Option[Expression], Statement)]]
+  class top_statement                   extends SymbolValue[List[Statement]]
+  class top_statement_list              extends SymbolValue[List[Statement]]
+  class use_declaration                 extends SymbolValue[Statement]
+  class use_declarations                extends SymbolValue[List[Statement]]
+  class variable                        extends SymbolValue[Expression]
+  class variable_list                   extends SymbolValue[List[Variable]]
+  class variable_modifiers              extends SymbolValue[List[MemberFlag]]
+  class variable_name                   extends SymbolValue[OAScalar]
+  class variable_properties             extends SymbolValue[List[ObjectAccess]]
+  class variable_property               extends SymbolValue[ObjectAccess]
+  class variable_without_objects        extends SymbolValue[Variable]
+  class while_statement                 extends SymbolValue[Statement]
 
   // Terminals
   class T_STRING                        extends SymbolValue[String]
+  class T_NUM_STRING                    extends SymbolValue[String]
   class T_STRING_VARNAME                extends SymbolValue[String]
   class T_LNUMBER                       extends SymbolValue[PHPInteger]
   class T_DNUMBER                       extends SymbolValue[PHPFloat]
+  class T_CONSTANT_ENCAPSED_STRING      extends SymbolValue[PHPString]
   class T_ENCAPSED_AND_WHITESPACE       extends SymbolValue[PHPString]
   class T_INLINE_HTML                   extends SymbolValue[String]
   class T_VARIABLE                      extends SymbolValue[SimpleVariable]
@@ -498,21 +511,21 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
 
     top_statement -> (
         statement ^^ inList[Statement] _
-      | function_declaration_statement ^^ inList _
-      | class_declaration_statement ^^ inList _
+      | function_declaration_statement ^^ inList[FunctionDecl] _
+      | class_declaration_statement ^^ inList[Statement] _
       | T_HALT_COMPILER ~ T_OPEN_BRACES ~ T_CLOSE_BRACES ~ T_SEMICOLON ^^ { () => notyet() }
       | T_NAMESPACE ~ namespace_name ~ T_SEMICOLON ^^ { (nsid: NSIdentifier) => List(NamespaceStart(nsid)) }
       | T_NAMESPACE ~ namespace_name ~ T_OPEN_CURLY_BRACES ~
         top_statement_list ~ T_CLOSE_CURLY_BRACES ^^ { (nsid: NSIdentifier, stmts: List[Statement]) => List(Namespaced(nsid, stmts)) }
       | T_NAMESPACE ~ T_OPEN_CURLY_BRACES ~
         top_statement_list ~ T_CLOSE_CURLY_BRACES ^^ { (stmts: List[Statement]) => List(Namespaced(NSIdentifier(NSResolved, Nil), stmts))  }
-      | T_USE ~ use_declarations ~ T_SEMICOLON ^^ id _
-      | constant_declaration ~ T_SEMICOLON ^^ id _
+      | T_USE ~ use_declarations ~ T_SEMICOLON ^^ id[List[Statement]] _
+      | constant_declaration ~ T_SEMICOLON ^^ id[List[ConstantDecl]] _
     ),
 
     use_declarations -> (
         use_declarations ~ T_COMMA ~ use_declaration ^^ { (uds: List[Statement], ud: Statement) => uds ::: ud :: Nil }
-        | use_declaration ^^ inList _
+        | use_declaration ^^ inList[Statement] _
     ),
 
     use_declaration -> (
@@ -537,9 +550,9 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
     ),
 
     inner_statement -> (
-          statement ^^ id _
-        | function_declaration_statement ^^ id _
-        | class_declaration_statement ^^ id _
+          statement ^^ id[Statement] _
+        | function_declaration_statement ^^ id[FunctionDecl] _
+        | class_declaration_statement ^^ id[Statement] _
         | T_HALT_COMPILER ~ T_OPEN_BRACES ~ T_CLOSE_BRACES ~ T_SEMICOLON ^^ { () => notyet() }
     ),
 
@@ -552,8 +565,8 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
               }.get
           }
         | T_IF ~ T_OPEN_BRACES ~ expr ~ T_CLOSE_BRACES ~ T_COLON  ~ inner_statement_list  ~ new_elseif_list ~ new_else_single ~ T_ENDIF ~ T_SEMICOLON ^^ {
-            (c: Expression, then: Statement, elsifs: List[(Expression, Statement)], elze: Option[Statement]) =>
-              ((c, then) :: elsifs).foldLeft(elze) {
+            (c: Expression, then: List[Statement], elsifs: List[(Expression, Statement)], elze: Option[Statement]) =>
+              ((c, Block(then)) :: elsifs).foldLeft(elze) {
                 case (elze, (c, then)) => Some(If(c, then, elze))
               }.get
           }
@@ -651,8 +664,8 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
             T_OPEN_CURLY_BRACES ~ inner_statement_list ~ T_CLOSE_CURLY_BRACES ~
             additional_catches ^^ {
 
-          (st: Block, cl: StaticClassRef, v: SimpleVariable, clbody: Block, catches: List[Catch]) =>
-            Try(st, Catch(cl, v, clbody) :: catches)
+          (st: List[Statement], cl: StaticClassRef, v: SimpleVariable, clbody: List[Statement], catches: List[Catch]) =>
+            Try(Block(st), Catch(cl, v, Block(clbody)) :: catches)
         }
         | T_THROW ~ expr ~ T_SEMICOLON ^^ {
           (ex: Expression) =>
@@ -669,12 +682,12 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
     ),
 
     additional_catches -> (
-          non_empty_additional_catches ^^ id _
+          non_empty_additional_catches ^^ id[List[Catch]] _
         | _empty_
     ),
 
     non_empty_additional_catches -> (
-          additional_catch ^^ inList _
+          additional_catch ^^ inList[Catch] _
         | non_empty_additional_catches ~ additional_catch ^^ {
           (ls: List[Catch], c: Catch) =>
             ls ::: List(c)
@@ -683,30 +696,30 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
 
     additional_catch -> (
         T_CATCH ~ T_OPEN_BRACES ~ fully_qualified_class_name ~ T_VARIABLE ~ T_CLOSE_BRACES ~ T_OPEN_CURLY_BRACES ~ inner_statement_list ~ T_CLOSE_CURLY_BRACES ^^ {
-          (cl: StaticClassRef, v: SimpleVariable, b: Block) =>
-            Catch(cl, v, b)
+          (cl: StaticClassRef, v: SimpleVariable, b: List[Statement]) =>
+            Catch(cl, v, Block(b))
         }
     ),
 
     variable_list -> (
-          variable ^^ inList _
+        variable ^^ { (v: Expression) => List(writeable(v)) }
         | variable_list ~ T_COMMA ~ variable ^^ {
-          (ls: List[Variable], v: Variable) =>
-            ls ::: List(v)
+          (ls: List[Variable], v: Expression) =>
+            ls ::: List(writeable(v))
         }
     ),
 
     is_reference -> (
-          rhs() ^^ { () => false }
-        | T_BITWISE_AND ^^ { () => true }
+          rhs() ^^ { () => None }
+        | T_BITWISE_AND ^^ { () => Some(true) }
     ),
 
     function_declaration_statement -> (
           T_FUNCTION ~ is_reference ~ T_STRING ~
                 T_OPEN_BRACES ~ parameter_list ~ T_CLOSE_BRACES ~ T_OPEN_CURLY_BRACES ~ inner_statement_list ~ T_CLOSE_CURLY_BRACES ^^ {
 
-            (byRef: Boolean, name: String, params: List[ArgumentDecl], body: Block) =>
-              FunctionDecl(idOf(name), params, byRef, body)
+            (byRef: Option[Boolean], name: String, params: List[ArgumentDecl], body: List[Statement]) =>
+              FunctionDecl(idOf(name), params, byRef.isDefined, Block(body))
           }
     ),
 
@@ -725,7 +738,7 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
                 T_OPEN_CURLY_BRACES ~
                     class_statement_list ~
                 T_CLOSE_CURLY_BRACES ^^ {
-                  (flag: ClassFlag, name: String, ifaces: List[StaticClassRef], stmts: (List[MethodDecl], List[PropertyDecl], List[PropertyDecl], List[ClassConstantDecl])) =>
+                  (name: String, ifaces: List[StaticClassRef], stmts: (List[MethodDecl], List[PropertyDecl], List[PropertyDecl], List[ClassConstantDecl])) =>
             val (methods, static_props, props, consts) = stmts
             InterfaceDecl(idOf(name), ifaces, methods, consts)
           }
@@ -746,16 +759,16 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
 
     interface_extends_list -> (
           _empty_
-        | T_EXTENDS ~ interface_list ^^ id _
+        | T_EXTENDS ~ interface_list ^^ id[List[StaticClassRef]] _
     ),
 
     implements_list -> (
           _empty_
-        | T_IMPLEMENTS ~ interface_list ^^ id _
+        | T_IMPLEMENTS ~ interface_list ^^ id[List[StaticClassRef]] _
     ),
 
     interface_list -> (
-          fully_qualified_class_name ^^ inList _
+          fully_qualified_class_name ^^ inList[StaticClassRef] _
         | interface_list ~ T_COMMA ~ fully_qualified_class_name ^^ {
           (ls: List[StaticClassRef], r: StaticClassRef) =>
             ls ::: List(r)
@@ -764,27 +777,28 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
 
     foreach_optional_arg -> (
           _emptyOpt_
-        | T_DOUBLE_ARROW ~ foreach_variable ^^ inOpt _
+        | T_DOUBLE_ARROW ~ foreach_variable ^^ inOpt[(Variable, Boolean)] _
     ),
 
     foreach_variable -> (
-          variable ^^ { (v: Variable) => (v, false) }
-        | T_BITWISE_AND ~ variable ^^ { (v: Variable) => (v, true) }
+          variable ^^ { (v: Expression) => (writeable(v), false) }
+        | T_BITWISE_AND ~ variable ^^ { (v: Expression) => (writeable(v), true) }
     ),
 
     for_statement -> (
-          statement ^^ id _
-        | T_COLON ~ inner_statement_list ~ T_ENDFOR ~ T_SEMICOLON ^^ id _
+          statement ^^ id[Statement] _
+        | T_COLON ~ inner_statement_list ~ T_ENDFOR ~ T_SEMICOLON ^^ { (ls: List[Statement]) => Block(ls) }
     ),
 
     foreach_statement -> (
-          statement ^^ id _
-        | T_COLON ~ inner_statement_list ~ T_ENDFOREACH ~ T_SEMICOLON ^^ id _
+          statement ^^ id[Statement] _
+        | T_COLON ~ inner_statement_list ~ T_ENDFOREACH ~ T_SEMICOLON ^^ { (ls: List[Statement]) => Block(ls) }
+
     ),
 
     declare_statement -> (
-          statement ^^ id _
-        | T_COLON ~ inner_statement_list ~ T_ENDDECLARE ~ T_SEMICOLON ^^ id _
+          statement ^^ id[Statement] _
+        | T_COLON ~ inner_statement_list ~ T_ENDDECLARE ~ T_SEMICOLON ^^ { (ls: List[Statement]) => Block(ls) }
     ),
 
     /* Todo */
@@ -798,21 +812,21 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
     ),
 
     switch_case_list -> (
-          T_OPEN_CURLY_BRACES ~ case_list ~ T_CLOSE_CURLY_BRACES ^^ id _
-        | T_OPEN_CURLY_BRACES ~ T_SEMICOLON ~ case_list ~ T_CLOSE_CURLY_BRACES ^^ id _
-        | T_COLON ~ case_list ~ T_ENDSWITCH ~ T_SEMICOLON ^^ id _
-        | T_COLON ~ T_SEMICOLON ~ case_list ~ T_ENDSWITCH ~ T_SEMICOLON ^^ id _
+          T_OPEN_CURLY_BRACES ~ case_list ~ T_CLOSE_CURLY_BRACES ^^ id[List[(Option[Expression], Statement)]] _
+        | T_OPEN_CURLY_BRACES ~ T_SEMICOLON ~ case_list ~ T_CLOSE_CURLY_BRACES ^^ id[List[(Option[Expression], Statement)]] _
+        | T_COLON ~ case_list ~ T_ENDSWITCH ~ T_SEMICOLON ^^ id[List[(Option[Expression], Statement)]] _
+        | T_COLON ~ T_SEMICOLON ~ case_list ~ T_ENDSWITCH ~ T_SEMICOLON ^^ id[List[(Option[Expression], Statement)]] _
     ),
 
     case_list -> (
           _empty_
         | case_list ~ T_CASE ~ expr ~ case_separator ~ inner_statement_list ^^ {
-          (ls: List[(Option[Expression], Statement)], ex: Expression, st: Statement) =>
-            ls ::: List((Some(ex), st))
+          (ls: List[(Option[Expression], Statement)], ex: Expression, o: Option[_], st: List[Statement]) =>
+            ls ::: List((Some(ex), Block(st)))
         }
         | case_list ~ T_DEFAULT ~ case_separator ~ inner_statement_list ^^ {
-          (ls: List[(Option[Expression], Statement)], st: Statement) =>
-            ls ::: List((None, st))
+          (ls: List[(Option[Expression], Statement)], o: Option[_], st: List[Statement]) =>
+            ls ::: List((None, Block(st)))
         }
     ),
 
@@ -822,8 +836,10 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
     ),
 
     while_statement -> (
-          statement ^^ id _
-        | T_COLON ~ inner_statement_list ~ T_ENDWHILE ~ T_SEMICOLON ^^ id _
+          statement ^^ id[Statement] _
+        | T_COLON ~ inner_statement_list ~ T_ENDWHILE ~ T_SEMICOLON ^^ {
+            (ls: List[Statement]) => Block(ls)
+        }
     ),
 
     elseif_list -> (
@@ -837,23 +853,23 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
     new_elseif_list -> (
           _empty_
         | new_elseif_list ~ T_ELSEIF ~ T_OPEN_BRACES ~ expr ~ T_CLOSE_BRACES ~ T_COLON ~ inner_statement_list ^^ {
-          (ls: List[(Expression, Statement)], ex: Expression, st: Statement) =>
-            ls ::: List((ex, st))
+          (ls: List[(Expression, Statement)], ex: Expression, st: List[Statement]) =>
+            ls ::: List((ex, Block(st)))
         }
     ),
 
     else_single -> (
           _emptyOpt_ /* empty */
-        | T_ELSE ~ statement ^^ inOpt _
+        | T_ELSE ~ statement ^^ inOpt[Statement] _
     ),
 
     new_else_single -> (
           _emptyOpt_ /* empty */
-        | T_ELSE ~ T_COLON ~ inner_statement_list ^^ inOpt _
+        | T_ELSE ~ T_COLON ~ inner_statement_list ^^ { (ls: List[Statement] ) => Some(Block(ls)) }
     ),
 
     parameter_list -> (
-          non_empty_parameter_list ^^ id _
+          non_empty_parameter_list ^^ id[List[ArgumentDecl]] _
         | _empty_ /* empty */
     ),
 
@@ -903,7 +919,7 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
     ),
 
     function_call_parameter_list -> (
-          non_empty_function_call_parameter_list ^^ id _
+          non_empty_function_call_parameter_list ^^ id[List[CallArg]] _
         | _empty_ /* empty */
     ),
 
@@ -931,13 +947,13 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
             (gls: List[Variable], v: Variable) =>
               gls ::: List(v)
           }
-        | global_var ^^ inList _
+        | global_var ^^ inList[Variable] _
     ),
 
     global_var -> (
-          T_VARIABLE ^^ id _
+          T_VARIABLE ^^ { (ex: Expression) => writeable(ex) }
         | T_DOLLAR ~ variable ^^ {
-            (v: Variable) => VariableVariable(v)
+            (ex: Expression) => VariableVariable(ex)
           }
         | T_DOLLAR ~ T_OPEN_CURLY_BRACES ~ expr ~ T_CLOSE_CURLY_BRACES ^^ {
             (ex: Expression) => VariableVariable(ex)
@@ -973,41 +989,43 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
 
     class_statement -> (
           variable_modifiers ~ class_variable_declaration ~ T_SEMICOLON ^^ {
-            (flags: List[MemberFlag], prop: PropertyDecl) =>
+            (flags: List[MemberFlag], props: List[PropertyDecl]) =>
               if (flags contains MFStatic) {
-                (Nil, List(prop), Nil, Nil)
+                (Nil, props, Nil, Nil)
               } else {
-                (Nil, Nil, List(prop), Nil)
+                (Nil, Nil, props, Nil)
               }
           }
         | class_constant_declaration ~ T_SEMICOLON ^^ {
-            (ccd: ClassConstantDecl) =>
-              (Nil, Nil, Nil, List(ccd))
+            (ccds: List[ClassConstantDecl]) =>
+              (Nil, Nil, Nil, ccds)
           }
         | method_modifiers ~ T_FUNCTION ~ is_reference ~ T_STRING ~ T_OPEN_BRACES ~
                 parameter_list ~ T_CLOSE_BRACES ~ method_body ^^ {
-            (flags: List[MemberFlag], isRef: Boolean, name: String, params: List[ArgumentDecl], body: Option[Statement]) =>
-              (List(MethodDecl(simpleIdOf(name), flags, params, isRef, body)), Nil, Nil, Nil)
+            (flags: List[MemberFlag], isRef: Option[Boolean], name: String, params: List[ArgumentDecl], body: Option[Statement]) =>
+              (List(MethodDecl(simpleIdOf(name), flags, params, isRef.isDefined, body)), Nil, Nil, Nil)
           }
     ),
 
     method_body -> (
           T_SEMICOLON ^^ { () => None } /* abstract method */
-        | T_OPEN_CURLY_BRACES ~ inner_statement_list ~ T_CLOSE_CURLY_BRACES ^^ inOpt _
+        | T_OPEN_CURLY_BRACES ~ inner_statement_list ~ T_CLOSE_CURLY_BRACES ^^ {
+            (ls: List[Statement]) => Some(Block(ls))
+          }
     ),
 
     variable_modifiers -> (
-          non_empty_member_modifiers ^^ id _
+          non_empty_member_modifiers ^^ id[List[MemberFlag]] _
         | T_VAR ^^ { () => List(MFPublic) }
     ),
 
     method_modifiers -> (
           _empty_ /* empty */
-        | non_empty_member_modifiers ^^ id _
+        | non_empty_member_modifiers ^^ id[List[MemberFlag]] _
     ),
 
     non_empty_member_modifiers -> (
-          member_modifier ^^ inList _
+          member_modifier ^^ inList[MemberFlag] _
         | non_empty_member_modifiers ~ member_modifier ^^ {
           (ls :List[MemberFlag], f: MemberFlag) => ls ::: List(f)
         }
@@ -1065,7 +1083,7 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
 
     for_expr -> (
           _empty_ /* empty */
-        | non_empty_for_expr ^^ id _
+        | non_empty_for_expr ^^ id[List[Expression]] _
     ),
 
     non_empty_for_expr -> (
@@ -1082,7 +1100,7 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
 
     lexical_vars -> (
           _empty_ /* empty */
-        | T_USE ~ T_OPEN_BRACES ~ lexical_var_list ~ T_CLOSE_BRACES ^^ id _
+        | T_USE ~ T_OPEN_BRACES ~ lexical_var_list ~ T_CLOSE_BRACES ^^ id[List[ArgumentDecl]] _
     ),
 
     lexical_var_list -> (
@@ -1190,8 +1208,8 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
     ),
 
     class_name_reference -> (
-          class_name ^^ id _
-        | dynamic_class_name_reference ^^ id _
+          class_name ^^ id[ClassRef] _
+        | dynamic_class_name_reference ^^ id[ClassRef] _
     ),
 
     dynamic_class_name_reference -> (
@@ -1217,25 +1235,25 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
     exit_expr -> (
           _emptyOpt_ /* empty */
         | T_OPEN_BRACES ~ T_CLOSE_BRACES ^^ { () => None }
-        | T_OPEN_BRACES ~ expr ~ T_CLOSE_BRACES  ^^ inOpt _
+        | T_OPEN_BRACES ~ expr ~ T_CLOSE_BRACES  ^^ inOpt[Expression] _
     ),
 
     backticks_expr -> (
           _emptyOpt_ /* empty */
         | T_STRING ^^ { (s: String) => PHPString(s) }
-        | T_ENCAPSED_AND_WHITESPACE  ^^ id _
-        | encaps_list ^^ id _
+        | T_ENCAPSED_AND_WHITESPACE  ^^ id[PHPString] _
+        | encaps_list ^^ id[Expression] _
     ),
 
     ctor_arguments -> (
           _empty_ /* empty */
-        | T_OPEN_BRACES ~ function_call_parameter_list ~ T_CLOSE_BRACES ^^ id _
+        | T_OPEN_BRACES ~ function_call_parameter_list ~ T_CLOSE_BRACES ^^ id[List[CallArg]] _
     ),
 
     common_scalar -> (
-          T_LNUMBER ^^ id _
-        | T_DNUMBER ^^ id _
-        | T_CONSTANT_ENCAPSED_STRING ^^ id _
+          T_LNUMBER ^^ id[PHPInteger] _
+        | T_DNUMBER ^^ id[PHPFloat] _
+        | T_CONSTANT_ENCAPSED_STRING ^^ id[PHPString] _
         | T_LINE        ^^ { () => MCLine() }
         | T_FILE        ^^ { () => MCFile() }
         | T_DIR         ^^ { () => MCDir() }
@@ -1243,13 +1261,13 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
         | T_METHOD_C    ^^ { () => MCMethod() }
         | T_FUNC_C      ^^ { () => MCFunction() }
         | T_NS_C        ^^ { () => MCNamespace() }
-        | T_START_HEREDOC ~ T_ENCAPSED_AND_WHITESPACE ~ T_END_HEREDOC ^^ id _
-        | T_START_HEREDOC ~ T_CONSTANT_ENCAPSED_STRING ~ T_END_HEREDOC ^^ id _
+        | T_START_HEREDOC ~ T_ENCAPSED_AND_WHITESPACE ~ T_END_HEREDOC ^^ id[PHPString] _
+        | T_START_HEREDOC ~ T_CONSTANT_ENCAPSED_STRING ~ T_END_HEREDOC ^^ id[PHPString] _
         | T_START_HEREDOC ~ T_END_HEREDOC ^^ { () => PHPString("") }
     ),
 
     static_expr -> (
-          common_scalar ^^ id _
+          common_scalar ^^ id[Expression] _
         | namespace_name ^^ {
           (nsid: NSIdentifier) =>
             staticConstant(nsid)
@@ -1259,7 +1277,7 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
             staticConstant(nsid.asCurrent)
           }
         | T_NS_SEPARATOR ~ namespace_name ^^ { (nsid: NSIdentifier) => staticConstant(nsid.asGlobal) }
-        | T_PLUS ~ static_expr ^^ id _
+        | T_PLUS ~ static_expr ^^ id[Expression] _
         | T_MINUS ~ static_expr ^^ {
             (ex: Expression) =>
               Minus(PHPInteger(0), ex)
@@ -1268,7 +1286,7 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
             (arrentries: List[(Option[Expression], Expression, Boolean)]) =>
               Array(arrentries)
           }
-        | static_class_constant ^^ id _
+        | static_class_constant ^^ id[ClassConstant] _
     ),
 
     static_class_constant -> (
@@ -1279,7 +1297,7 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
     ),
 
     scalar -> (
-          class_constant ^^ id _
+          class_constant ^^ id[ClassConstant] _
         | namespace_name ^^ {
             (nsid: NSIdentifier) =>
               staticConstant(nsid)
@@ -1292,22 +1310,22 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
             (nsid: NSIdentifier) =>
               staticConstant(nsid.asGlobal)
           }
-        | common_scalar ^^ id _
-        | T_DOUBLE_QUOTE ~ encaps_list ~ T_DOUBLE_QUOTE ^^ id _
-        | T_DOUBLE_QUOTE ~ T_ENCAPSED_AND_WHITESPACE ~ T_DOUBLE_QUOTE ^^ id _
-        | T_START_HEREDOC ~ encaps_list ~ T_END_HEREDOC ^^ id _
+        | common_scalar ^^ id[Expression] _
+        | T_DOUBLE_QUOTE ~ encaps_list ~ T_DOUBLE_QUOTE ^^ id[Expression] _
+        | T_DOUBLE_QUOTE ~ T_ENCAPSED_AND_WHITESPACE ~ T_DOUBLE_QUOTE ^^ id[PHPString] _
+        | T_START_HEREDOC ~ encaps_list ~ T_END_HEREDOC ^^ id[Expression] _
     ),
 
     static_array_pair_list -> (
           _empty_ /* empty */
         | non_empty_static_array_pair_list ~ possible_comma ^^ {
-          (ls: List[(Option[Expression], Expression, Boolean)], s: Boolean) => ls
+          (ls: List[(Option[Expression], Expression, Boolean)], s: Option[Boolean]) => ls
         }
     ),
 
     possible_comma -> (
-          rhs() ^^ { () => false } /* empty */
-        | T_COMMA ^^ { () => true }
+          rhs() ^^ { () => None } /* empty */
+        | T_COMMA ^^ { () => Some(true) }
     ),
 
     non_empty_static_array_pair_list -> (
@@ -1330,9 +1348,9 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
     ),
 
     expr -> (
-          variable ^^ id _
+          variable ^^ id[Expression] _
         | T_LIST ~ T_OPEN_BRACES ~  assignment_list ~ T_CLOSE_BRACES ~ T_ASSIGN ~ expr ^^ {
-            () => notyet()
+            (vs: List[Option[Variable]], ex: Expression) => notyet()
           }
         | variable ~ T_ASSIGN ~ expr ^^ {
             (v: Expression, ex: Expression) =>
@@ -1522,7 +1540,7 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
             (ex: Expression, cr: ClassRef) =>
               InstanceOf(ex, cr)
           }
-        | T_OPEN_BRACES ~ expr ~ T_CLOSE_BRACES ^^ id _
+        | T_OPEN_BRACES ~ expr ~ T_CLOSE_BRACES ^^ id[Expression] _
         | expr ~ T_QUESTION ~
             expr ~ T_COLON ~
             expr ^^ {
@@ -1534,7 +1552,7 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
             (c: Expression, e: Expression) =>
               Ternary(c, None, e)
           }
-        | internal_functions_in_yacc ^^ id _
+        | internal_functions_in_yacc ^^ id[Expression] _
         | T_INT_CAST ~ expr ^^ {
             (ex: Expression) =>
               Cast(CastInt, ex)
@@ -1571,14 +1589,14 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
             (ex: Expression) =>
               Silence(ex)
           }
-        | scalar ^^ id _
+        | scalar ^^ id[Expression] _
         | T_ARRAY ~ T_OPEN_BRACES ~ array_pair_list ~ T_CLOSE_BRACES ^^ {
             (al: List[(Option[Expression], Expression, Boolean)]) =>
               Array(al)
           }
         | T_BACKTICK ~ backticks_expr ~ T_BACKTICK ^^ {
-            (cmd: String) =>
-              Execute(cmd)
+            (cmd: Option[Expression]) =>
+              Execute("???")
           }
         | T_PRINT ~ expr ^^ {
             (ex: Expression) =>
@@ -1586,8 +1604,8 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
           }
         | T_FUNCTION ~ is_reference ~ T_OPEN_BRACES ~ 
                 parameter_list ~ T_CLOSE_BRACES ~ lexical_vars ~ T_OPEN_CURLY_BRACES ~ inner_statement_list ~ T_CLOSE_CURLY_BRACES ^^ {
-            (isRef: Boolean, params: List[ArgumentDecl], vars: List[ArgumentDecl], body: Statement) =>
-              Closure(params, vars, isRef, body)
+            (isRef: Option[Boolean], params: List[ArgumentDecl], vars: List[ArgumentDecl], body: List[Statement]) =>
+              Closure(params, vars, isRef.isDefined, Block(body))
           }
     ),
 
@@ -1597,7 +1615,7 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
             (ex: Expression, oa: ObjectAccess, method: Option[List[CallArg]], ls: List[ObjectAccess]) =>
               deriveOAList(ex, maybeMethod(oa, method) :: ls)
           }
-        | base_variable_with_function_calls ^^ id _
+        | base_variable_with_function_calls ^^ id[Expression] _
     ),
 
     variable_properties -> (
@@ -1623,11 +1641,11 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
     ),
 
     variable_without_objects -> (
-          reference_variable ^^ id _
+          reference_variable ^^ id[Variable] _
         | simple_indirect_reference ~ reference_variable  ^^ {
-            (cnt: Int, v: Variable) =>
+            (cnt: IntWrapper, v: Variable) =>
               var r = v
-              for (n <- 0 until cnt) r = VariableVariable(r)
+              for (n <- 0 until cnt.v) r = VariableVariable(r)
               r
           }
     ),
@@ -1644,19 +1662,19 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
     ),
 
     base_variable_with_function_calls -> (
-          base_variable ^^ id _
-        | function_call ^^ id _
+          base_variable ^^ id[Variable] _
+        | function_call ^^ id[Expression] _
     ),
 
     base_variable -> (
-          reference_variable ^^ id _
+          reference_variable ^^ id[Variable] _
         | simple_indirect_reference ~ reference_variable ^^ {
-            (cnt: Int, v: Variable) =>
+            (cnt: IntWrapper, v: Variable) =>
               var r = v
-              for (n <- 0 until cnt) r = VariableVariable(r)
+              for (n <- 0 until cnt.v) r = VariableVariable(r)
               r
           }
-        | static_member ^^ id _
+        | static_member ^^ id[ClassProperty] _
     ),
 
     reference_variable -> (
@@ -1671,11 +1689,11 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
             (v: Variable, off: Expression) =>
               ArrayEntry(v, off)
           }
-        | compound_variable ^^ id _
+        | compound_variable ^^ id[Variable] _
     ),
 
     compound_variable -> (
-          T_VARIABLE ^^ id _
+          T_VARIABLE ^^ id[SimpleVariable] _
         | T_DOLLAR ~ T_OPEN_CURLY_BRACES ~ expr ~ T_CLOSE_CURLY_BRACES ^^ {
             (ex: Expression) =>
               VariableVariable(ex)
@@ -1684,11 +1702,11 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
 
     dim_offset -> (
           _emptyOpt_ /* empty */
-        | expr ^^ inOpt _
+        | expr ^^ inOpt[Expression] _
     ),
 
     object_property -> (
-          object_dim_list ^^ id _
+          object_dim_list ^^ id[ObjectAccess] _
         | variable_without_objects ^^ { (ex: Expression) => OAExpression(ex) }
     ),
 
@@ -1711,7 +1729,7 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
                   OAArray(oa, List(Some(ex)))
               }
           }
-        | variable_name ^^ id _
+        | variable_name ^^ id[ObjectAccess] _
     ),
 
     variable_name -> (
@@ -1727,24 +1745,26 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
 
     simple_indirect_reference -> (
           T_DOLLAR ^^ {
-            () => 1
+            () => new IntWrapper(1)
           }
         | simple_indirect_reference ~ T_DOLLAR ^^ {
-            (v: Int) => v+1
+            (w: IntWrapper) => w.copy(v = w.v+1)
           }
     ),
 
     assignment_list -> (
           assignment_list ~ T_COMMA ~ assignment_list_element ^^ {
-            () =>
+            (ls: List[Option[Variable]], v: Option[Variable]) =>
+              ls ::: List(v)
           }
         | assignment_list_element ^^ {
-            () =>
+            (v: Option[Variable]) =>
+              List(v)
           }
     ),
 
     assignment_list_element -> (
-          variable ^^ { (v: Variable) => Some(v) }
+          variable ^^ { (v: Expression) => Some(v) }
         | T_LIST ~ T_OPEN_BRACES ~  assignment_list ~ T_CLOSE_BRACES ^^ {
             (ls: List[Option[Variable]]) =>
               Some(ListVar(ls))
@@ -1755,7 +1775,7 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
     array_pair_list -> (
           _empty_ /* empty */
         | non_empty_array_pair_list ~ possible_comma  ^^ {
-            (ls: List[(Option[Expression], Expression, Boolean)], b: Boolean) =>
+            (ls: List[(Option[Expression], Expression, Boolean)], b: Option[Boolean]) =>
               ls
           }
     ),
@@ -1816,7 +1836,7 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
 
 
     encaps_var -> (
-          T_VARIABLE  ^^ id _
+          T_VARIABLE  ^^ id[SimpleVariable] _
         | T_VARIABLE ~ T_OPEN_RECT_BRACES ~ encaps_var_offset ~ T_CLOSE_RECT_BRACES ^^ {
             (v: SimpleVariable, off: Expression) =>
               ArrayEntry(v, off)
@@ -1835,15 +1855,17 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
             (v: String, off: Expression) =>
               ArrayEntry(SimpleVariable(simpleIdOf(v)), off)
           }
-        | T_CURLY_OPEN ~ variable ~ T_CLOSE_CURLY_BRACES ^^ id _
+        | T_CURLY_OPEN ~ variable ~ T_CLOSE_CURLY_BRACES ^^ id[Expression] _
     ),
 
     encaps_var_offset -> (
           T_STRING ^^ {
             (s: String) => PHPString(s)
           }
-        | T_NUM_STRING ^^ id _
-        | T_VARIABLE ^^ id _
+        | T_NUM_STRING ^^ {
+            (s: String) => PHPString(s)
+          }
+        | T_VARIABLE ^^ id[SimpleVariable] _
     ),
 
     internal_functions_in_yacc -> (
@@ -1851,7 +1873,7 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
             (vs: List[Variable]) => Isset(vs)
           }
         | T_EMPTY ~ T_OPEN_BRACES ~ variable ~ T_CLOSE_BRACES ^^ {
-            (v: Variable) => Empty(v)
+            (v: Expression) => Empty(writeable(v))
           }
         | T_INCLUDE ~ expr ^^ {
             (e: Expression) => Include(e, false)
@@ -1871,9 +1893,11 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
     ),
 
     isset_variables -> (
-          variable ^^ inList _
+          variable ^^ {
+            (ex: Expression) => List(writeable(ex))
+          }
         | isset_variables ~ T_COMMA ~ variable ^^ {
-          (vs: List[Variable], v: Variable) => vs ::: List(v)
+          (vs: List[Variable], v: Expression) => vs ::: List(writeable(v))
         }
     ),
 
