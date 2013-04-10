@@ -339,12 +339,11 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
 
   class S                               extends SymbolValue[Program]
   class top_statement_list              extends SymbolValue[List[Statement]]
-  class top_statement                   extends SymbolValue[Statement]
+  class top_statement                   extends SymbolValue[List[Statement]]
   class additional_catches              extends SymbolValue[List[Catch]]
   class non_empty_additional_catches    extends SymbolValue[List[Catch]]
   class additional_catch                extends SymbolValue[Catch]
   class variable_list                   extends SymbolValue[List[Variable]]
-  class variable                        extends SymbolValue[Variable]
   class is_reference                    extends SymbolValue[Boolean]
   class function_declaration_statement  extends SymbolValue[FunctionDecl]
   class parameter_list                  extends SymbolValue[List[ArgumentDecl]]
@@ -372,19 +371,70 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
   class optional_class_type             extends SymbolValue[Option[TypeHint]]
   class function_call_parameter_list    extends SymbolValue[List[CallArg]]
   class non_empty_function_call_parameter_list extends SymbolValue[List[CallArg]]
-  class global_var_list                  extends SymbolValue[List[Variable]]
-  class global_var                       extends SymbolValue[Variable]
-  class static_var_list                  extends SymbolValue[List[InitVariable]]
-  class class_statement_list             extends SymbolValue[(List[MethodDecl], List[PropertyDecl], List[PropertyDecl], List[ClassConstantDecl])]
-  class class_statement                  extends SymbolValue[(List[MethodDecl], List[PropertyDecl], List[PropertyDecl], List[ClassConstantDecl])]
-  class method_body                      extends SymbolValue[Option[Statement]]
-  class variable_modifiers               extends SymbolValue[List[MemberFlag]]
-  class method_modifiers                 extends SymbolValue[List[MemberFlag]]
-  class non_empty_member_modifiers       extends SymbolValue[List[MemberFlag]]
-  class member_modifier                  extends SymbolValue[MemberFlag]
+  class global_var_list                 extends SymbolValue[List[Variable]]
+  class global_var                      extends SymbolValue[Variable]
+  class static_var_list                 extends SymbolValue[List[InitVariable]]
+  class class_statement_list            extends SymbolValue[(List[MethodDecl], List[PropertyDecl], List[PropertyDecl], List[ClassConstantDecl])]
+  class class_statement                 extends SymbolValue[(List[MethodDecl], List[PropertyDecl], List[PropertyDecl], List[ClassConstantDecl])]
+  class method_body                     extends SymbolValue[Option[Statement]]
+  class variable_modifiers              extends SymbolValue[List[MemberFlag]]
+  class method_modifiers                extends SymbolValue[List[MemberFlag]]
+  class non_empty_member_modifiers      extends SymbolValue[List[MemberFlag]]
+  class member_modifier                 extends SymbolValue[MemberFlag]
+  class class_variable_declaration      extends SymbolValue[List[PropertyDecl]]
+  class class_constant_declaration      extends SymbolValue[List[ClassConstantDecl]]
+  class echo_expr_list                  extends SymbolValue[List[Expression]]
+  class for_expr                        extends SymbolValue[List[Expression]]
+  class non_empty_for_expr              extends SymbolValue[List[Expression]]
+  class lexical_vars                    extends SymbolValue[List[ArgumentDecl]]
+  class lexical_var_list                extends SymbolValue[List[ArgumentDecl]]
+  class function_call                   extends SymbolValue[Expression]
+  class class_name                      extends SymbolValue[ClassRef]
+  class fully_qualified_class_name      extends SymbolValue[StaticClassRef]
+  class class_name_reference            extends SymbolValue[ClassRef]
+  class dynamic_class_name_reference    extends SymbolValue[ClassRef]
+  class dynamic_class_name_variable_properties extends SymbolValue[List[ObjectAccess]]
+  class exit_expr                       extends SymbolValue[Option[Expression]]
+  class backticks_expr                  extends SymbolValue[Option[Expression]]
+  class ctor_arguments                  extends SymbolValue[List[CallArg]]
+  class common_scalar                   extends SymbolValue[Expression]
+  class static_expr                     extends SymbolValue[Expression]
+  class static_class_constant           extends SymbolValue[Expression]
+  class scalar                          extends SymbolValue[Expression]
+  class static_array_pair_list          extends SymbolValue[List[(Option[Expression], Expression, Boolean)]]
+  class possible_comma                  extends SymbolValue[Boolean]
+  class non_empty_static_array_pair_list extends SymbolValue[List[(Option[Expression], Expression, Boolean)]]
+  class expr                            extends SymbolValue[Expression]
+  class variable                        extends SymbolValue[Expression]
+  class variable_properties             extends SymbolValue[List[ObjectAccess]]
+  class variable_property               extends SymbolValue[ObjectAccess]
+  class method_or_not                   extends SymbolValue[Option[List[ObjectAccess]]]
+  class variable_without_objects        extends SymbolValue[Variable]
+  class simple_indirect_reference       extends SymbolValue[Int]
+  class static_member                   extends SymbolValue[ClassProperty]
+  class base_variable_with_function_calls extends SymbolValue[Expression]
+  class base_variable                   extends SymbolValue[Variable]
+  class reference_variable              extends SymbolValue[Variable]
+  class compound_variable               extends SymbolValue[Variable]
+  class dim_offset                      extends SymbolValue[Option[Expression]]
+  class object_property                 extends SymbolValue[ObjectAccess]
+  class object_dim_list                 extends SymbolValue[ObjectAccess]
+  class variable_name                   extends SymbolValue[OAScalar]
+  class assignment_list                 extends SymbolValue[List[Option[Variable]]]
+  class assignment_list_element         extends SymbolValue[Option[Variable]]
+  class array_pair_list                 extends SymbolValue[List[(Option[Expression], Expression, Boolean)]]
+  class non_empty_array_pair_list       extends SymbolValue[List[(Option[Expression], Expression, Boolean)]]
+  class encaps_list                     extends SymbolValue[Expression]
+  class encaps_var                      extends SymbolValue[Variable]
+  class encaps_var_offset               extends SymbolValue[Expression]
+  class class_constant                  extends SymbolValue[ClassConstant]
 
   // Terminals
   class T_STRING                        extends SymbolValue[String]
+  class T_STRING_VARNAME                extends SymbolValue[String]
+  class T_LNUMBER                       extends SymbolValue[PHPInteger]
+  class T_DNUMBER                       extends SymbolValue[PHPFloat]
+  class T_ENCAPSED_AND_WHITESPACE       extends SymbolValue[PHPString]
   class T_INLINE_HTML                   extends SymbolValue[String]
   class T_VARIABLE                      extends SymbolValue[SimpleVariable]
 
@@ -400,6 +450,42 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
 
   def notyet() { throw new RuntimeException("Not yet implemented") }
 
+  def deriveOAList(baseex: Expression, oaList: List[ObjectAccess]): Expression = {
+    notyet()
+    baseex
+  }
+
+  def staticConstant(nsid: NSIdentifier): Expression = {
+    val res: Expression = if (nsid.parts.length == 1) {
+        if (nsid.parts.head.toLowerCase.equals("true")){
+          PHPTrue()
+        } else if (nsid.parts.head.toLowerCase.equals("false")) {
+          PHPFalse()
+        } else if (nsid.parts.head.toLowerCase.equals("null")) {
+          PHPNull()
+        } else {
+          Constant(nsid)
+        }
+    } else {
+        Constant(nsid)
+    }
+
+    res
+  }
+
+  def maybeMethod(oa: ObjectAccess, isMethod: Option[List[CallArg]]): ObjectAccess = {
+    isMethod match {
+      case Some(args) =>
+        OAMethod(oa, args)
+      case None => oa
+    }
+  }
+
+  def writeable(ex: Expression): Variable = ex match {
+    case v: Variable => v
+    case _ => sys.error("Cannot write to non-variable")
+  }
+
   grammar(
     S -> (
         top_statement_list ^^ { (stmts: List[Statement]) => Program(stmts) }
@@ -411,7 +497,7 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
     ),
 
     top_statement -> (
-        statement ^^ inList _
+        statement ^^ inList[Statement] _
       | function_declaration_statement ^^ inList _
       | class_declaration_statement ^^ inList _
       | T_HALT_COMPILER ~ T_OPEN_BRACES ~ T_CLOSE_BRACES ~ T_SEMICOLON ^^ { () => notyet() }
@@ -937,400 +1023,869 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
     ),
 
     class_variable_declaration -> (
-          class_variable_declaration T_COMMA T_VARIABLE
-        | class_variable_declaration T_COMMA T_VARIABLE T_ASSIGN static_expr
-        | T_VARIABLE
-        | T_VARIABLE T_ASSIGN static_expr
+          class_variable_declaration ~ T_COMMA ~ T_VARIABLE ^^ {
+            (cvs: List[PropertyDecl], v: SimpleVariable) =>
+              cvs ::: List(PropertyDecl(v.name, Nil, None))
+          }
+        | class_variable_declaration ~ T_COMMA ~ T_VARIABLE ~ T_ASSIGN ~ static_expr ^^ {
+            (cvs: List[PropertyDecl], v: SimpleVariable, e: Expression) =>
+              cvs ::: List(PropertyDecl(v.name, Nil, Some(e)))
+          }
+        | T_VARIABLE ^^ {
+            (v: SimpleVariable) =>
+              List(PropertyDecl(v.name, Nil, None))
+          }
+        | T_VARIABLE ~ T_ASSIGN ~ static_expr ^^ {
+            (v: SimpleVariable, e: Expression) =>
+              List(PropertyDecl(v.name, Nil, Some(e)))
+          }
     ),
 
     class_constant_declaration -> (
-          class_constant_declaration T_COMMA T_STRING T_ASSIGN static_expr
-        | T_CONST T_STRING T_ASSIGN static_expr
+          class_constant_declaration ~ T_COMMA ~ T_STRING ~ T_ASSIGN ~ static_expr ^^ {
+            (ccs: List[ClassConstantDecl], id: String, e: Expression) =>
+            ccs ::: List(ClassConstantDecl(simpleIdOf(id), e))
+          }
+        | T_CONST ~ T_STRING ~ T_ASSIGN ~ static_expr ^^ {
+            (id: String, e: Expression) =>
+              List(ClassConstantDecl(simpleIdOf(id), e))
+          }
     ),
 
     echo_expr_list -> (
-          echo_expr_list T_COMMA expr
-        | expr
+          echo_expr_list ~ T_COMMA ~ expr ^^ {
+            (es: List[Expression], e: Expression) =>
+              es ::: List(e)
+          }
+        | expr ^^ {
+            (e: Expression) =>
+              List(e)
+          }
     ),
 
     for_expr -> (
-          /* empty */
-        | non_empty_for_expr
+          _empty_ /* empty */
+        | non_empty_for_expr ^^ id _
     ),
 
     non_empty_for_expr -> (
-          non_empty_for_expr T_COMMA	 expr
-        | expr
+          non_empty_for_expr ~ T_COMMA ~ expr ^^ {
+            (es: List[Expression], e: Expression) =>
+              es ::: List(e)
+          }
+        | expr ^^ {
+            (e: Expression) =>
+              List(e)
+          }
+
     ),
 
     lexical_vars -> (
-          /* empty */
-        | T_USE T_OPEN_BRACES lexical_var_list T_CLOSE_BRACES
+          _empty_ /* empty */
+        | T_USE ~ T_OPEN_BRACES ~ lexical_var_list ~ T_CLOSE_BRACES ^^ id _
     ),
 
     lexical_var_list -> (
-          lexical_var_list T_COMMA T_VARIABLE
-        | lexical_var_list T_COMMA T_BITWISE_AND T_VARIABLE
-        | T_VARIABLE
-        | T_BITWISE_AND T_VARIABLE
+          lexical_var_list ~ T_COMMA ~ T_VARIABLE ^^ {
+            (ls: List[ArgumentDecl], v: SimpleVariable) =>
+              ls ::: List(ArgumentDecl(v, None, None, false))
+          }
+        | lexical_var_list ~ T_COMMA ~ T_BITWISE_AND ~ T_VARIABLE ^^ {
+            (ls: List[ArgumentDecl], v: SimpleVariable) =>
+              ls ::: List(ArgumentDecl(v, None, None, true))
+          }
+        | T_VARIABLE ^^ {
+            (v: SimpleVariable) =>
+              List(ArgumentDecl(v, None, None, false))
+          }
+        | T_BITWISE_AND ~ T_VARIABLE ^^ {
+            (v: SimpleVariable) =>
+              List(ArgumentDecl(v, None, None, true))
+          }
+
     ),
 
     function_call -> (
-          namespace_name T_OPEN_BRACES 
-                    function_call_parameter_list
-                    T_CLOSE_BRACES
-        | T_NAMESPACE T_NS_SEPARATOR namespace_name T_OPEN_BRACES 
-                    function_call_parameter_list
-                    T_CLOSE_BRACES
-        | T_NS_SEPARATOR namespace_name T_OPEN_BRACES 
-                    function_call_parameter_list
-                    T_CLOSE_BRACES
-        | class_name T_DOUBLE_COLON T_STRING T_OPEN_BRACES 
-                function_call_parameter_list
-                T_CLOSE_BRACES
-        | class_name T_DOUBLE_COLON variable_without_objects T_OPEN_BRACES 
-                function_call_parameter_list
-                T_CLOSE_BRACES
-        | reference_variable T_DOUBLE_COLON T_STRING T_OPEN_BRACES 
-                function_call_parameter_list
-                T_CLOSE_BRACES
-        | reference_variable T_DOUBLE_COLON variable_without_objects T_OPEN_BRACES 
-                function_call_parameter_list
-                T_CLOSE_BRACES
-        | variable_without_objects  T_OPEN_BRACES 
-                function_call_parameter_list T_CLOSE_BRACES
+          namespace_name ~ T_OPEN_BRACES ~
+                    function_call_parameter_list ~
+                    T_CLOSE_BRACES ^^ {
+            (nsid: NSIdentifier, args: List[CallArg]) =>
+              FunctionCall(StaticFunctionRef(nsid), args)
+          }
+        | T_NAMESPACE ~ T_NS_SEPARATOR ~ namespace_name ~ T_OPEN_BRACES ~
+                    function_call_parameter_list ~
+                    T_CLOSE_BRACES ^^ {
+            (nsid: NSIdentifier, args: List[CallArg]) =>
+              FunctionCall(StaticFunctionRef(nsid.asCurrent), args)
+          }
+        | T_NS_SEPARATOR ~ namespace_name ~ T_OPEN_BRACES ~
+                    function_call_parameter_list ~
+                    T_CLOSE_BRACES ^^ {
+            (nsid: NSIdentifier, args: List[CallArg]) =>
+              FunctionCall(StaticFunctionRef(nsid.asGlobal), args)
+          }
+        | class_name ~ T_DOUBLE_COLON ~ T_STRING ~ T_OPEN_BRACES ~
+                function_call_parameter_list ~
+                T_CLOSE_BRACES ^^ {
+            (cr: ClassRef, name: String, args: List[CallArg]) =>
+              StaticMethodCall(cr, StaticMethodRef(simpleIdOf(name)), args)
+          }
+        | class_name ~ T_DOUBLE_COLON ~ variable_without_objects ~ T_OPEN_BRACES ~
+                function_call_parameter_list ~
+                T_CLOSE_BRACES ^^ {
+            (cr: ClassRef, name: Variable, args: List[CallArg]) =>
+              StaticMethodCall(cr, DynamicMethodRef(name), args)
+          }
+        | reference_variable ~ T_DOUBLE_COLON ~ T_STRING ~ T_OPEN_BRACES ~
+                function_call_parameter_list ~
+                T_CLOSE_BRACES ^^ {
+            (v: Variable, name: String, args: List[CallArg]) =>
+              StaticMethodCall(DynamicClassRef(v), StaticMethodRef(simpleIdOf(name)), args)
+          }
+        | reference_variable ~ T_DOUBLE_COLON ~ variable_without_objects ~ T_OPEN_BRACES ~
+                function_call_parameter_list ~
+                T_CLOSE_BRACES ^^ {
+            (v: Variable, name: Variable, args: List[CallArg]) =>
+              StaticMethodCall(DynamicClassRef(v), DynamicMethodRef(name), args)
+          }
+        | variable_without_objects ~ T_OPEN_BRACES ~
+                function_call_parameter_list ~ T_CLOSE_BRACES ^^ {
+            (v: Variable, args: List[CallArg]) =>
+              FunctionCall(VarFunctionRef(v), args)
+          }
     ),
 
     class_name -> (
-          T_STATIC
-        | namespace_name
-        | T_NAMESPACE T_NS_SEPARATOR namespace_name
-        | T_NS_SEPARATOR namespace_name
+          T_STATIC ^^ {
+            () =>
+              CalledClass()
+          }
+        | namespace_name ^^ {
+            (nsid: NSIdentifier) =>
+              StaticClassRef(nsid)
+          }
+        | T_NAMESPACE ~ T_NS_SEPARATOR ~ namespace_name ^^ {
+            (nsid: NSIdentifier) =>
+              StaticClassRef(nsid.asCurrent)
+          }
+        | T_NS_SEPARATOR ~ namespace_name ^^ {
+            (nsid: NSIdentifier) =>
+              StaticClassRef(nsid.asGlobal)
+          }
     ),
 
     fully_qualified_class_name -> (
-          namespace_name
-        | T_NAMESPACE T_NS_SEPARATOR namespace_name
-        | T_NS_SEPARATOR namespace_name
+          namespace_name ^^ {
+            (nsid: NSIdentifier) =>
+              StaticClassRef(nsid)
+          }
+        | T_NAMESPACE ~ T_NS_SEPARATOR ~ namespace_name ^^ {
+            (nsid: NSIdentifier) =>
+              StaticClassRef(nsid.asCurrent)
+          }
+        | T_NS_SEPARATOR ~ namespace_name ^^ {
+            (nsid: NSIdentifier) =>
+              StaticClassRef(nsid.asGlobal)
+          }
     ),
 
     class_name_reference -> (
-          class_name
-        | dynamic_class_name_reference
+          class_name ^^ id _
+        | dynamic_class_name_reference ^^ id _
     ),
 
     dynamic_class_name_reference -> (
-          base_variable T_OBJECT_OPERATOR 
-                object_property  dynamic_class_name_variable_properties
-        | base_variable
+          base_variable ~ T_OBJECT_OPERATOR ~
+                object_property ~ dynamic_class_name_variable_properties ^^ {
+            (v: Variable, oa: ObjectAccess, oas: List[ObjectAccess]) =>
+              DynamicClassRef(deriveOAList(v, oa :: oas))
+          }
+        | base_variable ^^ {
+            (v: Variable) =>
+              VarClassRef(v)
+          }
     ),
 
     dynamic_class_name_variable_properties -> (
-          dynamic_class_name_variable_properties T_OBJECT_OPERATOR object_property
-        | /* empty */
+          dynamic_class_name_variable_properties ~ T_OBJECT_OPERATOR ~ object_property ^^ {
+            (ls: List[ObjectAccess], oa: ObjectAccess) =>
+              ls ::: List(oa)
+          }
+        | _empty_ /* empty */
     ),
 
     exit_expr -> (
-          /* empty */
-        | T_OPEN_BRACES T_CLOSE_BRACES
-        | T_OPEN_BRACES expr T_CLOSE_BRACES
+          _emptyOpt_ /* empty */
+        | T_OPEN_BRACES ~ T_CLOSE_BRACES ^^ { () => None }
+        | T_OPEN_BRACES ~ expr ~ T_CLOSE_BRACES  ^^ inOpt _
     ),
 
     backticks_expr -> (
-          /* empty */
-        | T_STRING
-        | T_ENCAPSED_AND_WHITESPACE
-        | encaps_list
+          _emptyOpt_ /* empty */
+        | T_STRING ^^ { (s: String) => PHPString(s) }
+        | T_ENCAPSED_AND_WHITESPACE  ^^ id _
+        | encaps_list ^^ id _
     ),
 
     ctor_arguments -> (
-          /* empty */
-        | T_OPEN_BRACES function_call_parameter_list T_CLOSE_BRACES
+          _empty_ /* empty */
+        | T_OPEN_BRACES ~ function_call_parameter_list ~ T_CLOSE_BRACES ^^ id _
     ),
 
     common_scalar -> (
-          T_LNUMBER
-        | T_DNUMBER
-        | T_CONSTANT_ENCAPSED_STRING
-        | T_LINE
-        | T_FILE
-        | T_DIR
-        | T_CLASS_C
-        | T_METHOD_C
-        | T_FUNC_C
-        | T_NS_C
-        | T_START_HEREDOC T_ENCAPSED_AND_WHITESPACE T_END_HEREDOC
-        | T_START_HEREDOC T_CONSTANT_ENCAPSED_STRING T_END_HEREDOC
-        | T_START_HEREDOC T_END_HEREDOC
+          T_LNUMBER ^^ id _
+        | T_DNUMBER ^^ id _
+        | T_CONSTANT_ENCAPSED_STRING ^^ id _
+        | T_LINE        ^^ { () => MCLine() }
+        | T_FILE        ^^ { () => MCFile() }
+        | T_DIR         ^^ { () => MCDir() }
+        | T_CLASS_C     ^^ { () => MCClass() }
+        | T_METHOD_C    ^^ { () => MCMethod() }
+        | T_FUNC_C      ^^ { () => MCFunction() }
+        | T_NS_C        ^^ { () => MCNamespace() }
+        | T_START_HEREDOC ~ T_ENCAPSED_AND_WHITESPACE ~ T_END_HEREDOC ^^ id _
+        | T_START_HEREDOC ~ T_CONSTANT_ENCAPSED_STRING ~ T_END_HEREDOC ^^ id _
+        | T_START_HEREDOC ~ T_END_HEREDOC ^^ { () => PHPString("") }
     ),
 
     static_expr -> (
-          common_scalar
-        | namespace_name
-        | T_NAMESPACE T_NS_SEPARATOR namespace_name
-        | T_NS_SEPARATOR namespace_name
-        | T_PLUS static_expr
-        | T_MINUS static_expr
-        | T_ARRAY T_OPEN_BRACES static_array_pair_list T_CLOSE_BRACES
-        | static_class_constant
+          common_scalar ^^ id _
+        | namespace_name ^^ {
+          (nsid: NSIdentifier) =>
+            staticConstant(nsid)
+          }
+        | T_NAMESPACE ~ T_NS_SEPARATOR ~ namespace_name ^^ {
+          (nsid: NSIdentifier) =>
+            staticConstant(nsid.asCurrent)
+          }
+        | T_NS_SEPARATOR ~ namespace_name ^^ { (nsid: NSIdentifier) => staticConstant(nsid.asGlobal) }
+        | T_PLUS ~ static_expr ^^ id _
+        | T_MINUS ~ static_expr ^^ {
+            (ex: Expression) =>
+              Minus(PHPInteger(0), ex)
+          }
+        | T_ARRAY ~ T_OPEN_BRACES ~ static_array_pair_list ~ T_CLOSE_BRACES ^^ {
+            (arrentries: List[(Option[Expression], Expression, Boolean)]) =>
+              Array(arrentries)
+          }
+        | static_class_constant ^^ id _
     ),
 
     static_class_constant -> (
-          class_name T_DOUBLE_COLON T_STRING
+          class_name ~ T_DOUBLE_COLON ~ T_STRING ^^ {
+            (cr: ClassRef, str: String) =>
+              ClassConstant(cr, simpleIdOf(str))
+          }
     ),
 
     scalar -> (
-          class_constant
-        | namespace_name
-        | T_NAMESPACE T_NS_SEPARATOR namespace_name
-        | T_NS_SEPARATOR namespace_name
-        | common_scalar
-        | T_DOUBLE_QUOTE encaps_list T_DOUBLE_QUOTE
-        | T_DOUBLE_QUOTE T_ENCAPSED_AND_WHITESPACE T_DOUBLE_QUOTE
-        | T_START_HEREDOC encaps_list T_END_HEREDOC
+          class_constant ^^ id _
+        | namespace_name ^^ {
+            (nsid: NSIdentifier) =>
+              staticConstant(nsid)
+          }
+        | T_NAMESPACE ~ T_NS_SEPARATOR ~ namespace_name ^^ {
+            (nsid: NSIdentifier) =>
+              staticConstant(nsid.asCurrent)
+          }
+        | T_NS_SEPARATOR ~ namespace_name ^^ {
+            (nsid: NSIdentifier) =>
+              staticConstant(nsid.asGlobal)
+          }
+        | common_scalar ^^ id _
+        | T_DOUBLE_QUOTE ~ encaps_list ~ T_DOUBLE_QUOTE ^^ id _
+        | T_DOUBLE_QUOTE ~ T_ENCAPSED_AND_WHITESPACE ~ T_DOUBLE_QUOTE ^^ id _
+        | T_START_HEREDOC ~ encaps_list ~ T_END_HEREDOC ^^ id _
     ),
 
     static_array_pair_list -> (
-          /* empty */
-        | non_empty_static_array_pair_list possible_comma
+          _empty_ /* empty */
+        | non_empty_static_array_pair_list ~ possible_comma ^^ {
+          (ls: List[(Option[Expression], Expression, Boolean)], s: Boolean) => ls
+        }
     ),
 
     possible_comma -> (
-          /* empty */
-        | T_COMMA
+          rhs() ^^ { () => false } /* empty */
+        | T_COMMA ^^ { () => true }
     ),
 
     non_empty_static_array_pair_list -> (
-          non_empty_static_array_pair_list T_COMMA static_expr T_DOUBLE_ARROW static_expr
-        | non_empty_static_array_pair_list T_COMMA static_expr
-        | static_expr T_DOUBLE_ARROW static_expr
-        | static_expr
+          non_empty_static_array_pair_list ~ T_COMMA ~ static_expr ~ T_DOUBLE_ARROW ~ static_expr ^^ {
+            (ls: List[(Option[Expression], Expression, Boolean)], k: Expression, v: Expression) =>
+              ls ::: List((Some(k), v, false))
+          }
+        | non_empty_static_array_pair_list ~ T_COMMA ~ static_expr ^^ {
+            (ls: List[(Option[Expression], Expression, Boolean)], v: Expression) =>
+              ls ::: List((None, v, false))
+          }
+        | static_expr ~ T_DOUBLE_ARROW ~ static_expr ^^ {
+            (k: Expression, v: Expression) =>
+              List((Some(k), v, false))
+          }
+        | static_expr ^^ {
+            (v: Expression) =>
+              List((None, v, false))
+          }
     ),
 
     expr -> (
-          variable
-        | T_LIST T_OPEN_BRACES  assignment_list T_CLOSE_BRACES T_ASSIGN expr
-        | variable T_ASSIGN expr
-        | variable T_ASSIGN T_BITWISE_AND variable
-        | variable T_ASSIGN T_BITWISE_AND T_NEW class_name_reference  ctor_arguments
-        | T_NEW class_name_reference  ctor_arguments
-        | T_CLONE expr
-        | variable T_PLUS_EQUAL expr
-        | variable T_MINUS_EQUAL expr
-        | variable T_MUL_EQUAL expr
-        | variable T_DIV_EQUAL expr
-        | variable T_CONCAT_EQUAL expr
-        | variable T_MOD_EQUAL expr
-        | variable T_AND_EQUAL expr
-        | variable T_OR_EQUAL expr
-        | variable T_XOR_EQUAL expr
-        | variable T_SL_EQUAL expr
-        | variable T_SR_EQUAL expr
-        | variable T_INC
-        | T_INC variable
-        | variable T_DEC
-        | T_DEC variable
-        | expr T_BOOLEAN_OR  expr
-        | expr T_BOOLEAN_AND  expr
-        | expr T_LOGICAL_OR  expr
-        | expr T_LOGICAL_AND  expr
-        | expr T_LOGICAL_XOR expr
-        | expr T_BITWISE_OR expr
-        | expr T_BITWISE_AND expr
-        | expr T_BITWISE_XOR expr
-        | expr T_POINT expr
-        | expr T_PLUS expr
-        | expr T_MINUS expr
-        | expr T_MULT expr
-        | expr T_DIV expr
-        | expr T_MODULO expr
-        | expr T_SL expr
-        | expr T_SR expr
-        | T_PLUS expr
-        | T_MINUS expr
-        | T_NOT expr
-        | T_BITWISE_NOT expr
-        | expr T_IS_IDENTICAL expr
-        | expr T_IS_NOT_IDENTICAL expr
-        | expr T_IS_EQUAL expr
-        | expr T_IS_NOT_EQUAL expr
-        | expr T_IS_SMALLER expr
-        | expr T_IS_SMALLER_OR_EQUAL expr
-        | expr T_IS_GREATER expr
-        | expr T_IS_GREATER_OR_EQUAL expr
-        | expr T_INSTANCEOF class_name_reference
-        | T_OPEN_BRACES expr T_CLOSE_BRACES
-        | expr T_QUESTION 
-            expr T_COLON 
-            expr
-        | expr T_QUESTION T_COLON 
-            expr
-        | internal_functions_in_yacc
-        | T_INT_CAST expr
-        | T_DOUBLE_CAST expr
-        | T_STRING_CAST expr
-        | T_ARRAY_CAST expr
-        | T_OBJECT_CAST expr
-        | T_BOOL_CAST expr
-        | T_UNSET_CAST expr
-        | T_EXIT exit_expr
-        | T_AT  expr
-        | scalar
-        | T_ARRAY T_OPEN_BRACES array_pair_list T_CLOSE_BRACES
-        | T_BACKTICK backticks_expr T_BACKTICK
-        | T_PRINT expr
-        | T_FUNCTION is_reference T_OPEN_BRACES 
-                parameter_list T_CLOSE_BRACES lexical_vars T_OPEN_CURLY_BRACES inner_statement_list T_CLOSE_CURLY_BRACES
+          variable ^^ id _
+        | T_LIST ~ T_OPEN_BRACES ~  assignment_list ~ T_CLOSE_BRACES ~ T_ASSIGN ~ expr ^^ {
+            () => notyet()
+          }
+        | variable ~ T_ASSIGN ~ expr ^^ {
+            (v: Expression, ex: Expression) =>
+              Assign(writeable(v), ex, false)
+          }
+        | variable ~ T_ASSIGN ~ T_BITWISE_AND ~ variable ^^ {
+            (v: Expression, ex: Expression) =>
+              Assign(writeable(v), writeable(ex), true)
+          }
+        | variable ~ T_ASSIGN ~ T_BITWISE_AND ~ T_NEW ~ class_name_reference ~  ctor_arguments  ^^ {
+            (v: Expression, cr: ClassRef, args: List[CallArg]) =>
+              notyet()
+          }
+        | T_NEW ~ class_name_reference ~ ctor_arguments ^^ {
+            (cr: ClassRef, args: List[CallArg]) =>
+              New(cr, args)
+          }
+        | T_CLONE ~ expr ^^ {
+            (ex: Expression) =>
+              Clone(ex)
+          }
+        | variable ~ T_PLUS_EQUAL ~ expr ^^ {
+            (v: Expression, ex: Expression) =>
+              Assign(writeable(v), Plus(v, ex), false)
+          }
+        | variable ~ T_MINUS_EQUAL ~ expr ^^ {
+            (v: Expression, ex: Expression) =>
+              Assign(writeable(v), Minus(v, ex), false)
+          }
+        | variable ~ T_MUL_EQUAL ~ expr ^^ {
+            (v: Expression, ex: Expression) =>
+              Assign(writeable(v), Mult(v, ex), false)
+          }
+        | variable ~ T_DIV_EQUAL ~ expr ^^ {
+            (v: Expression, ex: Expression) =>
+              Assign(writeable(v), Div(v, ex), false)
+          }
+        | variable ~ T_CONCAT_EQUAL ~ expr ^^ {
+            (v: Expression, ex: Expression) =>
+              Assign(writeable(v), Concat(v, ex), false)
+          }
+        | variable ~ T_MOD_EQUAL ~ expr ^^ {
+            (v: Expression, ex: Expression) =>
+              Assign(writeable(v), Mod(v, ex), false)
+          }
+        | variable ~ T_AND_EQUAL ~ expr ^^ {
+            (v: Expression, ex: Expression) =>
+              Assign(writeable(v), BitwiseAnd(v, ex), false)
+          }
+        | variable ~ T_OR_EQUAL ~ expr ^^ {
+            (v: Expression, ex: Expression) =>
+              Assign(writeable(v), BitwiseOr(v, ex), false)
+          }
+        | variable ~ T_XOR_EQUAL ~ expr ^^ {
+            (v: Expression, ex: Expression) =>
+              Assign(writeable(v), BitwiseXor(v, ex), false)
+          }
+        | variable ~ T_SL_EQUAL ~ expr ^^ {
+            (v: Expression, ex: Expression) =>
+              Assign(writeable(v), ShiftLeft(v, ex), false)
+          }
+        | variable ~ T_SR_EQUAL ~ expr ^^ {
+            (v: Expression, ex: Expression) =>
+              Assign(writeable(v), ShiftRight(v, ex), false)
+          }
+        | variable ~ T_INC ^^ {
+            (v: Expression) => PostInc(writeable(v))
+          }
+        | T_INC ~ variable ^^ {
+            (v: Expression) => PreInc(writeable(v))
+          }
+        | variable ~ T_DEC ^^ {
+            (v: Expression) => PostDec(writeable(v))
+          }
+        | T_DEC ~ variable ^^ {
+            (v: Expression) => PreDec(writeable(v))
+          }
+        | expr ~ T_BOOLEAN_OR ~ expr ^^ {
+            (ex1: Expression, ex2: Expression) =>
+              BooleanOr(ex1, ex2)
+          }
+        | expr ~ T_BOOLEAN_AND ~ expr ^^ {
+            (ex1: Expression, ex2: Expression) =>
+              BooleanAnd(ex1, ex2)
+          }
+        | expr ~ T_LOGICAL_OR ~ expr ^^ {
+            (ex1: Expression, ex2: Expression) =>
+              BooleanOr(ex1, ex2)
+          }
+        | expr ~ T_LOGICAL_AND ~ expr ^^ {
+            (ex1: Expression, ex2: Expression) =>
+              BooleanAnd(ex1, ex2)
+          }
+        | expr ~ T_LOGICAL_XOR ~ expr ^^ {
+            (ex1: Expression, ex2: Expression) =>
+              BooleanXor(ex1, ex2)
+          }
+        | expr ~ T_BITWISE_OR ~ expr ^^ {
+            (ex1: Expression, ex2: Expression) =>
+               BitwiseOr(ex1, ex2)
+          }
+        | expr ~ T_BITWISE_AND ~ expr ^^ {
+            (ex1: Expression, ex2: Expression) =>
+              BitwiseAnd(ex1, ex2)
+          }
+        | expr ~ T_BITWISE_XOR ~ expr ^^ {
+            (ex1: Expression, ex2: Expression) =>
+              BitwiseXor(ex1, ex2)
+          }
+        | expr ~ T_POINT ~ expr ^^ {
+            (ex1: Expression, ex2: Expression) =>
+              Concat(ex1, ex2)
+          }
+        | expr ~ T_PLUS ~ expr ^^ {
+            (ex1: Expression, ex2: Expression) =>
+              Plus(ex1, ex2)
+          }
+        | expr ~ T_MINUS ~ expr ^^ {
+            (ex1: Expression, ex2: Expression) =>
+              Minus(ex1, ex2)
+          }
+        | expr ~ T_MULT ~ expr ^^ {
+            (ex1: Expression, ex2: Expression) =>
+              Mult(ex1, ex2)
+          }
+        | expr ~ T_DIV ~ expr ^^ {
+            (ex1: Expression, ex2: Expression) =>
+              Div(ex1, ex2)
+          }
+        | expr ~ T_MODULO ~ expr ^^ {
+            (ex1: Expression, ex2: Expression) =>
+              Mod(ex1, ex2)
+          }
+        | expr ~ T_SL ~ expr ^^ {
+            (ex1: Expression, ex2: Expression) =>
+              ShiftLeft(ex1, ex2)
+          }
+        | expr ~ T_SR ~ expr ^^ {
+            (ex1: Expression, ex2: Expression) =>
+              ShiftRight(ex1, ex2)
+          }
+        | T_PLUS ~ expr ^^ {
+            (ex: Expression) => Plus(PHPInteger(0), ex)
+          }
+        | T_MINUS ~ expr ^^ {
+            (ex: Expression) => Minus(PHPInteger(0), ex)
+          }
+        | T_NOT ~ expr ^^ {
+            (ex: Expression) => BooleanNot(ex)
+          }
+        | T_BITWISE_NOT ~ expr ^^ {
+            (ex: Expression) => BitwiseNot(ex)
+          }
+        | expr ~ T_IS_IDENTICAL ~ expr ^^ {
+            (ex1: Expression, ex2: Expression) =>
+              Identical(ex1, ex2)
+          }
+        | expr ~ T_IS_NOT_IDENTICAL ~ expr ^^ {
+            (ex1: Expression, ex2: Expression) =>
+              BooleanNot(Identical(ex1, ex2))
+          }
+        | expr ~ T_IS_EQUAL ~ expr ^^ {
+            (ex1: Expression, ex2: Expression) =>
+              Equal(ex1, ex2)
+          }
+        | expr ~ T_IS_NOT_EQUAL ~ expr ^^ {
+            (ex1: Expression, ex2: Expression) =>
+              BooleanNot(Equal(ex1, ex2))
+          }
+        | expr ~ T_IS_SMALLER ~ expr ^^ {
+            (ex1: Expression, ex2: Expression) =>
+               Smaller(ex1, ex2)
+          }
+        | expr ~ T_IS_SMALLER_OR_EQUAL ~ expr ^^ {
+            (ex1: Expression, ex2: Expression) =>
+              SmallerEqual(ex1, ex2)
+          }
+        | expr ~ T_IS_GREATER ~ expr ^^ {
+            (ex1: Expression, ex2: Expression) =>
+              BooleanNot(SmallerEqual(ex1, ex2))
+          }
+        | expr ~ T_IS_GREATER_OR_EQUAL ~ expr ^^ {
+            (ex1: Expression, ex2: Expression) =>
+              BooleanNot(Smaller(ex1, ex2))
+          }
+        | expr ~ T_INSTANCEOF ~ class_name_reference ^^ {
+            (ex: Expression, cr: ClassRef) =>
+              InstanceOf(ex, cr)
+          }
+        | T_OPEN_BRACES ~ expr ~ T_CLOSE_BRACES ^^ id _
+        | expr ~ T_QUESTION ~
+            expr ~ T_COLON ~
+            expr ^^ {
+            (c: Expression, t: Expression, e: Expression) =>
+              Ternary(c, Some(t), e)
+          }
+        | expr ~ T_QUESTION ~ T_COLON ~
+            expr ^^ {
+            (c: Expression, e: Expression) =>
+              Ternary(c, None, e)
+          }
+        | internal_functions_in_yacc ^^ id _
+        | T_INT_CAST ~ expr ^^ {
+            (ex: Expression) =>
+              Cast(CastInt, ex)
+          }
+        | T_DOUBLE_CAST ~ expr ^^ {
+            (ex: Expression) =>
+              Cast(CastDouble, ex)
+          }
+        | T_STRING_CAST ~ expr ^^ {
+            (ex: Expression) =>
+              Cast(CastString, ex)
+          }
+        | T_ARRAY_CAST ~ expr ^^ {
+            (ex: Expression) =>
+              Cast(CastArray, ex)
+          }
+        | T_OBJECT_CAST ~ expr ^^ {
+            (ex: Expression) =>
+              Cast(CastObject, ex)
+          }
+        | T_BOOL_CAST ~ expr ^^ {
+            (ex: Expression) =>
+              Cast(CastBool, ex)
+          }
+        | T_UNSET_CAST ~ expr ^^ {
+            (ex: Expression) =>
+              Cast(CastUnset, ex)
+          }
+        | T_EXIT ~ exit_expr ^^ {
+            (ex: Option[Expression]) =>
+              Exit(ex)
+          }
+        | T_AT ~ expr ^^ {
+            (ex: Expression) =>
+              Silence(ex)
+          }
+        | scalar ^^ id _
+        | T_ARRAY ~ T_OPEN_BRACES ~ array_pair_list ~ T_CLOSE_BRACES ^^ {
+            (al: List[(Option[Expression], Expression, Boolean)]) =>
+              Array(al)
+          }
+        | T_BACKTICK ~ backticks_expr ~ T_BACKTICK ^^ {
+            (cmd: String) =>
+              Execute(cmd)
+          }
+        | T_PRINT ~ expr ^^ {
+            (ex: Expression) =>
+              Print(ex)
+          }
+        | T_FUNCTION ~ is_reference ~ T_OPEN_BRACES ~ 
+                parameter_list ~ T_CLOSE_BRACES ~ lexical_vars ~ T_OPEN_CURLY_BRACES ~ inner_statement_list ~ T_CLOSE_CURLY_BRACES ^^ {
+            (isRef: Boolean, params: List[ArgumentDecl], vars: List[ArgumentDecl], body: Statement) =>
+              Closure(params, vars, isRef, body)
+          }
     ),
 
     variable -> (
-          base_variable_with_function_calls T_OBJECT_OPERATOR 
-                object_property  method_or_not variable_properties
-        | base_variable_with_function_calls
+          base_variable_with_function_calls ~ T_OBJECT_OPERATOR ~
+                object_property ~  method_or_not ~ variable_properties ^^ {
+            (ex: Expression, oa: ObjectAccess, method: Option[List[CallArg]], ls: List[ObjectAccess]) =>
+              deriveOAList(ex, maybeMethod(oa, method) :: ls)
+          }
+        | base_variable_with_function_calls ^^ id _
     ),
 
     variable_properties -> (
-          variable_properties variable_property
-        | /* empty */
+          variable_properties ~ variable_property ^^ {
+            (ls: List[ObjectAccess], oa: ObjectAccess) =>
+              ls ::: List(oa)
+          }
+        | _empty_ /* empty */
     ),
 
     variable_property -> (
-          T_OBJECT_OPERATOR object_property  method_or_not
+          T_OBJECT_OPERATOR ~ object_property ~ method_or_not ^^ {
+            (oa: ObjectAccess, method: Option[List[CallArg]]) =>
+              maybeMethod(oa, method)
+          }
     ),
 
     method_or_not -> (
-          T_OPEN_BRACES 
-                    function_call_parameter_list T_CLOSE_BRACES
-        | /* empty */
+          T_OPEN_BRACES ~ function_call_parameter_list ~ T_CLOSE_BRACES ^^ {
+            (args: List[CallArg]) => Some(args)
+          }
+        | _emptyOpt_ /* empty */
     ),
 
     variable_without_objects -> (
-          reference_variable
-        | simple_indirect_reference reference_variable
+          reference_variable ^^ id _
+        | simple_indirect_reference ~ reference_variable  ^^ {
+            (cnt: Int, v: Variable) =>
+              var r = v
+              for (n <- 0 until cnt) r = VariableVariable(r)
+              r
+          }
     ),
 
     static_member -> (
-          class_name T_DOUBLE_COLON variable_without_objects
-        | reference_variable T_DOUBLE_COLON variable_without_objects
+          class_name ~ T_DOUBLE_COLON ~ variable_without_objects ^^ {
+            (cr: ClassRef, v: Variable) =>
+              ClassProperty(cr, v)
+          }
+        | reference_variable ~ T_DOUBLE_COLON ~ variable_without_objects ^^ {
+            (cr: Variable, v: Variable) =>
+              ClassProperty(VarClassRef(cr), v)
+          }
     ),
 
     base_variable_with_function_calls -> (
-          base_variable
-        | function_call
+          base_variable ^^ id _
+        | function_call ^^ id _
     ),
 
     base_variable -> (
-          reference_variable
-        | simple_indirect_reference reference_variable
-        | static_member
+          reference_variable ^^ id _
+        | simple_indirect_reference ~ reference_variable ^^ {
+            (cnt: Int, v: Variable) =>
+              var r = v
+              for (n <- 0 until cnt) r = VariableVariable(r)
+              r
+          }
+        | static_member ^^ id _
     ),
 
     reference_variable -> (
-          reference_variable T_OPEN_RECT_BRACES dim_offset T_CLOSE_RECT_BRACES
-        | reference_variable T_OPEN_CURLY_BRACES expr T_CLOSE_CURLY_BRACES
-        | compound_variable
+          reference_variable ~ T_OPEN_RECT_BRACES ~ dim_offset ~ T_CLOSE_RECT_BRACES ^^ {
+            (v: Variable, off: Option[Expression]) =>
+              off match {
+                case Some(ex) => ArrayEntry(v, ex)
+                case None => NextArrayEntry(v)
+              }
+          }
+        | reference_variable ~ T_OPEN_CURLY_BRACES ~ expr ~ T_CLOSE_CURLY_BRACES ^^ {
+            (v: Variable, off: Expression) =>
+              ArrayEntry(v, off)
+          }
+        | compound_variable ^^ id _
     ),
 
     compound_variable -> (
-          T_VARIABLE
-        | T_DOLLAR T_OPEN_CURLY_BRACES expr T_CLOSE_CURLY_BRACES
+          T_VARIABLE ^^ id _
+        | T_DOLLAR ~ T_OPEN_CURLY_BRACES ~ expr ~ T_CLOSE_CURLY_BRACES ^^ {
+            (ex: Expression) =>
+              VariableVariable(ex)
+          }
     ),
 
     dim_offset -> (
-          /* empty */
-        | expr
+          _emptyOpt_ /* empty */
+        | expr ^^ inOpt _
     ),
 
     object_property -> (
-          object_dim_list
-        | variable_without_objects
+          object_dim_list ^^ id _
+        | variable_without_objects ^^ { (ex: Expression) => OAExpression(ex) }
     ),
 
     object_dim_list -> (
-          object_dim_list T_OPEN_RECT_BRACES dim_offset T_CLOSE_RECT_BRACES
-        | object_dim_list T_OPEN_CURLY_BRACES expr T_CLOSE_CURLY_BRACES
-        | variable_name
+          object_dim_list ~ T_OPEN_RECT_BRACES ~ dim_offset ~ T_CLOSE_RECT_BRACES ^^ {
+            (oa: ObjectAccess, off: Option[Expression]) =>
+              oa match {
+                case OAArray(b, offs) =>
+                  OAArray(b, offs ::: List(off))
+                case oa: OAScalar =>
+                  OAArray(oa, List(off))
+              }
+          }
+        | object_dim_list ~ T_OPEN_CURLY_BRACES ~ expr ~ T_CLOSE_CURLY_BRACES ^^ {
+            (oa: ObjectAccess, ex: Expression) =>
+              oa match {
+                case OAArray(b, offs) =>
+                  OAArray(b, offs ::: List(Some(ex)))
+                case oa: OAScalar =>
+                  OAArray(oa, List(Some(ex)))
+              }
+          }
+        | variable_name ^^ id _
     ),
 
     variable_name -> (
-          T_STRING
-        | T_OPEN_CURLY_BRACES expr T_CLOSE_CURLY_BRACES
+          T_STRING ^^ {
+            (str: String) =>
+              OAIdentifier(simpleIdOf(str))
+          }
+        | T_OPEN_CURLY_BRACES ~ expr ~ T_CLOSE_CURLY_BRACES ^^ {
+            (ex: Expression) =>
+              OAExpression(ex)
+          }
     ),
 
     simple_indirect_reference -> (
-          T_DOLLAR
-        | simple_indirect_reference T_DOLLAR
+          T_DOLLAR ^^ {
+            () => 1
+          }
+        | simple_indirect_reference ~ T_DOLLAR ^^ {
+            (v: Int) => v+1
+          }
     ),
 
     assignment_list -> (
-          assignment_list T_COMMA assignment_list_element
-        | assignment_list_element
+          assignment_list ~ T_COMMA ~ assignment_list_element ^^ {
+            () =>
+          }
+        | assignment_list_element ^^ {
+            () =>
+          }
     ),
 
     assignment_list_element -> (
-          variable
-        | T_LIST T_OPEN_BRACES  assignment_list T_CLOSE_BRACES
-        | /* empty */
+          variable ^^ { (v: Variable) => Some(v) }
+        | T_LIST ~ T_OPEN_BRACES ~  assignment_list ~ T_CLOSE_BRACES ^^ {
+            (ls: List[Option[Variable]]) =>
+              Some(ListVar(ls))
+          }
+        | _emptyOpt_ /* empty */
     ),
 
     array_pair_list -> (
-          /* empty */
-        | non_empty_array_pair_list possible_comma
+          _empty_ /* empty */
+        | non_empty_array_pair_list ~ possible_comma  ^^ {
+            (ls: List[(Option[Expression], Expression, Boolean)], b: Boolean) =>
+              ls
+          }
     ),
 
     non_empty_array_pair_list -> (
-          non_empty_array_pair_list T_COMMA expr T_DOUBLE_ARROW expr
-        | non_empty_array_pair_list T_COMMA expr
-        | expr T_DOUBLE_ARROW expr
-        | expr
-        | non_empty_array_pair_list T_COMMA expr T_DOUBLE_ARROW T_BITWISE_AND variable
-        | non_empty_array_pair_list T_COMMA T_BITWISE_AND variable
-        | expr T_DOUBLE_ARROW T_BITWISE_AND variable
-        | T_BITWISE_AND variable
+          non_empty_array_pair_list ~ T_COMMA ~ expr ~ T_DOUBLE_ARROW ~ expr ^^ {
+            (ls: List[(Option[Expression], Expression, Boolean)], k: Expression, v: Expression) =>
+              ls ::: List((Some(k), v, false))
+          }
+        | non_empty_array_pair_list ~ T_COMMA ~ expr ^^ {
+            (ls: List[(Option[Expression], Expression, Boolean)], v: Expression) =>
+              ls ::: List((None, v, false))
+          }
+        | expr ~ T_DOUBLE_ARROW ~ expr ^^ {
+            (k: Expression, v: Expression) =>
+              List((Some(k), v, false))
+          }
+        | expr ^^ {
+            (v: Expression) =>
+              List((None, v, false))
+          }
+        | non_empty_array_pair_list ~ T_COMMA ~ expr ~ T_DOUBLE_ARROW ~ T_BITWISE_AND ~ variable ^^ {
+            (ls: List[(Option[Expression], Expression, Boolean)], k: Expression, v: Expression) =>
+              ls ::: List((Some(k), v, true))
+          }
+        | non_empty_array_pair_list ~ T_COMMA ~ T_BITWISE_AND ~ variable ^^ {
+            (ls: List[(Option[Expression], Expression, Boolean)], v: Expression) =>
+              ls ::: List((None, v, true))
+          }
+        | expr ~ T_DOUBLE_ARROW ~ T_BITWISE_AND ~ variable ^^ {
+            (k: Expression, v: Expression) =>
+              List((Some(k), v, true))
+          }
+        | T_BITWISE_AND ~ variable ^^ {
+            (v: Expression) =>
+              List((None, v, true))
+          }
     ),
 
     encaps_list -> (
-          encaps_list encaps_var
-        | encaps_list T_ENCAPSED_AND_WHITESPACE
-        | encaps_var
-        | T_ENCAPSED_AND_WHITESPACE encaps_var
+          encaps_list ~ encaps_var ^^ {
+            (e: Expression, v: Variable) =>
+              Concat(e, v)
+          }
+        | encaps_list ~ T_ENCAPSED_AND_WHITESPACE ^^ {
+            (e: Expression, v: Expression) =>
+              Concat(e, v)
+          }
+        | encaps_var ^^ {
+            (e: Variable) =>
+              e
+          }
+        | T_ENCAPSED_AND_WHITESPACE ~ encaps_var ^^ {
+            (e: Expression, v: Variable) =>
+              Concat(e, v)
+          }
     ),
 
 
     encaps_var -> (
-          T_VARIABLE
-        | T_VARIABLE T_OPEN_RECT_BRACES encaps_var_offset T_CLOSE_RECT_BRACES
-        | T_VARIABLE T_OBJECT_OPERATOR T_STRING
-        | T_DOLLAR_OPEN_CURLY_BRACES T_STRING_VARNAME T_CLOSE_CURLY_BRACES
-        | T_DOLLAR_OPEN_CURLY_BRACES expr T_CLOSE_CURLY_BRACES
-        | T_DOLLAR_OPEN_CURLY_BRACES T_STRING_VARNAME T_OPEN_RECT_BRACES expr T_CLOSE_RECT_BRACES T_CLOSE_CURLY_BRACES
-        | T_CURLY_OPEN variable T_CLOSE_CURLY_BRACES
+          T_VARIABLE  ^^ id _
+        | T_VARIABLE ~ T_OPEN_RECT_BRACES ~ encaps_var_offset ~ T_CLOSE_RECT_BRACES ^^ {
+            (v: SimpleVariable, off: Expression) =>
+              ArrayEntry(v, off)
+          }
+        | T_VARIABLE ~ T_OBJECT_OPERATOR ~ T_STRING ^^ {
+            (v: SimpleVariable, s: String) =>
+              ObjectProperty(v, simpleIdOf(s))
+          }
+        | T_DOLLAR_OPEN_CURLY_BRACES ~ T_STRING_VARNAME ~ T_CLOSE_CURLY_BRACES ^^ {
+            (v: String) => SimpleVariable(simpleIdOf(v))
+          }
+        | T_DOLLAR_OPEN_CURLY_BRACES ~ expr ~ T_CLOSE_CURLY_BRACES ^^ {
+            (e: Expression) => VariableVariable(e)
+          }
+        | T_DOLLAR_OPEN_CURLY_BRACES ~ T_STRING_VARNAME ~ T_OPEN_RECT_BRACES ~ expr ~ T_CLOSE_RECT_BRACES ~ T_CLOSE_CURLY_BRACES ^^ {
+            (v: String, off: Expression) =>
+              ArrayEntry(SimpleVariable(simpleIdOf(v)), off)
+          }
+        | T_CURLY_OPEN ~ variable ~ T_CLOSE_CURLY_BRACES ^^ id _
     ),
 
     encaps_var_offset -> (
-          T_STRING
-        | T_NUM_STRING
-        | T_VARIABLE
+          T_STRING ^^ {
+            (s: String) => PHPString(s)
+          }
+        | T_NUM_STRING ^^ id _
+        | T_VARIABLE ^^ id _
     ),
 
     internal_functions_in_yacc -> (
-          T_ISSET T_OPEN_BRACES isset_variables T_CLOSE_BRACES
-        | T_EMPTY T_OPEN_BRACES variable T_CLOSE_BRACES
-        | T_INCLUDE expr
-        | T_INCLUDE_ONCE expr
-        | T_EVAL T_OPEN_BRACES expr T_CLOSE_BRACES
-        | T_REQUIRE expr
-        | T_REQUIRE_ONCE expr
+          T_ISSET ~ T_OPEN_BRACES ~ isset_variables ~ T_CLOSE_BRACES ^^ {
+            (vs: List[Variable]) => Isset(vs)
+          }
+        | T_EMPTY ~ T_OPEN_BRACES ~ variable ~ T_CLOSE_BRACES ^^ {
+            (v: Variable) => Empty(v)
+          }
+        | T_INCLUDE ~ expr ^^ {
+            (e: Expression) => Include(e, false)
+          }
+        | T_INCLUDE_ONCE ~ expr ^^ {
+            (e: Expression) => Include(e, true)
+          }
+        | T_EVAL ~ T_OPEN_BRACES ~ expr ~ T_CLOSE_BRACES ^^ {
+            (e: Expression) => Eval(e)
+          }
+        | T_REQUIRE ~ expr ^^ {
+            (e: Expression) => Require(e, false)
+          }
+        | T_REQUIRE_ONCE ~ expr ^^ {
+            (e: Expression) => Require(e, true)
+          }
     ),
 
     isset_variables -> (
-          variable
-        | isset_variables T_COMMA  variable
+          variable ^^ inList _
+        | isset_variables ~ T_COMMA ~ variable ^^ {
+          (vs: List[Variable], v: Variable) => vs ::: List(v)
+        }
     ),
 
     class_constant -> (
-          class_name T_DOUBLE_COLON T_STRING
-        | reference_variable T_DOUBLE_COLON T_STRING
+          class_name ~ T_DOUBLE_COLON ~ T_STRING ^^ {
+            (cr: ClassRef, s: String) =>
+              ClassConstant(cr, simpleIdOf(s))
+          }
+        | reference_variable ~ T_DOUBLE_COLON ~ T_STRING ^^ {
+            (v: Variable, s: String) =>
+              ClassConstant(VarClassRef(v), simpleIdOf(s))
+          }
     )
   )
 }

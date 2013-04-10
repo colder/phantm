@@ -55,6 +55,9 @@ object Trees {
     case class NSIdentifier(root: NSRoot, parts: List[String]) extends Tree with Symbolic {
       def isFullyQualified = root == NSGlobal
 
+      def asCurrent = copy(root = NSCurrent)
+      def asGlobal  = copy(root = NSGlobal)
+
       def value: String = root.value+parts.mkString("\\")
 
       def defWithin(parent: NSIdentifier): NSIdentifier = {
