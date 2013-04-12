@@ -464,8 +464,36 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
   def notyet() { throw new RuntimeException("Not yet implemented") }
 
   def deriveOAList(baseex: Expression, oaList: List[ObjectAccess]): Expression = {
-    notyet()
-    baseex
+    var ex = baseex
+    for(oa <- oaList) {
+        oa match {
+            case OAIdentifier(id) => ex = ObjectProperty(ex, id).setPosBetween(ex, oa)
+            case OAArray(array, indexes) =>
+                array match {
+                    case id @ OAIdentifier(name) =>
+                        ex = ObjectProperty(ex, name).setPosBetween(ex, oa)
+                    case _ =>
+                }
+                for(id <- indexes) id match {
+                    case Some(i) => ex = ArrayEntry(ex, i).setPosBetween(ex, oa) // TODO: Fix precision
+                    case None => ex = NextArrayEntry(ex).setPosBetween(ex, oa)
+                }
+            case OAExpression(exp) => ex = DynamicObjectProperty(ex, exp).setPosBetween(ex, oa)
+            case OAMethod(name, args) => name match {
+                case OAIdentifier(id) => ex = MethodCall(ex, StaticMethodRef(id).setPos(id), args).setPosBetween(ex, oa)
+                case OAExpression(e)  => ex = MethodCall(ex, DynamicMethodRef(e).setPos(e), args).setPosBetween(ex, oa)
+                case OAArray(array, indexes) =>  {
+                    for(id <- indexes) id match {
+                        case Some(i) => ex = ArrayEntry(ex, i).setPosBetween(ex, name) // TODO: Fix precision
+                        case None => ex = NextArrayEntry(ex).setPosBetween(ex, name)
+                    }
+
+                    ex = FunctionCall(DynamicFunctionRef(ex).setPos(ex), args).setPosBetween(ex, oa)
+                }
+            }
+        }
+    }
+    ex
   }
 
   def staticConstant(nsid: NSIdentifier): Expression = {
@@ -529,10 +557,26 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
     ),
 
     use_declaration -> (
-          namespace_name ^^ { (ns: NSIdentifier) => notyet() }
-        | namespace_name ~ T_AS ~ T_STRING ^^ { (ns: NSIdentifier, str: String) => notyet() }
-        | T_NS_SEPARATOR ~ namespace_name ^^ { (ns: NSIdentifier) => notyet() }
-        | T_NS_SEPARATOR ~ namespace_name ~ T_AS ~ T_STRING ^^ { (ns: NSIdentifier, str: String) => notyet() }
+          namespace_name ^^ {
+            (ns: NSIdentifier) =>
+              val nns = ns.asResolved
+              Import(nns, nns.parts.last)
+          }
+        | namespace_name ~ T_AS ~ T_STRING ^^ {
+            (ns: NSIdentifier, str: String) =>
+              val nns = ns.asResolved
+              Import(nns, str)
+          }
+        | T_NS_SEPARATOR ~ namespace_name ^^ {
+            (ns: NSIdentifier) =>
+              val nns = ns.asResolved
+              Import(nns, nns.parts.last)
+          }
+        | T_NS_SEPARATOR ~ namespace_name ~ T_AS ~ T_STRING ^^ {
+            (ns: NSIdentifier, str: String) =>
+              val nns = ns.asResolved
+              Import(nns, str)
+          }
     ),
 
     constant_declaration -> (
@@ -1350,7 +1394,8 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
     expr -> (
           variable ^^ id[Expression] _
         | T_LIST ~ T_OPEN_BRACES ~  assignment_list ~ T_CLOSE_BRACES ~ T_ASSIGN ~ expr ^^ {
-            (vs: List[Option[Variable]], ex: Expression) => notyet()
+            (vs: List[Option[Variable]], ex: Expression) =>
+              ExpandArray(vs, ex)
           }
         | variable ~ T_ASSIGN ~ expr ^^ {
             (v: Expression, ex: Expression) =>
@@ -1362,7 +1407,7 @@ class PHP53Spec extends CUP2Specification with ScalaCUPSpecification {
           }
         | variable ~ T_ASSIGN ~ T_BITWISE_AND ~ T_NEW ~ class_name_reference ~  ctor_arguments  ^^ {
             (v: Expression, cr: ClassRef, args: List[CallArg]) =>
-              notyet()
+              Assign(writeable(v), New(cr, args), true)
           }
         | T_NEW ~ class_name_reference ~ ctor_arguments ^^ {
             (cr: ClassRef, args: List[CallArg]) =>
