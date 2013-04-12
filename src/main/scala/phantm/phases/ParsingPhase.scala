@@ -54,7 +54,7 @@ object ParsingPhaseNew extends Phase {
       }
     }
 
-    val table = new LR1Generator(new PHP53Spec()).getParsingTable();
+    val table = new LALR1Generator(new PHP53Spec()).getParsingTable();
 
     for (f <- ctx.files) {
       val l = new Lexer(new java.io.FileReader(f));
