@@ -6,8 +6,10 @@ package phantm.parser;
 
 import java.util.*;
 
-import phantm.parser.Yytoken;
+import edu.tum.cup2.scanner.ScannerToken;
+import edu.tum.cup2.grammar.Terminal;
 import static phantm.parser.Terminals.*;
+import static phantm.ast.Trees.*;
 
 %%
 
@@ -53,8 +55,8 @@ import static phantm.parser.Terminals.*;
     }
 
     // wrapper around yylex() deleting the morePrefix
-    public Yytoken lex() throws java.io.IOException {
-        Yytoken ret = this.yylex();
+    public ScannerToken<?> lex() throws java.io.IOException {
+        ScannerToken<?> ret = this.yylex();
         this.morePrefix.setLength(0);
         this.clearMorePrefix = true;
         return ret;
@@ -83,18 +85,23 @@ import static phantm.parser.Terminals.*;
     }
 
     // shorthand for constructing Symbol objects
-    private Yytoken symbol(scala.Enumeration.Val type, String name) {
-        return symbol(type, name, text());
-    }
-
-    private Yytoken symbol(scala.Enumeration.Val type, String name, String content) {
+    private ScannerToken<?> symbol(scala.Enumeration.Val type, String name) {
         // use the Symbol's "left value" as line number
         int line = yyline + 1;
-        return new Yytoken(
-            type,
+        return new ScannerToken(
+            ((Terminal)type),
             line,
-            yycolumn,
-            content);
+            yycolumn);
+    }
+
+    private <T> ScannerToken<T> symbol(scala.Enumeration.Val type, String name, T value) {
+        // use the Symbol's "left value" as line number
+        int line = yyline + 1;
+        return new ScannerToken(
+            ((Terminal)type),
+            value,
+            line,
+            yycolumn);
     }
 
     // always call this method after constructing the lexer object
@@ -163,6 +170,7 @@ NEWLINE = ("\r"|"\n"|"\r\n")
 %column
 %ignorecase
 %class Lexer
+%type ScannerToken
 %public
 
 %%
@@ -290,8 +298,25 @@ NEWLINE = ("\r"|"\n"|"\r\n")
     "__LINE__" { return symbol(T_LINE(), "T_LINE"); }
     "__FILE__" { return symbol(T_FILE(), "T_FILE"); }
     "__DIR__" { return symbol(T_DIR(), "T_DIR"); }
-    {LNUM}|{HNUM} { return symbol(T_LNUMBER(), "T_LNUMBER"); }
-    {DNUM}|{EXPONENT_DNUM} { return symbol(T_DNUMBER(), "T_DNUMBER"); }
+    {LNUM}|{HNUM} {
+        String str = text();
+        long res = 0l;
+
+        if (str.startsWith("0x") || str.startsWith("0X")) {
+            res = java.lang.Long.parseLong(str.substring(2), 16);
+        } else if (str.startsWith("0") && str.length() > 1) {
+            res = java.lang.Long.parseLong(str.substring(1), 8);
+        } else {
+            res = java.lang.Long.parseLong(str, 10);
+        }
+
+        return symbol(T_LNUMBER(), "T_LNUMBER", new PHPInteger(res));
+    }
+    {DNUM}|{EXPONENT_DNUM} {
+        String str = text();
+
+        return symbol(T_DNUMBER(), "T_DNUMBER", new PHPFloat(Float.parseFloat(str)));
+    }
 }
 
 <ST_IN_SCRIPTING>"("{TABS_AND_SPACES}("int"|"integer"){TABS_AND_SPACES}")" { return symbol(T_INT_CAST(), "T_INT_CAST"); }
@@ -384,17 +409,17 @@ NEWLINE = ("\r"|"\n"|"\r\n")
 <ST_DOUBLE_QUOTES,ST_BACKQUOTE,ST_HEREDOC> "$" {LABEL} "->" {LABEL_FIRST} {
     yypushback(3);
     pushState(ST_LOOKING_FOR_PROPERTY);
-    return symbol(T_VARIABLE(), "T_VARIABLE");
+    return symbol(T_VARIABLE(), "T_VARIABLE", new SimpleVariable(new Identifier(text())));
 }
 
 <ST_DOUBLE_QUOTES,ST_BACKQUOTE,ST_HEREDOC> "$" {LABEL} "["  {
     yypushback(1);
     pushState(ST_VAR_OFFSET);
-    return symbol(T_VARIABLE(), "T_VARIABLE");
+    return symbol(T_VARIABLE(), "T_VARIABLE", new SimpleVariable(new Identifier(text())));
 }
 
 <ST_IN_SCRIPTING,ST_DOUBLE_QUOTES,ST_HEREDOC,ST_BACKQUOTE,ST_VAR_OFFSET> "$" {LABEL} {
-    return symbol(T_VARIABLE(), "T_VARIABLE");
+    return symbol(T_VARIABLE(), "T_VARIABLE", new SimpleVariable(new Identifier(text())));
 }
 
 <ST_VAR_OFFSET>"[" {
@@ -413,7 +438,7 @@ NEWLINE = ("\r"|"\n"|"\r\n")
 
 <ST_LOOKING_FOR_PROPERTY>{LABEL} {
 	popState();
-    return symbol(T_STRING(), "T_STRING");
+    return symbol(T_STRING(), "T_STRING", text());
 }
 
 <ST_LOOKING_FOR_PROPERTY>{ANY_CHAR} {
@@ -445,7 +470,7 @@ NEWLINE = ("\r"|"\n"|"\r\n")
 <ST_LOOKING_FOR_VARNAME>{LABEL} {
 	popState();
 	pushState(ST_IN_SCRIPTING);
-    return symbol(T_STRING_VARNAME(), "T_STRING_VARNAME");
+    return symbol(T_STRING_VARNAME(), "T_STRING_VARNAME", text());
 }
 
 <ST_LOOKING_FOR_VARNAME>{ANY_CHAR} {
@@ -455,13 +480,13 @@ NEWLINE = ("\r"|"\n"|"\r\n")
 }
 
 <ST_VAR_OFFSET>{LNUM}|{HNUM} {
-    return symbol(T_NUM_STRING(), "T_NUM_STRING");
+    return symbol(T_NUM_STRING(), "T_NUM_STRING", text());
 }
 
 // <YYINITIAL>(([^<]|"<"[^?%s<]){1,400})|"<s"|"<" {
 <YYINITIAL>(([^<]|"<"[^?%s<])*)|"<s"|"<" {
     // NJ: replaced {1,400} by * (because it's faster)
-    return symbol(T_INLINE_HTML(), "T_INLINE_HTML");
+    return symbol(T_INLINE_HTML(), "T_INLINE_HTML", text());
 }
 
 <YYINITIAL>"<?"|"<script"{WHITESPACE}+"language"{WHITESPACE}*"="{WHITESPACE}*("php"|"\"php\""|"\'php\'"){WHITESPACE}*">" {
@@ -487,7 +512,7 @@ NEWLINE = ("\r"|"\n"|"\r\n")
 
 
 <ST_IN_SCRIPTING,ST_VAR_OFFSET>{LABEL} {
-    return symbol(T_STRING(), "T_STRING");
+    return symbol(T_STRING(), "T_STRING", text());
 }
 
 <ST_IN_SCRIPTING>{WHITESPACE} {
@@ -555,11 +580,11 @@ NEWLINE = ("\r"|"\n"|"\r\n")
 }
 
 <ST_IN_SCRIPTING>b?([\"]([^$\"\\]|("\\".))*[\"]) {
-    return symbol(T_CONSTANT_ENCAPSED_STRING(), "T_CONSTANT_ENCAPSED_STRING", text());
+    return symbol(T_CONSTANT_ENCAPSED_STRING(), "T_CONSTANT_ENCAPSED_STRING", new PHPString(text()));
 }
 
 <ST_IN_SCRIPTING>b?([']([^'\\]|("\\".))*[']) {
-    return symbol(T_CONSTANT_ENCAPSED_STRING(), "T_CONSTANT_ENCAPSED_STRING", text());
+    return symbol(T_CONSTANT_ENCAPSED_STRING(), "T_CONSTANT_ENCAPSED_STRING", new PHPString(text()));
 }
 
 <ST_IN_SCRIPTING>b?[\"] {
@@ -683,7 +708,7 @@ NEWLINE = ("\r"|"\n"|"\r\n")
                 continue;
         }
     }
-    return symbol(T_ENCAPSED_AND_WHITESPACE(), "T_ENCAPSED_AND_WHITESPACE");
+    return symbol(T_ENCAPSED_AND_WHITESPACE(), "T_ENCAPSED_AND_WHITESPACE", new PHPString(text()));
 }
 
 <ST_HEREDOC>{ANY_CHAR} {
@@ -760,11 +785,11 @@ NEWLINE = ("\r"|"\n"|"\r\n")
 
 // NJ: split up rule for {ENCAPSED_TOKENS} since CUP doesn't support character tokens
 <ST_SINGLE_QUOTE>"\\'" {
-    return symbol(T_STRING(), "T_STRING");
+    return symbol(T_STRING(), "T_STRING", text());
 }
 
 <ST_SINGLE_QUOTE>"\\\\" {
-    return symbol(T_STRING(), "T_STRING");
+    return symbol(T_STRING(), "T_STRING", text());
 }
 
 <ST_SINGLE_QUOTE>['] {

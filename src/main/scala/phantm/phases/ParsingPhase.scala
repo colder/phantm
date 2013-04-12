@@ -35,6 +35,7 @@ object ParsingPhaseNew extends Phase {
   def run(ctx: PhasesContext): PhasesContext = {
     import phantm.parser.PHP53Spec
     import phantm.parser.Lexer
+    import phantm.ast.Trees.Program
     import cup2.generator._
     import cup2.parser._
     import cup2.scanner._
@@ -43,20 +44,24 @@ object ParsingPhaseNew extends Phase {
 
 
     class JFlexToCUP(val l: Lexer) extends Scanner {
-      def readNextTerminal: ScannerToken[String] = {
-        val yytoken = l.lex();
+      def readNextTerminal: ScannerToken[_] = {
+        val token = l.lex();
 
-        if (yytoken ne null) {
-          new ScannerToken(yytoken.tpe.asInstanceOf[Terminal], yytoken.content, yytoken.line, yytoken.column)
+        val res = if (token ne null) {
+          token
         } else {
           new ScannerToken(EndOfInputStream)
         }
+
+        println("Read: "+res)
+
+        res
       }
     }
 
     val table = new LALR1Generator(new PHP53Spec()).getParsingTable();
 
-    for (f <- ctx.files) {
+    val asts = for (f <- ctx.files) yield {
       val l = new Lexer(new java.io.FileReader(f));
       l.setFileName(f);
 
@@ -64,10 +69,11 @@ object ParsingPhaseNew extends Phase {
 
       val res = parser.parse(new JFlexToCUP(l))
 
-      println(res)
-      
+      res.asInstanceOf[Program]
     }
 
-    ctx.copy(oast = None)
+    val prog = asts.reduceLeft {(a,b) => a combine b}
+
+    ctx.copy(oast = Some(prog))
   }
 }

@@ -9,7 +9,7 @@ import edu.tum.cup2.spec.scala.{ScalaCUPSpecification, SymbolEnum}
 
 import ast.Trees._
 
-case class Yytoken(tpe: Terminals.Value, line: Int, column: Int, content: String)
+//case class Yytoken[T](tpe: Terminals.Value, line: Int, column: Int, content: T)
 
 object Terminals extends SymbolEnum {
   val T_ABSTRACT,
